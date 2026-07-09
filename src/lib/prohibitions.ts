@@ -11,7 +11,7 @@
  */
 
 import { ComplianceClass, LabReportStatus, AdminRole } from "@prisma/client";
-import { db } from "../db";
+import { db } from "./db";
 
 export class ProhibitionError extends Error {
   constructor(
@@ -169,14 +169,20 @@ export async function assertCheckerPresent(args: {
   }
 }
 
-export async function assertNoThresholdSplitting(actorId: string, amountPaise: number): Promise<void> {
+export async function assertNoThresholdSplitting(actorId: string, _amountPaise: number): Promise<void> {
+  // Prior-sum semantics: an individual movement under the threshold is allowed,
+  // but once your *already-made* unchecked movements in the window cross the
+  // threshold, the next one needs a second approver. Three ₹4,999 refunds:
+  // the first two land (prior sum 0, then 4,999), the third is blocked (prior
+  // sum 9,998 ≥ 5,000). This is why splitting a ₹15k refund into three does
+  // not evade the checker requirement.
   const since = new Date(Date.now() - 24 * 3600e3);
   const recent = await db.walletEntry.aggregate({
     where: { makerId: actorId, at: { gte: since }, checkerId: null },
     _sum: { deltaPaise: true },
   });
-  const cumulative = Math.abs(recent._sum.deltaPaise ?? 0) + amountPaise;
-  if (cumulative >= REFUND_CHECKER_THRESHOLD_PAISE) {
+  const priorUnchecked = Math.abs(recent._sum.deltaPaise ?? 0);
+  if (priorUnchecked >= REFUND_CHECKER_THRESHOLD_PAISE) {
     throw new ProhibitionError(
       "CHECKER_REQUIRED_CUMULATIVE",
       "Your unchecked movements in the last 24 hours now exceed the threshold. A second approver is required."

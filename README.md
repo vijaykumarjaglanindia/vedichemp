@@ -53,6 +53,52 @@ run if `NODE_ENV=production`.
 
 ---
 
+## The application
+
+One Next.js 15 (App Router) codebase serves the public website and all three
+consoles. Route handlers are thin; every business rule lives in `src/server/`
+and, for the prohibitions, in the database.
+
+```
+src/
+├── app/
+│   ├── (site)/            Public website — home, catalogue, product, trust, sell
+│   ├── account/           Buyer dashboard (Module 1)
+│   ├── seller/            Seller Central (Module 2)
+│   ├── admin/             Marketplace Operations Console (Module 3)
+│   └── api/v1/            Thin route handlers → services (publish, refunds,
+│                          settlements approve, Rx signed-URL, ad auction, …)
+├── components/
+│   ├── ui/                Shared library (§0.5): MoneyText, StatusPill,
+│   │                      ComplianceBadge, DataTable, Timeline, Banner, …
+│   └── shell/             ConsoleShell chrome shared by the three consoles
+├── lib/                   money (integer paise → ₹ Indian grouping), compliance
+│                          class metadata, prohibition guards, db client
+└── server/               Services: catalogue/publish (A2), health/prescriptions
+                          (A4), money/settlements + refunds (A6), ads/auction
+                          (A1), compliance/labReports (A2), rbac (SoD)
+```
+
+Run it:
+
+```bash
+pnpm dev        # http://localhost:3000  → website + /account /seller /admin
+pnpm typecheck  # strict, noUncheckedIndexedAccess
+```
+
+**Where compliance is visible in the UI.** The consoles render what the server
+decided, and they make the prohibitions legible: MED_CANNABIS is *absent* from
+every public and recommendation surface (A1); a batch shows its CoA state and a
+disabled Publish with remediation when the CoA is missing (A2); the admin
+Prohibition Registry (`/admin/prohibitions`) mirrors the `prohibition_status`
+view; the maker–checker inbox refuses self-approval (A6); the prescription view
+is a reason-code flow that notifies the buyer, never a bare image link (A4).
+
+> The UI is fed by `src/lib/sample.ts` — *illustrative* data so the consoles can
+> be reviewed without a live Postgres. It is not database seed: the real system
+> still starts empty (see below), and the sample set deliberately contains no
+> advertisable MED_CANNABIS surface.
+
 ## Build sequence
 
 Each step is deployable and testable on its own. Do them in order; later steps

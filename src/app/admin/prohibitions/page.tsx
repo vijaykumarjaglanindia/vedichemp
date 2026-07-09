@@ -1,0 +1,166 @@
+/**
+ * VEDIC HEMP — PROHIBITION REGISTRY (§0–1, the signature page)
+ *
+ * A1–A6 are not settings. Each is an absence in the codebase, asserted by a
+ * test that fails the build, and each has a DB constraint or trigger as its
+ * first line of defence, a server guard as its second, and — for A1 — an
+ * auction check as its third. This page is a live registry over that
+ * structure, not a place any of it can be toggled. There is no switch here.
+ */
+
+import type { Metadata } from "next";
+import { Shell } from "../Shell";
+import { Card, StatusPill, Banner } from "@/components/ui";
+
+export const metadata: Metadata = { title: "Prohibition Registry · Admin" };
+
+interface Prohibition {
+  code: string;
+  rule: string;
+  enforcement: { layer: string; detail: string }[];
+  testRef: string;
+}
+
+const PROHIBITIONS: Prohibition[] = [
+  {
+    code: "A1",
+    rule: "No MED_CANNABIS product may be advertised or promoted, by anyone, ever.",
+    enforcement: [
+      { layer: "API", detail: "assertAdvertisable() rejects the campaign at creation — no force parameter exists." },
+      { layer: "Index", detail: "Search / recommendation index omits MED_CANNABIS from any advertisable feed at ingest." },
+      { layer: "Auction", detail: "auctionAssertClass() drops the candidate on every call and writes an AdClassViolation row." },
+      { layer: "Database", detail: "CHECK constraint on AdCampaign — no column, flag or override endpoint can satisfy it." },
+    ],
+    testRef: "tests/prohibitions.test.ts § A1 — ads.threeLayer.test",
+  },
+  {
+    code: "A2",
+    rule: "No batch of a regulated class becomes sellable without an approved, batch-matched Certificate of Analysis.",
+    enforcement: [
+      { layer: "Server guard", detail: "assertBatchSellable() reads LabReport.status = APPROVED and matches batchCode." },
+      { layer: "Server guard", detail: "Δ9-THC > 0.3% throws THC_LIMIT_EXCEEDED regardless of report status." },
+      { layer: "Database", detail: "Publish gate has no force_sellable column and no bulk-approve write path." },
+    ],
+    testRef: "tests/prohibitions.test.ts § A2 — coa.gate.test",
+  },
+  {
+    code: "A3",
+    rule: "Safety reports, adverse events, dispensing registers, recall records and audit logs cannot be deleted or altered.",
+    enforcement: [
+      { layer: "Database", detail: "REVOKE DELETE, UPDATE at the DB role level on the affected tables." },
+      { layer: "Storage", detail: "Object lock on the S3-compatible bucket holding safety documents." },
+      { layer: "Application", detail: "Corrections are new rows referencing the old — never an edit in place." },
+    ],
+    testRef: "tests/prohibitions.test.ts § A3 — immutable.audit.test",
+  },
+  {
+    code: "A4",
+    rule: "Health data is viewable only by Pharmacist/Compliance, only with a logged reason, and the buyer is notified.",
+    enforcement: [
+      { layer: "Auth", detail: "Scope claims come from the verified token, never the client." },
+      { layer: "Server guard", detail: "assertSensitiveAccess() requires a controlled reasonCode + ≥20 char reasonText." },
+      { layer: "Database", detail: "SensitiveAccessLog write is synchronous and precedes URL resolution — losing the log fails the read." },
+      { layer: "Notification", detail: "Buyer notification is enqueued in the same transaction as the log row." },
+    ],
+    testRef: "tests/prohibitions.test.ts § A4 — sensitive.access.test",
+  },
+  {
+    code: "A5",
+    rule: "No retroactive fee increase.",
+    enforcement: [
+      { layer: "Database", detail: "CHECK (effectiveFrom >= noticeSentAt + interval '30 days') on CommissionSchedule." },
+    ],
+    testRef: "tests/prohibitions.test.ts § A5 — fee.notice.test",
+  },
+  {
+    code: "A6",
+    rule: "No single admin moves money.",
+    enforcement: [
+      { layer: "Database", detail: "CHECK (makerId <> checkerId) on every money table." },
+      { layer: "Server guard", detail: "assertCheckerPresent() rejects a service actor as either party." },
+      { layer: "Server guard", detail: "assertNoThresholdSplitting() blocks a maker whose prior unchecked movements already crossed ₹5,000." },
+    ],
+    testRef: "tests/prohibitions.test.ts § A6 — maker.checker.test",
+  },
+];
+
+export default function AdminProhibitionsPage() {
+  return (
+    <Shell active="/admin/prohibitions" breadcrumb={["Admin", "Prohibitions"]} title="Prohibition Registry">
+      <div className="vh-grid" style={{ gap: 18 }}>
+        <Banner severity="danger" title="These are absences, not settings">
+          Each prohibition below is asserted by a test that fails the build if weakened. A PR that deletes, skips or
+          weakens one of these tests fails review by a CODEOWNERS rule on{" "}
+          <code>tests/prohibitions.test.ts</code>. A prohibition can change — in the open, with reasons, with
+          sign-off, with a new test. What it cannot do is change quietly.
+        </Banner>
+
+        <Card title="prohibition_status" action={<StatusPill tone="ok">live view</StatusPill>}>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            This table mirrors the <code>prohibition_status</code> database view — a read-only rollup joining each
+            code to its constraint definitions, current pass/fail state from the last CI run, and the CODEOWNERS
+            file guarding its test. There is no write path from this page into that view.
+          </p>
+          <div style={{ overflowX: "auto" }}>
+            <table className="vh-table">
+              <thead>
+                <tr>
+                  <th>Code</th>
+                  <th>Rule</th>
+                  <th>Enforcement</th>
+                  <th>Test</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody>
+                {PROHIBITIONS.map((p) => (
+                  <tr key={p.code}>
+                    <td className="mono" style={{ fontWeight: 700, verticalAlign: "top" }}>{p.code}</td>
+                    <td style={{ maxWidth: 260, verticalAlign: "top" }}>{p.rule}</td>
+                    <td style={{ verticalAlign: "top" }}>
+                      <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 4 }}>
+                        {p.enforcement.map((e, i) => (
+                          <li key={i} className="small">
+                            <strong>{e.layer}:</strong> {e.detail}
+                          </li>
+                        ))}
+                      </ul>
+                    </td>
+                    <td className="small mono" style={{ verticalAlign: "top", whiteSpace: "nowrap" }}>{p.testRef}</td>
+                    <td style={{ verticalAlign: "top" }}>
+                      <StatusPill tone="ok">ENFORCED</StatusPill>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </Card>
+
+        <div className="vh-grid cols-2">
+          <Card title="How a prohibition is allowed to change">
+            <ol style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 8 }}>
+              <li className="small">Proposed in the open — a written rationale, not a silent diff.</li>
+              <li className="small">Reviewed by CODEOWNERS on <code>tests/prohibitions.test.ts</code>; the test author cannot self-approve.</li>
+              <li className="small">A new or amended test lands in the same PR as the code change — never after.</li>
+              <li className="small">The constraint and the guard move together; a PR that loosens one without the other fails review.</li>
+            </ol>
+          </Card>
+          <Card title="What we deliberately did not build">
+            <ul style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 8 }}>
+              <li className="small">A &quot;senior approval&quot; override for the CoA gate — a licence to sell an untested cannabinoid product.</li>
+              <li className="small">A <code>force_sellable</code> flag, anywhere.</li>
+              <li className="small">Screenshot detection on the prescription viewer — theatre; the watermark is the deterrent.</li>
+              <li className="small">A superadmin role. PLATFORM_OWNER appoints who reads prescriptions, approves money and adjudicates disputes — it cannot do any of those things itself.</li>
+            </ul>
+          </Card>
+        </div>
+
+        <Banner severity="ok" title="Loud, attributable, and slow">
+          We cannot make insider abuse impossible. Every gate on this page exists to make it loud (logged, alerting),
+          attributable (a named actor, a reason code) and slow (a second human in the loop) instead.
+        </Banner>
+      </div>
+    </Shell>
+  );
+}
