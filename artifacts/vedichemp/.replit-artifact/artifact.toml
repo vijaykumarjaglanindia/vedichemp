@@ -1,0 +1,31 @@
+kind = "web"
+previewPath = "/"
+title = "Vedic Hemp"
+version = "1.0.0"
+id = "artifacts/vedichemp"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/" ]
+localPort = 18687
+
+[services.development]
+run = "pnpm --filter @workspace/vedichemp run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/vedichemp", "run", "build" ]
+publicDir = "artifacts/vedichemp/dist/public"
+serve = "static"
+
+[[services.production.rewrites]]
+from = "/*"
+to = "/index.html"
+
+[services.env]
+PORT = "18687"
+BASE_PATH = "/"

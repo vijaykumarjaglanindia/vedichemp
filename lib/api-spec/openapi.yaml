@@ -10,7 +10,24 @@ servers:
 tags:
   - name: health
     description: Health operations
+  - name: compliance
+    description: Compliance and prohibition enforcement status
 paths:
+  /prohibitions:
+    get:
+      operationId: getProhibitionStatus
+      tags: [compliance]
+      summary: Prohibition enforcement status
+      description: Returns the enforcement status of prohibitions A1-A6, read live from the database's prohibition_status view.
+      responses:
+        "200":
+          description: Enforcement status for each prohibition
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: "#/components/schemas/ProhibitionStatus"
   /healthz:
     get:
       operationId: healthCheck
@@ -26,6 +43,16 @@ paths:
                 $ref: "#/components/schemas/HealthStatus"
 components:
   schemas:
+    ProhibitionStatus:
+      type: object
+      properties:
+        code:
+          type: string
+        enforced:
+          type: boolean
+      required:
+        - code
+        - enforced
     HealthStatus:
       type: object
       properties:
