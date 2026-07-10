@@ -560,3 +560,91 @@ img, svg { max-width: 100%; }
     box-shadow: 0 -8px 24px rgba(0, 46, 44, .1);
   }
 }
+
+/* ═══════════════ LAYOUT UTILITIES (responsive named grids) ═══════════════
+   Fixed-fraction page grids live here, not in inline styles, so every one of
+   them collapses correctly on small screens. */
+.vh-hero-grid { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr); gap: var(--sp-6); align-items: center; }
+.vh-split { display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 1fr); gap: var(--sp-4); align-items: start; }
+.vh-split-wide { display: grid; grid-template-columns: minmax(0, 1.4fr) minmax(300px, 1fr); gap: var(--sp-5); align-items: start; }
+.vh-footer-grid { display: grid; grid-template-columns: 1.2fr repeat(4, minmax(0, 1fr)); gap: var(--sp-4); }
+.vh-usp-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 980px) {
+  .vh-hero-grid { grid-template-columns: 1fr; }
+}
+@media (max-width: 900px) {
+  .vh-split, .vh-split-wide { grid-template-columns: 1fr; }
+  .vh-footer-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+}
+@media (max-width: 560px) {
+  .vh-footer-grid { grid-template-columns: 1fr; }
+  .vh-usp-grid { grid-template-columns: 1fr; }
+}
+
+/* ═══════════════ DESIGN AMPLIFICATION ═══════════════ */
+
+/* Motion system — one easing everywhere */
+:root { --vh-ease: cubic-bezier(.32, .72, .28, 1); }
+
+/* Scrollbars that match the surface */
+* { scrollbar-width: thin; scrollbar-color: var(--vh-line-strong) transparent; }
+*::-webkit-scrollbar { width: 10px; height: 10px; }
+*::-webkit-scrollbar-thumb { background: var(--vh-line-strong); border-radius: 999px; border: 3px solid var(--vh-bg); }
+
+/* Primary nav links: animated underline, not just a colour change */
+.vh-site-nav nav a { position: relative; padding: 4px 0; }
+.vh-site-nav nav a::after {
+  content: ""; position: absolute; left: 0; right: 100%; bottom: -2px; height: 2px;
+  background: var(--vh-accent); border-radius: 2px; transition: right .22s var(--vh-ease);
+}
+.vh-site-nav nav a:hover::after { right: 0; }
+
+/* Product cards: media zooms, border warms, price row settles */
+.vh-product { will-change: transform; }
+.vh-product .vh-product-media { transition: transform .35s var(--vh-ease); }
+.vh-product:hover .vh-product-media { transform: scale(1.05); }
+.vh-product:hover { border-color: color-mix(in srgb, var(--vh-accent) 35%, var(--vh-line)); }
+
+/* Primary button: soft brand glow on hover, arrow-friendly gap */
+.vh-btn-primary:hover { box-shadow: 0 4px 14px color-mix(in srgb, var(--vh-accent) 34%, transparent), inset 0 1px 0 rgba(255,255,255,.16); }
+.vh-btn svg { transition: transform .2s var(--vh-ease); }
+.vh-btn:hover svg { transform: translateX(1.5px); }
+
+/* Segmented control: crisper active state */
+.vh-seg { box-shadow: inset 0 1px 2px rgba(0, 46, 44, .05); }
+.vh-seg .on { box-shadow: 0 1px 2px rgba(0, 46, 44, .12); }
+
+/* Hero: layered light — a slow conic sheen over the base gradient */
+.vh-hero::after {
+  content: ""; position: absolute; inset: 0; pointer-events: none;
+  background:
+    radial-gradient(420px 200px at 22% 0%, rgba(255, 255, 255, .07), transparent 70%),
+    repeating-linear-gradient(115deg, rgba(255, 255, 255, .022) 0 2px, transparent 2px 9px);
+}
+.vh-hero { isolation: isolate; }
+.vh-hero > * { position: relative; z-index: 1; }
+
+/* Announcement bar: gradient + centred to the container grid */
+.vh-announce { background: linear-gradient(90deg, var(--vh-green-900), var(--vh-green-700) 55%, var(--vh-green-900)); letter-spacing: .01em; }
+
+/* Section rhythm: alt bands get a hairline inset glow for depth */
+.vh-section-alt { box-shadow: inset 0 1px 0 rgba(255, 255, 255, .6), inset 0 -1px 0 rgba(255, 255, 255, .6); }
+
+/* Footer: top accent hairline */
+.vh-site-footer { border-top: 3px solid var(--vh-accent); }
+
+/* Tables: align numerics, calmer hover */
+.vh-table td.tabular, .vh-table th.tabular { text-align: right; }
+
+/* Headings inside cards: consistent optical size */
+.vh-card > h3:first-child, .vh-card header h3 { font-size: .95rem; letter-spacing: -0.008em; }
+
+/* Inputs: consistent height rhythm with buttons */
+.vh-input, .vh-select { min-height: 42px; }
+
+/* Container: tighter gutters on small screens (alignment with cards) */
+@media (max-width: 720px) {
+  .vh-content { padding-left: 14px; padding-right: 14px; }
+  .vh-hero { padding: 40px 0 48px; }
+  .vh-section { padding: var(--sp-6) 0; }
+}

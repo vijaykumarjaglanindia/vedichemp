@@ -104,7 +104,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
         <Link href="/catalogue">Catalogue</Link> / <Link href={`/catalogue?class=${product.cls}`}>{meta.short}</Link> / {product.title}
       </nav>
 
-      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(300px, 1fr)", gap: "var(--sp-5)", alignItems: "start" }}>
+      <div className="vh-split-wide">
         {/* ══ LEFT: gallery, specs, anchored sections ══════ */}
         <div>
           {/* Gallery */}

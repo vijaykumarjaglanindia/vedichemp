@@ -118,7 +118,7 @@ export default function SellPage() {
             title="Commission, in the open"
             sub="Illustrative headline rates. Your live schedule is in the seller console — and it can never change out from under you."
           />
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(0, 1fr)", gap: "var(--sp-4)", alignItems: "start" }}>
+          <div className="vh-split-wide" style={{ gap: "var(--sp-4)" }}>
             <Card pad0>
               <div style={{ overflowX: "auto" }}>
                 <table className="vh-table">

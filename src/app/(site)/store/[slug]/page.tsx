@@ -122,7 +122,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
       <div className="vh-container" style={{ paddingBottom: "var(--sp-6)" }}>
         {/* ── Story + certifications ─────────────────────── */}
         <section className="vh-section" style={{ paddingBottom: 0 }}>
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: "var(--sp-4)", alignItems: "start" }}>
+          <div className="vh-split">
             <Card title="About this store">
               <p className="small" style={{ marginBottom: 0 }}>{profile.story}</p>
             </Card>

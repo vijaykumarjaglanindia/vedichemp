@@ -70,7 +70,7 @@ export default function HomePage() {
 
       {/* ── Hero ─────────────────────────────────────────── */}
       <section className="vh-hero">
-        <div className="vh-container" style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.1fr) minmax(0, 0.9fr)", gap: "var(--sp-6)", alignItems: "center" }}>
+        <div className="vh-container vh-hero-grid">
           <div>
             <h1>Wellness you can verify — not just trust.</h1>
             <p style={{ marginTop: 12 }}>
@@ -101,7 +101,7 @@ export default function HomePage() {
 
             {/* USP strip — answers the four pre-purchase objections before
                 the first scroll, and balances the hero columns */}
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10, marginTop: "var(--sp-4)", maxWidth: 460 }}>
+            <div className="vh-usp-grid" style={{ marginTop: "var(--sp-4)", maxWidth: 460 }}>
               {[
                 ["Free shipping over ₹999", "Across 19,000+ PIN codes"],
                 ["Cash on Delivery", "Pay when it arrives"],
@@ -309,7 +309,7 @@ export default function HomePage() {
       <section className="vh-section">
         <div className="vh-container">
           <SectionHead eyebrow="Learn" title="New to hemp? Start here" />
-          <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 2fr) minmax(0, 1fr)", gap: "var(--sp-4)", alignItems: "start" }}>
+          <div className="vh-split">
             <div className="vh-grid cols-3">
               {EDUCATION_ARTICLES.map((a) => (
                 <Link key={a.title} href={a.href} className="vh-card" style={{ display: "block", color: "inherit" }}>

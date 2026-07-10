@@ -227,7 +227,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
       {/* ── Footer ───────────────────────────────────────── */}
       <footer className="vh-site-footer">
         <div className="vh-container">
-          <div className="vh-grid" style={{ gridTemplateColumns: "1.2fr repeat(4, minmax(0, 1fr))", marginBottom: "var(--sp-5)", gap: "var(--sp-4)" }}>
+          <div className="vh-footer-grid" style={{ marginBottom: "var(--sp-5)" }}>
             <div>
               <div className="vh-row" style={{ fontWeight: 800, fontSize: "1.05rem", color: "#fff", gap: 8, marginBottom: 8 }}>
                 <Leaf size={18} strokeWidth={2.2} aria-hidden />
