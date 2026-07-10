@@ -55,6 +55,7 @@ A compliance-first hemp/cannabis commerce foundation: six prohibitions (A1–A6)
 
 ## Gotchas
 
+- After pulling new marketplace commits from GitHub, the Next.js dev server keeps serving a stale build. Fix: `rm -rf artifacts/web-platform/.next` and restart the `artifacts/web-platform: web` workflow, then verify the new tokens appear in the served CSS.
 - The ported vitest tests import `src/server/*` modules that never existed in the import (spec-first scaffold); they can't run as-is. Enforcement was verified directly via SQL against the `prohibition_status` view and rejection smoke tests.
 - `scripts/fixture.ts` refuses to run unless the database is named `vedichemp_dev` (by design); the Replit dev DB has a different name.
 - After any `prisma db push` that recreates tables, re-apply `prisma/migrations/0001_prohibitions/migration.sql` or the prohibitions lose enforcement — check `SELECT * FROM prohibition_status`.
