@@ -5,6 +5,7 @@ A compliance-first hemp/cannabis commerce foundation: six prohibitions (A1–A6)
 ## Run & Operate
 
 - `pnpm --filter @workspace/api-server run dev` — run the API server (port 5000)
+- `pnpm --filter vedichemp run dev` — run the imported Next.js marketplace (`artifacts/web-platform`, port 21596, preview path `/web-platform/`; needs `PORT` and `BASE_PATH` env, set in its artifact.toml)
 - `pnpm run typecheck` — full typecheck across all packages
 - `pnpm run build` — typecheck + build all packages
 - `pnpm --filter @workspace/api-spec run codegen` — regenerate API hooks and Zod schemas from the OpenAPI spec
@@ -45,11 +46,12 @@ A compliance-first hemp/cannabis commerce foundation: six prohibitions (A1–A6)
 
 - Prohibition Registry page (`/`) showing live enforcement status of A1–A6 read from the `prohibition_status` view.
 - `GET /api/prohibitions` — enforcement status endpoint.
+- Marketplace (`artifacts/web-platform`, Next.js 15, preview path `/web-platform/`): full buyer/seller/admin marketplace built externally by the user via Claude (GitHub PR #1) and imported. Do NOT build features here — the user develops it with Claude; Replit only hosts/wires it. Routes live under `src/app` (`(site)` group: catalogue, products, sell, store, trust, about; plus `admin`, `seller`, `account`, `api`). Own Prisma schema identical to api-server's (same DB). Package name is `vedichemp` (not `@workspace/*`).
 - Mobile companion (`artifacts/vedichemp-mobile`, Expo, preview path `/vedichemp-mobile/`): single-screen Prohibition Registry mirroring the web app, using the shared `useGetProhibitionStatus` hook from `@workspace/api-client-react` (base URL wired from `EXPO_PUBLIC_DOMAIN` in `app/_layout.tsx`). Theme tokens synced from the web app into `constants/colors.ts`. iOS bundle id: `com.replit.vedichempmobile` (do not change).
 
 ## User preferences
 
-_Populate as you build — explicit user instructions worth remembering across sessions._
+- The marketplace (`artifacts/web-platform`) is developed by the user with Claude via GitHub — do not build features in it here; Replit only configures/wires/hosts it.
 
 ## Gotchas
 

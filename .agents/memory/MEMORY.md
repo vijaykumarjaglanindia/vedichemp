@@ -1,1 +1,2 @@
 - [Rolled-back merge recovery](rollback-recovery.md) — if a merged task's files vanish, restore from `gitsafe-backup/main` via `git archive | tar`; `.replit` is protected and needs module installs instead.
+- [Artifact registration](artifact-registration.md) — register existing code as an artifact: mv aside → createArtifact → restore code; toml tool needs absolute paths, can't change id or integratedSkills.

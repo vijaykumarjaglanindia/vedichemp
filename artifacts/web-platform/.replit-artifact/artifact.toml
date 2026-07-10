@@ -1,0 +1,41 @@
+kind = "web"
+previewPath = "/web-platform/"
+title = "Vedic Hemp Marketplace"
+version = "1.0.0"
+id = "artifacts/web-platform"
+router = "path"
+
+[[integratedSkills]]
+name = "react-vite"
+version = "1.0.0"
+
+[[services]]
+name = "web"
+paths = [ "/web-platform/" ]
+localPort = 21596
+
+[services.development]
+run = "pnpm --filter vedichemp run dev"
+
+[services.production]
+
+[services.production.build]
+args = [ "pnpm", "--filter", "vedichemp", "run", "build" ]
+
+[services.production.build.env]
+NODE_ENV = "production"
+BASE_PATH = "/web-platform"
+
+[services.production.run]
+args = [ "pnpm", "--filter", "vedichemp", "run", "start" ]
+
+[services.production.run.env]
+PORT = "21596"
+NODE_ENV = "production"
+BASE_PATH = "/web-platform"
+HOSTNAME = "0.0.0.0"
+
+[services.env]
+PORT = "21596"
+BASE_PATH = "/web-platform"
+HOSTNAME = "0.0.0.0"
