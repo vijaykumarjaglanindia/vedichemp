@@ -46,23 +46,19 @@ const WHO_DOES_WHAT: { who: string; items: string[] }[] = [
   {
     who: "The seller",
     items: [
-      "Submits their FSSAI / AYUSH / state licences when creating their account",
-      "Lists their own products, prices, imagery and claims",
-      "Uploads lab reports for regulated listings and keeps batches current",
-      "Is responsible for the genuineness, quality and compliance of every listing",
-      "Packs your order, hands it to their delivery partner on time, and updates its status",
-      "Handles product questions and honours the stated return policy",
+      "Joins with their licence details and lists their own products",
+      "Stands behind what they list — genuineness and quality included",
+      "Packs your order and ships it through their delivery partner",
+      "Updates the order status you track, and answers product questions",
     ],
   },
   {
     who: "Vedic Hemp (the marketplace)",
     items: [
-      "Runs the storefront, cart and secure checkout — totals are computed server-side",
-      "Collects your payment on the seller's behalf and forwards the order to the seller",
-      "Shows seller documents (licences, lab reports) on listings and storefronts, as uploaded by the seller",
-      "Keeps prescription-only items invisible to buyers without a verified prescription — never advertised, ever",
-      "Computes ratings from real orders only — a seller cannot edit or delete a review",
-      "Refunds the buyer first when something goes wrong, then settles with the seller",
+      "Runs the storefront and a secure checkout",
+      "Takes your payment and passes the order to the seller instantly",
+      "Shows each seller's documents right on the listing",
+      "Refunds you first if something goes wrong",
     ],
   },
 ];
@@ -126,9 +122,8 @@ export default function HowItWorksPage() {
           </div>
           <div style={{ marginTop: "var(--sp-4)" }}>
             <Banner severity="info" title="The short version">
-              Sellers list, ship and stand behind their products. We run the marketplace, move your
-              order to the right seller after payment, and make sure the rules below are enforced
-              the same way for everyone.
+              Sellers list, ship and stand behind their products. We run the marketplace and move
+              your order to the right seller the moment you pay.
             </Banner>
           </div>
         </div>

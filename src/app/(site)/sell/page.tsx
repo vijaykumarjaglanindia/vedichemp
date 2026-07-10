@@ -51,10 +51,10 @@ const LICENCE_REQUIREMENTS: Record<ComplianceClass, string> = {
 };
 
 const COMMISSION_ROWS: { cls: string; rate: string; note: string }[] = [
-  { cls: "Marketplace commission", rate: "30% + GST", note: "On selling price incl. GST, per your Marketplace Agreement" },
-  { cls: "Payment gateway", rate: "2%", note: "Charged on collections made on your behalf" },
-  { cls: "Shipping (order < ₹5,000)", rate: "₹100 flat", note: "Flat charge per order" },
-  { cls: "Shipping (order ≥ ₹5,000)", rate: "Free", note: "No supply-chain charges beyond the above" },
+  { cls: "One commission per sale", rate: "Simple", note: "A single rate on each order — nothing hidden" },
+  { cls: "Payment collection", rate: "Included", note: "We collect from the buyer and settle to you" },
+  { cls: "Shipping", rate: "Flat & fair", note: "One flat charge on smaller orders, free above the threshold" },
+  { cls: "No surprise fees", rate: "Ever", note: "No supply-chain, listing or hidden platform charges" },
 ];
 
 export default function SellPage() {
@@ -116,7 +116,7 @@ export default function SellPage() {
           <SectionHead
             eyebrow="Fees"
             title="Commission, in the open"
-            sub="Illustrative headline rates. Your live schedule is in the seller console — and it can never change out from under you."
+            sub="Your exact rates are part of your Marketplace Agreement and are always visible in Seller Central once you register — and they can never change without 30 days' notice."
           />
           <div className="vh-split-wide" style={{ gap: "var(--sp-4)" }}>
             <Card pad0>
@@ -209,18 +209,17 @@ export default function SellPage() {
 
         {/* ── Final CTA ──────────────────────────────────── */}
         <section className="vh-section" style={{ paddingBottom: 0 }}>
-          <Card title="What you take responsibility for" className="vh-card">
-            <p className="small" style={{ marginBottom: 10 }}>
-              Vedic Hemp is a marketplace. When you sell here, the listing is yours end to end:
-            </p>
+          <Card title="Selling here is a simple loop">
             <ul className="small" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 8 }}>
-              <li><b>Licences at sign-up.</b> You submit your FSSAI / AYUSH / state licence details when creating your account, and keep them current.</li>
-              <li><b>Genuine products.</b> You are solely responsible for the genuineness, quality, safety and legal compliance of every product you list, including its claims and imagery.</li>
-              <li><b>Lab reports.</b> For regulated categories you upload a lab report per batch — the listing shows what you upload.</li>
-              <li><b>Fulfilment (drop-ship).</b> Orders reach you after the buyer has paid. You pack the order, hand it to your delivery partner on time, mark it shipped only after handover, and keep the status updated — that status is what the buyer sees.</li>
-              <li><b>Stock &amp; shelf life.</b> Listed products stay in stock and carry at least 18 months&rsquo; shelf life (or 70% unexhausted, whichever is higher).</li>
-              <li><b>Returns &amp; refusals.</b> Damaged, wrong or expired items are replaced or refunded at your cost; CoD refusals come back to you, and return queries are raised within 48 hours.</li>
+              <li><b>Join.</b> Register with your licence details — your products are yours to list, price and present.</li>
+              <li><b>Sell.</b> A buyer pays; the order lands in your Seller Central panel instantly.</li>
+              <li><b>Ship.</b> Pack it, hand it to your delivery partner, and update the status the buyer tracks.</li>
+              <li><b>Get paid.</b> Settlements arrive on schedule, with a clear statement for every order.</li>
             </ul>
+            <p className="small muted" style={{ margin: "12px 0 0" }}>
+              The full commercial terms — rates, fulfilment standards and return handling — are in
+              your Marketplace Agreement, shared when you register and always available in Seller Central.
+            </p>
           </Card>
 
           <Card title="Ready to list your first product?">
