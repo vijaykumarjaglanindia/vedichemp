@@ -38,7 +38,7 @@ export const metadata: Metadata = {
 const ORDER_FLOW = [
   { icon: CreditCard, title: "You place an order and pay", body: "Checkout totals are computed by the platform, never by the browser. Payment is captured before anything moves." },
   { icon: Send, title: "We forward your order to the seller", body: "The seller who listed the product receives your order details in their Seller Central panel." },
-  { icon: Truck, title: "The seller packs, our partner carries", body: "The seller packs your order and hands it to a Vedic Hemp delivery partner (drop-ship model) — an order is marked shipped only after that handover." },
+  { icon: Truck, title: "The seller packs and ships it", body: "The seller packs your order and hands it to their delivery partner (drop-ship model) — an order is marked shipped only after that handover." },
   { icon: PackageCheck, title: "The seller updates the status you track", body: "Accepted, packed, shipped, delivered — the status in your account is the status the seller maintains in their panel." },
 ];
 
@@ -50,7 +50,7 @@ const WHO_DOES_WHAT: { who: string; items: string[] }[] = [
       "Lists their own products, prices, imagery and claims",
       "Uploads lab reports for regulated listings and keeps batches current",
       "Is responsible for the genuineness, quality and compliance of every listing",
-      "Packs your order, hands it to the delivery partner on time, and updates its status",
+      "Packs your order, hands it to their delivery partner on time, and updates its status",
       "Handles product questions and honours the stated return policy",
     ],
   },
@@ -77,8 +77,8 @@ export default function HowItWorksPage() {
           <h1 style={{ marginTop: 10 }}>A marketplace, honestly described.</h1>
           <p style={{ maxWidth: "60ch" }}>
             Products on Vedic Hemp are listed and sold by independent sellers — not by us.
-            Sellers submit their licences when they join, pack every order for our delivery
-            partners, and are responsible for what they list. Here is exactly who does what.
+            Sellers submit their licences when they join, ship every order through their
+            delivery partner, and are responsible for what they list. Here is exactly who does what.
           </p>
         </div>
       </section>

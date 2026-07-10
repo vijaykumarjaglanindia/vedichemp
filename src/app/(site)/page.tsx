@@ -44,9 +44,9 @@ import {
 import { ProductCard } from "./_lib/ProductCard";
 
 export const metadata: Metadata = {
-  title: "Hemp, CBD wellness, Ayurveda — verified & lab-tested",
+  title: "Hemp, CBD wellness, Ayurveda — India's seller marketplace",
   description:
-    "Shop hemp food, Ayurveda and CBD wellness from AYUSH-licensed, batch-tested sellers across India. Every regulated batch ships with a Certificate of Analysis.",
+    "Shop hemp food, Ayurveda and CBD wellness listed by independent licensed sellers across India. Sellers submit licences at onboarding and ship directly to you.",
 };
 
 const SHOPPABLE_CLASSES: ComplianceClass[] = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
@@ -75,8 +75,8 @@ export default function HomePage() {
             <h1>India&apos;s marketplace for hemp, Ayurveda &amp; CBD wellness.</h1>
             <p style={{ marginTop: 12 }}>
               Shop hemp nutrition, Ayurveda and CBD wellness listed by independent, licensed
-              sellers. Sellers submit their licences when they join, pack every order for
-              our delivery partners, and are responsible for the products they list.
+              sellers. Sellers submit their licences when they join, ship every order through
+              their delivery partner, and are responsible for the products they list.
             </p>
             <div className="vh-row" style={{ gap: 12, marginTop: "var(--sp-4)", flexWrap: "wrap" }}>
               <Link href="/catalogue" className="vh-btn vh-btn-primary vh-btn-lg">
@@ -94,7 +94,7 @@ export default function HomePage() {
             <div className="vh-row" style={{ gap: 18, marginTop: "var(--sp-4)", flexWrap: "wrap", color: "rgba(255,255,255,0.85)", fontSize: ".84rem", fontWeight: 700 }}>
               <span>★ 4.6 average rating</span>
               <span aria-hidden>·</span>
-              <span>300+ seller storefronts</span>
+              <span>10,000+ products</span>
               <span aria-hidden>·</span>
               <span>300+ licensed sellers</span>
             </div>
@@ -106,7 +106,7 @@ export default function HomePage() {
                 ["Free shipping above ₹5,000", "₹100 flat below — across 19,000+ PIN codes"],
                 ["Cash on Delivery", "Pay when it arrives"],
                 ["Easy returns", "Buyer refunded first"],
-                ["Fulfilled by sellers", "Packed by the seller, carried by our delivery partners"],
+                ["Fulfilled by sellers", "Packed & shipped by the seller who lists it"],
               ].map(([t, s]) => (
                 <div key={t} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 10, padding: "10px 12px" }}>
                   <div style={{ fontWeight: 800, fontSize: ".82rem", color: "#fff" }}>{t}</div>

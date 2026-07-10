@@ -53,7 +53,7 @@ const LICENCE_REQUIREMENTS: Record<ComplianceClass, string> = {
 const COMMISSION_ROWS: { cls: string; rate: string; note: string }[] = [
   { cls: "Marketplace commission", rate: "30% + GST", note: "On selling price incl. GST, per your Marketplace Agreement" },
   { cls: "Payment gateway", rate: "2%", note: "Charged on collections made on your behalf" },
-  { cls: "Shipping (order < ₹5,000)", rate: "₹100 flat", note: "Per order, via Vedic Hemp delivery partners" },
+  { cls: "Shipping (order < ₹5,000)", rate: "₹100 flat", note: "Flat charge per order" },
   { cls: "Shipping (order ≥ ₹5,000)", rate: "Free", note: "No supply-chain charges beyond the above" },
 ];
 
@@ -217,7 +217,7 @@ export default function SellPage() {
               <li><b>Licences at sign-up.</b> You submit your FSSAI / AYUSH / state licence details when creating your account, and keep them current.</li>
               <li><b>Genuine products.</b> You are solely responsible for the genuineness, quality, safety and legal compliance of every product you list, including its claims and imagery.</li>
               <li><b>Lab reports.</b> For regulated categories you upload a lab report per batch — the listing shows what you upload.</li>
-              <li><b>Fulfilment (drop-ship).</b> Orders reach you after the buyer has paid. You pack the order, hand it to a Vedic Hemp delivery partner on time, mark it shipped only after handover, and keep the status updated — that status is what the buyer sees.</li>
+              <li><b>Fulfilment (drop-ship).</b> Orders reach you after the buyer has paid. You pack the order, hand it to your delivery partner on time, mark it shipped only after handover, and keep the status updated — that status is what the buyer sees.</li>
               <li><b>Stock &amp; shelf life.</b> Listed products stay in stock and carry at least 18 months&rsquo; shelf life (or 70% unexhausted, whichever is higher).</li>
               <li><b>Returns &amp; refusals.</b> Damaged, wrong or expired items are replaced or refunded at your cost; CoD refusals come back to you, and return queries are raised within 48 hours.</li>
             </ul>

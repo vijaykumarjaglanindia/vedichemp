@@ -27,13 +27,13 @@ export const metadata: Metadata = {
   metadataBase: new URL("https://vedichemp.in"),
   title: { default: "Vedic Hemp — India's regulated hemp & wellness marketplace", template: "%s · Vedic Hemp" },
   description:
-    "Lab-verified hemp nutrition, CBD wellness, Ayurveda and prescription-gated medical cannabis. Every regulated batch ships with a Certificate of Analysis.",
+    "India's marketplace for hemp nutrition, CBD wellness and Ayurveda — products listed and shipped by independent licensed sellers.",
   keywords: ["hemp", "CBD", "Ayurveda", "wellness", "India", "lab verified", "marketplace"],
   openGraph: {
     type: "website",
     siteName: "Vedic Hemp",
-    title: "Vedic Hemp — Hemp, wellness and Ayurveda you can verify",
-    description: "A regulated multi-vendor marketplace. Batch-matched lab reports, licensed sellers, prescription-gated medical cannabis.",
+    title: "Vedic Hemp — India's hemp, Ayurveda & CBD wellness marketplace",
+    description: "A multi-vendor marketplace: independent licensed sellers list, ship and stand behind their products.",
     locale: "en_IN",
   },
   twitter: { card: "summary_large_image", title: "Vedic Hemp", description: "India's regulated hemp & wellness marketplace." },
