@@ -11,31 +11,31 @@
 
 /* ── Tokens: light (default) ─────────────────────────────────── */
 :root {
-  /* Brand — hemp green, Ayurvedic clay, saffron */
-  --vh-green-900: #0e2818;
-  --vh-green-800: #132e1e;
-  --vh-green-700: #1b4a2e;
-  --vh-green-600: #21764a;
-  --vh-green-500: #2c9c5f;
-  --vh-green-400: #45b477;
-  --vh-green-100: #e2f2e9;
-  --vh-green-50:  #f0f7f2;
+  /* Brand — blue-green (Figma #00CEC8 ramp), Ayurvedic clay, saffron */
+  --vh-green-900: #002e2c;
+  --vh-green-800: #004543;
+  --vh-green-700: #005c59;
+  --vh-green-600: #007c78;
+  --vh-green-500: #00a09c;
+  --vh-green-400: #00cec8;
+  --vh-green-100: #d4f6f4;
+  --vh-green-50:  #eafaf9;
   --vh-clay-600: #a9611f;
   --vh-clay-100: #f6ead9;
   --vh-saffron: #dd9c33;
   --vh-saffron-soft: #f8eed8;
 
   /* Neutrals — green-biased, chosen not defaulted */
-  --vh-ink: #0f1b14;
-  --vh-body: #38453e;
-  --vh-muted: #67766d;
-  --vh-faint: #90a096;
-  --vh-line: #e4eae4;
-  --vh-line-strong: #d1dcd3;
+  --vh-ink: #0e1b1a;
+  --vh-body: #364745;
+  --vh-muted: #647875;
+  --vh-faint: #8ca19e;
+  --vh-line: #dfeae9;
+  --vh-line-strong: #cbdcda;
   --vh-surface: #ffffff;
-  --vh-bg: #f4f7f4;
+  --vh-bg: #f2f7f7;
   --vh-bg-raised: #ffffff;
-  --vh-bg-subtle: #edf2ed;
+  --vh-bg-subtle: #eaf2f1;
 
   /* Semantic — separate from the accent */
   --vh-ok: #187a43;
@@ -56,10 +56,10 @@
   /* Accent + inversions */
   --vh-accent: var(--vh-green-600);
   --vh-on-accent: #ffffff;
-  --vh-rail-bg: linear-gradient(190deg, #0e2818, #123020 55%, #0a2014);
-  --vh-rail-fg: #c9decf;
+  --vh-rail-bg: linear-gradient(190deg, #002e2c, #00403d 55%, #002220);
+  --vh-rail-fg: #c4e2df;
   --vh-glass: rgba(255, 255, 255, 0.82);
-  --vh-scrim: rgba(8, 20, 14, 0.5);
+  --vh-scrim: rgba(6, 22, 21, 0.5);
 
   /* Space — 8px grid */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 16px; --sp-4: 24px;
@@ -69,9 +69,9 @@
   --vh-radius: 14px;
   --vh-radius-sm: 9px;
   --vh-radius-lg: 20px;
-  --vh-shadow-sm: 0 1px 2px rgba(14, 40, 24, 0.05), 0 1px 3px rgba(14, 40, 24, 0.04);
-  --vh-shadow: 0 2px 4px rgba(14, 40, 24, 0.04), 0 8px 24px rgba(14, 40, 24, 0.07);
-  --vh-shadow-lg: 0 12px 40px rgba(14, 40, 24, 0.16);
+  --vh-shadow-sm: 0 1px 2px rgba(0, 46, 44, 0.05), 0 1px 3px rgba(0, 46, 44, 0.04);
+  --vh-shadow: 0 2px 4px rgba(0, 46, 44, 0.04), 0 8px 24px rgba(0, 46, 44, 0.07);
+  --vh-shadow-lg: 0 12px 40px rgba(0, 46, 44, 0.16);
   --vh-ring: 0 0 0 3px color-mix(in srgb, var(--vh-green-500) 32%, transparent);
 
   /* Type */
@@ -87,31 +87,31 @@
 /* ── Tokens: dark (OS preference) ────────────────────────────── */
 @media (prefers-color-scheme: dark) {
   :root {
-    --vh-green-100: #16301f;
-    --vh-green-50: #12271a;
+    --vh-green-100: #0f3532;
+    --vh-green-50: #0c2b29;
     --vh-clay-100: #2b2113;
     --vh-saffron-soft: #2a2211;
-    --vh-ink: #e9f2ec;
-    --vh-body: #bfd2c6;
-    --vh-muted: #8aa795;
-    --vh-faint: #6c8878;
-    --vh-line: #22352a;
-    --vh-line-strong: #2d4335;
-    --vh-surface: #121f18;
-    --vh-bg: #0c1712;
-    --vh-bg-raised: #16261d;
-    --vh-bg-subtle: #17281e;
-    --vh-ok: #5ac98d; --vh-ok-bg: #123020;
+    --vh-ink: #e7f3f2;
+    --vh-body: #bcd4d2;
+    --vh-muted: #86a8a5;
+    --vh-faint: #698c89;
+    --vh-line: #1f3735;
+    --vh-line-strong: #2a4643;
+    --vh-surface: #10201f;
+    --vh-bg: #0a1716;
+    --vh-bg-raised: #142625;
+    --vh-bg-subtle: #152726;
+    --vh-ok: #5ac98d; --vh-ok-bg: #113222;
     --vh-warn: #e5bc68; --vh-warn-bg: #2b2310;
     --vh-danger: #f0918a; --vh-danger-bg: #2e1614;
     --vh-info: #82b5ec; --vh-info-bg: #13253a;
     --vh-ad: #a99bf0; --vh-ad-bg: #221d3d;
     --vh-campaign: #e08bad; --vh-campaign-bg: #331523;
     --vh-accent: var(--vh-green-400);
-    --vh-on-accent: #071710;
-    --vh-rail-bg: linear-gradient(190deg, #0a1c11, #0e2418 55%, #081710);
-    --vh-rail-fg: #b9d2c1;
-    --vh-glass: rgba(14, 26, 19, 0.82);
+    --vh-on-accent: #042221;
+    --vh-rail-bg: linear-gradient(190deg, #081d1c, #0b2423 55%, #061715);
+    --vh-rail-fg: #b5d3d1;
+    --vh-glass: rgba(12, 26, 25, 0.82);
     --vh-scrim: rgba(0, 0, 0, 0.6);
     --vh-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
     --vh-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.4);
@@ -122,34 +122,34 @@
 
 /* ── Tokens: explicit user choice beats the OS ───────────────── */
 :root[data-theme="light"] {
-  --vh-green-100: #e2f2e9; --vh-green-50: #f0f7f2;
+  --vh-green-100: #d4f6f4; --vh-green-50: #eafaf9;
   --vh-clay-100: #f6ead9; --vh-saffron-soft: #f8eed8;
-  --vh-ink: #0f1b14; --vh-body: #38453e; --vh-muted: #67766d; --vh-faint: #90a096;
-  --vh-line: #e4eae4; --vh-line-strong: #d1dcd3;
-  --vh-surface: #ffffff; --vh-bg: #f4f7f4; --vh-bg-raised: #ffffff; --vh-bg-subtle: #edf2ed;
+  --vh-ink: #0e1b1a; --vh-body: #364745; --vh-muted: #647875; --vh-faint: #8ca19e;
+  --vh-line: #dfeae9; --vh-line-strong: #cbdcda;
+  --vh-surface: #ffffff; --vh-bg: #f2f7f7; --vh-bg-raised: #ffffff; --vh-bg-subtle: #eaf2f1;
   --vh-ok: #187a43; --vh-ok-bg: #e5f4eb; --vh-warn: #875b00; --vh-warn-bg: #fbf0d4;
   --vh-danger: #b3261e; --vh-danger-bg: #fbe7e5; --vh-info: #1c56a3; --vh-info-bg: #e7f0fb;
   --vh-ad: #6d5bd0; --vh-ad-bg: #eeebfa; --vh-campaign: #b23d68; --vh-campaign-bg: #fae9f0;
   --vh-accent: var(--vh-green-600); --vh-on-accent: #ffffff;
-  --vh-rail-bg: linear-gradient(190deg, #0e2818, #123020 55%, #0a2014); --vh-rail-fg: #c9decf;
-  --vh-glass: rgba(255, 255, 255, 0.82); --vh-scrim: rgba(8, 20, 14, 0.5);
-  --vh-shadow-sm: 0 1px 2px rgba(14, 40, 24, 0.05), 0 1px 3px rgba(14, 40, 24, 0.04);
-  --vh-shadow: 0 2px 4px rgba(14, 40, 24, 0.04), 0 8px 24px rgba(14, 40, 24, 0.07);
-  --vh-shadow-lg: 0 12px 40px rgba(14, 40, 24, 0.16);
+  --vh-rail-bg: linear-gradient(190deg, #002e2c, #00403d 55%, #002220); --vh-rail-fg: #c4e2df;
+  --vh-glass: rgba(255, 255, 255, 0.82); --vh-scrim: rgba(6, 22, 21, 0.5);
+  --vh-shadow-sm: 0 1px 2px rgba(0, 46, 44, 0.05), 0 1px 3px rgba(0, 46, 44, 0.04);
+  --vh-shadow: 0 2px 4px rgba(0, 46, 44, 0.04), 0 8px 24px rgba(0, 46, 44, 0.07);
+  --vh-shadow-lg: 0 12px 40px rgba(0, 46, 44, 0.16);
   color-scheme: light;
 }
 :root[data-theme="dark"] {
-  --vh-green-100: #16301f; --vh-green-50: #12271a;
+  --vh-green-100: #0f3532; --vh-green-50: #0c2b29;
   --vh-clay-100: #2b2113; --vh-saffron-soft: #2a2211;
-  --vh-ink: #e9f2ec; --vh-body: #bfd2c6; --vh-muted: #8aa795; --vh-faint: #6c8878;
-  --vh-line: #22352a; --vh-line-strong: #2d4335;
-  --vh-surface: #121f18; --vh-bg: #0c1712; --vh-bg-raised: #16261d; --vh-bg-subtle: #17281e;
-  --vh-ok: #5ac98d; --vh-ok-bg: #123020; --vh-warn: #e5bc68; --vh-warn-bg: #2b2310;
+  --vh-ink: #e7f3f2; --vh-body: #bcd4d2; --vh-muted: #86a8a5; --vh-faint: #698c89;
+  --vh-line: #1f3735; --vh-line-strong: #2a4643;
+  --vh-surface: #10201f; --vh-bg: #0a1716; --vh-bg-raised: #142625; --vh-bg-subtle: #152726;
+  --vh-ok: #5ac98d; --vh-ok-bg: #113222; --vh-warn: #e5bc68; --vh-warn-bg: #2b2310;
   --vh-danger: #f0918a; --vh-danger-bg: #2e1614; --vh-info: #82b5ec; --vh-info-bg: #13253a;
   --vh-ad: #a99bf0; --vh-ad-bg: #221d3d; --vh-campaign: #e08bad; --vh-campaign-bg: #331523;
-  --vh-accent: var(--vh-green-400); --vh-on-accent: #071710;
-  --vh-rail-bg: linear-gradient(190deg, #0a1c11, #0e2418 55%, #081710); --vh-rail-fg: #b9d2c1;
-  --vh-glass: rgba(14, 26, 19, 0.82); --vh-scrim: rgba(0, 0, 0, 0.6);
+  --vh-accent: var(--vh-green-400); --vh-on-accent: #042221;
+  --vh-rail-bg: linear-gradient(190deg, #081d1c, #0b2423 55%, #061715); --vh-rail-fg: #b5d3d1;
+  --vh-glass: rgba(12, 26, 25, 0.82); --vh-scrim: rgba(0, 0, 0, 0.6);
   --vh-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
   --vh-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.4);
   --vh-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
@@ -238,7 +238,7 @@ img, svg { max-width: 100%; }
 .vh-btn-primary {
   background: linear-gradient(180deg, color-mix(in srgb, var(--vh-accent) 88%, #fff), var(--vh-accent));
   color: var(--vh-on-accent);
-  box-shadow: 0 1px 2px rgba(14, 40, 24, .2), inset 0 1px 0 rgba(255, 255, 255, .16);
+  box-shadow: 0 1px 2px rgba(0, 46, 44, .2), inset 0 1px 0 rgba(255, 255, 255, .16);
 }
 .vh-btn-primary:hover { filter: brightness(1.06); color: var(--vh-on-accent); }
 .vh-btn-ghost { background: var(--vh-surface); color: var(--vh-ink); border-color: var(--vh-line-strong); }
