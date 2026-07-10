@@ -1,26 +1,25 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Instrument_Sans, Instrument_Serif } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
 
 /**
- * Typography — Instrument Sans carries the product (precise, contemporary,
- * Stripe-grade neutrality); Instrument Serif is the display voice — a
- * high-contrast editorial serif used large and sparingly. Loaded via
- * next/font: self-hosted at build, zero layout shift.
+ * Typography — Inter for UI and body (the professional standard: neutral,
+ * highly legible, dark and crisp at text sizes); Plus Jakarta Sans for
+ * display headlines (geometric, confident, modern-premium). Self-hosted via
+ * next/font: zero layout shift, no render-blocking CSS.
  */
-const sans = Instrument_Sans({
+const sans = Inter({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-sans",
   weight: ["400", "500", "600", "700"],
 });
-const display = Instrument_Serif({
+const display = Plus_Jakarta_Sans({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-display",
-  weight: "400",
-  style: ["normal", "italic"],
+  weight: ["600", "700", "800"],
 });
 
 export const metadata: Metadata = {

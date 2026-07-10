@@ -18,24 +18,24 @@
   --vh-green-600: #0e7569;
   --vh-green-500: #12a594;
   --vh-green-400: #2fbfae;
-  --vh-green-100: #d5ece7;
-  --vh-green-50:  #eef7f5;
+  --vh-green-100: #ddf0eb;
+  --vh-green-50:  #f1f9f7;
   --vh-clay-600: #a2683a;
   --vh-clay-100: #f4ece2;
   --vh-saffron: #d9930d;
   --vh-saffron-soft: #f8f0dd;
 
   /* Neutrals — green-biased, chosen not defaulted */
-  --vh-ink: #101b19;
-  --vh-body: #3d4b49;
-  --vh-muted: #69807c;
-  --vh-faint: #93a7a3;
+  --vh-ink: #0b1210;
+  --vh-body: #2d3a38;
+  --vh-muted: #5c706c;
+  --vh-faint: #8ba09c;
   --vh-line: #e9efed;
   --vh-line-strong: #d5e0dd;
   --vh-surface: #ffffff;
   --vh-bg: #ffffff;
   --vh-bg-raised: #ffffff;
-  --vh-bg-subtle: #f6f9f8;
+  --vh-bg-subtle: #f7faf9;
 
   /* Semantic — separate from the accent */
   --vh-ok: #187a43;
@@ -130,12 +130,13 @@ body {
   background: var(--vh-bg);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
-  line-height: 1.55;
+  line-height: 1.6;
+  font-size: 0.955rem;
   transition: background-color .2s ease, color .2s ease;
 }
 a { color: var(--vh-accent); text-decoration: none; transition: color .12s; }
 a:hover { color: color-mix(in srgb, var(--vh-accent) 80%, var(--vh-ink)); }
-h1, h2, h3, h4 { color: var(--vh-ink); line-height: 1.2; margin: 0 0 0.4em; font-weight: 600; letter-spacing: -0.015em; text-wrap: balance; }
+h1, h2, h3, h4 { color: var(--vh-ink); font-family: var(--vh-display); line-height: 1.22; margin: 0 0 0.4em; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
 h1 { font-size: clamp(1.5rem, 1.15rem + 1.3vw, 1.9rem); }
 h2 { font-size: 1.4rem; }
 h3 { font-size: 1.02rem; letter-spacing: -0.012em; }
@@ -149,7 +150,7 @@ img, svg { max-width: 100%; }
 .muted { color: var(--vh-muted); }
 .small { font-size: 0.82rem; }
 .mono { font-family: var(--vh-mono); font-size: 0.86em; }
-.vh-display { font-family: var(--vh-display); font-weight: 400; letter-spacing: 0; }
+.vh-display { font-family: var(--vh-display); font-weight: 700; letter-spacing: -0.025em; }
 .vh-eyebrow { font-size: .7rem; font-weight: 650; letter-spacing: .13em; text-transform: uppercase; color: var(--vh-green-500); }
 .vh-kbd { font-family: var(--vh-mono); font-size: .74rem; background: var(--vh-bg-subtle); border: 1px solid var(--vh-line-strong); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; }
 
@@ -460,18 +461,18 @@ img, svg { max-width: 100%; }
 
 .vh-hero {
   background:
-    radial-gradient(760px 380px at 94% -18%, color-mix(in srgb, var(--vh-green-400) 11%, transparent), transparent 64%),
+    radial-gradient(760px 380px at 94% -18%, color-mix(in srgb, var(--vh-green-400) 8%, transparent), transparent 64%),
     linear-gradient(178deg, #ffffff 55%, var(--vh-green-50));
   color: var(--vh-body); border-bottom: 1px solid var(--vh-line);
   padding: clamp(44px, 5.5vw, 84px) 0; position: relative; overflow: hidden;
 }
-.vh-hero h1 { color: var(--vh-ink); font-family: var(--vh-display); font-weight: 400; font-size: clamp(2.3rem, 1.4rem + 3.4vw, 3.7rem); max-width: 17ch; letter-spacing: -0.005em; line-height: 1.06; }
+.vh-hero h1 { color: var(--vh-ink); font-family: var(--vh-display); font-weight: 800; font-size: clamp(2rem, 1.3rem + 2.8vw, 3.2rem); max-width: 17ch; letter-spacing: -0.03em; line-height: 1.08; }
 .vh-hero p { color: var(--vh-body); max-width: 56ch; font-size: 1.02rem; }
 
 /* Marketing section rhythm */
 .vh-section { padding: var(--sp-7) 0; }
 .vh-section-head { max-width: 62ch; margin-bottom: var(--sp-5); }
-.vh-section-head h2 { font-family: var(--vh-display); font-weight: 400; font-size: clamp(1.7rem, 1.2rem + 2vw, 2.5rem); letter-spacing: 0; }
+.vh-section-head h2 { font-family: var(--vh-display); font-weight: 700; font-size: clamp(1.45rem, 1.1rem + 1.5vw, 2rem); letter-spacing: -0.025em; }
 .vh-section-alt { background: var(--vh-bg-subtle); border-top: 1px solid var(--vh-line); border-bottom: 1px solid var(--vh-line); }
 
 /* Sticky purchase box (PDP) */
