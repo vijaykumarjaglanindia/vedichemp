@@ -82,7 +82,7 @@ function formatINR(paise: number): string {
 
 const SUGGESTIONS = [
   "cbd balm for muscle recovery under ₹1500",
-  "lab verified hemp oil",
+  "hemp seed oil for cooking",
   "ayurvedic herbs for sleep",
   "hemp protein under ₹1000",
 ];
@@ -139,7 +139,7 @@ export function GenerativeSearch({ docs }: { docs: SearchDoc[] }) {
   if (intent.goal) parsedChips.push(intent.goal);
   if (intent.maxPaise !== null) parsedChips.push(`under ${formatINR(intent.maxPaise)}`);
   if (intent.minPaise !== null) parsedChips.push(`over ${formatINR(intent.minPaise)}`);
-  if (intent.labOnly) parsedChips.push("Lab-verified only");
+  if (intent.labOnly) parsedChips.push("With lab report");
 
   const onKey = (e: React.KeyboardEvent) => {
     if (e.key === "Escape") { setOpen(false); return; }
@@ -203,7 +203,7 @@ export function GenerativeSearch({ docs }: { docs: SearchDoc[] }) {
                   <a key={h.slug} href={`/products/${h.slug}`} className={`vh-gsearch-item ${i === sel ? "sel" : ""}`} role="option" aria-selected={i === sel}>
                     <span aria-hidden style={{ fontSize: "1.15rem" }}>{h.emoji}</span>
                     <span style={{ fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.title}</span>
-                    {h.labVerified && <FlaskConical size={13} aria-label="Lab verified" style={{ color: "var(--vh-info)", flexShrink: 0 }} />}
+                    {h.labVerified && <FlaskConical size={13} aria-label="Lab report available" style={{ color: "var(--vh-info)", flexShrink: 0 }} />}
                     <span className="meta tabular">★ {h.rating.toFixed(1)} · {formatINR(h.pricePaise)}</span>
                   </a>
                 ))

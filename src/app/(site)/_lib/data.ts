@@ -150,10 +150,10 @@ export const HOME_FAQS: { q: string; a: string }[] = [
 /* ── Industry stats band ────────────────────────────────────────── */
 
 export const INDUSTRY_STATS: { value: string; label: string; sub: string }[] = [
-  { value: "12,400+", label: "Lab reports on file", sub: "Batch-matched CoAs from accredited labs" },
-  { value: "300+", label: "Licensed sellers", sub: "FSSAI / AYUSH verified at onboarding" },
+  { value: "10,000+", label: "Products listed by sellers", sub: "Across hemp food, Ayurveda and CBD wellness" },
+  { value: "300+", label: "Independent sellers", sub: "Licences submitted at account creation" },
   { value: "4.6 ★", label: "Average product rating", sub: "From verified purchases only" },
-  { value: "28", label: "States & UTs served", sub: "Compliance-checked shipping lanes" },
+  { value: "28", label: "States & UTs served", sub: "Shipped directly by sellers" },
 ];
 
 /* ── Seller storefronts ─────────────────────────────────────────── */

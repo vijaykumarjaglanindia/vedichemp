@@ -35,7 +35,7 @@ const SHOP_CLASSES: ComplianceClass[] = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"
 
 const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/catalogue", label: "All products" },
-  { href: "/trust", label: "Trust & Lab Reports" },
+  { href: "/trust", label: "How it works" },
   { href: "/about", label: "About" },
 ];
 
@@ -52,7 +52,7 @@ const FOOTER_COLUMNS: { heading: string; links: { href: string; label: string }[
   {
     heading: "Trust",
     links: [
-      { href: "/trust", label: "Trust & Lab Reports" },
+      { href: "/trust", label: "How it works" },
       { href: "/trust#coa", label: "Certificate of Analysis" },
       { href: "/trust#prescriptions", label: "How prescriptions work" },
       { href: "/trust#prohibitions", label: "Our six prohibitions" },
@@ -134,11 +134,11 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
         <span className="vh-row" style={{ justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
           <Truck size={14} strokeWidth={2.2} aria-hidden />
           <span>
-            Free shipping on orders over <MoneyText paise={99900} />
+            Free shipping on orders above <MoneyText paise={500000} />
           </span>
           <span aria-hidden>·</span>
           <FlaskConical size={14} strokeWidth={2.2} aria-hidden />
-          <span>Every regulated batch lab-verified</span>
+          <span>Products listed & shipped by licensed sellers</span>
           <span aria-hidden>·</span>
           <Banknote size={14} strokeWidth={2.2} aria-hidden />
           <span>Cash on Delivery available</span>
@@ -304,15 +304,17 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
 
           <div style={{ borderTop: "1px solid rgba(255,255,255,0.14)", paddingTop: "var(--sp-3)" }}>
             <p className="small" style={{ marginBottom: 6 }}>
-              Medical Cannabis is prescription-only and is never advertised or promoted on Vedic
-              Hemp — it is sold under the Drugs &amp; Magic Remedies Act and Narcotic Drugs and
-              Psychotropic Substances Act framework, only to buyers with a verified prescription.
-              Regulated products are gated by a batch-matched Certificate of Analysis before they
-              can go live. No product on this site claims to cure, treat or prevent any disease.
+              Vedic Hemp is a marketplace intermediary: products are listed and sold by
+              independent sellers, who submit their licences when they create an account and who
+              are responsible for the genuineness, quality and compliance of their listings.
+              After you pay, your order is forwarded to the seller, who ships it and updates its
+              status. Medical Cannabis is prescription-only and is never advertised or promoted —
+              anywhere, to anyone. No product on this site claims to cure, treat or prevent any
+              disease.
             </p>
             <p className="small" style={{ opacity: 0.75, margin: 0 }}>
               All personal data and payment data are held in Indian data centres (ap-south-1 /
-              ap-south-2). © {new Date().getFullYear()} Vedic Hemp Technologies Pvt. Ltd.
+              ap-south-2). Vedic Hemp is operated by WEBMM Consultants Private Limited, Pune, Maharashtra. Support: support@vedichemp.com · © {new Date().getFullYear()}
             </p>
           </div>
         </div>

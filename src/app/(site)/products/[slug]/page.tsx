@@ -170,9 +170,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
                     <span className="vh-pill vh-pill-info">THC ≤ 0.3%</span>
                   </div>
                   <p className="small muted" style={{ marginBottom: 12 }}>
-                    Every batch of {meta.label.toLowerCase()} is tested by an independent lab
-                    before the listing can go live — this product cannot be sold without an
-                    approved, batch-matched Certificate of Analysis (A2). There is no override.
+                    The seller has uploaded a lab report for this exact batch — regulated
+                    listings on Vedic Hemp require one before they can go live. The report is
+                    the seller&apos;s document; genuineness and accuracy of the listing are the
+                    seller&apos;s responsibility. Open the report and check it before you buy.
                   </p>
                   <Link href="/trust#coa" className="vh-btn vh-btn-outline vh-btn-sm">View CoA</Link>
                 </>
@@ -288,7 +289,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
                 <BadgePercent size={14} aria-hidden style={{ color: "var(--vh-accent)" }} /> Offers
               </span>
               <span className="small" style={{ paddingLeft: 22 }}>Extra 10% off up to ₹200 on UPI · code <span className="vh-kbd">VEDIC10</span></span>
-              <span className="small" style={{ paddingLeft: 22 }}>Free shipping on orders over ₹999 · COD available</span>
+              <span className="small" style={{ paddingLeft: 22 }}>Free shipping on orders above ₹5,000 · ₹100 flat below · COD available</span>
             </div>
 
             <div className="vh-field" style={{ marginBottom: 12, maxWidth: 120 }}>
@@ -326,8 +327,8 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
 
             <div style={{ borderTop: "1px solid var(--vh-line)", marginTop: "var(--sp-3)", paddingTop: "var(--sp-3)", display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { icon: FlaskConical, text: regulated ? `CoA verified · batch ${specs.batch}` : "Licensed food/AYUSH facility" },
-                { icon: BadgeCheck, text: seller ? `Licensed seller · health score ${seller.healthScore}` : "Licensed marketplace seller" },
+                { icon: FlaskConical, text: regulated ? `Seller-uploaded lab report · batch ${specs.batch}` : "Seller-declared licensed facility" },
+                { icon: BadgeCheck, text: `Sold & shipped by ${product.seller} — order forwarded to the seller after payment` },
                 { icon: ShieldCheck, text: "Secure PCI-DSS payment · UPI, cards, COD" },
                 { icon: RotateCcw, text: "Easy returns · buyer refunded first" },
               ].map(({ icon: Icon, text }) => (

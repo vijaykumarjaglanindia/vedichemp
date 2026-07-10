@@ -25,7 +25,7 @@ import { classProducts, PRODUCTS, type SampleProduct } from "@/lib/sample";
 
 export const metadata: Metadata = {
   title: "Shop the catalogue",
-  description: "Lab-verified hemp nutrition, CBD wellness and Ayurveda. Filter by category, price, rating and lab status.",
+  description: "Hemp nutrition, CBD wellness and Ayurveda listed by independent licensed sellers. Filter by category, price, rating and lab-report availability.",
   alternates: { canonical: "/catalogue" },
 };
 
@@ -138,7 +138,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
       remove: href(params, { max: null, min: null }),
     });
   }
-  if (labOnly) chips.push({ label: "Lab-verified", remove: href(params, { lab: null }) });
+  if (labOnly) chips.push({ label: "Lab report", remove: href(params, { lab: null }) });
   if (minRating !== null) chips.push({ label: `★ ${minRating}+`, remove: href(params, { rating: null }) });
 
   const sponsored = PRODUCTS.find((p) => p.cls === "CBD_WELLNESS" && p.labVerified);
@@ -239,7 +239,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
             <div className="vh-facet-title">Assurance</div>
             <Link href={href(params, { lab: labOnly ? null : "1" })} className={labOnly ? "on" : ""}>
               <span className="box" aria-hidden>{labOnly ? <Check size={11} strokeWidth={3} /> : null}</span>
-              <FlaskConical size={12} aria-hidden style={{ color: "var(--vh-info)" }} /> Lab-verified batch
+              <FlaskConical size={12} aria-hidden style={{ color: "var(--vh-info)" }} /> Lab report available
               <span className="cnt tabular">{countFor((p) => p.labVerified)}</span>
             </Link>
           </div>

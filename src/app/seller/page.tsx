@@ -122,6 +122,20 @@ export default async function SellerHomePage({
         ))}
       </div>
 
+      {/* Marketplace model: the seller owns the listing and the fulfilment */}
+      <div className="vh-banner vh-banner-info" role="status" style={{ marginBottom: "var(--sp-4)" }}>
+        <span aria-hidden style={{ fontSize: "1.1rem", lineHeight: 1 }}>🤝</span>
+        <div>
+          <strong style={{ display: "block", marginBottom: 2 }}>Your listings, your responsibility</strong>
+          You submitted your licences when you created this account, and you are responsible for
+          the genuineness, quality and compliance of every product you list. Orders arrive here
+          after the buyer has paid — we forward the details to you; you pack, hand the parcel
+          to the delivery partner, and{" "}
+          <a href="/seller/orders">update the status</a> the buyer tracks. Per your Marketplace
+          Agreement, damaged / wrong / expired items are replaced or refunded at your cost.
+        </div>
+      </div>
+
       <div className="vh-grid cols-2" style={{ alignItems: "start", marginBottom: "var(--sp-4)" }}>
         {/* Performance */}
         <Card title="Performance" action={<span className="small muted">GMV, trailing 7 days ({period})</span>}>

@@ -50,7 +50,7 @@ export function ComplianceBadge({ cls }: { cls: ComplianceClass }) {
   return (
     <span className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
       <span className="vh-cbadge vh-cbadge-ayush">{meta.short}</span>
-      {isRegulatedBadge(cls) && <span className="vh-cbadge vh-cbadge-lab">Lab Verified</span>}
+      {isRegulatedBadge(cls) && <span className="vh-cbadge vh-cbadge-lab">Lab Report</span>}
       {meta.rxRequired && <span className="vh-cbadge vh-cbadge-rx">Rx Required</span>}
       {meta.ageGated && <span className="vh-cbadge vh-cbadge-age">Age 18+</span>}
     </span>

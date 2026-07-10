@@ -51,10 +51,10 @@ const LICENCE_REQUIREMENTS: Record<ComplianceClass, string> = {
 };
 
 const COMMISSION_ROWS: { cls: string; rate: string; note: string }[] = [
-  { cls: "Hemp Nutrition & Food", rate: "8%", note: "Standard food category rate" },
-  { cls: "Ayurveda & Adjacent", rate: "10%", note: "Includes copy-compliance review" },
-  { cls: "Hemp Wellness / CBD", rate: "12%", note: "Includes CoA processing per batch" },
-  { cls: "Medical Cannabis", rate: "12%", note: "Prescription-gated fulfilment handling" },
+  { cls: "Marketplace commission", rate: "30% + GST", note: "On selling price incl. GST, per your Marketplace Agreement" },
+  { cls: "Payment gateway", rate: "2%", note: "Charged on collections made on your behalf" },
+  { cls: "Shipping (order < ₹5,000)", rate: "₹100 flat", note: "Per order, via Vedic Hemp delivery partners" },
+  { cls: "Shipping (order ≥ ₹5,000)", rate: "Free", note: "No supply-chain charges beyond the above" },
 ];
 
 export default function SellPage() {
@@ -209,6 +209,20 @@ export default function SellPage() {
 
         {/* ── Final CTA ──────────────────────────────────── */}
         <section className="vh-section" style={{ paddingBottom: 0 }}>
+          <Card title="What you take responsibility for" className="vh-card">
+            <p className="small" style={{ marginBottom: 10 }}>
+              Vedic Hemp is a marketplace. When you sell here, the listing is yours end to end:
+            </p>
+            <ul className="small" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 8 }}>
+              <li><b>Licences at sign-up.</b> You submit your FSSAI / AYUSH / state licence details when creating your account, and keep them current.</li>
+              <li><b>Genuine products.</b> You are solely responsible for the genuineness, quality, safety and legal compliance of every product you list, including its claims and imagery.</li>
+              <li><b>Lab reports.</b> For regulated categories you upload a lab report per batch — the listing shows what you upload.</li>
+              <li><b>Fulfilment (drop-ship).</b> Orders reach you after the buyer has paid. You pack the order, hand it to a Vedic Hemp delivery partner on time, mark it shipped only after handover, and keep the status updated — that status is what the buyer sees.</li>
+              <li><b>Stock &amp; shelf life.</b> Listed products stay in stock and carry at least 18 months&rsquo; shelf life (or 70% unexhausted, whichever is higher).</li>
+              <li><b>Returns &amp; refusals.</b> Damaged, wrong or expired items are replaced or refunded at your cost; CoD refusals come back to you, and return queries are raised within 48 hours.</li>
+            </ul>
+          </Card>
+
           <Card title="Ready to list your first product?">
             <p className="small" style={{ marginBottom: 14 }}>
               Create your seller account in the seller console — GSTIN and bank verification take

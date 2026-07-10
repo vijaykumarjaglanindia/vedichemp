@@ -52,9 +52,9 @@ export const metadata: Metadata = {
 const SHOPPABLE_CLASSES: ComplianceClass[] = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
 
 const PILLARS: { icon: typeof FlaskConical; title: string; body: string }[] = [
-  { icon: FlaskConical, title: "Lab-verified, batch by batch", body: "A regulated product cannot go live without an approved Certificate of Analysis matched to its exact batch. No override exists." },
-  { icon: BadgeCheck, title: "Licensed sellers only", body: "FSSAI and AYUSH licences are verified at onboarding and re-checked on renewal — the badge on a storefront is earned, not claimed." },
-  { icon: ShieldCheck, title: "Prescription-gated where the law says so", body: "Medical cannabis is visible only to buyers with a pharmacist-verified prescription. It is never advertised or recommended — to anyone." },
+  { icon: FlaskConical, title: "Sellers publish their paperwork", body: "Sellers submit their licences when they create an account, and upload batch lab reports for regulated listings. Documents are shown on the listing, so you can check before you buy." },
+  { icon: BadgeCheck, title: "Sellers own their listings", body: "Products are listed and sold by independent sellers. Each seller is responsible for the genuineness, quality and compliance of what they list — their licence details are on their storefront." },
+  { icon: ShieldCheck, title: "A simple, honest order flow", body: "You pay, we pass your order to the seller, the seller ships it directly to you and updates the status you track. Prescription-gated items stay gated — they are never advertised or recommended." },
   { icon: Lock, title: "Your data stays in India", body: "PII and payment data live in Indian data centres. Health data is encrypted separately, and every access is logged and disclosed to you." },
 ];
 
@@ -72,11 +72,11 @@ export default function HomePage() {
       <section className="vh-hero">
         <div className="vh-container vh-hero-grid">
           <div>
-            <h1>Wellness you can verify — not just trust.</h1>
+            <h1>India&apos;s marketplace for hemp, Ayurveda &amp; CBD wellness.</h1>
             <p style={{ marginTop: 12 }}>
-              India&apos;s regulated marketplace for hemp nutrition, Ayurveda and CBD wellness.
-              Every regulated batch ships with an independent lab report. Every seller is
-              licensed. Every claim is checked before it reaches you.
+              Shop hemp nutrition, Ayurveda and CBD wellness listed by independent, licensed
+              sellers. Sellers submit their licences when they join, pack every order for
+              our delivery partners, and are responsible for the products they list.
             </p>
             <div className="vh-row" style={{ gap: 12, marginTop: "var(--sp-4)", flexWrap: "wrap" }}>
               <Link href="/catalogue" className="vh-btn vh-btn-primary vh-btn-lg">
@@ -88,13 +88,13 @@ export default function HomePage() {
                 className="vh-btn vh-btn-ghost"
                 style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.4)", color: "#fff" }}
               >
-                How we verify products
+                How the marketplace works
               </Link>
             </div>
             <div className="vh-row" style={{ gap: 18, marginTop: "var(--sp-4)", flexWrap: "wrap", color: "rgba(255,255,255,0.85)", fontSize: ".84rem", fontWeight: 700 }}>
               <span>★ 4.6 average rating</span>
               <span aria-hidden>·</span>
-              <span>12,400+ lab reports</span>
+              <span>300+ seller storefronts</span>
               <span aria-hidden>·</span>
               <span>300+ licensed sellers</span>
             </div>
@@ -103,10 +103,10 @@ export default function HomePage() {
                 the first scroll, and balances the hero columns */}
             <div className="vh-usp-grid" style={{ marginTop: "var(--sp-4)", maxWidth: 460 }}>
               {[
-                ["Free shipping over ₹999", "Across 19,000+ PIN codes"],
+                ["Free shipping above ₹5,000", "₹100 flat below — across 19,000+ PIN codes"],
                 ["Cash on Delivery", "Pay when it arrives"],
                 ["Easy returns", "Buyer refunded first"],
-                ["Batch-matched CoA", "On every regulated product"],
+                ["Fulfilled by sellers", "Packed by the seller, carried by our delivery partners"],
               ].map(([t, s]) => (
                 <div key={t} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 10, padding: "10px 12px" }}>
                   <div style={{ fontWeight: 800, fontSize: ".82rem", color: "#fff" }}>{t}</div>
@@ -144,7 +144,7 @@ export default function HomePage() {
         <div className="vh-container">
           <SectionHead
             eyebrow="Shop by category"
-            title="Three ways in — all of them verified"
+            title="Three ways in — hemp, Ayurveda, CBD"
             action={<Link href="/catalogue" className="small vh-row" style={{ gap: 4, fontWeight: 700 }}>View all <ArrowRight size={14} strokeWidth={2.2} aria-hidden /></Link>}
           />
           <div className="vh-grid cols-4">
@@ -180,7 +180,7 @@ export default function HomePage() {
         <div className="vh-container">
           <SectionHead
             eyebrow="Today's deals"
-            title="Verified products, honest discounts"
+            title="Today&rsquo;s deals from sellers"
             sub="Strike-through prices are seller MRPs — the platform computes every total server-side."
             action={<Link href="/catalogue" className="small vh-row" style={{ gap: 4, fontWeight: 700 }}>All deals <ArrowRight size={14} strokeWidth={2.2} aria-hidden /></Link>}
           />
@@ -221,7 +221,7 @@ export default function HomePage() {
         <div className="vh-container">
           <SectionHead
             eyebrow="Bestsellers"
-            title="What verified buyers reorder"
+            title="What buyers keep reordering"
             action={<Link href="/catalogue" className="small vh-row" style={{ gap: 4, fontWeight: 700 }}>Browse catalogue <ArrowRight size={14} strokeWidth={2.2} aria-hidden /></Link>}
           />
           <div className="vh-grid cols-4">
@@ -346,8 +346,8 @@ export default function HomePage() {
         <div className="vh-container">
           <SectionHead
             eyebrow="Why Vedic Hemp"
-            title="Compliance is the product"
-            sub="These aren't policies someone has to remember — they're rules the platform physically enforces."
+            title="How the marketplace works"
+            sub="Sellers list and ship; we run the marketplace and move your order to the right seller. The roles, in plain language."
           />
           <div className="vh-grid cols-4">
             {PILLARS.map(({ icon: Icon, title, body }) => (
@@ -393,7 +393,7 @@ export default function HomePage() {
       {/* ── Testimonials ─────────────────────────────────── */}
       <section className="vh-section">
         <div className="vh-container">
-          <SectionHead eyebrow="Buyers" title="What verified purchases say" />
+          <SectionHead eyebrow="Buyers" title="What buyers say" />
           <div className="vh-grid cols-3">
             {TESTIMONIALS.map((t) => (
               <figure key={t.name} className="vh-card" style={{ margin: 0 }}>
