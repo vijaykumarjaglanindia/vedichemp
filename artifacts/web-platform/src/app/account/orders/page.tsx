@@ -1,0 +1,132 @@
+/**
+ * VEDIC HEMP — ORDERS LIST (§1.4)
+ *
+ * The status filter is a server-driven searchParam (?filter=…) — the segmented
+ * control is plain links, so filtering works without JavaScript and the server
+ * stays the authority on what is shown.
+ */
+
+import type { Metadata } from "next";
+import { Eye, FileDown, MapPin } from "lucide-react";
+import { Shell } from "../Shell";
+import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
+import { ORDERS, type SampleOrder } from "@/lib/sample";
+
+export const metadata: Metadata = { title: "Orders" };
+
+const FILTERS = [
+  { key: "all", label: "All" },
+  { key: "open", label: "Open" },
+  { key: "delivered", label: "Delivered" },
+  { key: "returned", label: "Returned" },
+] as const;
+
+const OPEN_STATUSES = new Set(["OUT_FOR_DELIVERY", "SHIPPED", "PACKED", "PENDING"]);
+
+export default async function OrdersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
+  const params = await searchParams;
+  const filter = params.filter ?? "all";
+
+  const rows = ORDERS.filter((o) => {
+    if (filter === "open") return OPEN_STATUSES.has(o.status);
+    if (filter === "delivered") return o.status === "DELIVERED";
+    if (filter === "returned") return o.status === "RETURNED";
+    return true;
+  });
+
+  const columns: Column<SampleOrder>[] = [
+    {
+      key: "reference", header: "Order", render: (o) => (
+        <div>
+          <div style={{ fontWeight: 600 }}>{o.reference}</div>
+          <div className="small muted">{o.placedAt}</div>
+        </div>
+      ),
+    },
+    {
+      key: "items", header: "Items", render: (o) => (
+        <span className="vh-row" style={{ gap: 4 }}>
+          {o.items.map((it, i) => (
+            <span key={i} aria-hidden title={it.title} style={{ fontSize: "1.3rem" }}>{it.emoji}</span>
+          ))}
+          <span className="small muted">{o.items.length} item{o.items.length > 1 ? "s" : ""}</span>
+        </span>
+      ),
+    },
+    {
+      key: "status", header: "Status", render: (o) => (
+        <span className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
+          <StatusPill tone={toneForStatus(o.status)}>{o.status.replace(/_/g, " ")}</StatusPill>
+          {o.eta && <span className="small muted">ETA {o.eta}</span>}
+        </span>
+      ),
+    },
+    { key: "total", header: "Total", align: "right", render: (o) => <MoneyText paise={o.totalPaise} /> },
+    {
+      key: "actions", header: "", align: "right", render: (o) => (
+        <span className="vh-row" style={{ gap: 8, justifyContent: "flex-end" }}>
+          {o.status !== "DELIVERED" && o.status !== "RETURNED" && (
+            <a
+              className="vh-btn vh-btn-sm vh-btn-ghost"
+              href={`/account/orders/${o.id}`}
+              aria-label={`Track order ${o.reference}`}
+              title="Track"
+            >
+              <MapPin size={14} strokeWidth={2.2} aria-hidden />
+            </a>
+          )}
+          {o.status === "DELIVERED" && (
+            <a className="vh-btn vh-btn-sm vh-btn-primary" href={`/account/orders/${o.id}`}>Buy again</a>
+          )}
+          <a
+            className="vh-btn vh-btn-sm vh-btn-ghost"
+            href={`/account/orders/${o.id}#invoice`}
+            aria-label={`Download invoice for order ${o.reference}`}
+            title="Download invoice"
+          >
+            <FileDown size={14} strokeWidth={2.2} aria-hidden />
+          </a>
+          <a
+            className="vh-btn vh-btn-sm vh-btn-ghost"
+            href={`/account/orders/${o.id}`}
+            aria-label={`View details of order ${o.reference}`}
+            title="Details"
+          >
+            <Eye size={14} strokeWidth={2.2} aria-hidden />
+          </a>
+        </span>
+      ),
+    },
+  ];
+
+  return (
+    <Shell active="/account/orders" breadcrumb={["My Account", "Orders"]} title="Your orders">
+      {/* Toolbar: segmented status filter (server-driven via ?filter=) */}
+      <div className="vh-row-between" style={{ marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+        <nav className="vh-seg" aria-label="Filter orders by status">
+          {FILTERS.map((f) => (
+            <a
+              key={f.key}
+              href={f.key === "all" ? "/account/orders" : `/account/orders?filter=${f.key}`}
+              className={f.key === filter ? "on" : undefined}
+              aria-current={f.key === filter ? "true" : undefined}
+            >
+              {f.label}
+            </a>
+          ))}
+        </nav>
+        <span className="small muted tabular">
+          {rows.length} order{rows.length === 1 ? "" : "s"}
+        </span>
+      </div>
+
+      <Card pad0>
+        <DataTable columns={columns} rows={rows} empty={<div className="vh-empty">No orders match this filter.</div>} />
+      </Card>
+    </Shell>
+  );
+}
