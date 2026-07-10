@@ -42,23 +42,14 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: [
-    { media: "(prefers-color-scheme: light)", color: "#f2f7f7" },
-    { media: "(prefers-color-scheme: dark)", color: "#0a1716" },
-  ],
+  themeColor: "#f2f7f7",
   width: "device-width",
   initialScale: 1,
 };
 
-/** Applies the persisted theme before first paint — no flash of wrong theme. */
-const themeInit = `(function(){try{var t=localStorage.getItem("vh-theme");if(t==="dark"||t==="light"){document.documentElement.dataset.theme=t}}catch(e){}})()`;
-
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="en-IN" suppressHydrationWarning className={`${sans.variable} ${display.variable}`}>
-      <head>
-        <script dangerouslySetInnerHTML={{ __html: themeInit }} />
-      </head>
       <body>{children}</body>
     </html>
   );

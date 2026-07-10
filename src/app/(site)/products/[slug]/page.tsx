@@ -15,10 +15,15 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   BadgeCheck,
+  BadgePercent,
+  Flame,
   FlaskConical,
+  MapPin,
   RotateCcw,
   ShieldCheck,
+  ShoppingCart,
   Store,
+  Users,
 } from "lucide-react";
 import { Banner, Card, ComplianceBadge, EmptyState, MoneyText, Rating } from "@/components/ui";
 import { AdSlot } from "@/components/ui/ads";
@@ -232,6 +237,16 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
         </div>
 
         {/* ══ RIGHT: sticky purchase card ══════════════════ */}
+        {/* Mobile sticky CTA — fixed to the viewport bottom on small screens */}
+        <div className="vh-mobile-cta">
+          <div style={{ minWidth: 0 }}>
+            <div className="small" style={{ fontWeight: 700, color: "var(--vh-ink)", overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap", maxWidth: "46vw" }}>{product.title}</div>
+            <MoneyText paise={product.pricePaise} className="vh-product-title" />
+          </div>
+          <div className="vh-spacer" />
+          <button type="button" className="vh-btn vh-btn-primary"><ShoppingCart size={15} aria-hidden /> Add to cart</button>
+        </div>
+
         <div className="vh-sticky-box">
           <div className="vh-card" style={{ boxShadow: "var(--vh-shadow)" }}>
             <ComplianceBadge cls={product.cls} />
@@ -258,9 +273,22 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
             </div>
             <p className="small muted" style={{ margin: "4px 0 12px" }}>Inclusive of all taxes. Final total is computed at checkout by the server.</p>
 
-            <div className="vh-row" style={{ gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+            <div className="vh-row" style={{ gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
               <span className="vh-pill vh-pill-ok">In stock</span>
-              <span className="small muted">Ships in 24h from {seller ? "a verified facility" : "seller facility"}</span>
+              <span className="vh-pill vh-pill-warn"><Flame size={11} aria-hidden /> Only 7 left at this price</span>
+            </div>
+            <div className="vh-row small muted" style={{ gap: 6, marginBottom: 12 }}>
+              <Users size={13} aria-hidden />
+              <span><b className="tabular" style={{ color: "var(--vh-ink)" }}>24</b> people bought this in the last 7 days · ships in 24h</span>
+            </div>
+
+            {/* Bank & platform offers */}
+            <div style={{ background: "var(--vh-green-50)", border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "10px 12px", marginBottom: 12, display: "grid", gap: 7 }}>
+              <span className="vh-row small" style={{ gap: 8, fontWeight: 700, color: "var(--vh-ink)" }}>
+                <BadgePercent size={14} aria-hidden style={{ color: "var(--vh-accent)" }} /> Offers
+              </span>
+              <span className="small" style={{ paddingLeft: 22 }}>Extra 10% off up to ₹200 on UPI · code <span className="vh-kbd">VEDIC10</span></span>
+              <span className="small" style={{ paddingLeft: 22 }}>Free shipping on orders over ₹999 · COD available</span>
             </div>
 
             <div className="vh-field" style={{ marginBottom: 12, maxWidth: 120 }}>
@@ -276,6 +304,18 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
               <button type="button" className="vh-btn vh-btn-primary vh-btn-lg">Add to cart</button>
               <button type="button" className="vh-btn vh-btn-outline">Buy now</button>
             </div>
+
+            {/* Delivery estimate by PIN — serviceability is decided server-side */}
+            <form className="vh-field" style={{ marginBottom: "var(--sp-3)" }} aria-label="Check delivery by PIN code">
+              <label htmlFor="pdp-pin" className="vh-label vh-row" style={{ gap: 6 }}>
+                <MapPin size={13} aria-hidden style={{ color: "var(--vh-accent)" }} /> Deliver to
+              </label>
+              <div className="vh-row" style={{ gap: 8 }}>
+                <input id="pdp-pin" className="vh-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="Enter 6-digit PIN code" style={{ maxWidth: 200 }} />
+                <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm">Check</button>
+              </div>
+              <span className="vh-help">Serviceability for regulated classes is checked per PIN on the server.</span>
+            </form>
 
             {meta.ageGated && (
               <Banner severity="warn" title="Age verification required">

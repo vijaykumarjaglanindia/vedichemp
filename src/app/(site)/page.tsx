@@ -98,6 +98,22 @@ export default function HomePage() {
               <span aria-hidden>·</span>
               <span>300+ licensed sellers</span>
             </div>
+
+            {/* USP strip — answers the four pre-purchase objections before
+                the first scroll, and balances the hero columns */}
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(2, minmax(0,1fr))", gap: 10, marginTop: "var(--sp-4)", maxWidth: 460 }}>
+              {[
+                ["Free shipping over ₹999", "Across 19,000+ PIN codes"],
+                ["Cash on Delivery", "Pay when it arrives"],
+                ["Easy returns", "Buyer refunded first"],
+                ["Batch-matched CoA", "On every regulated product"],
+              ].map(([t, s]) => (
+                <div key={t} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 10, padding: "10px 12px" }}>
+                  <div style={{ fontWeight: 800, fontSize: ".82rem", color: "#fff" }}>{t}</div>
+                  <div style={{ fontSize: ".74rem", color: "rgba(255,255,255,0.72)" }}>{s}</div>
+                </div>
+              ))}
+            </div>
           </div>
 
           {/* Floating product collage */}

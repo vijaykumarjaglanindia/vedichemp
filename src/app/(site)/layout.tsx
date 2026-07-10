@@ -8,7 +8,6 @@
  * mentions Medical Cannabis only as an informational, non-shopping line.
  *
  * The mega panel is CSS-only (hover / focus-within) — no client JS in the shell
- * beyond the shared ThemeToggle island.
  */
 
 import type { ReactNode } from "react";
@@ -28,7 +27,6 @@ import {
   Truck,
 } from "lucide-react";
 import { MoneyText } from "@/components/ui";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 import { CLASS_META } from "@/lib/compliance";
 import { organizationJsonLd } from "@/lib/seo";
 import { ComplianceClass } from "@prisma/client";
@@ -104,6 +102,19 @@ const chromeCss = `
 }
 @media (max-width: 900px) { .vhx-hide-sm { display: none !important; } }
 `;
+
+import { GenerativeSearch, type SearchDoc } from "./_lib/GenerativeSearch";
+import { PRODUCTS } from "@/lib/sample";
+
+/**
+ * The generative-search corpus. Built server-side WITHOUT MED_CANNABIS (A1):
+ * the client island can never surface what it was never given.
+ */
+const SEARCH_DOCS: SearchDoc[] = PRODUCTS.filter((p) => p.cls !== "MED_CANNABIS").map((p) => ({
+  title: p.title, slug: p.slug, pricePaise: p.pricePaise, cls: p.cls,
+  clsLabel: CLASS_META[p.cls].short, rating: p.rating, emoji: p.emoji,
+  seller: p.seller, labVerified: p.labVerified,
+}));
 
 export default function SiteLayout({ children }: { children: ReactNode }) {
   return (
@@ -189,13 +200,9 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
 
           <span className="vh-spacer" />
 
-          <form action="/catalogue" method="GET" role="search" aria-label="Search products" className="vh-site-search vhx-hide-sm" style={{ width: 230 }}>
-            <Search size={15} strokeWidth={2.2} aria-hidden />
-            <label htmlFor="vh-site-search" style={{ position: "absolute", left: -9999 }}>
-              Search products
-            </label>
-            <input id="vh-site-search" name="q" type="search" placeholder="Search hemp, CBD, Ayurveda…" style={{ width: "100%" }} />
-          </form>
+          <div className="vhx-hide-sm" style={{ flex: 1, maxWidth: 430, display: "flex" }}>
+            <GenerativeSearch docs={SEARCH_DOCS} />
+          </div>
 
           <div className="vh-row" style={{ gap: 6 }}>
             <Link href="/account" className="vh-iconbtn" aria-label="Wishlist">
@@ -205,7 +212,6 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
               <ShoppingCart size={17} strokeWidth={2.2} aria-hidden />
               <span className="vhx-cart-badge" aria-hidden>2</span>
             </Link>
-            <ThemeToggle />
             <Link href="/account" className="vh-btn vh-btn-ghost vh-btn-sm vhx-hide-sm">
               Sign in
             </Link>

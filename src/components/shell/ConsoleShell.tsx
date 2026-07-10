@@ -2,17 +2,16 @@
  * VEDIC HEMP — CONSOLE SHELL
  *
  * The chrome shared by the buyer, seller and admin dashboards: a left nav rail,
- * a sticky glass topbar (search, theme toggle, notifications, avatar),
- * breadcrumbs, and — for support impersonation — the fixed red "actions
- * logged" banner. Each console passes its own nav model and brand.
+ * a sticky glass topbar (search, notifications, avatar), breadcrumbs, and —
+ * for support impersonation — the fixed red "actions logged" banner. Each
+ * console passes its own nav model and brand.
  *
  * The mobile nav drawer is CSS-only (hidden checkbox + hamburger + scrim), so
- * the shell stays a Server Component; the only client island is ThemeToggle.
+ * the shell stays a Server Component with no client JS.
  */
 
 import type { ReactNode } from "react";
 import { Menu, Search, Bell } from "lucide-react";
-import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
 export interface NavItem { href: string; label: string; icon: ReactNode }
 export interface NavGroup { group?: string; items: NavItem[] }
@@ -84,7 +83,6 @@ export function ConsoleShell({
                 <span className="vh-kbd" aria-hidden>/</span>
               </div>
               <div className="vh-spacer" />
-              <ThemeToggle />
               <a className="vh-iconbtn" href="#" aria-label="Notifications">
                 <Bell size={17} aria-hidden />
                 <span className="vh-dot" aria-hidden />
