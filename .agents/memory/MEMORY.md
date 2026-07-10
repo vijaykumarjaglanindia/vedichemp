@@ -1,0 +1,1 @@
+- [Rolled-back merge recovery](rollback-recovery.md) — if a merged task's files vanish, restore from `gitsafe-backup/main` via `git archive | tar`; `.replit` is protected and needs module installs instead.

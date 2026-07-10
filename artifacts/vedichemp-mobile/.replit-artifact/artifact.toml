@@ -1,0 +1,27 @@
+kind = "mobile"
+previewPath = "/vedichemp-mobile/"
+title = "Vedic Hemp Mobile"
+version = "1.0.0"
+id = "artifacts/vedichemp-mobile"
+router = "expo-domain"
+
+[[integratedSkills]]
+name = "expo"
+version = "1.0.0"
+
+[[services]]
+ensurePreviewReachable = "/status"
+name = "expo"
+paths = [ "/vedichemp-mobile/" ]
+localPort = 24803
+
+[services.development]
+run = "pnpm --filter @workspace/vedichemp-mobile run dev"
+
+[services.production]
+build = [ "pnpm", "--filter", "@workspace/vedichemp-mobile", "run", "build" ]
+run = [ "pnpm", "--filter", "@workspace/vedichemp-mobile", "run", "serve" ]
+
+[services.env]
+PORT = "24803"
+BASE_PATH = "/vedichemp-mobile/"
