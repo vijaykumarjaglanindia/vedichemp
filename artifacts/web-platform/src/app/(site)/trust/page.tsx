@@ -69,7 +69,7 @@ export default function HowItWorksPage() {
       {/* ── Hero ─────────────────────────────────────────── */}
       <section className="vh-hero" style={{ padding: "clamp(36px, 4vw, 56px) 0" }}>
         <div className="vh-container">
-          <span className="vh-eyebrow" style={{ color: "var(--vh-green-400)" }}>How it works</span>
+          <span className="vh-eyebrow">How it works</span>
           <h1 style={{ marginTop: 10 }}>A marketplace, honestly described.</h1>
           <p style={{ maxWidth: "60ch" }}>
             Products on Vedic Hemp are listed and sold by independent sellers — not by us.

@@ -229,7 +229,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
         <div className="vh-container">
           <div className="vh-footer-grid" style={{ marginBottom: "var(--sp-5)" }}>
             <div>
-              <div className="vh-row" style={{ fontWeight: 800, fontSize: "1.05rem", color: "#fff", gap: 8, marginBottom: 8 }}>
+              <div className="vh-row" style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--vh-ink)", gap: 8, marginBottom: 8 }}>
                 <Leaf size={18} strokeWidth={2.2} aria-hidden />
                 Vedic Hemp
               </div>
@@ -241,7 +241,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
 
             {FOOTER_COLUMNS.map((col) => (
               <nav key={col.heading} aria-label={col.heading}>
-                <div className="small" style={{ fontWeight: 800, color: "#fff", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em", fontSize: ".7rem" }}>
+                <div className="small" style={{ fontWeight: 800, color: "var(--vh-ink)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em", fontSize: ".7rem" }}>
                   {col.heading}
                 </div>
                 <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 8 }}>
@@ -262,11 +262,11 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
             className="vh-row"
             style={{
               flexWrap: "wrap", gap: 12, padding: "var(--sp-3) 0",
-              borderTop: "1px solid rgba(255,255,255,0.14)", borderBottom: "1px solid rgba(255,255,255,0.14)",
+              borderTop: "1px solid var(--vh-line)", borderBottom: "1px solid var(--vh-line)",
             }}
           >
             <div style={{ minWidth: 220 }}>
-              <div className="small" style={{ fontWeight: 800, color: "#fff" }}>Wellness notes, monthly</div>
+              <div className="small" style={{ fontWeight: 800, color: "var(--vh-ink)" }}>Wellness notes, monthly</div>
               <div className="small">Lab-report explainers and new-arrival digests. No health claims, ever.</div>
             </div>
             <span className="vh-spacer" />
@@ -279,7 +279,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
                 required
                 placeholder="you@example.in"
                 className="vh-input"
-                style={{ width: 240, background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.25)", color: "#fff" }}
+                style={{ width: 240, background: "var(--vh-surface)", borderColor: "var(--vh-line-strong)", color: "var(--vh-ink)" }}
               />
               <button type="submit" className="vh-btn vh-btn-primary vh-btn-sm">Subscribe</button>
             </form>
@@ -302,7 +302,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
             ))}
           </div>
 
-          <div style={{ borderTop: "1px solid rgba(255,255,255,0.14)", paddingTop: "var(--sp-3)" }}>
+          <div style={{ borderTop: "1px solid var(--vh-line)", paddingTop: "var(--sp-3)" }}>
             <p className="small" style={{ marginBottom: 6 }}>
               Vedic Hemp is a marketplace intermediary: products are listed and sold by
               independent sellers, who submit their licences when they create an account and who

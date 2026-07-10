@@ -56,7 +56,7 @@ export function ConsoleShell({
         <div className="vh-rail-user">
           <span className="vh-avatar" aria-hidden>{initials(brand)}</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ color: "#fff", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Signed in</div>
+            <div style={{ color: "var(--vh-ink)", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Signed in</div>
             <div className="small" style={{ opacity: 0.7 }}>Session · secured</div>
           </div>
         </div>

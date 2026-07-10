@@ -72,7 +72,7 @@ export default function SellPage() {
             <Link href="/seller" className="vh-btn vh-btn-primary vh-btn-lg">
               Start selling
             </Link>
-            <Link href="/trust" className="vh-btn vh-btn-ghost" style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.4)", color: "#fff" }}>
+            <Link href="/trust" className="vh-btn vh-btn-ghost" style={{ background: "var(--vh-surface)", borderColor: "var(--vh-line-strong)", color: "var(--vh-ink)" }}>
               See how we verify products
             </Link>
           </div>

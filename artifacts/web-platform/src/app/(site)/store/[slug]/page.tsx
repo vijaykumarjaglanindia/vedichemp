@@ -63,9 +63,9 @@ export default async function StorePage({ params }: { params: Promise<Params> })
       <section
         style={{
           background:
-            "radial-gradient(700px 400px at 85% -30%, color-mix(in srgb, var(--vh-green-400) 40%, transparent), transparent 60%), linear-gradient(140deg, var(--vh-green-900), var(--vh-green-700))",
+            "radial-gradient(700px 400px at 85% -30%, color-mix(in srgb, var(--vh-green-400) 40%, transparent), transparent 60%), linear-gradient(160deg, #ffffff, var(--vh-green-100))",
           padding: "var(--sp-6) 0",
-          color: "#fff",
+          color: "var(--vh-ink)",
         }}
       >
         <div className="vh-container">
@@ -75,17 +75,17 @@ export default async function StorePage({ params }: { params: Promise<Params> })
               style={{
                 display: "inline-flex", alignItems: "center", justifyContent: "center",
                 width: 76, height: 76, borderRadius: 20, fontWeight: 800, fontSize: "2rem",
-                background: "rgba(255,255,255,0.14)", border: "1px solid rgba(255,255,255,0.3)",
+                background: "var(--vh-surface)", border: "1px solid var(--vh-line)",
                 fontFamily: "var(--vh-display)", flexShrink: 0,
               }}
             >
               {seller.name.charAt(0)}
             </span>
             <div style={{ flex: 1, minWidth: 260 }}>
-              <h1 className="vh-display" style={{ color: "#fff", fontSize: "1.9rem", marginBottom: 4 }}>{seller.name}</h1>
-              <p style={{ color: "rgba(255,255,255,0.85)", margin: "0 0 10px", fontSize: ".95rem" }}>{profile.tagline}</p>
+              <h1 className="vh-display" style={{ color: "var(--vh-ink)", fontSize: "1.9rem", marginBottom: 4 }}>{seller.name}</h1>
+              <p style={{ color: "var(--vh-body)", margin: "0 0 10px", fontSize: ".95rem" }}>{profile.tagline}</p>
               <div className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
-                <span style={{ background: "rgba(255,255,255,0.92)", borderRadius: 999, padding: "3px 10px", display: "inline-flex" }}>
+                <span style={{ background: "var(--vh-surface)", border: "1px solid var(--vh-line)", borderRadius: 999, padding: "3px 10px", display: "inline-flex" }}>
                   <Rating value={profile.rating} count={profile.reviewCount} />
                 </span>
                 <span className="vh-pill vh-pill-ok">
@@ -96,7 +96,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
                     <BadgeCheck size={12} strokeWidth={2.2} aria-hidden /> {CLASS_META[cls].short} licensed
                   </span>
                 ))}
-                <span className="vh-row small" style={{ gap: 4, color: "rgba(255,255,255,0.8)" }}>
+                <span className="vh-row small" style={{ gap: 4, color: "var(--vh-body)" }}>
                   <MapPin size={13} strokeWidth={2.2} aria-hidden /> {profile.location} · since {profile.founded}
                 </span>
               </div>
@@ -109,7 +109,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
               <button
                 type="button"
                 className="vh-btn vh-btn-ghost"
-                style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.4)", color: "#fff", gap: 8 }}
+                style={{ background: "var(--vh-surface)", borderColor: "var(--vh-line-strong)", color: "var(--vh-ink)", gap: 8 }}
               >
                 <Share2 size={15} strokeWidth={2.2} aria-hidden />
                 Share

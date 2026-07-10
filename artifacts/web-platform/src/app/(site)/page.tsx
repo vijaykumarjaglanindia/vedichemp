@@ -86,12 +86,12 @@ export default function HomePage() {
               <Link
                 href="/trust"
                 className="vh-btn vh-btn-ghost"
-                style={{ background: "rgba(255,255,255,0.08)", borderColor: "rgba(255,255,255,0.4)", color: "#fff" }}
+                style={{ background: "var(--vh-surface)", borderColor: "var(--vh-line-strong)", color: "var(--vh-ink)" }}
               >
                 How the marketplace works
               </Link>
             </div>
-            <div className="vh-row" style={{ gap: 18, marginTop: "var(--sp-4)", flexWrap: "wrap", color: "rgba(255,255,255,0.85)", fontSize: ".84rem", fontWeight: 700 }}>
+            <div className="vh-row" style={{ gap: 18, marginTop: "var(--sp-4)", flexWrap: "wrap", color: "var(--vh-body)", fontSize: ".84rem", fontWeight: 700 }}>
               <span>★ 4.6 average rating</span>
               <span aria-hidden>·</span>
               <span>10,000+ products</span>
@@ -108,9 +108,9 @@ export default function HomePage() {
                 ["Easy returns", "Buyer refunded first"],
                 ["Fulfilled by sellers", "Packed & shipped by the seller who lists it"],
               ].map(([t, s]) => (
-                <div key={t} style={{ background: "rgba(255,255,255,0.08)", border: "1px solid rgba(255,255,255,0.14)", borderRadius: 10, padding: "10px 12px" }}>
-                  <div style={{ fontWeight: 800, fontSize: ".82rem", color: "#fff" }}>{t}</div>
-                  <div style={{ fontSize: ".74rem", color: "rgba(255,255,255,0.72)" }}>{s}</div>
+                <div key={t} style={{ background: "var(--vh-surface)", border: "1px solid var(--vh-line)", borderRadius: 10, padding: "10px 12px" }}>
+                  <div style={{ fontWeight: 800, fontSize: ".82rem", color: "var(--vh-ink)" }}>{t}</div>
+                  <div style={{ fontSize: ".74rem", color: "var(--vh-body)" }}>{s}</div>
                 </div>
               ))}
             </div>
@@ -373,7 +373,7 @@ export default function HomePage() {
       {/* ── Industry stats band ──────────────────────────── */}
       <section
         style={{
-          background: "linear-gradient(140deg, var(--vh-green-900), var(--vh-green-700))",
+          background: "linear-gradient(160deg, #ffffff, var(--vh-green-100))",
           padding: "var(--sp-7) 0",
         }}
       >
@@ -381,7 +381,7 @@ export default function HomePage() {
           <div className="vh-grid cols-4">
             {INDUSTRY_STATS.map((s) => (
               <div key={s.label}>
-                <div className="tabular" style={{ fontSize: "2.1rem", fontWeight: 800, color: "#fff", letterSpacing: "-0.02em" }}>{s.value}</div>
+                <div className="tabular" style={{ fontSize: "2.1rem", fontWeight: 800, color: "var(--vh-ink)", letterSpacing: "-0.02em" }}>{s.value}</div>
                 <div style={{ color: "#cfe6d8", fontWeight: 700, fontSize: ".86rem", marginTop: 4 }}>{s.label}</div>
                 <div className="small" style={{ color: "#9dc4ab", marginTop: 2 }}>{s.sub}</div>
               </div>
