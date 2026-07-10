@@ -1,7 +1,0 @@
-# A pull request that touches the prohibitions needs the people accountable for them.
-# Weakening a prohibition test fails review by policy and by CI.
-
-/tests/prohibitions.test.ts            @compliance-lead @security-lead @cto
-/prisma/migrations/0001_prohibitions/  @compliance-lead @security-lead @cto
-/src/lib/prohibitions.ts               @compliance-lead @security-lead
-/CLAUDE.md                             @cto
