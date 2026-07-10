@@ -124,8 +124,8 @@ export default function HomePage() {
                 className="vh-card vh-rise"
                 style={{
                   padding: 12,
-                  transform: `rotate(${i % 2 === 0 ? -1.4 : 1.6}deg) translateY(${i === 1 || i === 2 ? 10 : 0}px)`,
-                  boxShadow: "var(--vh-shadow-lg)",
+                  transform: `translateY(${i === 1 || i === 2 ? 14 : 0}px)`,
+                  boxShadow: "var(--vh-shadow)",
                 }}
               >
                 <div className="vh-product-media" style={{ fontSize: "2rem", borderRadius: "var(--vh-radius-sm)", minHeight: 84 }}>{p.emoji}</div>

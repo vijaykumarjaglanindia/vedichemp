@@ -1,25 +1,25 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Manrope, Fraunces } from "next/font/google";
+import { Instrument_Sans, Instrument_Serif } from "next/font/google";
 import "./globals.css";
 
 /**
- * Typography — Manrope carries the product (geometric, open, premium fintech
- * tone); Fraunces is the display voice for marketing surfaces (Ayurvedic
- * heritage without pastiche). Loaded via next/font: self-hosted at build,
- * zero layout shift, no render-blocking CSS.
+ * Typography — Instrument Sans carries the product (precise, contemporary,
+ * Stripe-grade neutrality); Instrument Serif is the display voice — a
+ * high-contrast editorial serif used large and sparingly. Loaded via
+ * next/font: self-hosted at build, zero layout shift.
  */
-const sans = Manrope({
+const sans = Instrument_Sans({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-sans",
-  weight: ["400", "500", "600", "700", "800"],
+  weight: ["400", "500", "600", "700"],
 });
-const display = Fraunces({
+const display = Instrument_Serif({
   subsets: ["latin"],
   display: "swap",
   variable: "--font-display",
-  weight: ["500", "600", "700"],
+  weight: "400",
   style: ["normal", "italic"],
 });
 
