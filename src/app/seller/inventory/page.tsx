@@ -7,52 +7,99 @@
  */
 
 import type { Metadata } from "next";
+import { Hourglass, RotateCcw, Warehouse as WarehouseIcon } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, DataTable, StatusPill, Banner, type Column } from "@/components/ui";
+import { Card, DataTable, StatusPill, Stat, type Column } from "@/components/ui";
+import { Donut } from "@/components/ui/charts";
 import { WAREHOUSE_STOCK, LOW_STOCK_THRESHOLD, type WarehouseStock } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Inventory" };
 
 export default function InventoryPage() {
+  const isLow = (w: WarehouseStock) => w.qty - w.reserved < LOW_STOCK_THRESHOLD && w.qty - w.reserved > 0;
+  const isOut = (w: WarehouseStock) => w.qty - w.reserved <= 0;
+
+  const inStock = WAREHOUSE_STOCK.filter((w) => !isLow(w) && !isOut(w)).length;
+  const low = WAREHOUSE_STOCK.filter(isLow).length;
+  const out = WAREHOUSE_STOCK.filter(isOut).length;
+  const warehouses = Array.from(new Set(WAREHOUSE_STOCK.map((w) => w.warehouse)));
+
+  // Status palette (reserved for state, never series identity): ok / warn / danger.
+  const stockSegments = [
+    { value: inStock, color: "var(--vh-ok)", label: "In stock" },
+    { value: low, color: "var(--vh-warn)", label: "Low" },
+    { value: out, color: "var(--vh-danger)", label: "Out" },
+  ];
+
   const columns: Column<WarehouseStock>[] = [
-    { key: "product", header: "Product", render: (w) => w.product },
+    { key: "product", header: "Product", render: (w) => <span style={{ fontWeight: 600 }}>{w.product}</span> },
     { key: "batch", header: "Batch", render: (w) => <span className="mono">{w.batch}</span> },
     { key: "warehouse", header: "Warehouse", render: (w) => w.warehouse },
-    { key: "qty", header: "On hand", align: "right", render: (w) => w.qty },
-    { key: "reserved", header: "Reserved", align: "right", render: (w) => w.reserved },
-    { key: "available", header: "Available", align: "right", render: (w) => w.qty - w.reserved },
+    { key: "qty", header: "On hand", align: "right", render: (w) => <span className="tabular">{w.qty}</span> },
+    { key: "reserved", header: "Reserved", align: "right", render: (w) => <span className="tabular">{w.reserved}</span> },
+    { key: "available", header: "Available", align: "right", render: (w) => <span className="tabular" style={{ fontWeight: 700 }}>{w.qty - w.reserved}</span> },
     {
       key: "sellable", header: "Sellable", render: (w) => (
         <StatusPill tone={w.sellable ? "ok" : "danger"}>{w.sellable ? "Sellable (CoA approved)" : "Blocked — CoA not approved"}</StatusPill>
       ),
     },
+    {
+      key: "actions", header: "", align: "right", render: (w) =>
+        isLow(w) || isOut(w) ? (
+          <button className="vh-btn vh-btn-sm vh-btn-ghost" type="button" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <RotateCcw size={13} strokeWidth={2.2} aria-hidden /> Reorder
+          </button>
+        ) : null,
+    },
   ];
 
-  const warehouses = Array.from(new Set(WAREHOUSE_STOCK.map((w) => w.warehouse)));
-
   return (
-    <Shell active="/seller/inventory" breadcrumb={["Seller Central", "Inventory"]} title="Inventory">
-      <div className="vh-grid cols-3" style={{ marginBottom: 18 }}>
-        <Card title="Warehouses">
-          <div style={{ fontSize: "1.6rem", fontWeight: 700 }}>{warehouses.length}</div>
-          <div className="small muted">{warehouses.join(", ")}</div>
+    <Shell
+      active="/seller/inventory"
+      breadcrumb={["Seller Central", "Inventory"]}
+      title="Inventory"
+      actions={<button className="vh-btn vh-btn-sm vh-btn-primary" type="button">Add stock</button>}
+    >
+      <div className="vh-grid cols-2" style={{ alignItems: "start", marginBottom: "var(--sp-4)" }}>
+        <Card title="Stock health">
+          <div className="vh-row" style={{ gap: 24, alignItems: "center" }}>
+            <Donut segments={stockSegments} size={128} centre={`${WAREHOUSE_STOCK.length}`} />
+            <div className="vh-grid" style={{ gap: 8, flex: 1 }}>
+              {stockSegments.map((s) => (
+                <div key={s.label} className="vh-row-between small">
+                  <span className="vh-row" style={{ gap: 8 }}>
+                    <span aria-hidden style={{ width: 10, height: 10, borderRadius: 999, background: s.color, flexShrink: 0 }} />
+                    <span style={{ fontWeight: 600 }}>{s.label}</span>
+                  </span>
+                  <span className="muted tabular">{s.value} batch line{s.value === 1 ? "" : "s"}</span>
+                </div>
+              ))}
+            </div>
+          </div>
         </Card>
-        <Card title="Batches tracked">
-          <div style={{ fontSize: "1.6rem", fontWeight: 700 }}>{WAREHOUSE_STOCK.length}</div>
-          <div className="small muted">Across all live and draft products</div>
-        </Card>
-        <Card title="Low-stock lines">
-          <div style={{ fontSize: "1.6rem", fontWeight: 700 }}>{WAREHOUSE_STOCK.filter((w) => w.qty - w.reserved < LOW_STOCK_THRESHOLD).length}</div>
-          <div className="small muted">Below {LOW_STOCK_THRESHOLD}-unit threshold</div>
-        </Card>
+
+        <div className="vh-grid" style={{ gap: "var(--sp-3)" }}>
+          <div className="vh-grid cols-3">
+            <Card>
+              <Stat label="Warehouses" value={warehouses.length} />
+              <div className="small muted vh-row" style={{ gap: 6, marginTop: 6 }}>
+                <WarehouseIcon size={13} strokeWidth={2.2} aria-hidden /> {warehouses.join(", ")}
+              </div>
+            </Card>
+            <Card><Stat label="Batch lines" value={WAREHOUSE_STOCK.length} /></Card>
+            <Card><Stat label="Low / out" value={low + out} delta={low + out > 0 ? { dir: "down", text: "needs reorder" } : undefined} /></Card>
+          </div>
+
+          <div className="vh-row" role="note" style={{ alignItems: "flex-start", gap: 10, border: "1px solid var(--vh-line)", borderLeft: "3px solid var(--vh-info)", borderRadius: "var(--vh-radius-sm)", padding: "12px 14px", background: "color-mix(in srgb, var(--vh-info-bg) 45%, var(--vh-surface))" }}>
+            <Hourglass size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-info)", marginTop: 2, flexShrink: 0 }} />
+            <div className="small">
+              <strong>FEFO — First-Expiry, First-Out.</strong> Outbound picking always allocates the batch with the
+              nearest expiry date first, provided it is sellable (CoA approved, A2). A newer batch cannot ship ahead
+              of an older approved one.
+            </div>
+          </div>
+        </div>
       </div>
-
-      <Banner severity="info" title="FEFO — First-Expiry, First-Out" icon="⏳">
-        Outbound picking always allocates the batch with the nearest expiry date first, provided it is sellable
-        (CoA approved). A newer batch cannot be shipped ahead of an older approved one.
-      </Banner>
-
-      <div style={{ height: 16 }} />
 
       <Card pad0>
         <DataTable columns={columns} rows={WAREHOUSE_STOCK} empty={<div className="vh-empty">No stock recorded yet.</div>} />

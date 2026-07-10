@@ -1,8 +1,13 @@
 /**
  * VEDIC HEMP — ORDERS LIST (§1.4)
+ *
+ * The status filter is a server-driven searchParam (?filter=…) — the segmented
+ * control is plain links, so filtering works without JavaScript and the server
+ * stays the authority on what is shown.
  */
 
 import type { Metadata } from "next";
+import { Eye, FileDown, MapPin } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
 import { ORDERS, type SampleOrder } from "@/lib/sample";
@@ -65,12 +70,34 @@ export default async function OrdersPage({
       key: "actions", header: "", align: "right", render: (o) => (
         <span className="vh-row" style={{ gap: 8, justifyContent: "flex-end" }}>
           {o.status !== "DELIVERED" && o.status !== "RETURNED" && (
-            <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/account/orders/${o.id}`}>Track</a>
+            <a
+              className="vh-btn vh-btn-sm vh-btn-ghost"
+              href={`/account/orders/${o.id}`}
+              aria-label={`Track order ${o.reference}`}
+              title="Track"
+            >
+              <MapPin size={14} strokeWidth={2.2} aria-hidden />
+            </a>
           )}
           {o.status === "DELIVERED" && (
             <a className="vh-btn vh-btn-sm vh-btn-primary" href={`/account/orders/${o.id}`}>Buy again</a>
           )}
-          <a className="small" href={`/account/orders/${o.id}`}>Details →</a>
+          <a
+            className="vh-btn vh-btn-sm vh-btn-ghost"
+            href={`/account/orders/${o.id}#invoice`}
+            aria-label={`Download invoice for order ${o.reference}`}
+            title="Download invoice"
+          >
+            <FileDown size={14} strokeWidth={2.2} aria-hidden />
+          </a>
+          <a
+            className="vh-btn vh-btn-sm vh-btn-ghost"
+            href={`/account/orders/${o.id}`}
+            aria-label={`View details of order ${o.reference}`}
+            title="Details"
+          >
+            <Eye size={14} strokeWidth={2.2} aria-hidden />
+          </a>
         </span>
       ),
     },
@@ -78,16 +105,23 @@ export default async function OrdersPage({
 
   return (
     <Shell active="/account/orders" breadcrumb={["My Account", "Orders"]} title="Your orders">
-      <div className="vh-row" style={{ gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        {FILTERS.map((f) => (
-          <a
-            key={f.key}
-            href={f.key === "all" ? "/account/orders" : `/account/orders?filter=${f.key}`}
-            className={`vh-pill ${f.key === filter ? "vh-pill-info" : "vh-pill-neutral"}`}
-          >
-            {f.label}
-          </a>
-        ))}
+      {/* Toolbar: segmented status filter (server-driven via ?filter=) */}
+      <div className="vh-row-between" style={{ marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
+        <nav className="vh-seg" aria-label="Filter orders by status">
+          {FILTERS.map((f) => (
+            <a
+              key={f.key}
+              href={f.key === "all" ? "/account/orders" : `/account/orders?filter=${f.key}`}
+              className={f.key === filter ? "on" : undefined}
+              aria-current={f.key === filter ? "true" : undefined}
+            >
+              {f.label}
+            </a>
+          ))}
+        </nav>
+        <span className="small muted tabular">
+          {rows.length} order{rows.length === 1 ? "" : "s"}
+        </span>
       </div>
 
       <Card pad0>

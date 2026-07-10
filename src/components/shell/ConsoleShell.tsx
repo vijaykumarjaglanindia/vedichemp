@@ -2,16 +2,19 @@
  * VEDIC HEMP — CONSOLE SHELL
  *
  * The chrome shared by the buyer, seller and admin dashboards: a left nav rail,
- * a sticky glass topbar, breadcrumbs, and (for support impersonation) the fixed
- * red "actions logged" banner. Each console passes its own nav model and brand.
+ * a sticky glass topbar (search, theme toggle, notifications, avatar),
+ * breadcrumbs, and — for support impersonation — the fixed red "actions
+ * logged" banner. Each console passes its own nav model and brand.
  *
- * The mobile nav drawer is CSS-only (a hidden checkbox + a label hamburger +
- * a scrim), so the shell stays a Server Component with no client JS.
+ * The mobile nav drawer is CSS-only (hidden checkbox + hamburger + scrim), so
+ * the shell stays a Server Component; the only client island is ThemeToggle.
  */
 
 import type { ReactNode } from "react";
+import { Menu, Search, Bell } from "lucide-react";
+import { ThemeToggle } from "@/components/ui/ThemeToggle";
 
-export interface NavItem { href: string; label: string; icon: string }
+export interface NavItem { href: string; label: string; icon: ReactNode }
 export interface NavGroup { group?: string; items: NavItem[] }
 
 function initials(brand: string): string {
@@ -54,8 +57,8 @@ export function ConsoleShell({
         <div className="vh-rail-user">
           <span className="vh-avatar" aria-hidden>{initials(brand)}</span>
           <div style={{ minWidth: 0 }}>
-            <div style={{ color: "#fff", fontWeight: 600, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Signed in</div>
-            <div className="small" style={{ color: "#8fb39c" }}>Session · secured</div>
+            <div style={{ color: "#fff", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Signed in</div>
+            <div className="small" style={{ opacity: 0.7 }}>Session · secured</div>
           </div>
         </div>
       </nav>
@@ -70,16 +73,21 @@ export function ConsoleShell({
           </div>
         )}
         <div className="vh-topbar">
-          <label className="vh-hamburger" htmlFor="vh-nav-toggle" aria-label="Open navigation">☰</label>
+          <label className="vh-hamburger" htmlFor="vh-nav-toggle" aria-label="Open navigation">
+            <Menu size={19} aria-hidden />
+          </label>
           {topbar ?? (
             <>
               <div className="vh-search">
-                <span aria-hidden>🔎</span>
+                <Search size={15} aria-hidden />
                 <input placeholder="Search…" aria-label="Search" />
+                <span className="vh-kbd" aria-hidden>/</span>
               </div>
               <div className="vh-spacer" />
+              <ThemeToggle />
               <a className="vh-iconbtn" href="#" aria-label="Notifications">
-                🔔<span className="vh-dot" aria-hidden />
+                <Bell size={17} aria-hidden />
+                <span className="vh-dot" aria-hidden />
               </a>
               <span className="vh-avatar" aria-hidden>{initials(brand)}</span>
             </>

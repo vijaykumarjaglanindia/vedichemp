@@ -8,20 +8,26 @@
  */
 
 import type { ReactNode } from "react";
+import {
+  LayoutDashboard, Package, RefreshCw, Stethoscope, Wallet,
+  Heart, UserRound, Bell, LifeBuoy,
+} from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
+
+const I = { size: 16, strokeWidth: 2.2 } as const;
 
 const BUYER_NAV: NavGroup[] = [
   {
     items: [
-      { href: "/account", label: "Home", icon: "🏠" },
-      { href: "/account/orders", label: "Orders", icon: "📦" },
-      { href: "/account/subscriptions", label: "Subscriptions", icon: "🔁" },
-      { href: "/account/medical", label: "Medical (Rx)", icon: "⚕️" },
-      { href: "/account/wallet", label: "Wallet", icon: "👛" },
-      { href: "/account/wishlist", label: "Wishlist", icon: "❤️" },
-      { href: "/account/profile", label: "Profile", icon: "🙍" },
-      { href: "/account/notifications", label: "Notifications", icon: "🔔" },
-      { href: "/account/support", label: "Support", icon: "💬" },
+      { href: "/account", label: "Home", icon: <LayoutDashboard {...I} /> },
+      { href: "/account/orders", label: "Orders", icon: <Package {...I} /> },
+      { href: "/account/subscriptions", label: "Subscriptions", icon: <RefreshCw {...I} /> },
+      { href: "/account/medical", label: "Medical (Rx)", icon: <Stethoscope {...I} /> },
+      { href: "/account/wallet", label: "Wallet", icon: <Wallet {...I} /> },
+      { href: "/account/wishlist", label: "Wishlist", icon: <Heart {...I} /> },
+      { href: "/account/profile", label: "Profile", icon: <UserRound {...I} /> },
+      { href: "/account/notifications", label: "Notifications", icon: <Bell {...I} /> },
+      { href: "/account/support", label: "Support", icon: <LifeBuoy {...I} /> },
     ],
   },
 ];

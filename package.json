@@ -3,7 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "description": "Regulated multi-vendor marketplace for hemp, CBD wellness, Ayurveda and medical cannabis in India.",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "dev": "next dev",
     "build": "next build",
@@ -20,6 +22,7 @@
   },
   "dependencies": {
     "@prisma/client": "^6.2.1",
+    "lucide-react": "^1.24.0",
     "next": "^15.1.6",
     "next-auth": "^5.0.0-beta.25",
     "react": "^19.0.0",

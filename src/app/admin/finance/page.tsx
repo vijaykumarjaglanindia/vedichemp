@@ -9,11 +9,16 @@
  */
 
 import type { Metadata } from "next";
+import { Ban, Landmark, Wallet, ReceiptText, CheckCircle2, Circle, CalendarCheck2 } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, Stat, StatusPill, toneForStatus, MoneyText, Banner, DataTable, type Column } from "@/components/ui";
+import { Columns, Donut } from "@/components/ui/charts";
 import { SETTLEMENTS, KPIS, type SettlementRow } from "@/lib/sample";
+import { REVENUE_6M, TAX_POSITION, PERIOD_CLOSE_CHECKLIST } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Finance · Admin" };
+
+const I = { size: 16, strokeWidth: 2.2 } as const;
 
 const CURRENT_ADMIN = "finance.rao"; // signed-in admin, for the self-approval demo
 
@@ -28,7 +33,9 @@ const columns: Column<SettlementRow>[] = [
       if (s.status === "POSTED") return <span className="small muted">Posted — immutable</span>;
       const selfApprove = s.maker === CURRENT_ADMIN;
       return selfApprove ? (
-        <span className="small" style={{ color: "var(--vh-danger)" }}>🚫 You are the maker — cannot check</span>
+        <span className="small vh-row" style={{ gap: 6, color: "var(--vh-danger)" }}>
+          <Ban size={14} strokeWidth={2.2} aria-hidden /> You are the maker — cannot check (403)
+        </span>
       ) : (
         <a className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/finance#${s.id}-approve`}>Approve as checker</a>
       );
@@ -37,17 +44,26 @@ const columns: Column<SettlementRow>[] = [
 
 const totalPending = SETTLEMENTS.filter((s) => s.status === "AWAITING_CHECKER").reduce((sum, s) => sum + s.netPaise, 0);
 const totalPosted = SETTLEMENTS.filter((s) => s.status === "POSTED").reduce((sum, s) => sum + s.netPaise, 0);
+const taxTotal = TAX_POSITION.gstPaise + TAX_POSITION.tcsPaise + TAX_POSITION.tdsPaise;
+const closeDone = PERIOD_CLOSE_CHECKLIST.filter((c) => c.done).length;
 
 export default function AdminFinancePage() {
   return (
     <Shell active="/admin/finance" breadcrumb={["Admin", "Finance"]} title="Finance">
-      <div className="vh-grid" style={{ gap: 18 }}>
-        <Card title="Marketplace revenue">
+      <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
+        <Card title={<span className="vh-row" style={{ gap: 8 }}><Landmark {...I} aria-hidden /> Marketplace revenue</span>}>
           <div className="vh-grid cols-4">
             <Stat label="GMV today" value={<MoneyText paise={KPIS.gmvTodayPaise} />} />
             <Stat label="Settlements awaiting checker" value={<MoneyText paise={totalPending} />} delta={{ dir: "up", text: `${SETTLEMENTS.filter((s) => s.status === "AWAITING_CHECKER").length} runs` }} />
             <Stat label="Posted this period" value={<MoneyText paise={totalPosted} />} />
             <Stat label="Take rate" value="7.4%" />
+          </div>
+          <div style={{ marginTop: "var(--sp-4)" }}>
+            <div className="vh-row-between" style={{ marginBottom: "var(--sp-2)" }}>
+              <span className="small muted">Platform revenue (commission + ads), last 6 months</span>
+              <span className="small muted tabular">Jul is month-to-date</span>
+            </div>
+            <Columns values={REVENUE_6M.valuesPaise} labels={REVENUE_6M.labels} height={120} />
           </div>
         </Card>
 
@@ -62,7 +78,7 @@ export default function AdminFinancePage() {
         </Banner>
 
         <div className="vh-grid cols-2">
-          <Card title="Refunds & wallets">
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><Wallet {...I} aria-hidden /> Refunds & wallets</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>
               Buyer wallet credits/debits and refund payouts share the same maker–checker threshold as order refunds
               (₹5,000). Wallet balances are never adjusted by direct SQL from this console — every entry is a
@@ -70,25 +86,74 @@ export default function AdminFinancePage() {
             </p>
             <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/orders">Go to refunds →</a>
           </Card>
-          <Card title="GST / TCS / TDS">
+
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><ReceiptText {...I} aria-hidden /> GST / TCS / TDS</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>
               Statutory withholding is computed server-side per order line at checkout time and is never re-derived
               in this console — the numbers below are what was actually withheld, not a recomputation.
             </p>
-            <div className="vh-grid cols-3">
-              <Stat label="GST collected" value={<MoneyText paise={2_84_20_000} />} />
-              <Stat label="TCS withheld" value={<MoneyText paise={18_60_000} />} />
-              <Stat label="TDS withheld" value={<MoneyText paise={9_30_000} />} />
+            <div className="vh-row" style={{ gap: "var(--sp-4)", alignItems: "center", flexWrap: "wrap" }}>
+              <Donut
+                size={112}
+                centre="mix"
+                segments={[
+                  { value: TAX_POSITION.gstPaise, color: "var(--vh-accent)", label: "GST" },
+                  { value: TAX_POSITION.tcsPaise, color: "var(--vh-ok)", label: "TCS" },
+                  { value: TAX_POSITION.tdsPaise, color: "var(--vh-warn)", label: "TDS" },
+                ]}
+              />
+              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8, flex: 1, minWidth: 180 }}>
+                <li className="vh-row-between small">
+                  <span className="vh-row" style={{ gap: 6 }}>
+                    <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: "var(--vh-accent)" }} />
+                    GST collected
+                  </span>
+                  <MoneyText paise={TAX_POSITION.gstPaise} />
+                </li>
+                <li className="vh-row-between small">
+                  <span className="vh-row" style={{ gap: 6 }}>
+                    <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: "var(--vh-ok)" }} />
+                    TCS withheld
+                  </span>
+                  <MoneyText paise={TAX_POSITION.tcsPaise} />
+                </li>
+                <li className="vh-row-between small">
+                  <span className="vh-row" style={{ gap: 6 }}>
+                    <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: "var(--vh-warn)" }} />
+                    TDS withheld
+                  </span>
+                  <MoneyText paise={TAX_POSITION.tdsPaise} />
+                </li>
+                <li className="vh-row-between small" style={{ borderTop: "1px solid var(--vh-line)", paddingTop: 8 }}>
+                  <span className="muted">Total withheld</span>
+                  <MoneyText paise={taxTotal} />
+                </li>
+              </ul>
             </div>
           </Card>
         </div>
 
-        <Card title="Period close">
+        <Card
+          title={<span className="vh-row" style={{ gap: 8 }}><CalendarCheck2 {...I} aria-hidden /> Period close</span>}
+          action={<StatusPill tone={closeDone === PERIOD_CLOSE_CHECKLIST.length ? "ok" : "warn"}>{closeDone}/{PERIOD_CLOSE_CHECKLIST.length} complete</StatusPill>}
+        >
           <p className="small muted" style={{ marginTop: 0 }}>
             Closing a settlement period locks every posted statement in it against further linkage and generates the
             statutory filing bundle. Period close itself is a maker–checker action, and — like a posted settlement —
             a closed period cannot be reopened; a correction is a new period.
           </p>
+          <ul style={{ listStyle: "none", margin: "0 0 var(--sp-2)", padding: 0, display: "grid", gap: 8 }}>
+            {PERIOD_CLOSE_CHECKLIST.map((c) => (
+              <li key={c.label} className="vh-row small" style={{ gap: 8 }}>
+                {c.done
+                  ? <CheckCircle2 size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)", flexShrink: 0 }} />
+                  : <Circle size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-line)", flexShrink: 0 }} />}
+                <span style={{ color: c.done ? undefined : "var(--vh-ink)" }}>
+                  {c.label} {c.done ? <span className="muted">— done</span> : <span className="muted">— pending</span>}
+                </span>
+              </li>
+            ))}
+          </ul>
           <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#close-period">Initiate period close (maker)</a>
         </Card>
       </div>

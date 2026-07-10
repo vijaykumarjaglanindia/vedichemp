@@ -286,3 +286,97 @@ export const TODAY_KPIS = {
   aovPaise: Math.round((68_400_00) / 14),
   buyBoxPercent: 91,
 };
+
+/* ── Performance series (Home / Finance / Assistant) ──────── */
+
+/** Daily GMV in paise, trailing 7 days ending today (10 Jul 2026). */
+export const GMV_7D = {
+  valuesPaise: [52_300_00, 61_800_00, 48_900_00, 72_100_00, 66_400_00, 58_200_00, 68_400_00],
+  labels: ["Fri", "Sat", "Sun", "Mon", "Tue", "Wed", "Thu"],
+};
+
+/** Weekly net revenue, indexed (12 weeks) — for the finance sparkline. */
+export const REVENUE_SPARK = [48, 52, 51, 58, 61, 59, 64, 66, 63, 70, 74, 72];
+
+/** Weekly forecast GMV in paise, next 4 weeks (assistant). */
+export const FORECAST_4W = {
+  valuesPaise: [4_82_000_00, 5_10_000_00, 5_36_000_00, 5_62_000_00],
+  labels: ["W1", "W2", "W3", "W4"],
+};
+
+/* ── Listing quality (Products) ────────────────────────────── */
+
+export const LISTING_QUALITY: { label: string; value: number; display: string }[] = [
+  { label: "Images (3+ per listing)", value: 82, display: "82%" },
+  { label: "Attributes complete", value: 91, display: "91%" },
+  { label: "SEO title & description", value: 68, display: "68%" },
+  { label: "CoA coverage (approved batches)", value: 74, display: "74%" },
+];
+
+/* ── Fee breakdown (Finance donut) ─────────────────────────── */
+
+export const FEE_BREAKDOWN_SEGMENTS: { label: string; paise: number }[] = [
+  { label: "Referral commission", paise: COMMISSION_BREAKDOWN.commissionPaise },
+  { label: "GST on commission", paise: COMMISSION_BREAKDOWN.gstOnCommissionPaise },
+  { label: "TDS + TCS", paise: COMMISSION_BREAKDOWN.tdsPaise + COMMISSION_BREAKDOWN.tcsPaise },
+  { label: "Shipping fees", paise: 38_500_00 },
+];
+
+/* ── Ads: placement inventory, pacing, per-campaign series ── */
+
+export interface AdPlacement {
+  key: string;
+  name: string;
+  blurb: string;
+  estCpcPaise: number;
+  pricing: "CPC" | "CPM";
+  exampleCls: Exclude<ComplianceClass, "MED_CANNABIS">;
+  exampleTitle: string;
+  exampleEmoji: string;
+}
+
+export const AD_PLACEMENTS: AdPlacement[] = [
+  { key: "sp", name: "Sponsored Products", blurb: "Keyword-targeted listing in search results and category pages.", estCpcPaise: 8_50, pricing: "CPC", exampleCls: "CBD_WELLNESS", exampleTitle: "CBD Wellness Balm 30g", exampleEmoji: "🌿" },
+  { key: "sb", name: "Sponsored Brands", blurb: "Store banner with three products, above search results.", estCpcPaise: 12_00, pricing: "CPC", exampleCls: "CBD_WELLNESS", exampleTitle: "Vedic Botanicals — the CBD range", exampleEmoji: "🏪" },
+  { key: "hb", name: "Homepage banner", blurb: "Hero carousel slot on the marketplace homepage. Reviewed placement.", estCpcPaise: 22_00, pricing: "CPM", exampleCls: "HEMP_FOOD", exampleTitle: "Hemp nutrition, farm to shelf", exampleEmoji: "🌾" },
+  { key: "cb", name: "Category banner", blurb: "Banner atop a category listing (e.g. Wellness → Topicals).", estCpcPaise: 15_00, pricing: "CPM", exampleCls: "HEMP_FOOD", exampleTitle: "Cold-pressed hemp seed oil", exampleEmoji: "🫒" },
+];
+
+/** 7-day performance series per campaign (indexed clicks/day). */
+export const CAMPAIGN_SPARKS: Record<string, number[]> = {
+  ad1: [38, 44, 41, 52, 58, 54, 61],
+  ad2: [22, 25, 21, 18, 12, 8, 0],
+  ad3: [0, 0, 4, 9, 12, 15, 19],
+};
+
+/* ── Customers: response-time stats ────────────────────────── */
+
+export const RESPONSE_STATS = {
+  avgFirstResponse: "2h 14m",
+  targetFirstResponse: "4h",
+  answeredWithin24hPercent: 94,
+};
+
+/* ── Reports: sales by class + top products ────────────────── */
+
+export const SALES_BY_CLASS: { cls: Exclude<ComplianceClass, "MED_CANNABIS">; paise: number }[] = [
+  { cls: "CBD_WELLNESS", paise: 6_58_900_00 },
+  { cls: "AYURVEDA", paise: 1_86_300_00 },
+];
+
+export const TOP_PRODUCTS_30D: { title: string; paise: number }[] = [
+  { title: "CBD Wellness Balm 30g", paise: 3_12_400_00 },
+  { title: "CBD Ayurvedic Tincture 10ml", paise: 2_08_100_00 },
+  { title: "CBD Muscle Relief Roll-On 50ml", paise: 1_38_400_00 },
+  { title: "Ashwagandha co-listed bundle", paise: 86_300_00 },
+];
+
+/* ── Storefront preview (Store & KYC) ──────────────────────── */
+
+export const STORE_PREVIEW = {
+  handle: "vedic-botanicals",
+  followers: 1_284,
+  rating: 4.5,
+  reviewCount: 861,
+  tagline: "AYUSH-licensed CBD wellness & Ayurveda, lab-tested every batch.",
+};

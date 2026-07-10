@@ -3,6 +3,7 @@
  */
 
 import type { Metadata } from "next";
+import { Printer } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
 import type { SampleOrder } from "@/lib/sample";
@@ -44,24 +45,38 @@ export default async function SellerOrdersPage({
       active="/seller/orders"
       breadcrumb={["Seller Central", "Orders"]}
       title="Orders"
-      actions={<button className="vh-btn vh-btn-sm vh-btn-ghost" type="button">Generate shipping labels (bulk)</button>}
+      actions={
+        <button className="vh-btn vh-btn-sm vh-btn-primary" type="button" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Printer size={14} strokeWidth={2.2} aria-hidden /> Bulk shipping labels
+        </button>
+      }
     >
-      <div className="vh-row" style={{ gap: 8, marginBottom: 16, flexWrap: "wrap" }}>
-        {ORDER_STATUS_TABS.map((t) => (
-          <a
-            key={t}
-            href={t === "ALL" ? "/seller/orders" : `/seller/orders?status=${t}`}
-            className={`vh-pill ${t === status ? "vh-pill-info" : "vh-pill-neutral"}`}
-          >
-            {t === "ALL" ? "All" : t.charAt(0) + t.slice(1).toLowerCase()}
-            {" "}({t === "ALL" ? SELLER_ORDERS.length : SELLER_ORDERS.filter((o) => o.status === t).length})
-          </a>
-        ))}
+      <div style={{ overflowX: "auto", marginBottom: "var(--sp-3)" }}>
+        <nav className="vh-seg" aria-label="Order status filter">
+          {ORDER_STATUS_TABS.map((t) => {
+            const count = t === "ALL" ? SELLER_ORDERS.length : SELLER_ORDERS.filter((o) => o.status === t).length;
+            return (
+              <a
+                key={t}
+                href={t === "ALL" ? "/seller/orders" : `/seller/orders?status=${t}`}
+                className={t === status ? "on" : undefined}
+                aria-current={t === status ? "true" : undefined}
+                style={{ whiteSpace: "nowrap" }}
+              >
+                {t === "ALL" ? "All" : t.charAt(0) + t.slice(1).toLowerCase()} <span className="tabular muted">({count})</span>
+              </a>
+            );
+          })}
+        </nav>
       </div>
 
       <Card pad0>
         <DataTable columns={columns} rows={rows} empty={<div className="vh-empty">No orders in this state.</div>} />
       </Card>
+      <p className="small muted" style={{ marginTop: 8 }}>
+        Buyer addresses stay masked until label generation. Refunds always credit the buyer first — recovery from
+        this store happens afterwards, via settlement.
+      </p>
     </Shell>
   );
 }

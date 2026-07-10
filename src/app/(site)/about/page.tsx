@@ -1,16 +1,18 @@
 /**
- * VEDIC HEMP — ABOUT
+ * VEDIC HEMP — ABOUT (V2 reskin)
  *
  * Short mission page. The four-verticals table is presentation-only (from
  * CLASS_META) — it states plainly that Medical Cannabis is prescription-only
  * and never advertised, rather than omitting it entirely, because this is an
  * explanatory page, not a shopping surface (A1 only restricts shoppable /
- * promotional surfaces).
+ * promotional surfaces). Content unchanged from V1 — this pass applies the V2
+ * marketing rhythm (SectionHead, lucide icons, section spacing).
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Card, DataTable, type Column } from "@/components/ui";
+import { Compass, Scale } from "lucide-react";
+import { Card, DataTable, SectionHead, type Column } from "@/components/ui";
 import { CLASS_META, type ClassMeta } from "@/lib/compliance";
 
 export const metadata: Metadata = {
@@ -51,9 +53,10 @@ const VERTICAL_COLUMNS: Column<ClassMeta>[] = [
 
 export default function AboutPage() {
   return (
-    <div className="vh-container" style={{ paddingTop: 28, paddingBottom: 56 }}>
-      <div className="vh-page-head">
-        <h1>About Vedic Hemp</h1>
+    <div className="vh-container" style={{ paddingTop: "var(--sp-5)", paddingBottom: "var(--sp-7)" }}>
+      <div className="vh-section-head">
+        <div className="vh-eyebrow" style={{ marginBottom: 8 }}>Company</div>
+        <h1 className="vh-display" style={{ fontSize: "clamp(1.8rem, 1.3rem + 2vw, 2.6rem)" }}>About Vedic Hemp</h1>
         <p className="muted" style={{ maxWidth: 640 }}>
           Vedic Hemp is a regulated multi-vendor marketplace for hemp, CBD wellness, Ayurveda and
           medical cannabis in India — built so that compliance is a property of the platform, not
@@ -61,23 +64,27 @@ export default function AboutPage() {
         </p>
       </div>
 
-      <section style={{ marginBottom: 28 }}>
-        <Card title="Our mission">
+      <section className="vh-section" style={{ paddingBottom: 0 }}>
+        <Card>
+          <div className="vh-row" style={{ gap: 10, marginBottom: 10 }}>
+            <Compass size={18} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-accent)" }} />
+            <h3 style={{ margin: 0 }}>Our mission</h3>
+          </div>
           <p className="small">
-            India's hemp, wellness and Ayurveda sector is large, fragmented and mostly
-            self-certified. We think buyers deserve better than a seller's word: every regulated
+            India&apos;s hemp, wellness and Ayurveda sector is large, fragmented and mostly
+            self-certified. We think buyers deserve better than a seller&apos;s word: every regulated
             product on Vedic Hemp carries a batch-matched, independently issued lab report before
-            it can be sold, every seller's licence is checked before they can list, and every
-            access to a buyer's health information is logged and disclosed to that buyer.
+            it can be sold, every seller&apos;s licence is checked before they can list, and every
+            access to a buyer&apos;s health information is logged and disclosed to that buyer.
           </p>
           <p className="small" style={{ marginBottom: 0 }}>
-            We'd rather ship a smaller catalogue we can stand behind than a large one we can't.
+            We&apos;d rather ship a smaller catalogue we can stand behind than a large one we can&apos;t.
           </p>
         </Card>
       </section>
 
-      <section style={{ marginBottom: 28 }}>
-        <h2 style={{ marginBottom: 12 }}>The four verticals</h2>
+      <section className="vh-section" style={{ paddingBottom: 0 }}>
+        <SectionHead eyebrow="Structure" title="The four verticals" />
         <Card pad0>
           <DataTable columns={VERTICAL_COLUMNS} rows={VERTICAL_ROWS} />
         </Card>
@@ -89,8 +96,12 @@ export default function AboutPage() {
         </p>
       </section>
 
-      <section>
-        <Card title="Our regulatory posture">
+      <section className="vh-section" style={{ paddingBottom: 0 }}>
+        <Card>
+          <div className="vh-row" style={{ gap: 10, marginBottom: 10 }}>
+            <Scale size={18} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-accent)" }} />
+            <h3 style={{ margin: 0 }}>Our regulatory posture</h3>
+          </div>
           <ul className="small" style={{ paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8, margin: 0 }}>
             <li>
               We register and operate under the applicable Indian frameworks for each vertical:

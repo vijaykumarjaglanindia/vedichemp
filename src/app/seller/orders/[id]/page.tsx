@@ -9,8 +9,9 @@
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
+import { Download, Printer, Undo2 } from "lucide-react";
 import { Shell } from "../../Shell";
-import { Card, StatusPill, toneForStatus, MoneyText, Timeline, Banner } from "@/components/ui";
+import { Card, StatusPill, toneForStatus, MoneyText, Timeline } from "@/components/ui";
 import { findSellerOrder } from "../../_lib/data";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -59,13 +60,17 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
       title={`Order ${order.reference}`}
       actions={
         <span className="vh-row" style={{ gap: 8 }}>
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#invoice">Download invoice</a>
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#label">Print shipping label</a>
+          <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#invoice" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Download size={14} strokeWidth={2.2} aria-hidden /> Invoice
+          </a>
+          <a className="vh-btn vh-btn-sm vh-btn-primary" href="#label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Printer size={14} strokeWidth={2.2} aria-hidden /> Print label
+          </a>
         </span>
       }
     >
       <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
-        <div className="vh-grid" style={{ gap: 18 }}>
+        <div className="vh-grid" style={{ gap: "var(--sp-3)" }}>
           <Card title="Items">
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 12 }}>
               {order.items.map((it, i) => (
@@ -87,22 +92,22 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
           </Card>
 
           <Card title="Buyer address (masked)">
-            <div className="small">{order.buyer ?? "Buyer"}</div>
+            <div className="small" style={{ fontWeight: 600 }}>{order.buyer ?? "Buyer"}</div>
             <div className="small muted">{maskAddress(order.buyer)}</div>
             <div className="small muted" style={{ marginTop: 6 }}>Full address is revealed at label generation time only.</div>
           </Card>
         </div>
 
-        <div className="vh-grid" style={{ gap: 18 }}>
+        <div className="vh-grid" style={{ gap: "var(--sp-3)" }}>
           <Card>
             <div className="vh-row-between" style={{ marginBottom: 8 }}>
               <span className="small muted">Status</span>
               <StatusPill tone={toneForStatus(order.status)}>{order.status.replace(/_/g, " ")}</StatusPill>
             </div>
             {order.eta && (
-              <div className="vh-row-between" style={{ marginBottom: 8 }}>
+              <div className="vh-row-between">
                 <span className="small muted">ETA</span>
-                <span className="small">{order.eta}</span>
+                <span className="small tabular">{order.eta}</span>
               </div>
             )}
           </Card>
@@ -121,17 +126,21 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
                 <span>Total</span>
                 <MoneyText paise={order.totalPaise} />
               </div>
-              <a id="label" className="vh-btn vh-btn-sm vh-btn-ghost" style={{ marginTop: 12, width: "100%", textAlign: "center" }} href="#label">
-                Print shipping label
+              <a id="label" className="vh-btn vh-btn-sm vh-btn-ghost" style={{ marginTop: 12, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} href="#label">
+                <Printer size={14} strokeWidth={2.2} aria-hidden /> Print shipping label
               </a>
             </Card>
           </div>
 
           {order.status === "RETURNED" && (
-            <Banner severity="info" title="Refund note" icon="↩️">
-              The buyer is refunded first, immediately on return receipt — the marketplace recovers the amount from
-              this store's next settlement afterwards. Buyers are never collateral for a seller-side dispute.
-            </Banner>
+            <div className="vh-row" role="status" style={{ alignItems: "flex-start", gap: 10, border: "1px solid var(--vh-line)", borderLeft: "3px solid var(--vh-info)", borderRadius: "var(--vh-radius-sm)", padding: "12px 14px", background: "color-mix(in srgb, var(--vh-info-bg) 45%, var(--vh-surface))" }}>
+              <Undo2 size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-info)", marginTop: 2, flexShrink: 0 }} />
+              <div className="small">
+                <strong>Refund note.</strong> The buyer is refunded first, immediately on return receipt — the
+                marketplace recovers the amount from this store&rsquo;s next settlement afterwards. Buyers are never
+                collateral for a seller-side dispute.
+              </div>
+            </div>
           )}
         </div>
       </div>

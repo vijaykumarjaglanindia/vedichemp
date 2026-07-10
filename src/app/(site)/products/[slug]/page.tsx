@@ -1,17 +1,40 @@
 /**
- * VEDIC HEMP — PRODUCT DETAIL
+ * VEDIC HEMP — PRODUCT DETAIL (V2)
  *
  * A1: MED_CANNABIS is never rendered here for the public site — even a direct,
  * guessed URL for a medical-cannabis slug resolves to the same "not available"
  * empty state as a slug that doesn't exist at all. There is no partial reveal
  * (no title, no price, no seller name) for a product a public visitor may not see.
+ *
+ * Layout: two-column at ≥900px — gallery + anchored sections left, sticky
+ * purchase card right. All prices via MoneyText; totals are server-computed
+ * (the quantity select here is an input to the server, never a price source).
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { MoneyText, ComplianceBadge, EmptyState, Card, Banner } from "@/components/ui";
+import {
+  BadgeCheck,
+  FlaskConical,
+  RotateCcw,
+  ShieldCheck,
+  Store,
+} from "lucide-react";
+import { Banner, Card, ComplianceBadge, EmptyState, MoneyText, Rating } from "@/components/ui";
+import { AdSlot } from "@/components/ui/ads";
 import { CLASS_META, isRegulated } from "@/lib/compliance";
 import { PRODUCTS, SELLERS } from "@/lib/sample";
+import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
+import {
+  discountPct,
+  frequentlyBoughtWith,
+  PDP_QA,
+  PUBLIC_PRODUCTS,
+  sellerSlug,
+  similarProducts,
+  specsFor,
+} from "../../_lib/data";
+import { ProductCard, reviewCountFor } from "../../_lib/ProductCard";
 
 type Params = { slug: string };
 
@@ -32,7 +55,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
   // whether the slug is unknown or belongs to the medical-cannabis catalogue.
   if (!product || product.cls === "MED_CANNABIS") {
     return (
-      <div className="vh-container" style={{ paddingTop: 28, paddingBottom: 48 }}>
+      <div className="vh-container" style={{ paddingTop: "var(--sp-4)", paddingBottom: "var(--sp-6)" }}>
         <EmptyState
           icon="🚫"
           headline="This product isn't available"
@@ -46,32 +69,52 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
   const meta = CLASS_META[product.cls];
   const regulated = isRegulated(product.cls);
   const seller = SELLERS.find((s) => s.name === product.seller);
-  const reviewCount = 40 + Math.round(product.rating * 37);
-  const discountPct = Math.round(((product.mrpPaise - product.pricePaise) / product.mrpPaise) * 100);
+  const specs = specsFor(product);
+  const reviewCount = reviewCountFor(product);
+  const off = discountPct(product);
+  const fbt = frequentlyBoughtWith(product, 2);
+  const bundlePaise = product.pricePaise + fbt.reduce((sum, x) => sum + x.pricePaise, 0);
+  const similar = similarProducts(product, 6);
+  const adProduct = PUBLIC_PRODUCTS.find((p) => p.cls === "CBD_WELLNESS" && p.id !== product.id);
+
+  const crumbs = [
+    { name: "Catalogue", href: "/catalogue" },
+    { name: meta.short, href: `/catalogue?class=${product.cls}` },
+    { name: product.title, href: `/products/${product.slug}` },
+  ];
+
+  const TABS = [
+    { id: "description", label: "Description" },
+    { id: "lab-report", label: "Lab report" },
+    { id: "reviews", label: "Reviews" },
+    { id: "qa", label: "Q&A" },
+  ];
 
   return (
-    <div className="vh-container" style={{ paddingTop: 28, paddingBottom: 48 }}>
-      <p className="small muted" style={{ marginBottom: 16 }}>
-        <Link href="/catalogue">Catalogue</Link> &nbsp;/&nbsp;{" "}
-        <Link href={`/catalogue?class=${product.cls}`}>{meta.short}</Link> &nbsp;/&nbsp; {product.title}
-      </p>
+    <div className="vh-container" style={{ paddingTop: "var(--sp-4)", paddingBottom: "var(--sp-6)" }}>
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product)) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(crumbs)) }} />
 
-      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 32, alignItems: "start" }}>
-        {/* ── Gallery ─────────────────────────────────────── */}
+      <nav className="vh-breadcrumb" aria-label="Breadcrumb">
+        <Link href="/catalogue">Catalogue</Link> / <Link href={`/catalogue?class=${product.cls}`}>{meta.short}</Link> / {product.title}
+      </nav>
+
+      <div style={{ display: "grid", gridTemplateColumns: "minmax(0, 1.4fr) minmax(300px, 1fr)", gap: "var(--sp-5)", alignItems: "start" }}>
+        {/* ══ LEFT: gallery, specs, anchored sections ══════ */}
         <div>
-          <div
-            className="vh-product-media"
-            style={{ aspectRatio: "1", fontSize: "5rem", borderRadius: "var(--vh-radius)" }}
-            aria-hidden
-          >
+          {/* Gallery */}
+          <div className="vh-product-media" style={{ aspectRatio: "4 / 3", fontSize: "5rem", borderRadius: "var(--vh-radius)" }} aria-hidden>
             {product.emoji}
           </div>
           <div className="vh-row" style={{ gap: 8, marginTop: 8 }}>
-            {[0, 1, 2].map((i) => (
+            {[0, 1, 2, 3].map((i) => (
               <div
                 key={i}
                 className="vh-product-media"
-                style={{ width: 64, height: 64, fontSize: "1.6rem", borderRadius: "var(--vh-radius-sm)" }}
+                style={{
+                  width: 68, height: 68, fontSize: "1.6rem", borderRadius: "var(--vh-radius-sm)",
+                  border: i === 0 ? "2px solid var(--vh-accent)" : "1px solid var(--vh-line)",
+                }}
                 aria-hidden
               >
                 {product.emoji}
@@ -79,59 +122,55 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
             ))}
           </div>
           <p className="small muted" style={{ marginTop: 8 }}>Illustrative product imagery.</p>
-        </div>
 
-        {/* ── Buy box ─────────────────────────────────────── */}
-        <div>
-          <ComplianceBadge cls={product.cls} />
-          <h1 style={{ marginTop: 10 }}>{product.title}</h1>
-          <p className="small muted" style={{ marginTop: -6, marginBottom: 14 }}>
-            Sold by <Link href="/sell">{product.seller}</Link> · ★ {product.rating.toFixed(1)} ({reviewCount} reviews)
-          </p>
+          {/* Tab-look anchor nav */}
+          <nav className="vh-seg" aria-label="Product sections" style={{ margin: "var(--sp-4) 0 var(--sp-3)" }}>
+            {TABS.map((t, i) => (
+              <a key={t.id} href={`#${t.id}`} className={i === 0 ? "on" : ""}>{t.label}</a>
+            ))}
+          </nav>
 
-          <div className="vh-row" style={{ gap: 12, alignItems: "baseline", marginBottom: 4 }}>
-            <span style={{ fontSize: "1.7rem", fontWeight: 700, color: "var(--vh-ink)" }}>
-              <MoneyText paise={product.pricePaise} />
-            </span>
-            {product.mrpPaise > product.pricePaise && (
-              <>
-                <span className="muted" style={{ textDecoration: "line-through" }}>
-                  <MoneyText paise={product.mrpPaise} />
-                </span>
-                <span className="vh-pill vh-pill-ok">{discountPct}% off</span>
-              </>
-            )}
-          </div>
-          <p className="small muted" style={{ marginBottom: 18 }}>Inclusive of all taxes. Delivered in eco-friendly packaging.</p>
+          {/* Description + specs */}
+          <section id="description" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
+            <Card title="Description">
+              <p className="small">
+                {product.title} from {product.seller}. {meta.blurb} Copy on Vedic Hemp describes
+                composition and traditional use only — no product here claims to cure, treat or
+                prevent any disease.
+              </p>
+              <div style={{ overflowX: "auto" }}>
+                <table className="vh-table">
+                  <thead>
+                    <tr><th>Specification</th><th>Detail</th></tr>
+                  </thead>
+                  <tbody>
+                    <tr><td>Net weight</td><td>{specs.netWeight}</td></tr>
+                    <tr><td>Ingredients</td><td>{specs.ingredients}</td></tr>
+                    <tr><td>HSN code</td><td className="mono">{specs.hsn}</td></tr>
+                    <tr><td>Batch</td><td className="mono">{specs.batch}</td></tr>
+                    <tr><td>Testing / facility</td><td>{specs.lab}</td></tr>
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          </section>
 
-          <div className="vh-row" style={{ gap: 10, marginBottom: 14 }}>
-            <button type="button" className="vh-btn vh-btn-primary">Add to cart</button>
-            <button type="button" className="vh-btn vh-btn-ghost">Buy now</button>
-          </div>
-
-          {meta.ageGated && (
-            <Banner severity="warn" title="Age verification required">
-              This is a {meta.label.toLowerCase()} product. You must confirm you are 18 years or
-              older, and complete age verification at checkout, before this item can ship.
-            </Banner>
-          )}
-
-          <div style={{ marginTop: 18 }}>
-            <Card title="Lab Report / Certificate of Analysis">
+          {/* Lab report */}
+          <section id="lab-report" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
+            <Card title="Lab report / Certificate of Analysis">
               {regulated ? (
-                <div>
-                  <p className="small" style={{ marginBottom: 10 }}>
-                    Batch CoA · Lab Verified · THC ≤ 0.3%
-                  </p>
+                <>
+                  <div className="vh-row" style={{ gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
+                    <span className="vh-pill vh-pill-ok">CoA approved · batch {specs.batch}</span>
+                    <span className="vh-pill vh-pill-info">THC ≤ 0.3%</span>
+                  </div>
                   <p className="small muted" style={{ marginBottom: 12 }}>
                     Every batch of {meta.label.toLowerCase()} is tested by an independent lab
                     before the listing can go live — this product cannot be sold without an
-                    approved, batch-matched Certificate of Analysis (A2).
+                    approved, batch-matched Certificate of Analysis (A2). There is no override.
                   </p>
-                  <Link href="/trust#coa" className="vh-btn vh-btn-ghost vh-btn-sm">
-                    View CoA
-                  </Link>
-                </div>
+                  <Link href="/trust#coa" className="vh-btn vh-btn-outline vh-btn-sm">View CoA</Link>
+                </>
               ) : (
                 <p className="small muted" style={{ marginBottom: 0 }}>
                   {meta.label} is not a lab-gated compliance class. It ships under standard{" "}
@@ -140,43 +179,198 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
                 </p>
               )}
             </Card>
-          </div>
+          </section>
 
-          <div style={{ marginTop: 18 }}>
-            <Card title="Seller">
-              <div className="vh-row-between">
-                <div>
-                  <div style={{ fontWeight: 600, color: "var(--vh-ink)" }}>{product.seller}</div>
-                  <div className="small muted">
-                    {seller ? `${seller.classes.length} licensed categor${seller.classes.length === 1 ? "y" : "ies"} · Health score ${seller.healthScore}` : "Verified marketplace seller"}
-                  </div>
-                </div>
-                <Link href="/trust" className="small">Seller trust info →</Link>
-              </div>
-            </Card>
-          </div>
-
-          <div style={{ marginTop: 18 }}>
-            <Card title={`Reviews · ★ ${product.rating.toFixed(1)} (${reviewCount})`}>
-              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+          {/* Reviews */}
+          <section id="reviews" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
+            <Card
+              title="Reviews"
+              action={<Rating value={product.rating} count={reviewCount} />}
+            >
+              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
                 <li>
-                  <div className="small" style={{ fontWeight: 600, color: "var(--vh-ink)" }}>★★★★★ Priya M., verified buyer</div>
-                  <p className="small muted" style={{ marginBottom: 0 }}>
+                  <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
+                    <Rating value={5} />
+                    <strong className="small" style={{ color: "var(--vh-ink)" }}>Priya M.</strong>
+                    <span className="vh-pill vh-pill-ok">Verified purchase</span>
+                  </div>
+                  <p className="small muted" style={{ margin: "6px 0 0" }}>
                     Good packaging, arrived on time, and the batch CoA link on the invoice made me
                     comfortable buying again.
                   </p>
                 </li>
                 <li>
-                  <div className="small" style={{ fontWeight: 600, color: "var(--vh-ink)" }}>★★★★☆ Rohit K., verified buyer</div>
-                  <p className="small muted" style={{ marginBottom: 0 }}>
+                  <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
+                    <Rating value={4} />
+                    <strong className="small" style={{ color: "var(--vh-ink)" }}>Rohit K.</strong>
+                    <span className="vh-pill vh-pill-ok">Verified purchase</span>
+                  </div>
+                  <p className="small muted" style={{ margin: "6px 0 0" }}>
                     Solid everyday product. Would like more batches in stock at once.
                   </p>
                 </li>
               </ul>
+              <p className="small muted" style={{ marginTop: "var(--sp-3)", marginBottom: 0 }}>
+                Only verified purchases can review — ratings are computed by the platform.
+              </p>
             </Card>
+          </section>
+
+          {/* Q&A */}
+          <section id="qa" style={{ scrollMarginTop: 90 }}>
+            <Card title="Questions & answers">
+              <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-2)" }}>
+                {PDP_QA.map((f) => (
+                  <details key={f.q} style={{ border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "12px 16px" }}>
+                    <summary className="small" style={{ cursor: "pointer", fontWeight: 700, color: "var(--vh-ink)" }}>{f.q}</summary>
+                    <p className="small muted" style={{ marginTop: 8, marginBottom: 0 }}>{f.a}</p>
+                  </details>
+                ))}
+              </div>
+            </Card>
+          </section>
+        </div>
+
+        {/* ══ RIGHT: sticky purchase card ══════════════════ */}
+        <div className="vh-sticky-box">
+          <div className="vh-card" style={{ boxShadow: "var(--vh-shadow)" }}>
+            <ComplianceBadge cls={product.cls} />
+            <h1 style={{ fontSize: "1.35rem", margin: "10px 0 6px" }}>{product.title}</h1>
+            <div className="vh-row" style={{ gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
+              <Rating value={product.rating} count={reviewCount} />
+              <Link href={`/store/${sellerSlug(product.seller)}`} className="small" style={{ fontWeight: 700 }}>
+                {product.seller}
+              </Link>
+            </div>
+
+            <div className="vh-row" style={{ gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+              <span style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--vh-ink)" }}>
+                <MoneyText paise={product.pricePaise} />
+              </span>
+              {product.mrpPaise > product.pricePaise && (
+                <>
+                  <span className="muted" style={{ textDecoration: "line-through" }}>
+                    <MoneyText paise={product.mrpPaise} />
+                  </span>
+                  <span className="vh-pill vh-pill-ok">{off}% off</span>
+                </>
+              )}
+            </div>
+            <p className="small muted" style={{ margin: "4px 0 12px" }}>Inclusive of all taxes. Final total is computed at checkout by the server.</p>
+
+            <div className="vh-row" style={{ gap: 8, marginBottom: 12, flexWrap: "wrap" }}>
+              <span className="vh-pill vh-pill-ok">In stock</span>
+              <span className="small muted">Ships in 24h from {seller ? "a verified facility" : "seller facility"}</span>
+            </div>
+
+            <div className="vh-field" style={{ marginBottom: 12, maxWidth: 120 }}>
+              <label htmlFor="pdp-qty" className="vh-label">Quantity</label>
+              <select id="pdp-qty" className="vh-select" defaultValue="1">
+                {[1, 2, 3, 4, 5].map((n) => (
+                  <option key={n} value={n}>{n}</option>
+                ))}
+              </select>
+            </div>
+
+            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "var(--sp-3)" }}>
+              <button type="button" className="vh-btn vh-btn-primary vh-btn-lg">Add to cart</button>
+              <button type="button" className="vh-btn vh-btn-outline">Buy now</button>
+            </div>
+
+            {meta.ageGated && (
+              <Banner severity="warn" title="Age verification required">
+                This is an age-gated (18+) product. Age is verified at checkout and on delivery
+                handover — the check happens on the server, per order.
+              </Banner>
+            )}
+
+            <div style={{ borderTop: "1px solid var(--vh-line)", marginTop: "var(--sp-3)", paddingTop: "var(--sp-3)", display: "flex", flexDirection: "column", gap: 10 }}>
+              {[
+                { icon: FlaskConical, text: regulated ? `CoA verified · batch ${specs.batch}` : "Licensed food/AYUSH facility" },
+                { icon: BadgeCheck, text: seller ? `Licensed seller · health score ${seller.healthScore}` : "Licensed marketplace seller" },
+                { icon: ShieldCheck, text: "Secure PCI-DSS payment · UPI, cards, COD" },
+                { icon: RotateCcw, text: "Easy returns · buyer refunded first" },
+              ].map(({ icon: Icon, text }) => (
+                <span key={text} className="vh-row small" style={{ gap: 8 }}>
+                  <Icon size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-accent)", flexShrink: 0 }} />
+                  {text}
+                </span>
+              ))}
+            </div>
           </div>
         </div>
       </div>
+
+      {/* ── Frequently bought together ────────────────────── */}
+      {fbt.length > 0 && (
+        <section className="vh-section" style={{ paddingBottom: 0 }}>
+          <h2 className="vh-display" style={{ fontSize: "1.3rem", marginBottom: "var(--sp-3)" }}>Frequently bought together</h2>
+          <div className="vh-card vh-row" style={{ flexWrap: "wrap", gap: "var(--sp-4)", alignItems: "center" }}>
+            <div className="vh-row" style={{ gap: "var(--sp-3)", flexWrap: "wrap", flex: 1, minWidth: 280 }}>
+              {[product, ...fbt].map((p, i) => (
+                <div key={p.id} className="vh-row" style={{ gap: "var(--sp-3)" }}>
+                  {i > 0 && <span className="muted" aria-hidden style={{ fontSize: "1.2rem" }}>+</span>}
+                  <div style={{ width: 150 }}>
+                    <div className="vh-product-media" style={{ height: 84, fontSize: "1.8rem", borderRadius: "var(--vh-radius-sm)" }} aria-hidden>{p.emoji}</div>
+                    <div className="small" style={{ fontWeight: 700, color: "var(--vh-ink)", marginTop: 6, lineHeight: 1.3 }}>
+                      {i === 0 ? p.title : <Link href={`/products/${p.slug}`} style={{ color: "var(--vh-ink)" }}>{p.title}</Link>}
+                    </div>
+                    <span className="small"><MoneyText paise={p.pricePaise} /></span>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div style={{ textAlign: "right" }}>
+              <div className="small muted">Bundle total</div>
+              <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--vh-ink)" }}>
+                <MoneyText paise={bundlePaise} />
+              </div>
+              <button type="button" className="vh-btn vh-btn-primary vh-btn-sm" style={{ marginTop: 8 }}>
+                Add all {1 + fbt.length} to cart
+              </button>
+            </div>
+          </div>
+        </section>
+      )}
+
+      {/* ── Similar products ──────────────────────────────── */}
+      {similar.length > 0 && (
+        <section className="vh-section" style={{ paddingBottom: 0 }}>
+          <h2 className="vh-display" style={{ fontSize: "1.3rem", marginBottom: "var(--sp-3)" }}>Similar products</h2>
+          <div className="vh-scroller" style={{ gridAutoColumns: "minmax(220px, 250px)" }}>
+            {similar.map((p) => (
+              <ProductCard key={p.id} p={p} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* ── Sponsored (labelled, A1-guarded) ──────────────── */}
+      {adProduct && (
+        <section className="vh-section" style={{ paddingBottom: 0 }}>
+          <AdSlot cls={adProduct.cls} placement="pdp-related-sponsored">
+            <div className="vh-row" style={{ gap: "var(--sp-3)", flexWrap: "wrap" }}>
+              <span className="vh-product-media" style={{ width: 72, height: 72, fontSize: "1.8rem", borderRadius: "var(--vh-radius-sm)", display: "flex", flexShrink: 0 }} aria-hidden>
+                {adProduct.emoji}
+              </span>
+              <div style={{ flex: 1, minWidth: 220 }}>
+                <div style={{ fontWeight: 700, color: "var(--vh-ink)" }}>{adProduct.title}</div>
+                <div className="vh-row" style={{ gap: 8, flexWrap: "wrap", marginTop: 4 }}>
+                  <Rating value={adProduct.rating} />
+                  <strong style={{ color: "var(--vh-ink)" }}><MoneyText paise={adProduct.pricePaise} /></strong>
+                </div>
+              </div>
+              <Link href={`/products/${adProduct.slug}`} className="vh-btn vh-btn-outline vh-btn-sm" style={{ gap: 6 }}>
+                <Store size={14} strokeWidth={2.2} aria-hidden />
+                View product
+              </Link>
+            </div>
+          </AdSlot>
+          <p className="small muted" style={{ marginTop: 8, marginBottom: 0, fontSize: ".72rem" }}>
+            Placements configured in Admin → Ads.
+          </p>
+        </section>
+      )}
     </div>
   );
 }

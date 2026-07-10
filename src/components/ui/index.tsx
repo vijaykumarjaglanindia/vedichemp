@@ -173,6 +173,39 @@ export function Timeline({ nodes }: { nodes: { label: string; at?: string; actor
   );
 }
 
+/* ── Rating (stars + count, never colour alone) ────────────── */
+export function Rating({ value, count }: { value: number; count?: number }) {
+  const full = Math.round(value);
+  return (
+    <span className="vh-rating" aria-label={`Rated ${value} out of 5${count ? ` by ${count} buyers` : ""}`}>
+      <span className="stars" aria-hidden>{"★".repeat(full)}{"☆".repeat(5 - full)}</span>
+      <span className="tabular">{value.toFixed(1)}</span>
+      {count !== undefined && <span className="count tabular">({count.toLocaleString("en-IN")})</span>}
+    </span>
+  );
+}
+
+/* ── Skeleton (loading placeholder) ────────────────────────── */
+export function Skeleton({ w, h = 14, r }: { w?: number | string; h?: number | string; r?: number }) {
+  return <span className="vh-skeleton" aria-hidden style={{ display: "block", width: w ?? "100%", height: h, borderRadius: r }} />;
+}
+
+/* ── Section head (marketing rhythm) ───────────────────────── */
+export function SectionHead({
+  eyebrow, title, sub, action,
+}: { eyebrow?: string; title: string; sub?: string; action?: ReactNode }) {
+  return (
+    <div className="vh-row-between" style={{ alignItems: "flex-end", marginBottom: "var(--sp-5)", flexWrap: "wrap", gap: 12 }}>
+      <div className="vh-section-head" style={{ marginBottom: 0 }}>
+        {eyebrow && <div className="vh-eyebrow" style={{ marginBottom: 8 }}>{eyebrow}</div>}
+        <h2 style={{ marginBottom: sub ? 8 : 0 }}>{title}</h2>
+        {sub && <p style={{ margin: 0 }} className="muted">{sub}</p>}
+      </div>
+      {action}
+    </div>
+  );
+}
+
 /* ── Progress ring (SSR, SVG) ──────────────────────────────── */
 export function ProgressRing({ percent, size = 64 }: { percent: number; size?: number }) {
   const r = (size - 8) / 2;

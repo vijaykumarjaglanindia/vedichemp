@@ -9,10 +9,23 @@
  */
 
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import { Megaphone, FlaskConical, Archive, Stethoscope, CalendarClock, UsersRound } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, Banner } from "@/components/ui";
 
 export const metadata: Metadata = { title: "Prohibition Registry · Admin" };
+
+const I = { size: 18, strokeWidth: 2.2 } as const;
+
+const PROHIBITION_ICON: Record<string, ReactNode> = {
+  A1: <Megaphone {...I} aria-hidden />,
+  A2: <FlaskConical {...I} aria-hidden />,
+  A3: <Archive {...I} aria-hidden />,
+  A4: <Stethoscope {...I} aria-hidden />,
+  A5: <CalendarClock {...I} aria-hidden />,
+  A6: <UsersRound {...I} aria-hidden />,
+};
 
 interface Prohibition {
   code: string;
@@ -87,7 +100,7 @@ const PROHIBITIONS: Prohibition[] = [
 export default function AdminProhibitionsPage() {
   return (
     <Shell active="/admin/prohibitions" breadcrumb={["Admin", "Prohibitions"]} title="Prohibition Registry">
-      <div className="vh-grid" style={{ gap: 18 }}>
+      <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
         <Banner severity="danger" title="These are absences, not settings">
           Each prohibition below is asserted by a test that fails the build if weakened. A PR that deletes, skips or
           weakens one of these tests fails review by a CODEOWNERS rule on{" "}
@@ -115,7 +128,12 @@ export default function AdminProhibitionsPage() {
               <tbody>
                 {PROHIBITIONS.map((p) => (
                   <tr key={p.code}>
-                    <td className="mono" style={{ fontWeight: 700, verticalAlign: "top" }}>{p.code}</td>
+                    <td style={{ verticalAlign: "top" }}>
+                      <span className="vh-row" style={{ gap: 8, alignItems: "center" }}>
+                        <span aria-hidden style={{ color: "var(--vh-accent)", display: "inline-flex" }}>{PROHIBITION_ICON[p.code]}</span>
+                        <span className="mono" style={{ fontWeight: 700 }}>{p.code}</span>
+                      </span>
+                    </td>
                     <td style={{ maxWidth: 260, verticalAlign: "top" }}>{p.rule}</td>
                     <td style={{ verticalAlign: "top" }}>
                       <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 4 }}>

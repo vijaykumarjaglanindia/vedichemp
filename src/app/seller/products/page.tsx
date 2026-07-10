@@ -7,11 +7,15 @@
  */
 
 import type { Metadata } from "next";
+import { Search, PackagePlus, Upload, Pencil, FlaskConical } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, ComplianceBadge, MoneyText, type Column } from "@/components/ui";
-import { SELLER_PRODUCTS, type SellerProduct } from "../_lib/data";
+import { BarList } from "@/components/ui/charts";
+import { SELLER_PRODUCTS, LISTING_QUALITY, type SellerProduct } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Products" };
+
+const STATUS_TABS = ["ALL", "LIVE", "DRAFT"] as const;
 
 function coaSummary(p: SellerProduct): { tone: "ok" | "warn" | "danger" | "neutral"; text: string } {
   if (p.batches.length === 0) return { tone: "neutral", text: "No batches yet" };
@@ -20,7 +24,21 @@ function coaSummary(p: SellerProduct): { tone: "ok" | "warn" | "danger" | "neutr
   return { tone: "ok", text: "All approved" };
 }
 
-export default function SellerProductsPage() {
+export default async function SellerProductsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ status?: string; q?: string }>;
+}) {
+  const { status: rawStatus, q } = await searchParams;
+  const status = STATUS_TABS.includes(rawStatus as (typeof STATUS_TABS)[number])
+    ? (rawStatus as (typeof STATUS_TABS)[number])
+    : "ALL";
+  const query = (q ?? "").trim().toLowerCase();
+
+  const rows = SELLER_PRODUCTS
+    .filter((p) => (status === "ALL" ? true : p.listingState === status))
+    .filter((p) => (query ? p.title.toLowerCase().includes(query) : true));
+
   const columns: Column<SellerProduct>[] = [
     {
       key: "title", header: "Product", render: (p) => (
@@ -41,8 +59,19 @@ export default function SellerProductsPage() {
         return <StatusPill tone={s.tone}>{s.text}</StatusPill>;
       },
     },
-    { key: "batches", header: "Batches", render: (p) => `${p.batches.length}` },
-    { key: "actions", header: "", align: "right", render: (p) => <a className="small" href={`/seller/products/${p.id}`}>Edit →</a> },
+    { key: "batches", header: "Batches", align: "right", render: (p) => <span className="tabular">{p.batches.length}</span> },
+    {
+      key: "actions", header: "", align: "right", render: (p) => (
+        <span className="vh-row" style={{ gap: 4, justifyContent: "flex-end" }}>
+          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/seller/products/${p.id}`} aria-label={`Edit ${p.title}`}>
+            <Pencil size={14} strokeWidth={2.2} aria-hidden />
+          </a>
+          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/seller/products/${p.id}#coa-upload`} aria-label={`Upload lab report for ${p.title}`}>
+            <FlaskConical size={14} strokeWidth={2.2} aria-hidden />
+          </a>
+        </span>
+      ),
+    },
   ];
 
   return (
@@ -52,18 +81,74 @@ export default function SellerProductsPage() {
       title="Products"
       actions={
         <span className="vh-row" style={{ gap: 8 }}>
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#bulk-upload">Bulk upload</a>
-          <a className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/products/new">+ Add product</a>
+          <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#bulk-upload" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Upload size={14} strokeWidth={2.2} aria-hidden /> Bulk upload
+          </a>
+          <a className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/products/new" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <PackagePlus size={14} strokeWidth={2.2} aria-hidden /> Add product
+          </a>
         </span>
       }
     >
+      {/* Toolbar */}
+      <div className="vh-row-between" style={{ marginBottom: "var(--sp-3)", flexWrap: "wrap", gap: 8 }}>
+        <form method="GET" action="/seller/products" className="vh-row" style={{ gap: 8, flex: "1 1 280px", maxWidth: 420 }}>
+          {status !== "ALL" && <input type="hidden" name="status" value={status} />}
+          <div style={{ position: "relative", flex: 1 }}>
+            <Search size={15} strokeWidth={2.2} aria-hidden style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--vh-muted)" }} />
+            <input
+              className="vh-input"
+              type="search"
+              name="q"
+              defaultValue={q ?? ""}
+              placeholder="Search products…"
+              aria-label="Search products"
+              style={{ paddingLeft: 36 }}
+            />
+          </div>
+          <button className="vh-btn vh-btn-sm vh-btn-ghost" type="submit">Search</button>
+        </form>
+        <nav className="vh-seg" aria-label="Listing status filter">
+          {STATUS_TABS.map((t) => {
+            const href = t === "ALL"
+              ? `/seller/products${query ? `?q=${encodeURIComponent(query)}` : ""}`
+              : `/seller/products?status=${t}${query ? `&q=${encodeURIComponent(query)}` : ""}`;
+            return (
+              <a key={t} href={href} className={t === status ? "on" : undefined} aria-current={t === status ? "true" : undefined}>
+                {t === "ALL" ? "All" : t.charAt(0) + t.slice(1).toLowerCase()}
+              </a>
+            );
+          })}
+        </nav>
+      </div>
+
       <Card pad0>
-        <DataTable columns={columns} rows={SELLER_PRODUCTS} empty={<div className="vh-empty">No products yet — add your first product.</div>} />
+        <DataTable
+          columns={columns}
+          rows={rows}
+          empty={<div className="vh-empty">No products match — clear the search or <a href="/seller/products/new">add your first product</a>.</div>}
+        />
       </Card>
-      <p className="small muted" style={{ marginTop: 10 }}>
+      <p className="small muted" style={{ margin: "8px 0 var(--sp-4)" }}>
         Regulated classes (CBD Wellness, Medical Cannabis) display CoA status per batch. A batch without an APPROVED,
         batch-matched Certificate of Analysis cannot be published — see each product for the batch breakdown (A2).
       </p>
+
+      <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
+        <Card title="Listing quality" action={<span className="small muted">Across {SELLER_PRODUCTS.length} listings</span>}>
+          <BarList items={LISTING_QUALITY} />
+          <p className="small muted" style={{ marginBottom: 0, marginTop: 12 }}>
+            Better images and complete attributes lift search rank; CoA coverage is a hard publish gate, not a score (A2).
+          </p>
+        </Card>
+        <Card title="Bulk upload">
+          <div id="bulk-upload" className="vh-dropzone">
+            <Upload size={20} strokeWidth={2.2} aria-hidden style={{ marginBottom: 8 }} />
+            <div style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--vh-ink)" }}>Drop a CSV to create or update listings</div>
+            <div className="small" style={{ marginTop: 4 }}>Template includes HSN, class and batch columns. Regulated rows are created as DRAFT until each batch&rsquo;s CoA is approved.</div>
+          </div>
+        </Card>
+      </div>
     </Shell>
   );
 }

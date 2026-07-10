@@ -1,31 +1,40 @@
 /**
  * VEDIC HEMP — WALLET (§1.7)
+ *
+ * All amounts are integer paise from the server ledger; the ledger itself is
+ * append-only (A3 discipline) — corrections are new rows, never edits.
  */
 
 import type { Metadata } from "next";
+import type { ReactNode } from "react";
+import { Landmark, PieChart, ReceiptText, TrendingUp } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, Stat, DataTable, StatusPill, toneForStatus, MoneyText, Banner, type Column } from "@/components/ui";
+import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
+import { Sparkline, Donut } from "@/components/ui/charts";
+import { LEDGER, type LedgerRow, WALLET_SPLIT, WALLET_BALANCE_PAISE, WALLET_TREND } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Wallet" };
 
-interface LedgerRow { id: string; at: string; kind: string; note: string; amountPaise: number; status: string }
+const I = { size: 16, strokeWidth: 2.2 } as const;
 
-const LEDGER: LedgerRow[] = [
-  { id: "tx1", at: "2026-07-08", kind: "CASHBACK", note: "Order VH2026070912 · 2% cashback", amountPaise: 3538, status: "POSTED" },
-  { id: "tx2", at: "2026-07-02", kind: "REFUND", note: "Return · order VH2026062810", amountPaise: 249900, status: "POSTED" },
-  { id: "tx3", at: "2026-06-30", kind: "PROMO", note: "Welcome bonus", amountPaise: 10000, status: "POSTED" },
-  { id: "tx4", at: "2026-06-28", kind: "DEBIT", note: "Applied to order VH2026062810", amountPaise: -50000, status: "POSTED" },
-  { id: "tx5", at: "2026-06-20", kind: "WITHDRAWAL", note: "Payout to bank ····4471", amountPaise: -100000, status: "PROCESSING" },
+function title(icon: ReactNode, text: string) {
+  return (
+    <span className="vh-row" style={{ gap: 8 }}>
+      <span aria-hidden style={{ display: "inline-flex", color: "var(--vh-accent)" }}>{icon}</span>
+      {text}
+    </span>
+  );
+}
+
+const SPLIT_SEGMENTS = [
+  { label: "Cashback", value: WALLET_SPLIT.cashbackPaise, color: "var(--vh-accent)" },
+  { label: "Promo credit", value: WALLET_SPLIT.promoPaise, color: "var(--vh-saffron)" },
+  { label: "Refunds", value: WALLET_SPLIT.refundsPaise, color: "var(--vh-info)" },
 ];
-
-const CASHBACK_PAISE = 68450;
-const PROMO_PAISE = 10000;
-const REFUNDS_PAISE = 50000;
-const BALANCE_PAISE = CASHBACK_PAISE + PROMO_PAISE + REFUNDS_PAISE;
 
 export default function WalletPage() {
   const columns: Column<LedgerRow>[] = [
-    { key: "at", header: "Date", render: (r) => r.at },
+    { key: "at", header: "Date", render: (r) => <span className="tabular">{r.at}</span> },
     {
       key: "kind", header: "Type", render: (r) => (
         <span className="vh-row" style={{ gap: 8 }}>
@@ -39,23 +48,59 @@ export default function WalletPage() {
 
   return (
     <Shell active="/account/wallet" breadcrumb={["My Account", "Wallet"]} title="Wallet">
-      <div className="vh-grid" style={{ gap: 18 }}>
-        <div className="vh-grid cols-4">
-          <Stat label="Total balance" value={<MoneyText paise={BALANCE_PAISE} />} />
-          <Stat label="Cashback" value={<MoneyText paise={CASHBACK_PAISE} />} />
-          <Stat label="Promo credit" value={<MoneyText paise={PROMO_PAISE} />} />
-          <Stat label="Refunds" value={<MoneyText paise={REFUNDS_PAISE} />} />
+      <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
+        <div className="vh-grid cols-3" style={{ alignItems: "stretch" }}>
+          {/* Balance + trend */}
+          <Card title={title(<TrendingUp {...I} />, "Balance")}>
+            <div className="vh-stat" style={{ marginBottom: 8 }}>
+              <span className="vh-stat-label">Total balance</span>
+              <span className="vh-stat-value tabular"><MoneyText paise={WALLET_BALANCE_PAISE} /></span>
+              <span className="vh-stat-delta-up">▲ ₹35.38 cashback this week</span>
+            </div>
+            <Sparkline points={WALLET_TREND} width={220} height={48} label="Wallet balance trend, last 7 weeks" />
+          </Card>
+
+          {/* Split donut */}
+          <Card title={title(<PieChart {...I} />, "Where your balance comes from")}>
+            <div className="vh-row" style={{ gap: 16, alignItems: "center" }}>
+              <Donut segments={SPLIT_SEGMENTS} size={116} />
+              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8, flex: 1 }}>
+                {SPLIT_SEGMENTS.map((s) => (
+                  <li key={s.label} className="vh-row-between small">
+                    <span className="vh-row" style={{ gap: 8 }}>
+                      <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: s.color, flexShrink: 0 }} />
+                      {s.label}
+                    </span>
+                    <MoneyText paise={s.value} />
+                  </li>
+                ))}
+              </ul>
+            </div>
+          </Card>
+
+          {/* Withdrawals — gated with clear remediation */}
+          <Card title={title(<Landmark {...I} />, "Withdraw to bank")}>
+            <div className="vh-row" style={{ gap: 8, marginBottom: 8 }}>
+              <StatusPill tone="warn">Identity not verified</StatusPill>
+            </div>
+            <p className="small muted" style={{ margin: "0 0 8px" }}>
+              Withdrawing cashback or refunds to your bank account unlocks after a one-time identity
+              verification. Promo credit is non-withdrawable and can only be used against orders.
+            </p>
+            <a className="vh-btn vh-btn-sm vh-btn-primary" href="/account/profile#security">
+              Verify identity to withdraw
+            </a>
+            <p className="small muted" style={{ margin: "8px 0 0" }}>
+              Takes about 2 minutes in Profile → Security.
+            </p>
+          </Card>
         </div>
 
-        <Banner severity="info" title="Withdrawals" icon="🏦">
-          Withdrawing to your bank account requires identity verification. Promo credit is non-withdrawable
-          and can only be used against orders.{" "}
-          <span className="vh-btn vh-btn-sm vh-btn-ghost" aria-disabled style={{ marginLeft: 8 }}>
-            Verify identity to withdraw
-          </span>
-        </Banner>
-
-        <Card title="Transaction history" action={<span className="small muted">Append-only ledger — entries are never edited or deleted</span>}>
+        <Card
+          title={title(<ReceiptText {...I} />, "Transaction history")}
+          action={<span className="small muted">Append-only ledger — entries are never edited or deleted</span>}
+          pad0
+        >
           <DataTable columns={columns} rows={LEDGER} />
         </Card>
 

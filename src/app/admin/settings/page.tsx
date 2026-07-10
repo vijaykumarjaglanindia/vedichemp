@@ -9,10 +9,16 @@
  */
 
 import type { Metadata } from "next";
+import {
+  ShieldCheck, Percent, ReceiptText, Truck, CreditCard, BellRing, ScrollText, KeyRound, ToggleLeft,
+} from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, Banner } from "@/components/ui";
+import { FEATURE_FLAGS, API_KEYS } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Settings · Admin" };
+
+const I = { size: 16, strokeWidth: 2.2 } as const;
 
 const SOD_PAIRS = [
   { a: "ADMIN_FINANCE", b: "ADMIN_FINANCE_APPROVER", note: "The admin who prepares a settlement or refund (maker) cannot also hold the approver (checker) role — enforced at grant time, not just at click time." },
@@ -30,40 +36,48 @@ const ROLES = [
 export default function AdminSettingsPage() {
   return (
     <Shell active="/admin/settings" breadcrumb={["Admin", "Settings"]} title="System settings">
-      <div className="vh-grid" style={{ gap: 18 }}>
+      <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
         <Banner severity="danger" title="No superadmin">
           There is no <code>PLATFORM_OWNER</code>-can-do-everything role. <code>ADMIN_OWNER</code> can appoint the
           people who read prescriptions, approve money and adjudicate disputes — it cannot itself do any of those
           three things. This is a deliberate design choice (CLAUDE.md §7), not a gap.
         </Banner>
 
-        <Card title="Roles & permissions — separation of duties">
+        <Banner severity="info" title="Every change on this page is maker–checker">
+          Tax slabs, shipping rules, gateway routing, notification templates, feature flags and key rotation are all
+          proposed by one admin and confirmed by a second, different admin before they apply. Configuration is a
+          money-and-eligibility surface too — it gets the same A6 treatment as a settlement.
+        </Banner>
+
+        <Card title={<span className="vh-row" style={{ gap: 8 }}><ShieldCheck {...I} aria-hidden /> Roles & permissions — separation of duties</span>}>
           <p className="small muted" style={{ marginTop: 0 }}>
             These role pairs are mutually exclusive on a single account: granting one revokes eligibility for the
             other, enforced at grant time by the roles service, not by a checkbox in this UI.
           </p>
-          <table className="vh-table">
-            <thead><tr><th>Role A</th><th>Cannot also hold</th><th>Why</th></tr></thead>
-            <tbody>
-              {SOD_PAIRS.map((p) => (
-                <tr key={p.a}>
-                  <td className="mono small">{p.a}</td>
-                  <td className="mono small">{p.b}</td>
-                  <td className="small">{p.note}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-          <div className="vh-row" style={{ gap: 6, flexWrap: "wrap", marginTop: 14 }}>
+          <div style={{ overflowX: "auto" }}>
+            <table className="vh-table">
+              <thead><tr><th>Role A</th><th>Cannot also hold</th><th>Why</th></tr></thead>
+              <tbody>
+                {SOD_PAIRS.map((p) => (
+                  <tr key={p.a}>
+                    <td className="mono small">{p.a}</td>
+                    <td className="mono small">{p.b}</td>
+                    <td className="small">{p.note}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          <div className="vh-row" style={{ gap: 6, flexWrap: "wrap", marginTop: "var(--sp-3)" }}>
             {ROLES.map((r) => <StatusPill key={r} tone="neutral">{r}</StatusPill>)}
           </div>
         </Card>
 
         <div className="vh-grid cols-2">
-          <Card title="Tax rules">
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><ReceiptText {...I} aria-hidden /> Tax rules</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>GST slabs by HSN code, TCS/TDS thresholds by seller turnover — computed server-side at checkout, editable here with a change log.</p>
           </Card>
-          <Card title="Commission rules (A5)">
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><Percent {...I} aria-hidden /> Commission rules (A5)</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>
               Every commission schedule change is subject to <code>CHECK (effectiveFrom &gt;= noticeSentAt +
               interval &apos;30 days&apos;)</code> at the database. This settings page can draft a new schedule and
@@ -74,15 +88,15 @@ export default function AdminSettingsPage() {
         </div>
 
         <div className="vh-grid cols-2">
-          <Card title="Shipping">
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><Truck {...I} aria-hidden /> Shipping</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>Carrier zones, SLA tiers, COD eligibility by pincode and compliance class (MED_CANNABIS ships signature-required only).</p>
           </Card>
-          <Card title="Payments">
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><CreditCard {...I} aria-hidden /> Payments</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>Gateway routing, settlement bank accounts (masked here — full account numbers are never returned to this console).</p>
           </Card>
         </div>
 
-        <Card title="Notification templates">
+        <Card title={<span className="vh-row" style={{ gap: 8 }}><BellRing {...I} aria-hidden /> Notification templates</span>}>
           <p className="small muted" style={{ marginTop: 0 }}>
             Rx-view buyer notifications, recall notices, and settlement statements are templated here. No template
             in this list is permitted to include health data in its subject line — the linter that checks this runs
@@ -91,18 +105,51 @@ export default function AdminSettingsPage() {
         </Card>
 
         <div className="vh-grid cols-2">
-          <Card title="Audit logs">
-            <p className="small muted" style={{ marginTop: 0 }}>Full AuditLog and SensitiveAccessLog search lives here for ADMIN_AUDITOR and ADMIN_SECURITY. Both tables are append-only.</p>
-            <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/compliance">Open compliance logs →</a>
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><ToggleLeft {...I} aria-hidden /> Feature flags</span>} pad0>
+            <table className="vh-table">
+              <thead><tr><th>Flag</th><th>Description</th><th>State</th></tr></thead>
+              <tbody>
+                {FEATURE_FLAGS.map((f) => (
+                  <tr key={f.key}>
+                    <td className="mono small" style={{ fontWeight: 600 }}>{f.key}</td>
+                    <td className="small muted">{f.desc}</td>
+                    <td><StatusPill tone={f.status === "ON" ? "ok" : "neutral"}>{f.status}</StatusPill></td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="small muted" style={{ margin: 0, padding: "12px 18px 16px" }}>
+              Feature flags never gate a prohibition (A1–A6) — those are compile-time absences, not runtime toggles.
+            </p>
           </Card>
-          <Card title="API keys & feature flags">
-            <p className="small muted" style={{ marginTop: 0 }}>
+
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><KeyRound {...I} aria-hidden /> API keys</span>} pad0>
+            <table className="vh-table">
+              <thead><tr><th>Key</th><th>Scope</th><th>Last used</th></tr></thead>
+              <tbody>
+                {API_KEYS.map((k) => (
+                  <tr key={k.id}>
+                    <td>
+                      <div style={{ fontWeight: 600 }}>{k.name}</div>
+                      <div className="mono small muted">{k.masked}</div>
+                    </td>
+                    <td className="mono small">{k.scope}</td>
+                    <td className="small muted">{k.lastUsed}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+            <p className="small muted" style={{ margin: 0, padding: "12px 18px 16px" }}>
               Service-account API keys are scoped and rotatable, and are structurally barred from being a maker or
-              checker on any money-moving action (A6). Feature flags never gate a prohibition (A1–A6) — those are
-              compile-time absences, not runtime toggles.
+              checker on any money-moving action (A6). Full key material is shown once at creation, never again.
             </p>
           </Card>
         </div>
+
+        <Card title={<span className="vh-row" style={{ gap: 8 }}><ScrollText {...I} aria-hidden /> Audit logs</span>}>
+          <p className="small muted" style={{ marginTop: 0 }}>Full AuditLog and SensitiveAccessLog search lives here for ADMIN_AUDITOR and ADMIN_SECURITY. Both tables are append-only.</p>
+          <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/compliance">Open compliance logs →</a>
+        </Card>
       </div>
     </Shell>
   );
