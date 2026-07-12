@@ -13,8 +13,9 @@ import { FileDown, LifeBuoy, Package, Receipt, RotateCcw, Truck } from "lucide-r
 import { Shell } from "../../Shell";
 import { Card, StatusPill, toneForStatus, MoneyText, Timeline, Banner } from "@/components/ui";
 import { ORDERS, PRODUCTS, type SampleOrder } from "@/lib/sample";
-import { readOrderHistory } from "@/lib/engage";
+import { readOrderHistory, readReturns } from "@/lib/engage";
 import { addToCart } from "../../../(site)/cart/actions";
+import { requestReturn } from "../actions";
 
 export const metadata: Metadata = { title: "Order details" };
 
@@ -37,8 +38,16 @@ function title(icon: ReactNode, text: string) {
   );
 }
 
-export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OrderDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ ret?: string }>;
+}) {
   const { id } = await params;
+  const { ret } = await searchParams;
+  const returnRequest = (await readReturns())[id];
 
   // Orders placed in this session live under `live-<reference>` ids and come
   // from the server-written history cookie; sample history stays as-is.
@@ -235,11 +244,45 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             <Link className="vh-btn vh-btn-sm vh-btn-outline" href="/account/support">Contact support</Link>
           </Card>
 
-          {order.status === "DELIVERED" ? (
-            <Banner severity="info" title="Return window open" icon="↩️">
-              <span id="return">Eligible for return until 7 days after delivery.</span>{" "}
-              <a href="#return">Start a return →</a>
-            </Banner>
+          {order.status === "DELIVERED" && returnRequest ? (
+            <div id="return" style={{ scrollMarginTop: 90 }}>
+              <Banner severity="ok" title="Return requested" icon="↩️">
+                Reason: {returnRequest.reason} · requested {returnRequest.at}. The seller&rsquo;s
+                delivery partner picks it up; your refund is issued on pickup confirmation —
+                recovery from the seller happens afterwards, never at your expense.
+              </Banner>
+            </div>
+          ) : order.status === "DELIVERED" ? (
+            <div id="return" style={{ scrollMarginTop: 90 }}>
+              <Card title="Start a return">
+                {ret === "reason" && (
+                  <div style={{ marginBottom: 10 }}>
+                    <Banner severity="danger">Pick a return reason first.</Banner>
+                  </div>
+                )}
+                <p className="small muted" style={{ marginTop: 0 }}>
+                  Eligible until 7 days after delivery. Refund-first: you are credited on pickup
+                  confirmation, before any seller-side recovery.
+                </p>
+                <form action={requestReturn} className="vh-row" style={{ gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+                  <input type="hidden" name="orderId" value={order.id} />
+                  <div className="vh-field" style={{ minWidth: 220 }}>
+                    <label className="vh-label" htmlFor="ret-reason">Reason <span className="req">*</span></label>
+                    <select className="vh-select" id="ret-reason" name="reason" required defaultValue="">
+                      <option value="" disabled>Choose a reason…</option>
+                      <option>Damaged in transit</option>
+                      <option>Wrong item received</option>
+                      <option>Expired or near expiry</option>
+                      <option>Quality not as described</option>
+                      <option>No longer needed</option>
+                    </select>
+                  </div>
+                  <button type="submit" className="vh-btn vh-btn-sm vh-btn-danger">
+                    <RotateCcw size={14} strokeWidth={2.2} aria-hidden /> Request return
+                  </button>
+                </form>
+              </Card>
+            </div>
           ) : order.status === "RETURNED" ? (
             <Banner severity="ok" title="Return processed" icon="✅">
               Refund credited to your Wallet — see <Link href="/account/wallet">Wallet</Link>.

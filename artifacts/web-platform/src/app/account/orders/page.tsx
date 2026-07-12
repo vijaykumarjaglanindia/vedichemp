@@ -12,7 +12,7 @@ import { Eye, FileDown, MapPin } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
 import { ORDERS, type SampleOrder } from "@/lib/sample";
-import { readOrderHistory } from "@/lib/engage";
+import { readOrderHistory, readReturns } from "@/lib/engage";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -47,10 +47,13 @@ export default async function OrdersPage({
     seller: o.items[0]?.seller,
   }));
 
-  const rows = [...placed, ...ORDERS].filter((o) => {
+  const returns = await readReturns();
+  const rows = [...placed, ...ORDERS]
+    .map((o) => (returns[o.id] ? { ...o, status: "RETURN_REQUESTED" } : o))
+    .filter((o) => {
     if (filter === "open") return OPEN_STATUSES.has(o.status);
     if (filter === "delivered") return o.status === "DELIVERED";
-    if (filter === "returned") return o.status === "RETURNED";
+    if (filter === "returned") return o.status === "RETURNED" || o.status === "RETURN_REQUESTED";
     return true;
   });
 

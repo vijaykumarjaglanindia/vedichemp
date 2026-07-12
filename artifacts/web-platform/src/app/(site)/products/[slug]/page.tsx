@@ -32,7 +32,8 @@ import { CLASS_META, isRegulated } from "@/lib/compliance";
 import { PRODUCTS, SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
 import { addBundleToCart, addToCart } from "../../cart/actions";
-import { toggleWishlist } from "../../actions";
+import { askQuestion, submitReview, toggleWishlist } from "../../actions";
+import { readMyQuestions, readMyReviews, readOrderHistory } from "@/lib/engage";
 import {
   discountPct,
   frequentlyBoughtWith,
@@ -89,10 +90,10 @@ export default async function ProductDetailPage({
   searchParams,
 }: {
   params: Promise<Params>;
-  searchParams: Promise<{ pin?: string }>;
+  searchParams: Promise<{ pin?: string; review?: string; q?: string }>;
 }) {
   const { slug } = await params;
-  const { pin } = await searchParams;
+  const { pin, review: reviewErr, q: qErr } = await searchParams;
   const product = PRODUCTS.find((p) => p.slug === slug);
 
   // A1: absent, not blurred — a public visitor gets the identical empty state
@@ -121,6 +122,9 @@ export default async function ProductDetailPage({
   const similar = similarProducts(product, 6);
   const adProduct = PUBLIC_PRODUCTS.find((p) => p.cls === "CBD_WELLNESS" && p.id !== product.id);
   const pinResult = pin !== undefined ? checkPin(pin, product.cls) : null;
+  const myReview = (await readMyReviews())[product.slug];
+  const myQuestion = (await readMyQuestions())[product.slug];
+  const bought = (await readOrderHistory()).some((o) => o.items.some((it) => it.title === product.title));
 
   const crumbs = [
     { name: "Catalogue", href: "/catalogue" },
@@ -265,9 +269,51 @@ export default async function ProductDetailPage({
                   </p>
                 </li>
               </ul>
-              <p className="small muted" style={{ marginTop: "var(--sp-3)", marginBottom: 0 }}>
-                Only verified purchases can review — ratings are computed by the platform.
-              </p>
+              <div style={{ marginTop: "var(--sp-3)", borderTop: "1px solid var(--vh-line)", paddingTop: "var(--sp-3)" }}>
+                {myReview ? (
+                  <div>
+                    <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
+                      <Rating value={myReview.rating} />
+                      <strong className="small" style={{ color: "var(--vh-ink)" }}>Your review</strong>
+                      <span className="vh-pill vh-pill-warn">Pending moderation</span>
+                    </div>
+                    <p className="small muted" style={{ margin: "6px 0 0" }}>&ldquo;{myReview.text}&rdquo;</p>
+                  </div>
+                ) : bought ? (
+                  <form action={submitReview} style={{ display: "grid", gap: 10 }}>
+                    <input type="hidden" name="productId" value={product.id} />
+                    {reviewErr && (
+                      <p className="small" role="alert" style={{ color: "var(--vh-danger)", margin: 0 }}>
+                        {reviewErr === "claims"
+                          ? "Reviews can't carry disease claims (cure/treat/prevent/heal) — describe your experience instead."
+                          : reviewErr === "short"
+                            ? "Reviews need 10–600 characters."
+                            : reviewErr === "rating"
+                              ? "Pick a star rating."
+                              : "Only verified purchases can review."}
+                      </p>
+                    )}
+                    <div className="vh-row" style={{ gap: 12, flexWrap: "wrap" }}>
+                      <div className="vh-field" style={{ width: 120 }}>
+                        <label className="vh-label" htmlFor="rv-rating">Rating <span className="req">*</span></label>
+                        <select className="vh-select" id="rv-rating" name="rating" required defaultValue="5">
+                          {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{"★".repeat(n)}</option>)}
+                        </select>
+                      </div>
+                      <div className="vh-field" style={{ flex: "1 1 240px" }}>
+                        <label className="vh-label" htmlFor="rv-text">Your review <span className="req">*</span></label>
+                        <textarea className="vh-textarea" id="rv-text" name="text" rows={2} minLength={10} maxLength={600} required placeholder="Packaging, delivery, how it fit your routine — no medical claims." />
+                      </div>
+                    </div>
+                    <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary" style={{ justifySelf: "start" }}>Submit review</button>
+                  </form>
+                ) : (
+                  <p className="small muted" style={{ margin: 0 }}>
+                    Only verified purchases can review — order this product and the review form
+                    unlocks here. Ratings are computed by the platform.
+                  </p>
+                )}
+              </div>
             </Card>
           </section>
 
@@ -281,6 +327,32 @@ export default async function ProductDetailPage({
                     <p className="small muted" style={{ marginTop: 8, marginBottom: 0 }}>{f.a}</p>
                   </details>
                 ))}
+              </div>
+              <div style={{ marginTop: "var(--sp-3)", borderTop: "1px solid var(--vh-line)", paddingTop: "var(--sp-3)" }}>
+                {myQuestion ? (
+                  <div>
+                    <div className="vh-row" style={{ gap: 8 }}>
+                      <strong className="small" style={{ color: "var(--vh-ink)" }}>Your question</strong>
+                      <span className="vh-pill vh-pill-warn">Awaiting seller answer</span>
+                    </div>
+                    <p className="small muted" style={{ margin: "6px 0 0" }}>&ldquo;{myQuestion}&rdquo;</p>
+                    <p className="small muted" style={{ margin: "6px 0 0" }}>
+                      The seller answers from Seller Central; replies pass the compliance copy-check before publishing.
+                    </p>
+                  </div>
+                ) : (
+                  <form action={askQuestion} style={{ display: "grid", gap: 10 }}>
+                    <input type="hidden" name="productId" value={product.id} />
+                    {qErr === "short" && (
+                      <p className="small" role="alert" style={{ color: "var(--vh-danger)", margin: 0 }}>Questions need 10–300 characters.</p>
+                    )}
+                    <div className="vh-field">
+                      <label className="vh-label" htmlFor="qa-text">Ask the seller a question</label>
+                      <textarea className="vh-textarea" id="qa-text" name="text" rows={2} minLength={10} maxLength={300} required placeholder="Composition, batch, format — the seller answers, and answers are copy-checked." />
+                    </div>
+                    <button type="submit" className="vh-btn vh-btn-sm vh-btn-outline" style={{ justifySelf: "start" }}>Post question</button>
+                  </form>
+                )}
               </div>
             </Card>
           </section>

@@ -95,6 +95,44 @@ export async function appendTicket(t: StoredTicket): Promise<void> {
   await writeJson("vh-tickets", [t, ...(await readTickets())].slice(0, 6));
 }
 
+/* ── Returns (refund-first) ───────────────────────────────── */
+
+export interface StoredReturn {
+  reason: string;
+  at: string;
+}
+
+export async function readReturns(): Promise<Record<string, StoredReturn>> {
+  return readJson<Record<string, StoredReturn>>("vh-returns", {});
+}
+
+export async function writeReturns(map: Record<string, StoredReturn>): Promise<void> {
+  await writeJson("vh-returns", map);
+}
+
+/* ── Buyer reviews & questions (PDP) ──────────────────────── */
+
+export interface MyReview {
+  rating: number;
+  text: string;
+}
+
+export async function readMyReviews(): Promise<Record<string, MyReview>> {
+  return readJson<Record<string, MyReview>>("vh-myreviews", {});
+}
+
+export async function writeMyReviews(map: Record<string, MyReview>): Promise<void> {
+  await writeJson("vh-myreviews", map);
+}
+
+export async function readMyQuestions(): Promise<Record<string, string>> {
+  return readJson<Record<string, string>>("vh-myqs", {});
+}
+
+export async function writeMyQuestions(map: Record<string, string>): Promise<void> {
+  await writeJson("vh-myqs", map);
+}
+
 /* ── Seller Central demo state ────────────────────────────── */
 
 /** Status overrides for sample orders: { [orderId]: "ACCEPTED" | "PACKED" } */

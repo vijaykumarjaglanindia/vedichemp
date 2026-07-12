@@ -13,7 +13,17 @@ import { cookies, headers } from "next/headers";
 import { redirect } from "next/navigation";
 import { permittedClasses } from "@/lib/compliance";
 import { PRODUCTS } from "@/lib/sample";
-import { readWishlist, writeWishlist, readFollows, writeFollows } from "@/lib/engage";
+import {
+  readFollows,
+  readMyQuestions,
+  readMyReviews,
+  readOrderHistory,
+  readWishlist,
+  writeFollows,
+  writeMyQuestions,
+  writeMyReviews,
+  writeWishlist,
+} from "@/lib/engage";
 import { readCartLines, writeCartLines } from "@/lib/cart";
 
 /** Safe same-site path from the Referer header, so actions return the visitor
@@ -79,6 +89,47 @@ export async function subscribeNewsletter(
   // Demo persistence; with a DB attached this becomes db.newsletterSubscriber.upsert.
   (await cookies()).set("vh-news", "1", { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
   return { ok: true, message: "Subscribed — the next wellness note lands in your inbox." };
+}
+
+/* ── Reviews & questions on the PDP ───────────────────────── */
+
+/** Same disease-claim vocabulary the seller copy-check uses — buyer
+ *  testimonials with cure claims are equally non-publishable. */
+const CLAIM_WORDS = /\b(cure|cures|heal|heals|treat|treats|treatment|prevent|prevents)\w*\b/i;
+
+export async function submitReview(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const rating = parseInt(String(formData.get("rating") ?? ""), 10);
+  const text = String(formData.get("text") ?? "").trim();
+  const product = PRODUCTS.find((p) => p.id === id);
+  if (!product) redirect("/catalogue");
+
+  const back = `/products/${product!.slug}#reviews`;
+  // Verified-purchase rule enforced server-side: the review form may render,
+  // but a review only lands if this session actually ordered the product.
+  const bought = (await readOrderHistory()).some((o) => o.items.some((it) => it.title === product!.title));
+  if (!bought) redirect(`/products/${product!.slug}?review=unverified#reviews`);
+  if (!Number.isInteger(rating) || rating < 1 || rating > 5) redirect(`/products/${product!.slug}?review=rating#reviews`);
+  if (text.length < 10 || text.length > 600) redirect(`/products/${product!.slug}?review=short#reviews`);
+  if (CLAIM_WORDS.test(text)) redirect(`/products/${product!.slug}?review=claims#reviews`);
+
+  const map = await readMyReviews();
+  map[product!.slug] = { rating, text };
+  await writeMyReviews(map);
+  redirect(back);
+}
+
+export async function askQuestion(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const text = String(formData.get("text") ?? "").trim();
+  const product = PRODUCTS.find((p) => p.id === id);
+  if (!product) redirect("/catalogue");
+  if (text.length < 10 || text.length > 300) redirect(`/products/${product!.slug}?q=short#qa`);
+
+  const map = await readMyQuestions();
+  map[product!.slug] = text;
+  await writeMyQuestions(map);
+  redirect(`/products/${product!.slug}#qa`);
 }
 
 /* ── Follow a storefront ──────────────────────────────────── */

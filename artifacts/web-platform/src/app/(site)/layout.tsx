@@ -19,6 +19,7 @@ import {
   Landmark,
   Leaf,
   Lock,
+  Menu,
   RotateCcw,
   Search,
   ShieldCheck,
@@ -100,6 +101,31 @@ const chromeCss = `
   border: 1.5px solid var(--vh-surface);
 }
 @media (max-width: 900px) { .vhx-hide-sm { display: none !important; } }
+/* Mobile menu — <details>-based, works without JS */
+.vhx-mnav { display: none; position: relative; }
+@media (max-width: 900px) { .vhx-mnav { display: block; } }
+.vhx-mnav > summary {
+  list-style: none; cursor: pointer; width: 34px; height: 34px;
+  display: inline-flex; align-items: center; justify-content: center;
+  border: 1px solid var(--vh-line); border-radius: 9px; background: var(--vh-surface);
+  color: var(--vh-ink);
+}
+.vhx-mnav > summary::-webkit-details-marker { display: none; }
+.vhx-mnav-panel {
+  position: absolute; right: 0; top: calc(100% + 8px); width: min(280px, 88vw);
+  background: var(--vh-bg-raised); border: 1px solid var(--vh-line);
+  border-radius: var(--vh-radius); box-shadow: var(--vh-shadow-lg);
+  padding: 10px; display: grid; gap: 2px; z-index: 70;
+}
+.vhx-mnav-panel a {
+  display: block; padding: 9px 12px; border-radius: 8px;
+  font-weight: 600; font-size: .9rem; color: var(--vh-ink);
+}
+.vhx-mnav-panel a:hover { background: var(--vh-bg-subtle); }
+.vhx-mnav-panel .vhx-mnav-head {
+  font-size: .68rem; font-weight: 800; letter-spacing: .06em; text-transform: uppercase;
+  color: var(--vh-muted); padding: 8px 12px 2px;
+}
 `;
 
 import { GenerativeSearch, type SearchDoc } from "./_lib/GenerativeSearch";
@@ -207,9 +233,31 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
 
           <div className="vh-row" style={{ gap: 6 }}>
             <HeaderBits />
-            <Link href="/sell" className="vh-btn vh-btn-primary vh-btn-sm">
+            <Link href="/sell" className="vh-btn vh-btn-primary vh-btn-sm vhx-hide-sm">
               Sell on Vedic Hemp
             </Link>
+
+            {/* Mobile menu — shown under 900px, CSS-only */}
+            <details className="vhx-mnav">
+              <summary aria-label="Open menu">
+                <Menu size={18} strokeWidth={2.2} aria-hidden />
+              </summary>
+              <nav className="vhx-mnav-panel" aria-label="Mobile">
+                <div className="vhx-mnav-head">Shop</div>
+                <Link href="/catalogue">All products</Link>
+                {SHOP_CLASSES.map((cls) => (
+                  <Link key={cls} href={`/catalogue?class=${cls}`}>
+                    <span aria-hidden>{CLASS_META[cls].emoji}</span> {CLASS_META[cls].label}
+                  </Link>
+                ))}
+                <div className="vhx-mnav-head">Vedic Hemp</div>
+                <Link href="/trust">How it works</Link>
+                <Link href="/about">About</Link>
+                <Link href="/account">My account</Link>
+                <Link href="/signin">Sign in</Link>
+                <Link href="/sell" style={{ color: "var(--vh-accent)" }}>Sell on Vedic Hemp</Link>
+              </nav>
+            </details>
           </div>
         </div>
       </header>
