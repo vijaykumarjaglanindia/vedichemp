@@ -10,6 +10,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowRight, Minus, Plus, ShieldCheck, ShoppingBag, Trash2, Truck } from "lucide-react";
 import { Banner, EmptyState, MoneyText } from "@/components/ui";
+import { AdSlot } from "@/components/ui/ads";
 import { priceCart } from "@/lib/cart";
 import { removeFromCart, setQty } from "./actions";
 
@@ -89,6 +90,18 @@ export default async function CartPage() {
               checkout, and it is verified again on delivery handover.
             </Banner>
           )}
+
+          {/* Sponsored upsell (cart-upsell) — labelled, outside the order totals */}
+          <AdSlot cls="HEMP_FOOD" placement="cart-upsell" unstyled>
+            <a href="/products/hemp-hearts-400g" className="vh-product-row" style={{ textDecoration: "none", borderColor: "color-mix(in srgb, var(--vh-ad) 30%, var(--vh-line))" }}>
+              <span className="vh-product-media" style={{ fontSize: "1.6rem" }} aria-hidden>🌾</span>
+              <span style={{ minWidth: 0 }}>
+                <span className="vh-product-title" style={{ display: "block" }}>Add Hemp Hearts 400g — pairs with your order</span>
+                <span className="small muted">Ananda Foods · ships with the same courier window</span>
+              </span>
+              <MoneyText paise={64900} className="vh-product-title" />
+            </a>
+          </AdSlot>
         </div>
 
         {/* Summary */}

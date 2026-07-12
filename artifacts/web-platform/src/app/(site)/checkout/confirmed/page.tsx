@@ -12,6 +12,8 @@ import { cookies } from "next/headers";
 import { ArrowRight, CheckCircle2, PackageCheck, Send, Truck } from "lucide-react";
 import { EmptyState, MoneyText, Timeline } from "@/components/ui";
 import type { OrderRecord } from "../../cart/actions";
+import { AdSlot, SponsoredLabel } from "@/components/ui/ads";
+import { PRODUCTS } from "@/lib/sample";
 
 export const metadata: Metadata = { title: "Order confirmed" };
 
@@ -94,6 +96,27 @@ export default async function ConfirmedPage() {
             ))}
           </div>
         </aside>
+      </div>
+
+      {/* Thank-you placement (thankyou-related) — labelled, below the receipt */}
+      <div style={{ marginTop: "var(--sp-4)" }}>
+        <AdSlot cls="AYURVEDA" placement="thankyou-related" unstyled>
+          <div className="vh-row" style={{ gap: 8, marginBottom: 10 }}>
+            <SponsoredLabel />
+            <span className="small muted" style={{ fontWeight: 600 }}>People also ordered</span>
+          </div>
+          <div className="vh-grid cols-3">
+            {PRODUCTS.filter((sp) => sp.cls !== "MED_CANNABIS").slice(5, 8).map((sp) => (
+              <Link key={sp.id} href={`/products/${sp.slug}`} className="vh-product" style={{ textDecoration: "none" }}>
+                <span className="vh-product-media" style={{ fontSize: "1.8rem" }} aria-hidden>{sp.emoji}</span>
+                <span className="vh-product-body">
+                  <span className="vh-product-title" style={{ fontSize: ".85rem" }}>{sp.title}</span>
+                  <MoneyText paise={sp.pricePaise} className="small" />
+                </span>
+              </Link>
+            ))}
+          </div>
+        </AdSlot>
       </div>
     </div>
   );

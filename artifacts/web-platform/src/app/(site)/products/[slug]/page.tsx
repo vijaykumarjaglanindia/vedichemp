@@ -26,7 +26,7 @@ import {
   Users,
 } from "lucide-react";
 import { Banner, Card, ComplianceBadge, EmptyState, MoneyText, Rating } from "@/components/ui";
-import { AdSlot } from "@/components/ui/ads";
+import { AdBanner, AdSlot } from "@/components/ui/ads";
 import { CLASS_META, isRegulated } from "@/lib/compliance";
 import { PRODUCTS, SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
@@ -160,6 +160,15 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
               </div>
             </Card>
           </section>
+
+          {/* Inline sponsored banner (pdp-inline-banner) */}
+          <div style={{ marginBottom: "var(--sp-4)" }}>
+            <AdBanner
+              cls="CBD_WELLNESS" placement="pdp-inline-banner" brand="Vedic Botanicals"
+              headline="Pair it with the muscle roll-on — same batch-tested range"
+              cta="View product" href="/products/cbd-rollon-50ml"
+            />
+          </div>
 
           {/* Lab report */}
           <section id="lab-report" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>

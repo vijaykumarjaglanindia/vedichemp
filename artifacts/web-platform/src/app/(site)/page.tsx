@@ -25,7 +25,7 @@ import {
   Timer,
 } from "lucide-react";
 import { MoneyText, Rating, SectionHead } from "@/components/ui";
-import { AdSlot, CampaignLabel } from "@/components/ui/ads";
+import { AdBanner, AdSlot, AdVideo, CampaignLabel } from "@/components/ui/ads";
 import { CLASS_META } from "@/lib/compliance";
 import { faqJsonLd } from "@/lib/seo";
 import { SELLERS } from "@/lib/sample";
@@ -178,6 +178,15 @@ export default function HomePage() {
       {/* ── Today's deals ────────────────────────────────── */}
       <section className="vh-section" style={{ paddingTop: 0 }}>
         <div className="vh-container">
+          {/* Leaderboard banner — configured in Admin → Ads (home-leaderboard) */}
+          <div style={{ marginBottom: "var(--sp-5)" }}>
+            <AdBanner
+              cls="HEMP_FOOD" placement="home-leaderboard" brand="Himalayan Hemp Co."
+              headline="Cold-pressed hemp seed oil — this week's storewide 25% off"
+              body="FSSAI-licensed hemp foods, shipped by the seller." cta="Shop the range" href="/store/himalayan-hemp-co"
+            />
+          </div>
+
           <SectionHead
             eyebrow="Today's deals"
             title="Today&rsquo;s deals from sellers"
@@ -455,6 +464,37 @@ export default function HomePage() {
       </section>
 
       {/* ── FAQ ──────────────────────────────────────────── */}
+      {/* ── From our sponsors: video + product carousel ─────
+          Placements home-video / home-sponsored-products — A1-guarded, always labelled. */}
+      <section className="vh-section vh-section-alt">
+        <div className="vh-container">
+          <SectionHead eyebrow="From our sponsors" title="Sponsored picks" sub="Clearly labelled, never mixed into rankings — and never a prescription product." />
+          <div className="vh-split-wide">
+            <AdVideo
+              cls="CBD_WELLNESS" placement="home-video" brand="Vedic Botanicals"
+              title="Inside a batch test: how our CBD balm gets its lab report" duration="0:48"
+              href="/store/vedic-botanicals"
+            />
+            <div style={{ display: "grid", gap: 12 }}>
+              <AdSlot cls="CBD_WELLNESS" placement="home-sponsored-products" unstyled>
+                <div style={{ display: "grid", gap: 12 }}>
+                  {PUBLIC_PRODUCTS.filter((sp) => sp.seller === "Vedic Botanicals").slice(0, 3).map((sp) => (
+                    <a key={sp.id} href={`/products/${sp.slug}`} className="vh-product-row" style={{ textDecoration: "none" }}>
+                      <span className="vh-product-media" style={{ fontSize: "1.6rem" }} aria-hidden>{sp.emoji}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <span className="vh-product-title" style={{ display: "block" }}>{sp.title}</span>
+                        <span className="small muted">{sp.seller}</span>
+                      </span>
+                      <MoneyText paise={sp.pricePaise} className="vh-product-title" />
+                    </a>
+                  ))}
+                </div>
+              </AdSlot>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section className="vh-section">
         <div className="vh-container" style={{ maxWidth: 820 }}>
           <SectionHead eyebrow="FAQ" title="Common questions, straight answers" />

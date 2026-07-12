@@ -19,7 +19,7 @@ import {
   Heart, LayoutGrid, Rows3, SearchX, ShoppingCart, Sparkles, Star,
 } from "lucide-react";
 import { ComplianceBadge, MoneyText, Rating } from "@/components/ui";
-import { AdSlot } from "@/components/ui/ads";
+import { AdBanner, AdSlot } from "@/components/ui/ads";
 import { CLASS_META, permittedClasses } from "@/lib/compliance";
 import { classProducts, PRODUCTS, type SampleProduct } from "@/lib/sample";
 import { addToCart } from "../cart/actions";
@@ -190,6 +190,17 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
         </div>
       )}
 
+      {/* Sponsored-brand banner (listing-brand-banner) — only on the unfiltered view */}
+      {chips.length === 0 && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <AdBanner
+            cls="AYURVEDA" placement="listing-brand-banner" brand="Ananda Foods"
+            headline="Classical Ayurveda, batch-dated and sealed"
+            cta="Visit storefront" href="/store/ananda-foods"
+          />
+        </div>
+      )}
+
       <div style={{ display: "grid", gridTemplateColumns: "230px minmax(0,1fr)", gap: "var(--sp-4)", alignItems: "start" }} className="vhx-catalogue-grid">
         {/* Facets */}
         <aside className="vh-card" style={{ position: "sticky", top: 90, padding: "6px 18px" }} aria-label="Filters">
@@ -246,6 +257,12 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
               <FlaskConical size={12} aria-hidden style={{ color: "var(--vh-info)" }} /> Lab report available
               <span className="cnt tabular">{countFor((p) => p.labVerified)}</span>
             </Link>
+          </div>
+          <div style={{ padding: "14px 0 8px" }}>
+            <AdBanner
+              cls="HEMP_FOOD" placement="listing-sidebar" brand="Himalayan Hemp Co."
+              headline="Protein that fits your routine" cta="Shop" href="/store/himalayan-hemp-co" tall
+            />
           </div>
         </aside>
 

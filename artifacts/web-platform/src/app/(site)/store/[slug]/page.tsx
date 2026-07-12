@@ -10,6 +10,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AdBanner } from "@/components/ui/ads";
 import { BadgeCheck, MapPin, Share2, ShieldCheck, UserPlus } from "lucide-react";
 import { Card, EmptyState, Rating, SectionHead } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
@@ -122,6 +123,15 @@ export default async function StorePage({ params }: { params: Promise<Params> })
       <div className="vh-container" style={{ paddingBottom: "var(--sp-6)" }}>
         {/* ── Story + certifications ─────────────────────── */}
         <section className="vh-section" style={{ paddingBottom: 0 }}>
+          {/* Store campaign banner (store-campaign) */}
+          <div style={{ margin: "var(--sp-3) 0" }}>
+            <AdBanner
+              cls="CBD_WELLNESS" placement="store-campaign" brand={seller.name}
+              headline="Monsoon wellness: seller-funded 20% off on the recovery range"
+              cta="See campaign items" href="/catalogue?class=CBD_WELLNESS"
+            />
+          </div>
+
           <div className="vh-split">
             <Card title="About this store">
               <p className="small" style={{ marginBottom: 0 }}>{profile.story}</p>
