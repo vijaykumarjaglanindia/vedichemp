@@ -9,6 +9,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   ShieldCheck, Percent, ReceiptText, Truck, CreditCard, BellRing, ScrollText, KeyRound, ToggleLeft,
 } from "lucide-react";
@@ -148,7 +149,7 @@ export default function AdminSettingsPage() {
 
         <Card title={<span className="vh-row" style={{ gap: 8 }}><ScrollText {...I} aria-hidden /> Audit logs</span>}>
           <p className="small muted" style={{ marginTop: 0 }}>Full AuditLog and SensitiveAccessLog search lives here for ADMIN_AUDITOR and ADMIN_SECURITY. Both tables are append-only.</p>
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/compliance">Open compliance logs →</a>
+          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/compliance">Open compliance logs →</Link>
         </Card>
       </div>
     </Shell>

@@ -8,6 +8,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { Sparkles, PenLine, BadgeIndianRupee, PackageSearch, TrendingUp, ShieldCheck } from "lucide-react";
 import { Shell } from "../Shell";
@@ -70,8 +71,8 @@ export default async function AssistantPage({
           </div>
           <div className="small" style={{ marginTop: 8, color: "var(--vh-ok)", fontWeight: 600 }}>Copy-check: no disease claims detected · passed</div>
           <div className="vh-row" style={{ gap: 8, marginTop: 12 }}>
-            <a className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/products/p4" title="Open the listing editor to paste and save this draft">Use this draft</a>
-            <a className="vh-btn vh-btn-sm vh-btn-ghost" href={draftIndex === 0 ? "/seller/assistant?v=2" : "/seller/assistant"}>Regenerate</a>
+            <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/products/p4" title="Open the listing editor to paste and save this draft">Use this draft</Link>
+            <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={draftIndex === 0 ? "/seller/assistant?v=2" : "/seller/assistant"}>Regenerate</Link>
           </div>
         </SuggestionCard>
 
@@ -86,14 +87,14 @@ export default async function AssistantPage({
             <MoneyText paise={239900} />
           </div>
           <div className="small muted">Based on category demand and 3 comparable buy-box winners. Final price is always seller-set — this is a suggestion, never applied automatically.</div>
-          <a className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/products/p5" style={{ marginTop: 12, display: "inline-block" }} title="Open the listing editor — price stays seller-set">Apply to listing</a>
+          <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/products/p5" style={{ marginTop: 12, display: "inline-block" }} title="Open the listing editor — price stays seller-set">Apply to listing</Link>
         </SuggestionCard>
 
         <SuggestionCard icon={<PackageSearch size={16} strokeWidth={2.2} />} title="Inventory forecast">
           <p className="small muted" style={{ marginTop: 0 }}>Batch VB-2405 · CBD Wellness Balm 30g</p>
           <div className="small">Projected stockout in <strong>9 days</strong> at current sell-through.</div>
           <div className="small muted" style={{ marginTop: 6 }}>Suggest reordering 150 units to maintain 30 days of cover. A new batch needs its own approved CoA before it can sell (A2).</div>
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/inventory" style={{ marginTop: 12, display: "inline-block" }}>Review inventory →</a>
+          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/inventory" style={{ marginTop: 12, display: "inline-block" }}>Review inventory →</Link>
         </SuggestionCard>
 
         <SuggestionCard icon={<TrendingUp size={16} strokeWidth={2.2} />} title="Sales forecast">

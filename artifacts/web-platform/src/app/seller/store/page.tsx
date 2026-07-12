@@ -9,6 +9,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ExternalLink, Plus, Users, BadgeCheck } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, toneForStatus, Banner, Rating } from "@/components/ui";
@@ -36,9 +37,9 @@ export default async function StorePage({
         <Card
           title="Storefront preview"
           action={
-            <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/store/${STORE_PREVIEW.handle}`} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/store/${STORE_PREVIEW.handle}`} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <ExternalLink size={13} strokeWidth={2.2} aria-hidden /> View live store
-            </a>
+            </Link>
           }
           pad0
         >

@@ -8,6 +8,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { notFound } from "next/navigation";
 import { Download, Printer, Undo2 } from "lucide-react";
 import { Shell } from "../../Shell";
@@ -63,9 +64,9 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
           <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#invoice" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <Download size={14} strokeWidth={2.2} aria-hidden /> Invoice
           </a>
-          <a className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/orders/labels" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/orders/labels" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <Printer size={14} strokeWidth={2.2} aria-hidden /> Print label
-          </a>
+          </Link>
         </span>
       }
     >
@@ -126,9 +127,9 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
                 <span>Total</span>
                 <MoneyText paise={order.totalPaise} />
               </div>
-              <a id="label" className="vh-btn vh-btn-sm vh-btn-ghost" style={{ marginTop: 12, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} href="/seller/orders/labels">
+              <Link id="label" className="vh-btn vh-btn-sm vh-btn-ghost" style={{ marginTop: 12, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} href="/seller/orders/labels">
                 <Printer size={14} strokeWidth={2.2} aria-hidden /> Print shipping label
-              </a>
+              </Link>
             </Card>
           </div>
 

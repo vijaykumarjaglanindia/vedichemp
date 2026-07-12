@@ -3,6 +3,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Printer } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
@@ -56,7 +57,7 @@ export default async function SellerOrdersPage({
       key: "actions", header: "", align: "right", render: (o) => (
         <span className="vh-row" style={{ gap: 8, justifyContent: "flex-end" }}>
           <OrderOpButton orderId={o.id} status={o.status} />
-          <a className="small" href={`/seller/orders/${o.id}`}>Details →</a>
+          <Link className="small" href={`/seller/orders/${o.id}`}>Details →</Link>
         </span>
       ),
     },
@@ -68,9 +69,9 @@ export default async function SellerOrdersPage({
       breadcrumb={["Seller Central", "Orders"]}
       title="Orders"
       actions={
-        <a className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/orders/labels" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/orders/labels" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <Printer size={14} strokeWidth={2.2} aria-hidden /> Bulk shipping labels
-        </a>
+        </Link>
       }
     >
       <div style={{ overflowX: "auto", marginBottom: "var(--sp-3)" }}>
@@ -78,7 +79,7 @@ export default async function SellerOrdersPage({
           {ORDER_STATUS_TABS.map((t) => {
             const count = t === "ALL" ? orders.length : orders.filter((o) => o.status === t).length;
             return (
-              <a
+              <Link
                 key={t}
                 href={t === "ALL" ? "/seller/orders" : `/seller/orders?status=${t}`}
                 className={t === status ? "on" : undefined}
@@ -86,7 +87,7 @@ export default async function SellerOrdersPage({
                 style={{ whiteSpace: "nowrap" }}
               >
                 {t === "ALL" ? "All" : t.charAt(0) + t.slice(1).toLowerCase()} <span className="tabular muted">({count})</span>
-              </a>
+              </Link>
             );
           })}
         </nav>

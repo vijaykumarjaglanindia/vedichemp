@@ -98,14 +98,14 @@ export default async function CartPage({
 
           {/* Sponsored upsell (cart-upsell) — labelled, outside the order totals */}
           <AdSlot cls="HEMP_FOOD" placement="cart-upsell" unstyled>
-            <a href="/products/hemp-hearts-400g" className="vh-product-row" style={{ textDecoration: "none", borderColor: "color-mix(in srgb, var(--vh-ad) 30%, var(--vh-line))" }}>
+            <Link href="/products/hemp-hearts-400g" className="vh-product-row" style={{ textDecoration: "none", borderColor: "color-mix(in srgb, var(--vh-ad) 30%, var(--vh-line))" }}>
               <span className="vh-product-media" style={{ fontSize: "1.6rem" }} aria-hidden>🌾</span>
               <span style={{ minWidth: 0 }}>
                 <span className="vh-product-title" style={{ display: "block" }}>Add Hemp Hearts 400g — pairs with your order</span>
                 <span className="small muted">Ananda Foods · ships with the same courier window</span>
               </span>
               <MoneyText paise={64900} className="vh-product-title" />
-            </a>
+            </Link>
           </AdSlot>
         </div>
 

@@ -8,6 +8,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { TicketPercent, Boxes, Zap, SpellCheck2, Plus } from "lucide-react";
 import { Shell } from "../Shell";
 import { Banner, Card, StatusPill, toneForStatus } from "@/components/ui";
@@ -124,7 +125,7 @@ export default async function MarketingPage({
         {/* Bundle builder teaser */}
         <Card
           title={<span className="vh-row" style={{ gap: 8 }}><Boxes size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /> Bundles</span>}
-          action={<a className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/products">Open bundle builder</a>}
+          action={<Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/products">Open bundle builder</Link>}
         >
           {BUNDLES.map((b, i) => (
             <div key={i} className="vh-row-between" style={{ border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: 12, marginBottom: 12 }}>

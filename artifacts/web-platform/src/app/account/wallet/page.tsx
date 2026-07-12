@@ -6,6 +6,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { Landmark, PieChart, ReceiptText, TrendingUp } from "lucide-react";
 import { Shell } from "../Shell";
@@ -87,9 +88,9 @@ export default function WalletPage() {
               Withdrawing cashback or refunds to your bank account unlocks after a one-time identity
               verification. Promo credit is non-withdrawable and can only be used against orders.
             </p>
-            <a className="vh-btn vh-btn-sm vh-btn-primary" href="/account/profile#security">
+            <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/account/profile#security">
               Verify identity to withdraw
-            </a>
+            </Link>
             <p className="small muted" style={{ margin: "8px 0 0" }}>
               Takes about 2 minutes in Profile → Security.
             </p>

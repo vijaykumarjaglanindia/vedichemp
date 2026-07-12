@@ -9,6 +9,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   Stethoscope, FlaskConical, Siren, Lock, Brush, Megaphone, HeartPulse, ScrollText,
@@ -60,11 +61,11 @@ export default async function AdminCompliancePage({
 
         <div className="vh-grid cols-4">
           {SUB_CARDS.map((c) => (
-            <a key={c.id} href={c.href} className="vh-card" style={{ padding: "var(--sp-3)", display: "block" }}>
+            <Link key={c.id} href={c.href} className="vh-card" style={{ padding: "var(--sp-3)", display: "block" }}>
               <div style={{ marginBottom: 8, color: "var(--vh-accent)" }}>{c.icon}</div>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>{c.title}</div>
               <div className="small muted">{c.desc}</div>
-            </a>
+            </Link>
           ))}
         </div>
 
@@ -89,7 +90,7 @@ export default async function AdminCompliancePage({
                         </StatusPill>
                       </td>
                       <td>
-                        <a className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/compliance#${q.id}`}>Claim</a>
+                        <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/compliance#${q.id}`}>Claim</Link>
                       </td>
                     </tr>
                   );

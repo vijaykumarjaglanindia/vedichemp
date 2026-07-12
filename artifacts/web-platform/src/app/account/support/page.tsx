@@ -8,6 +8,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { ChevronRight, HelpCircle, MessageSquarePlus, Ticket } from "lucide-react";
 import { Shell } from "../Shell";
@@ -106,10 +107,10 @@ export default async function SupportPage({
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
               {FAQS.map((f) => (
                 <li key={f.q}>
-                  <a href={f.href} className="vh-row" style={{ gap: 8, padding: "8px 0", borderBottom: "1px solid var(--vh-line)" }}>
+                  <Link href={f.href} className="vh-row" style={{ gap: 8, padding: "8px 0", borderBottom: "1px solid var(--vh-line)" }}>
                     <span style={{ flex: 1 }}>{f.q}</span>
                     <ChevronRight size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)", flexShrink: 0 }} />
-                  </a>
+                  </Link>
                 </li>
               ))}
             </ul>

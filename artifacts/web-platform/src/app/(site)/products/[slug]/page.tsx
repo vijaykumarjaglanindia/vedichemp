@@ -369,7 +369,7 @@ export default async function ProductDetailPage({
             </form>
 
             {/* Delivery estimate by PIN — serviceability is decided server-side */}
-            <form method="GET" action={`/products/${product.slug}`} className="vh-field" style={{ marginBottom: "var(--sp-3)" }} aria-label="Check delivery by PIN code">
+            <form method="GET" className="vh-field" style={{ marginBottom: "var(--sp-3)" }} aria-label="Check delivery by PIN code">
               <label htmlFor="pdp-pin" className="vh-label vh-row" style={{ gap: 6 }}>
                 <MapPin size={13} aria-hidden style={{ color: "var(--vh-accent)" }} /> Deliver to
               </label>

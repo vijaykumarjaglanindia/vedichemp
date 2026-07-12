@@ -8,6 +8,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   Search, ShieldAlert, Ban, RotateCcw, Eye, UserCog, Fingerprint, LockKeyhole,
 } from "lucide-react";
@@ -72,7 +73,7 @@ export default async function AdminUsersPage({
             in plaintext) or an order reference. A raw-text lookup against contact fields is not a route this console
             exposes.
           </p>
-          <form method="GET" action="/admin/users" className="vh-row" style={{ gap: 8 }}>
+          <form method="GET" className="vh-row" style={{ gap: 8 }}>
             <input
               className="vh-input"
               name="q"
@@ -112,7 +113,7 @@ export default async function AdminUsersPage({
                 </div>
                 <div className="vh-row" style={{ gap: 8 }}>
                   <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary">Confirm {(opLabel ?? "").toLowerCase()}</button>
-                  <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/users">Cancel</a>
+                  <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/users">Cancel</Link>
                 </div>
               </form>
             </Card>
@@ -148,22 +149,22 @@ export default async function AdminUsersPage({
                     <td>
                       <div className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
                         {u.status !== "SUSPENDED" ? (
-                          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users?act=restrict&u=${u.id}#act-form`}>
+                          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users?act=restrict&u=${u.id}#act-form`}>
                             <ShieldAlert {...IB} aria-hidden /> Restrict
-                          </a>
+                          </Link>
                         ) : (
-                          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users?act=reinstate&u=${u.id}#act-form`}>
+                          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users?act=reinstate&u=${u.id}#act-form`}>
                             <RotateCcw {...IB} aria-hidden /> Reinstate
-                          </a>
+                          </Link>
                         )}
                         {u.status !== "SUSPENDED" && (
-                          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users?act=suspend&u=${u.id}#act-form`}>
+                          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users?act=suspend&u=${u.id}#act-form`}>
                             <Ban {...IB} aria-hidden /> Suspend
-                          </a>
+                          </Link>
                         )}
-                        <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users?act=impersonate&u=${u.id}#act-form`}>
+                        <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users?act=impersonate&u=${u.id}#act-form`}>
                           <Eye {...IB} aria-hidden /> Impersonate (read-only)
-                        </a>
+                        </Link>
                       </div>
                     </td>
                   </tr>
@@ -200,7 +201,7 @@ export default async function AdminUsersPage({
             subject is notified. There is no &quot;reveal&quot; button that returns data without that flow — clicking below
             opens the reason prompt, it does not fetch anything itself.
           </p>
-          <a className="vh-btn vh-btn-sm vh-btn-primary" href="/admin/compliance">Open reveal-PII flow →</a>
+          <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/admin/compliance">Open reveal-PII flow →</Link>
         </Card>
       </div>
     </Shell>

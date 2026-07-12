@@ -8,6 +8,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { FileText, Pencil, Trash2, Image as ImageIcon, Film, Newspaper, HelpCircle, GalleryHorizontal } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, Banner } from "@/components/ui";
@@ -59,12 +60,12 @@ export default async function AdminCmsPage({
                     <td><StatusPill tone={p.status === "PUBLISHED" ? "ok" : "neutral"}>{p.status}</StatusPill></td>
                     <td>
                       <div className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
-                        <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/cms#${p.id}-edit`}>
+                        <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/cms#${p.id}-edit`}>
                           <Pencil {...IB} aria-hidden /> Edit
-                        </a>
-                        <a className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/cms#${p.id}-delete`}>
+                        </Link>
+                        <Link className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/cms#${p.id}-delete`}>
                           <Trash2 {...IB} aria-hidden /> {p.views > 1000 ? "Delete (needs checker)" : "Delete"}
-                        </a>
+                        </Link>
                       </div>
                     </td>
                   </tr>
@@ -132,7 +133,7 @@ export default async function AdminCmsPage({
             <p className="small muted" style={{ margin: 0 }}>
               Banners advertising CBD Wellness still pass through the same copy-check as CBD ad creatives — no
               disease claims. Banners cannot reference MED_CANNABIS at all (A1). Paid banner slots are configured in{" "}
-              <a href="/admin/ads">Admin → Ads</a> and always render through <code>AdSlot</code>.
+              <Link href="/admin/ads">Admin → Ads</Link> and always render through <code>AdSlot</code>.
             </p>
           </Card>
         </div>

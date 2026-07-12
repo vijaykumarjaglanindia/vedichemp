@@ -11,6 +11,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Lock, ArrowRight, FileUp } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Banner, Card, StatusPill } from "@/components/ui";
@@ -97,9 +98,9 @@ export default async function NewProductPage({
                         </span>
                         <span className="small muted" style={{ display: "block", marginTop: 2 }}>{row.note}</span>
                         {locked && remediation && (
-                          <a className="small" href={remediation.href} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 8, fontWeight: 700 }}>
+                          <Link className="small" href={remediation.href} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 8, fontWeight: 700 }}>
                             {remediation.label} <ArrowRight size={13} strokeWidth={2.4} aria-hidden />
-                          </a>
+                          </Link>
                         )}
                       </span>
                     </span>

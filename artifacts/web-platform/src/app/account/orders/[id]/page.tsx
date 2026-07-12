@@ -6,6 +6,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { FileDown, LifeBuoy, Package, Receipt, RotateCcw, Truck } from "lucide-react";
@@ -98,9 +99,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       title={`Order ${order.reference}`}
       actions={
         <span className="vh-row" style={{ gap: 8 }}>
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/account/orders/${id}/invoice`}>
+          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/account/orders/${id}/invoice`}>
             <span className="vh-row" style={{ gap: 6 }}><FileDown size={14} strokeWidth={2.2} aria-hidden />Download invoice</span>
-          </a>
+          </Link>
           {order.status === "DELIVERED" && (
             <a className="vh-btn vh-btn-sm vh-btn-danger" href="#return">
               <span className="vh-row" style={{ gap: 6 }}><RotateCcw size={14} strokeWidth={2.2} aria-hidden />Request return</span>
@@ -217,10 +218,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 <span>Total</span>
                 <MoneyText paise={order.totalPaise} />
               </div>
-              <a className="vh-btn vh-btn-sm vh-btn-ghost" style={{ marginTop: 16, width: "100%", justifyContent: "center", display: "inline-flex", gap: 6 }} href={`/account/orders/${id}/invoice`}>
+              <Link className="vh-btn vh-btn-sm vh-btn-ghost" style={{ marginTop: 16, width: "100%", justifyContent: "center", display: "inline-flex", gap: 6 }} href={`/account/orders/${id}/invoice`}>
                 <FileDown size={14} strokeWidth={2.2} aria-hidden />
                 Print invoice (PDF)
-              </a>
+              </Link>
             </Card>
           </div>
 
@@ -231,7 +232,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               <span className="mono">{order.reference}</span>. Refunds always reach you first; we recover
               from the seller afterwards.
             </p>
-            <a className="vh-btn vh-btn-sm vh-btn-outline" href="/account/support">Contact support</a>
+            <Link className="vh-btn vh-btn-sm vh-btn-outline" href="/account/support">Contact support</Link>
           </Card>
 
           {order.status === "DELIVERED" ? (
@@ -241,7 +242,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
             </Banner>
           ) : order.status === "RETURNED" ? (
             <Banner severity="ok" title="Return processed" icon="✅">
-              Refund credited to your Wallet — see <a href="/account/wallet">Wallet</a>.
+              Refund credited to your Wallet — see <Link href="/account/wallet">Wallet</Link>.
             </Banner>
           ) : null}
         </div>

@@ -9,6 +9,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Ban, Landmark, Wallet, ReceiptText, CheckCircle2, Circle, CalendarCheck2 } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, Stat, StatusPill, toneForStatus, MoneyText, Banner, DataTable, type Column } from "@/components/ui";
@@ -38,7 +39,7 @@ const columns: Column<SettlementRow>[] = [
           <Ban size={14} strokeWidth={2.2} aria-hidden /> You are the maker — cannot check (403)
         </span>
       ) : (
-        <a className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/finance#${s.id}-approve`}>Approve as checker</a>
+        <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/finance#${s.id}-approve`}>Approve as checker</Link>
       );
     } },
 ];
@@ -96,7 +97,7 @@ export default async function AdminFinancePage({
               (₹5,000). Wallet balances are never adjusted by direct SQL from this console — every entry is a
               <code> WalletEntry</code> row with a maker, and a checker once the cumulative threshold is crossed.
             </p>
-            <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/orders">Go to refunds →</a>
+            <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/orders">Go to refunds →</Link>
           </Card>
 
           <Card title={<span className="vh-row" style={{ gap: 8 }}><ReceiptText {...I} aria-hidden /> GST / TCS / TDS</span>}>

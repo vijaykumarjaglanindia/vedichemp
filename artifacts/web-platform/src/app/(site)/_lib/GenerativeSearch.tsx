@@ -13,6 +13,8 @@
  */
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { ArrowRight, FlaskConical, Search, Sparkles, TrendingUp } from "lucide-react";
 
 export interface SearchDoc {
@@ -88,6 +90,7 @@ const SUGGESTIONS = [
 ];
 
 export function GenerativeSearch({ docs }: { docs: SearchDoc[] }) {
+  const router = useRouter(); // basePath-aware navigation
   const [q, setQ] = useState("");
   const [open, setOpen] = useState(false);
   const [sel, setSel] = useState(-1);
@@ -148,7 +151,7 @@ export function GenerativeSearch({ docs }: { docs: SearchDoc[] }) {
     if (e.key === "Enter") {
       e.preventDefault();
       const target = sel >= 0 && hits[sel] ? `/products/${hits[sel].slug}` : catalogueHref;
-      window.location.href = target;
+      router.push(target);
     }
   };
 
@@ -200,22 +203,22 @@ export function GenerativeSearch({ docs }: { docs: SearchDoc[] }) {
               )}
               {hits.length > 0 ? (
                 hits.map((h, i) => (
-                  <a key={h.slug} href={`/products/${h.slug}`} className={`vh-gsearch-item ${i === sel ? "sel" : ""}`} role="option" aria-selected={i === sel}>
+                  <Link key={h.slug} href={`/products/${h.slug}`} className={`vh-gsearch-item ${i === sel ? "sel" : ""}`} role="option" aria-selected={i === sel}>
                     <span aria-hidden style={{ fontSize: "1.15rem" }}>{h.emoji}</span>
                     <span style={{ fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.title}</span>
                     {h.labVerified && <FlaskConical size={13} aria-label="Lab report available" style={{ color: "var(--vh-info)", flexShrink: 0 }} />}
                     <span className="meta tabular">★ {h.rating.toFixed(1)} · {formatINR(h.pricePaise)}</span>
-                  </a>
+                  </Link>
                 ))
               ) : (
                 <div className="small muted" style={{ padding: "8px 8px 10px" }}>
                   No direct match — try the full catalogue with these filters applied.
                 </div>
               )}
-              <a href={catalogueHref} className="vh-gsearch-item" style={{ color: "var(--vh-accent)", fontWeight: 700, marginTop: 4, borderTop: `1px solid var(--vh-line)`, borderRadius: 0 }}>
+              <Link href={catalogueHref} className="vh-gsearch-item" style={{ color: "var(--vh-accent)", fontWeight: 700, marginTop: 4, borderTop: `1px solid var(--vh-line)`, borderRadius: 0 }}>
                 <ArrowRight size={14} aria-hidden />
                 Search the catalogue{parsedChips.length ? " with these filters" : ""}
-              </a>
+              </Link>
             </>
           )}
         </div>

@@ -215,14 +215,14 @@ export default function HomePage() {
               <AdSlot cls="CBD_WELLNESS" placement="home-sponsored-products" unstyled>
                 <div style={{ display: "grid", gap: 12 }}>
                   {PUBLIC_PRODUCTS.filter((sp) => sp.seller === "Vedic Botanicals").slice(0, 3).map((sp) => (
-                    <a key={sp.id} href={`/products/${sp.slug}`} className="vh-product-row" style={{ textDecoration: "none" }}>
+                    <Link key={sp.id} href={`/products/${sp.slug}`} className="vh-product-row" style={{ textDecoration: "none" }}>
                       <span className="vh-product-media" style={{ fontSize: "1.6rem" }} aria-hidden>{sp.emoji}</span>
                       <span style={{ minWidth: 0 }}>
                         <span className="vh-product-title" style={{ display: "block" }}>{sp.title}</span>
                         <span className="small muted">{sp.seller}</span>
                       </span>
                       <MoneyText paise={sp.pricePaise} className="vh-product-title" />
-                    </a>
+                    </Link>
                   ))}
                 </div>
               </AdSlot>

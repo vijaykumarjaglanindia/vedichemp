@@ -7,6 +7,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { CalendarClock, Pause, SkipForward, XCircle } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, toneForStatus, MoneyText, Banner, EmptyState } from "@/components/ui";
@@ -85,7 +86,7 @@ export default async function SubscriptionsPage({
                   {autoPaused && (
                     <Banner severity="warn" icon="⏳">
                       Auto-paused: this product requires a verified, unexpired prescription.{" "}
-                      <a href="/account/medical">Renew your Rx →</a>
+                      <Link href="/account/medical">Renew your Rx →</Link>
                     </Banner>
                   )}
 

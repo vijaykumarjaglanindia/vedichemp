@@ -9,6 +9,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   Download, Fingerprint, KeyRound, LogOut, ShieldCheck, Sliders, Smartphone,
@@ -264,7 +265,9 @@ export default async function ProfilePage({
               Every consent change is recorded in an append-only ledger with a timestamp — you can request
               the full history with your data export.
             </p>
-            <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/api/v1/me/export" download>
+            {/* Plain anchor on purpose: it's a file download from a route handler,
+                not a page navigation — the basePath is applied server-side. */}
+            <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`${(process.env.BASE_PATH ?? "").replace(/\/$/, "")}/api/v1/me/export`} download>
               <span className="vh-row" style={{ gap: 6 }}>
                 <Download size={14} strokeWidth={2.2} aria-hidden />Download my data (JSON)
               </span>

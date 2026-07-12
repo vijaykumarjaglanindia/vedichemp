@@ -7,6 +7,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Search, PackagePlus, Upload, Pencil, FlaskConical } from "lucide-react";
 import { Shell } from "../Shell";
 import { Banner, Card, DataTable, StatusPill, toneForStatus, ComplianceBadge, MoneyText, type Column } from "@/components/ui";
@@ -67,7 +68,7 @@ export default async function SellerProductsPage({
         <span className="vh-row" style={{ gap: 10 }}>
           <span aria-hidden style={{ fontSize: "1.5rem" }}>{p.emoji}</span>
           <span>
-            <div style={{ fontWeight: 600 }}><a href={`/seller/products/${p.id}`}>{p.title}</a></div>
+            <div style={{ fontWeight: 600 }}><Link href={`/seller/products/${p.id}`}>{p.title}</Link></div>
             <ComplianceBadge cls={p.cls} />
           </span>
         </span>
@@ -85,12 +86,12 @@ export default async function SellerProductsPage({
     {
       key: "actions", header: "", align: "right", render: (p) => (
         <span className="vh-row" style={{ gap: 4, justifyContent: "flex-end" }}>
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/seller/products/${p.id}`} aria-label={`Edit ${p.title}`}>
+          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/seller/products/${p.id}`} aria-label={`Edit ${p.title}`}>
             <Pencil size={14} strokeWidth={2.2} aria-hidden />
-          </a>
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/seller/products/${p.id}#coa-upload`} aria-label={`Upload lab report for ${p.title}`}>
+          </Link>
+          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/seller/products/${p.id}#coa-upload`} aria-label={`Upload lab report for ${p.title}`}>
             <FlaskConical size={14} strokeWidth={2.2} aria-hidden />
-          </a>
+          </Link>
         </span>
       ),
     },
@@ -106,9 +107,9 @@ export default async function SellerProductsPage({
           <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#bulk-upload" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <Upload size={14} strokeWidth={2.2} aria-hidden /> Bulk upload
           </a>
-          <a className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/products/new" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/products/new" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <PackagePlus size={14} strokeWidth={2.2} aria-hidden /> Add product
-          </a>
+          </Link>
         </span>
       }
     >
@@ -124,7 +125,7 @@ export default async function SellerProductsPage({
 
       {/* Toolbar */}
       <div className="vh-row-between" style={{ marginBottom: "var(--sp-3)", flexWrap: "wrap", gap: 8 }}>
-        <form method="GET" action="/seller/products" className="vh-row" style={{ gap: 8, flex: "1 1 280px", maxWidth: 420 }}>
+        <form method="GET" className="vh-row" style={{ gap: 8, flex: "1 1 280px", maxWidth: 420 }}>
           {status !== "ALL" && <input type="hidden" name="status" value={status} />}
           <div style={{ position: "relative", flex: 1 }}>
             <Search size={15} strokeWidth={2.2} aria-hidden style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--vh-muted)" }} />
@@ -146,9 +147,9 @@ export default async function SellerProductsPage({
               ? `/seller/products${query ? `?q=${encodeURIComponent(query)}` : ""}`
               : `/seller/products?status=${t}${query ? `&q=${encodeURIComponent(query)}` : ""}`;
             return (
-              <a key={t} href={href} className={t === status ? "on" : undefined} aria-current={t === status ? "true" : undefined}>
+              <Link key={t} href={href} className={t === status ? "on" : undefined} aria-current={t === status ? "true" : undefined}>
                 {t === "ALL" ? "All" : t.charAt(0) + t.slice(1).toLowerCase()}
-              </a>
+              </Link>
             );
           })}
         </nav>
@@ -158,7 +159,7 @@ export default async function SellerProductsPage({
         <DataTable
           columns={columns}
           rows={rows}
-          empty={<div className="vh-empty">No products match — clear the search or <a href="/seller/products/new">add your first product</a>.</div>}
+          empty={<div className="vh-empty">No products match — clear the search or <Link href="/seller/products/new">add your first product</Link>.</div>}
         />
       </Card>
       <p className="small muted" style={{ margin: "8px 0 var(--sp-4)" }}>
