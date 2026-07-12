@@ -201,6 +201,37 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ── From our sponsors: video + product carousel ─────
+          Placements home-video / home-sponsored-products — A1-guarded, always labelled. */}
+      <section className="vh-section" style={{ paddingTop: 0 }}>
+        <div className="vh-container">
+          <SectionHead eyebrow="From our sponsors" title="Sponsored picks" sub="Clearly labelled, never mixed into rankings — and never a prescription product." />
+          <div className="vh-split-wide">
+            <AdVideo
+              cls="CBD_WELLNESS" placement="home-video" brand="Vedic Botanicals"
+              title="Inside a batch test: how our CBD balm gets its lab report" duration="0:48"
+              href="/store/vedic-botanicals"
+            />
+            <div style={{ display: "grid", gap: 12 }}>
+              <AdSlot cls="CBD_WELLNESS" placement="home-sponsored-products" unstyled>
+                <div style={{ display: "grid", gap: 12 }}>
+                  {PUBLIC_PRODUCTS.filter((sp) => sp.seller === "Vedic Botanicals").slice(0, 3).map((sp) => (
+                    <a key={sp.id} href={`/products/${sp.slug}`} className="vh-product-row" style={{ textDecoration: "none" }}>
+                      <span className="vh-product-media" style={{ fontSize: "1.6rem" }} aria-hidden>{sp.emoji}</span>
+                      <span style={{ minWidth: 0 }}>
+                        <span className="vh-product-title" style={{ display: "block" }}>{sp.title}</span>
+                        <span className="small muted">{sp.seller}</span>
+                      </span>
+                      <MoneyText paise={sp.pricePaise} className="vh-product-title" />
+                    </a>
+                  ))}
+                </div>
+              </AdSlot>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── Flash sale strip ─────────────────────────────── */}
       <section className="vh-section vh-section-alt">
         <div className="vh-container">
@@ -464,37 +495,6 @@ export default function HomePage() {
       </section>
 
       {/* ── FAQ ──────────────────────────────────────────── */}
-      {/* ── From our sponsors: video + product carousel ─────
-          Placements home-video / home-sponsored-products — A1-guarded, always labelled. */}
-      <section className="vh-section vh-section-alt">
-        <div className="vh-container">
-          <SectionHead eyebrow="From our sponsors" title="Sponsored picks" sub="Clearly labelled, never mixed into rankings — and never a prescription product." />
-          <div className="vh-split-wide">
-            <AdVideo
-              cls="CBD_WELLNESS" placement="home-video" brand="Vedic Botanicals"
-              title="Inside a batch test: how our CBD balm gets its lab report" duration="0:48"
-              href="/store/vedic-botanicals"
-            />
-            <div style={{ display: "grid", gap: 12 }}>
-              <AdSlot cls="CBD_WELLNESS" placement="home-sponsored-products" unstyled>
-                <div style={{ display: "grid", gap: 12 }}>
-                  {PUBLIC_PRODUCTS.filter((sp) => sp.seller === "Vedic Botanicals").slice(0, 3).map((sp) => (
-                    <a key={sp.id} href={`/products/${sp.slug}`} className="vh-product-row" style={{ textDecoration: "none" }}>
-                      <span className="vh-product-media" style={{ fontSize: "1.6rem" }} aria-hidden>{sp.emoji}</span>
-                      <span style={{ minWidth: 0 }}>
-                        <span className="vh-product-title" style={{ display: "block" }}>{sp.title}</span>
-                        <span className="small muted">{sp.seller}</span>
-                      </span>
-                      <MoneyText paise={sp.pricePaise} className="vh-product-title" />
-                    </a>
-                  ))}
-                </div>
-              </AdSlot>
-            </div>
-          </div>
-        </div>
-      </section>
-
       <section className="vh-section">
         <div className="vh-container" style={{ maxWidth: 820 }}>
           <SectionHead eyebrow="FAQ" title="Common questions, straight answers" />
