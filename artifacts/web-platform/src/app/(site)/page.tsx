@@ -36,7 +36,6 @@ import {
   FLASH_SALE,
   HEALTH_GOALS,
   HOME_FAQS,
-  INDUSTRY_STATS,
   PUBLIC_PRODUCTS,
   TESTIMONIALS,
   sellerSlug,
@@ -404,26 +403,6 @@ export default function HomePage() {
                 </span>
                 <h3 style={{ fontSize: ".98rem", marginBottom: 6 }}>{title}</h3>
                 <p className="small muted" style={{ marginBottom: 0 }}>{body}</p>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* ── Industry stats band ──────────────────────────── */}
-      <section
-        style={{
-          background: "linear-gradient(160deg, #ffffff, var(--vh-green-100))",
-          padding: "var(--sp-7) 0",
-        }}
-      >
-        <div className="vh-container">
-          <div className="vh-grid cols-4">
-            {INDUSTRY_STATS.map((s) => (
-              <div key={s.label}>
-                <div className="tabular" style={{ fontSize: "2.1rem", fontWeight: 800, color: "var(--vh-ink)", letterSpacing: "-0.02em" }}>{s.value}</div>
-                <div style={{ color: "#cfe6d8", fontWeight: 700, fontSize: ".86rem", marginTop: 4 }}>{s.label}</div>
-                <div className="small" style={{ color: "#9dc4ab", marginTop: 2 }}>{s.sub}</div>
               </div>
             ))}
           </div>
