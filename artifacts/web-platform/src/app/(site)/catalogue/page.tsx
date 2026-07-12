@@ -22,6 +22,7 @@ import { ComplianceBadge, MoneyText, Rating } from "@/components/ui";
 import { AdSlot } from "@/components/ui/ads";
 import { CLASS_META, permittedClasses } from "@/lib/compliance";
 import { classProducts, PRODUCTS, type SampleProduct } from "@/lib/sample";
+import { addToCart } from "../cart/actions";
 
 export const metadata: Metadata = {
   title: "Shop the catalogue",
@@ -82,7 +83,10 @@ function ProductTile({ p, sponsored }: { p: SampleProduct; sponsored?: boolean }
         </div>
         <ComplianceBadge cls={p.cls} />
         <div className="vh-row" style={{ gap: 8, marginTop: "auto", paddingTop: 8 }}>
-          <button className="vh-btn vh-btn-primary vh-btn-sm" style={{ flex: 1 }}><ShoppingCart size={14} aria-hidden /> Add to cart</button>
+          <form action={addToCart} style={{ flex: 1, display: "flex" }}>
+            <input type="hidden" name="productId" value={p.id} />
+            <button type="submit" className="vh-btn vh-btn-primary vh-btn-sm" style={{ flex: 1 }}><ShoppingCart size={14} aria-hidden /> Add to cart</button>
+          </form>
           <button className="vh-iconbtn" aria-label={`Add ${p.title} to wishlist`}><Heart size={15} aria-hidden /></button>
         </div>
       </div>
@@ -277,7 +281,10 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                     </div>
                     <div className="vh-row" style={{ gap: 8 }}>
                       <button className="vh-iconbtn" aria-label={`Add ${p.title} to wishlist`}><Heart size={15} aria-hidden /></button>
-                      <button className="vh-btn vh-btn-primary vh-btn-sm"><ShoppingCart size={14} aria-hidden /> Add to cart</button>
+                      <form action={addToCart}>
+                        <input type="hidden" name="productId" value={p.id} />
+                        <button type="submit" className="vh-btn vh-btn-primary vh-btn-sm"><ShoppingCart size={14} aria-hidden /> Add to cart</button>
+                      </form>
                     </div>
                   </div>
                 </article>

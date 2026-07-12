@@ -30,6 +30,7 @@ import { AdSlot } from "@/components/ui/ads";
 import { CLASS_META, isRegulated } from "@/lib/compliance";
 import { PRODUCTS, SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
+import { addToCart } from "../../cart/actions";
 import {
   discountPct,
   frequentlyBoughtWith,
@@ -245,7 +246,10 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
             <MoneyText paise={product.pricePaise} className="vh-product-title" />
           </div>
           <div className="vh-spacer" />
-          <button type="button" className="vh-btn vh-btn-primary"><ShoppingCart size={15} aria-hidden /> Add to cart</button>
+          <form action={addToCart}>
+            <input type="hidden" name="productId" value={product.id} />
+            <button type="submit" className="vh-btn vh-btn-primary"><ShoppingCart size={15} aria-hidden /> Add to cart</button>
+          </form>
         </div>
 
         <div className="vh-sticky-box">
@@ -292,19 +296,22 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
               <span className="small" style={{ paddingLeft: 22 }}>Free shipping on orders above ₹5,000 · ₹100 flat below · COD available</span>
             </div>
 
-            <div className="vh-field" style={{ marginBottom: 12, maxWidth: 120 }}>
-              <label htmlFor="pdp-qty" className="vh-label">Quantity</label>
-              <select id="pdp-qty" className="vh-select" defaultValue="1">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <option key={n} value={n}>{n}</option>
-                ))}
-              </select>
-            </div>
+            <form action={addToCart}>
+              <input type="hidden" name="productId" value={product.id} />
+              <div className="vh-field" style={{ marginBottom: 12, maxWidth: 120 }}>
+                <label htmlFor="pdp-qty" className="vh-label">Quantity</label>
+                <select id="pdp-qty" name="qty" className="vh-select" defaultValue="1">
+                  {[1, 2, 3, 4, 5].map((n) => (
+                    <option key={n} value={n}>{n}</option>
+                  ))}
+                </select>
+              </div>
 
-            <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "var(--sp-3)" }}>
-              <button type="button" className="vh-btn vh-btn-primary vh-btn-lg">Add to cart</button>
-              <button type="button" className="vh-btn vh-btn-outline">Buy now</button>
-            </div>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "var(--sp-3)" }}>
+                <button type="submit" name="intent" value="cart" className="vh-btn vh-btn-primary vh-btn-lg">Add to cart</button>
+                <button type="submit" name="intent" value="buy" className="vh-btn vh-btn-outline">Buy now</button>
+              </div>
+            </form>
 
             {/* Delivery estimate by PIN — serviceability is decided server-side */}
             <form className="vh-field" style={{ marginBottom: "var(--sp-3)" }} aria-label="Check delivery by PIN code">

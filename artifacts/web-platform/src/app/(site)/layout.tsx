@@ -104,6 +104,7 @@ const chromeCss = `
 `;
 
 import { GenerativeSearch, type SearchDoc } from "./_lib/GenerativeSearch";
+import { HeaderBits } from "./_lib/HeaderBits";
 import { PRODUCTS } from "@/lib/sample";
 
 /**
@@ -208,13 +209,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
             <Link href="/account" className="vh-iconbtn" aria-label="Wishlist">
               <Heart size={17} strokeWidth={2.2} aria-hidden />
             </Link>
-            <Link href="/account" className="vh-iconbtn" aria-label="Cart, 2 items" style={{ position: "relative" }}>
-              <ShoppingCart size={17} strokeWidth={2.2} aria-hidden />
-              <span className="vhx-cart-badge" aria-hidden>2</span>
-            </Link>
-            <Link href="/account" className="vh-btn vh-btn-ghost vh-btn-sm vhx-hide-sm">
-              Sign in
-            </Link>
+            <HeaderBits />
             <Link href="/sell" className="vh-btn vh-btn-primary vh-btn-sm">
               Sell on Vedic Hemp
             </Link>

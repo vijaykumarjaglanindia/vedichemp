@@ -11,9 +11,10 @@
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
 import {
-  Download, Fingerprint, KeyRound, ShieldCheck, Sliders, Smartphone,
+  Download, Fingerprint, KeyRound, LogOut, ShieldCheck, Sliders, Smartphone,
   Trash2, UserRound,
 } from "lucide-react";
+import { signOut } from "../../(site)/signin/actions";
 import { Shell } from "../Shell";
 import { Card, StatusPill, Banner } from "@/components/ui";
 import { currentBuyer } from "@/lib/session";
@@ -227,6 +228,18 @@ export default function ProfilePage() {
         </Card>
 
         {/* Danger zone */}
+        <Card title={title(<LogOut {...I} />, "Sign out", "signout")}>
+          <p className="small muted" style={{ marginBottom: 10 }}>
+            Ends this session on this device. Other devices stay signed in until their sessions
+            expire or are revoked above.
+          </p>
+          <form action={signOut}>
+            <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm">
+              <LogOut size={14} strokeWidth={2.2} aria-hidden /> Sign out
+            </button>
+          </form>
+        </Card>
+
         <Card title={title(<Trash2 {...I} />, "Delete account", "delete")}>
           <Banner severity="warn" title="Account deletion is high-friction, by design" icon="⚠️">
             Deletion is blocked while any of the following are true: an order is in transit, a return or

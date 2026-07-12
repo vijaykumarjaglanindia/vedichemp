@@ -14,6 +14,7 @@ import Link from "next/link";
 import { Heart } from "lucide-react";
 import { ComplianceBadge, MoneyText, Rating } from "@/components/ui";
 import type { SampleProduct } from "@/lib/sample";
+import { addToCart } from "../cart/actions";
 import { discountPct } from "./data";
 
 export function reviewCountFor(p: SampleProduct): number {
@@ -70,9 +71,12 @@ export function ProductCard({
         <span className="small muted">{p.seller}</span>
         {actions && (
           <div className="vh-row" style={{ gap: 8, marginTop: 2 }}>
-            <button type="button" className="vh-btn vh-btn-primary vh-btn-sm" style={{ flex: 1 }}>
-              Add to cart
-            </button>
+            <form action={addToCart} style={{ flex: 1, display: "flex" }}>
+              <input type="hidden" name="productId" value={p.id} />
+              <button type="submit" className="vh-btn vh-btn-primary vh-btn-sm" style={{ flex: 1 }}>
+                Add to cart
+              </button>
+            </form>
             <Link href={`/products/${p.slug}`} className="vh-btn vh-btn-ghost vh-btn-sm">
               Quick view
             </Link>
