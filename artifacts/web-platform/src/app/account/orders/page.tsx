@@ -11,6 +11,7 @@ import { Eye, FileDown, MapPin } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
 import { ORDERS, type SampleOrder } from "@/lib/sample";
+import { readOrderHistory } from "@/lib/engage";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -31,7 +32,21 @@ export default async function OrdersPage({
   const params = await searchParams;
   const filter = params.filter ?? "all";
 
-  const rows = ORDERS.filter((o) => {
+  // Orders actually placed in this session (demo persistence — becomes
+  // db.order.findMany with a real database). They surface ahead of the
+  // illustrative history and behave like any PENDING order.
+  const placed: SampleOrder[] = (await readOrderHistory()).map((o) => ({
+    id: `live-${o.reference}`,
+    reference: o.reference,
+    placedAt: o.placedAt.slice(0, 10),
+    status: "PENDING",
+    totalPaise: o.totalPaise,
+    items: o.items.map(({ title, qty, emoji }) => ({ title, qty, emoji })),
+    eta: "3–5 days",
+    seller: o.items[0]?.seller,
+  }));
+
+  const rows = [...placed, ...ORDERS].filter((o) => {
     if (filter === "open") return OPEN_STATUSES.has(o.status);
     if (filter === "delivered") return o.status === "DELIVERED";
     if (filter === "returned") return o.status === "RETURNED";

@@ -38,7 +38,18 @@ function SuggestionCard({
   );
 }
 
-export default function AssistantPage() {
+const DRAFTS = [
+  "A cooling topical balm formulated with broad-spectrum hemp extract, blended with eucalyptus and camphor for everyday muscle and joint comfort. Lab-tested every batch. For external use only.",
+  "A fast-absorbing herbal balm pairing broad-spectrum hemp extract with wintergreen and menthol — a warm-cool finish for post-workout routines. Batch lab report on the listing. External use only.",
+];
+
+export default async function AssistantPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ v?: string }>;
+}) {
+  const { v } = await searchParams;
+  const draftIndex = v === "2" ? 1 : 0;
   return (
     <Shell active="/seller/assistant" breadcrumb={["Seller Central", "AI Assistant"]} title="AI Seller Assistant">
       {/* Disclaimer — outputs pass compliance copy-check */}
@@ -55,13 +66,12 @@ export default function AssistantPage() {
         <SuggestionCard icon={<PenLine size={16} strokeWidth={2.2} />} title="Description writer">
           <p className="small muted" style={{ marginTop: 0 }}>Draft for: CBD Wellness Balm 30g</p>
           <div style={{ border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: 12, fontSize: "0.88rem", background: "var(--vh-bg)" }}>
-            &ldquo;A cooling topical balm formulated with broad-spectrum hemp extract, blended with eucalyptus and
-            camphor for everyday muscle and joint comfort. Lab-tested every batch. For external use only.&rdquo;
+            &ldquo;{DRAFTS[draftIndex]}&rdquo;
           </div>
           <div className="small" style={{ marginTop: 8, color: "var(--vh-ok)", fontWeight: 600 }}>Copy-check: no disease claims detected · passed</div>
           <div className="vh-row" style={{ gap: 8, marginTop: 12 }}>
-            <button className="vh-btn vh-btn-sm vh-btn-primary" type="button">Use this draft</button>
-            <button className="vh-btn vh-btn-sm vh-btn-ghost" type="button">Regenerate</button>
+            <a className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/products/p4" title="Open the listing editor to paste and save this draft">Use this draft</a>
+            <a className="vh-btn vh-btn-sm vh-btn-ghost" href={draftIndex === 0 ? "/seller/assistant?v=2" : "/seller/assistant"}>Regenerate</a>
           </div>
         </SuggestionCard>
 
@@ -76,7 +86,7 @@ export default function AssistantPage() {
             <MoneyText paise={239900} />
           </div>
           <div className="small muted">Based on category demand and 3 comparable buy-box winners. Final price is always seller-set — this is a suggestion, never applied automatically.</div>
-          <button className="vh-btn vh-btn-sm vh-btn-primary" type="button" style={{ marginTop: 12 }}>Apply to listing</button>
+          <a className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/products/p5" style={{ marginTop: 12, display: "inline-block" }} title="Open the listing editor — price stays seller-set">Apply to listing</a>
         </SuggestionCard>
 
         <SuggestionCard icon={<PackageSearch size={16} strokeWidth={2.2} />} title="Inventory forecast">

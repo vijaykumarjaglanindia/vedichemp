@@ -18,6 +18,7 @@ import {
   BadgePercent,
   Flame,
   FlaskConical,
+  Heart,
   MapPin,
   RotateCcw,
   ShieldCheck,
@@ -30,7 +31,8 @@ import { AdBanner, AdSlot } from "@/components/ui/ads";
 import { CLASS_META, isRegulated } from "@/lib/compliance";
 import { PRODUCTS, SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
-import { addToCart } from "../../cart/actions";
+import { addBundleToCart, addToCart } from "../../cart/actions";
+import { toggleWishlist } from "../../actions";
 import {
   discountPct,
   frequentlyBoughtWith,
@@ -44,6 +46,35 @@ import { ProductCard, reviewCountFor } from "../../_lib/ProductCard";
 
 type Params = { slug: string };
 
+/**
+ * Serviceability by PIN — decided here, on the server, never in the client
+ * (the client renders the verdict). Demo logic is deterministic; with the
+ * courier API attached this becomes a serviceability lookup. Regulated
+ * classes have a narrower lane network than plain hemp foods.
+ */
+function checkPin(pin: string, cls: string): { ok: boolean; title: string; body: string } {
+  if (!/^[1-8]\d{5}$/.test(pin)) {
+    return { ok: false, title: "That PIN doesn't look right", body: "Enter the 6-digit PIN code of the delivery address." };
+  }
+  const regulated = cls === "CBD_WELLNESS";
+  if (regulated && /^(19|37|69)/.test(pin)) {
+    return {
+      ok: false,
+      title: `Not serviceable at ${pin} yet`,
+      body: "Sellers can't ship CBD wellness to this PIN yet — age-verified handover isn't available there. Hemp foods and Ayurveda deliver normally.",
+    };
+  }
+  const days = 2 + ((pin.split("").reduce((s, d) => s + Number(d), 0)) % 3);
+  const eta = new Date(Date.now() + days * 86400000).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+  return {
+    ok: true,
+    title: `Delivers to ${pin} by ${eta}`,
+    body: regulated
+      ? "Shipped by the seller's delivery partner · ID checked on handover (21+)."
+      : "Shipped by the seller's delivery partner · Cash on Delivery available.",
+  };
+}
+
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { slug } = await params;
   const product = PRODUCTS.find((p) => p.slug === slug);
@@ -53,8 +84,15 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   return { title: product.title };
 }
 
-export default async function ProductDetailPage({ params }: { params: Promise<Params> }) {
+export default async function ProductDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<Params>;
+  searchParams: Promise<{ pin?: string }>;
+}) {
   const { slug } = await params;
+  const { pin } = await searchParams;
   const product = PRODUCTS.find((p) => p.slug === slug);
 
   // A1: absent, not blurred — a public visitor gets the identical empty state
@@ -82,6 +120,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
   const bundlePaise = product.pricePaise + fbt.reduce((sum, x) => sum + x.pricePaise, 0);
   const similar = similarProducts(product, 6);
   const adProduct = PUBLIC_PRODUCTS.find((p) => p.cls === "CBD_WELLNESS" && p.id !== product.id);
+  const pinResult = pin !== undefined ? checkPin(pin, product.cls) : null;
 
   const crumbs = [
     { name: "Catalogue", href: "/catalogue" },
@@ -316,22 +355,40 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
                 </select>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "var(--sp-3)" }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
                 <button type="submit" name="intent" value="cart" className="vh-btn vh-btn-primary vh-btn-lg">Add to cart</button>
                 <button type="submit" name="intent" value="buy" className="vh-btn vh-btn-outline">Buy now</button>
               </div>
             </form>
 
+            <form action={toggleWishlist} style={{ marginBottom: "var(--sp-3)" }}>
+              <input type="hidden" name="productId" value={product.id} />
+              <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm" style={{ width: "100%" }}>
+                <Heart size={14} aria-hidden /> Save to wishlist
+              </button>
+            </form>
+
             {/* Delivery estimate by PIN — serviceability is decided server-side */}
-            <form className="vh-field" style={{ marginBottom: "var(--sp-3)" }} aria-label="Check delivery by PIN code">
+            <form method="GET" action={`/products/${product.slug}`} className="vh-field" style={{ marginBottom: "var(--sp-3)" }} aria-label="Check delivery by PIN code">
               <label htmlFor="pdp-pin" className="vh-label vh-row" style={{ gap: 6 }}>
                 <MapPin size={13} aria-hidden style={{ color: "var(--vh-accent)" }} /> Deliver to
               </label>
               <div className="vh-row" style={{ gap: 8 }}>
-                <input id="pdp-pin" className="vh-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="Enter 6-digit PIN code" style={{ maxWidth: 200 }} />
+                <input id="pdp-pin" name="pin" defaultValue={pin ?? ""} className="vh-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="Enter 6-digit PIN code" style={{ maxWidth: 200 }} />
                 <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm">Check</button>
               </div>
-              <span className="vh-help">Serviceability for regulated classes is checked per PIN on the server.</span>
+              {pinResult ? (
+                <span
+                  className="small"
+                  role="status"
+                  style={{ marginTop: 6, fontWeight: 600, color: pinResult.ok ? "var(--vh-ok)" : "var(--vh-danger)" }}
+                >
+                  {pinResult.title}
+                  <span className="muted" style={{ display: "block", fontWeight: 400 }}>{pinResult.body}</span>
+                </span>
+              ) : (
+                <span className="vh-help">Serviceability for regulated classes is checked per PIN on the server.</span>
+              )}
             </form>
 
             {meta.ageGated && (
@@ -382,9 +439,12 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
               <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--vh-ink)" }}>
                 <MoneyText paise={bundlePaise} />
               </div>
-              <button type="button" className="vh-btn vh-btn-primary vh-btn-sm" style={{ marginTop: 8 }}>
-                Add all {1 + fbt.length} to cart
-              </button>
+              <form action={addBundleToCart} style={{ marginTop: 8 }}>
+                <input type="hidden" name="productIds" value={[product, ...fbt].map((p) => p.id).join(",")} />
+                <button type="submit" className="vh-btn vh-btn-primary vh-btn-sm">
+                  Add all {1 + fbt.length} to cart
+                </button>
+              </form>
             </div>
           </div>
         </section>

@@ -17,6 +17,8 @@ import { Shell } from "./Shell";
 import { Card, Stat, ProgressRing, DataTable, StatusPill, MoneyText, type Column } from "@/components/ui";
 import { Columns, BarList } from "@/components/ui/charts";
 import type { SampleOrder } from "@/lib/sample";
+import { readSellerOrderOverrides } from "@/lib/engage";
+import { sellerOrderAction } from "./actions";
 import {
   SELLER, ACCOUNT_HEALTH, TODAY_KPIS, SELLER_ORDERS, WAREHOUSE_STOCK, LOW_STOCK_THRESHOLD,
   SELLER_SETTLEMENTS, LICENCES, BLOCKED_BATCHES, PENDING_REVIEW_BATCHES, daysUntil,
@@ -74,7 +76,8 @@ export default async function SellerHomePage({
   const { period: rawPeriod } = await searchParams;
   const period = PERIODS.includes(rawPeriod as (typeof PERIODS)[number]) ? (rawPeriod as (typeof PERIODS)[number]) : "7d";
 
-  const pendingOrders = SELLER_ORDERS.filter((o) => o.status === "PENDING");
+  const overrides = await readSellerOrderOverrides();
+  const pendingOrders = SELLER_ORDERS.filter((o) => (overrides[o.id] ?? o.status) === "PENDING");
   const lowStock = WAREHOUSE_STOCK.filter((w) => w.qty - w.reserved < LOW_STOCK_THRESHOLD);
   const awaitingSettlement = SELLER_SETTLEMENTS.filter((s) => s.status === "AWAITING_CHECKER");
   const settlementDuePaise = awaitingSettlement.reduce((sum, s) => sum + s.netPaise, 0);
@@ -90,7 +93,11 @@ export default async function SellerHomePage({
     {
       key: "actions", header: "", align: "right", render: (o) => (
         <span className="vh-row" style={{ gap: 8, justifyContent: "flex-end" }}>
-          <button className="vh-btn vh-btn-sm vh-btn-primary" type="button">Accept</button>
+          <form action={sellerOrderAction} style={{ display: "inline-flex" }}>
+            <input type="hidden" name="orderId" value={o.id} />
+            <input type="hidden" name="op" value="accept" />
+            <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">Accept</button>
+          </form>
           <a className="small" href={`/seller/orders/${o.id}`}>Details →</a>
         </span>
       ),

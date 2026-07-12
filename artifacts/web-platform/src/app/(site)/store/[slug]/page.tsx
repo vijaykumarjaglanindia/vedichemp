@@ -11,11 +11,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AdBanner } from "@/components/ui/ads";
-import { BadgeCheck, MapPin, Share2, ShieldCheck, UserPlus } from "lucide-react";
+import { BadgeCheck, MapPin, ShieldCheck, UserCheck, UserPlus } from "lucide-react";
 import { Card, EmptyState, Rating, SectionHead } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
+import { readFollows } from "@/lib/engage";
 import { breadcrumbJsonLd } from "@/lib/seo";
+import { toggleFollowStore } from "../../actions";
 import { ProductCard } from "../../_lib/ProductCard";
+import { ShareButton } from "../../_lib/ShareButton";
 import { sellerBySlug, sellerProducts, STORE_PROFILES } from "../../_lib/data";
 
 type Params = { slug: string };
@@ -49,6 +52,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
   // not as a licence badge on a shoppable surface.
   const publicClasses = seller.classes.filter((c) => c !== "MED_CANNABIS");
   const products = sellerProducts(seller.name);
+  const following = (await readFollows()).includes(slug);
 
   const crumbs = [
     { name: "Home", href: "/" },
@@ -103,18 +107,21 @@ export default async function StorePage({ params }: { params: Promise<Params> })
               </div>
             </div>
             <div className="vh-row" style={{ gap: 10 }}>
-              <button type="button" className="vh-btn vh-btn-primary" style={{ gap: 8 }}>
-                <UserPlus size={15} strokeWidth={2.2} aria-hidden />
-                Follow store
-              </button>
-              <button
-                type="button"
-                className="vh-btn vh-btn-ghost"
-                style={{ background: "var(--vh-surface)", borderColor: "var(--vh-line-strong)", color: "var(--vh-ink)", gap: 8 }}
-              >
-                <Share2 size={15} strokeWidth={2.2} aria-hidden />
-                Share
-              </button>
+              <form action={toggleFollowStore}>
+                <input type="hidden" name="slug" value={slug} />
+                {following ? (
+                  <button type="submit" className="vh-btn vh-btn-outline" style={{ gap: 8 }}>
+                    <UserCheck size={15} strokeWidth={2.2} aria-hidden />
+                    Following
+                  </button>
+                ) : (
+                  <button type="submit" className="vh-btn vh-btn-primary" style={{ gap: 8 }}>
+                    <UserPlus size={15} strokeWidth={2.2} aria-hidden />
+                    Follow store
+                  </button>
+                )}
+              </form>
+              <ShareButton title={`${seller.name} — official store on Vedic Hemp`} />
             </div>
           </div>
         </div>

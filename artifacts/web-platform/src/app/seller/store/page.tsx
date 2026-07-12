@@ -15,10 +15,16 @@ import { Card, StatusPill, toneForStatus, Banner, Rating } from "@/components/ui
 import { SELLER, LICENCES, CAPABILITY_MATRIX, STORE_PREVIEW, daysUntil } from "../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
 import { groupIndian } from "@/lib/money";
+import { requestOwnerTransfer } from "../actions";
 
 export const metadata: Metadata = { title: "Store & KYC" };
 
-export default function StorePage() {
+export default async function StorePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ transfer?: string; err?: string }>;
+}) {
+  const { transfer, err } = await searchParams;
   return (
     <Shell active="/seller/store" breadcrumb={["Seller Central", "Store & KYC"]} title="Store & KYC">
       <div className="vh-grid cols-2" style={{ alignItems: "start", marginBottom: "var(--sp-4)" }}>
@@ -201,12 +207,32 @@ export default function StorePage() {
       <div style={{ height: "var(--sp-3)" }} />
 
       <Card title="Owner transfer">
-        <p className="small muted" style={{ marginTop: 0 }}>
-          Transferring ownership re-runs full KYC on the incoming owner and pauses payouts until it clears. This is a
-          high-impact action — it requires a reason of at least 20 characters and is logged whether it succeeds or is
-          denied.
-        </p>
-        <button className="vh-btn vh-btn-sm vh-btn-danger" type="button">Start owner transfer</button>
+        {transfer === "requested" ? (
+          <Banner severity="ok" title="Transfer request logged">
+            The incoming owner receives a KYC link; payouts pause until it clears. The request — and
+            every decision on it — is written to the audit trail.
+          </Banner>
+        ) : (
+          <>
+            <p className="small muted" style={{ marginTop: 0 }}>
+              Transferring ownership re-runs full KYC on the incoming owner and pauses payouts until it clears. This is a
+              high-impact action — it requires a reason of at least 20 characters and is logged whether it succeeds or is
+              denied.
+            </p>
+            {err === "reason" && (
+              <div style={{ marginBottom: 12 }}>
+                <Banner severity="danger">A reason of at least 20 characters is required — the request was denied and the denial logged.</Banner>
+              </div>
+            )}
+            <form action={requestOwnerTransfer} className="vh-grid" style={{ gap: 12, maxWidth: 560 }}>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="transfer-reason">Reason <span className="req">*</span></label>
+                <textarea className="vh-textarea" id="transfer-reason" name="reason" rows={2} minLength={20} maxLength={500} required placeholder="Why is ownership changing? (min 20 characters)" />
+              </div>
+              <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit" style={{ justifySelf: "start" }}>Start owner transfer</button>
+            </form>
+          </>
+        )}
       </Card>
     </Shell>
   );

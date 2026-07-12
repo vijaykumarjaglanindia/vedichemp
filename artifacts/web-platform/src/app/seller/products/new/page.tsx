@@ -13,9 +13,10 @@
 import type { Metadata } from "next";
 import { Lock, ArrowRight, FileUp } from "lucide-react";
 import { Shell } from "../../Shell";
-import { Card, StatusPill } from "@/components/ui";
+import { Banner, Card, StatusPill } from "@/components/ui";
 import { CAPABILITY_MATRIX } from "../../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
+import { submitProduct } from "../../actions";
 
 export const metadata: Metadata = { title: "Add product" };
 
@@ -28,7 +29,21 @@ const LICENCE_REMEDIATION: Record<string, { label: string; href: string }> = {
   STATE_DRUG: { label: "About State Drug licensing", href: "/seller/store#licences" },
 };
 
-export default function NewProductPage() {
+const SUBMIT_ERRORS: Record<string, string> = {
+  cls: "Pick a compliance class you're licensed for.",
+  title: "Title should be 8–150 characters — product + format + size.",
+  claims: "The copy-check rejected claims language (cure/treat/prevent/heal). Describe composition and traditional use instead.",
+  price: "Selling price must be a positive integer in paise.",
+  mrp: "MRP must be an integer in paise, and the selling price cannot exceed it.",
+  hsn: "HSN code should be 4–8 digits.",
+};
+
+export default async function NewProductPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ err?: string }>;
+}) {
+  const { err } = await searchParams;
   return (
     <Shell active="/seller/products" breadcrumb={["Seller Central", "Products", "Add product"]} title="Add product">
       {/* Step indicator */}
@@ -45,7 +60,13 @@ export default function NewProductPage() {
         ))}
       </nav>
 
-      <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
+      {err && SUBMIT_ERRORS[err] && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="danger" title="Fix this before submitting">{SUBMIT_ERRORS[err]}</Banner>
+        </div>
+      )}
+
+      <form action={submitProduct} className="vh-grid cols-2" style={{ alignItems: "start" }}>
         {/* Class picker */}
         <Card title="Choose a compliance class">
           <p className="small muted" style={{ marginTop: 0 }}>
@@ -69,7 +90,7 @@ export default function NewProductPage() {
                 >
                   <span className="vh-row-between" style={{ alignItems: "flex-start" }}>
                     <span className="vh-row" style={{ gap: 10, alignItems: "flex-start" }}>
-                      <input type="radio" name="cls" value={row.cls} disabled={locked} aria-label={meta.label} style={{ marginTop: 4 }} />
+                      <input type="radio" name="cls" value={row.cls} disabled={locked} required aria-label={meta.label} style={{ marginTop: 4 }} />
                       <span>
                         <span style={{ fontWeight: 700, display: "block", opacity: locked ? 0.65 : 1 }}>
                           <span aria-hidden>{meta.emoji}</span> {meta.label}
@@ -172,13 +193,17 @@ export default function NewProductPage() {
           </Card>
 
           <div className="vh-row" style={{ gap: 8 }}>
-            <button className="vh-btn vh-btn-primary" type="button" style={{ flex: 1 }}>
-              Save &amp; continue to Compliance
+            <button className="vh-btn vh-btn-primary" type="submit" name="intent" value="submit" style={{ flex: 1 }}>
+              Submit for review
             </button>
-            <button className="vh-btn vh-btn-ghost" type="button">Save as draft</button>
+            <button className="vh-btn vh-btn-ghost" type="submit" name="intent" value="draft">Save as draft</button>
           </div>
+          <p className="small muted" style={{ margin: 0 }}>
+            Validation runs server-side. Submitted listings appear in Products as UNDER_REVIEW;
+            regulated classes still need an approved, batch-matched CoA before they can go live (A2).
+          </p>
         </div>
-      </div>
+      </form>
     </Shell>
   );
 }

@@ -14,6 +14,7 @@ import { randomUUID } from "node:crypto";
 import { clearCartCookies, priceCart, readCartLines, writeCartLines } from "@/lib/cart";
 import { PRODUCTS } from "@/lib/sample";
 import { permittedClasses } from "@/lib/compliance";
+import { appendOrderHistory } from "@/lib/engage";
 
 const MAX_QTY = 10;
 
@@ -40,6 +41,27 @@ export async function addToCart(formData: FormData): Promise<void> {
   await writeCartLines(lines);
 
   redirect(intent === "buy" ? "/checkout" : "/cart");
+}
+
+/** "Add all N to cart" on the frequently-bought-together bundle. Every id is
+ *  re-checked against the permitted-class universe (A1) — the bundle total the
+ *  page showed is decorative; pricing happens in priceCart(). */
+export async function addBundleToCart(formData: FormData): Promise<void> {
+  const ids = String(formData.get("productIds") ?? "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean)
+    .slice(0, 6);
+  const permitted = permittedClasses({ hasRx: false });
+  const lines = await readCartLines();
+  for (const id of ids) {
+    if (!PRODUCTS.some((p) => p.id === id && permitted.includes(p.cls))) continue;
+    const existing = lines.find((l) => l.id === id);
+    if (existing) existing.qty = Math.min(existing.qty + 1, MAX_QTY);
+    else lines.push({ id, qty: 1 });
+  }
+  await writeCartLines(lines);
+  redirect("/cart");
 }
 
 export async function setQty(formData: FormData): Promise<void> {
@@ -129,6 +151,7 @@ export async function placeOrder(formData: FormData): Promise<void> {
   // becomes db.order.create({ idempotencyKey }) via src/server (PRODUCTION.md).
   void randomUUID(); // idempotency key placeholder for the DB write
   jar.set("vh-last-order", JSON.stringify(record), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 3600 });
+  await appendOrderHistory(record); // powers My Account → Orders in demo mode
   jar.delete("vh-checkout-draft");
   await clearCartCookies();
   redirect("/checkout/confirmed");

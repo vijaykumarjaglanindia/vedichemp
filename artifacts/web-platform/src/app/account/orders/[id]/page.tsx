@@ -11,7 +11,9 @@ import { notFound } from "next/navigation";
 import { FileDown, LifeBuoy, Package, Receipt, RotateCcw, Truck } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Card, StatusPill, toneForStatus, MoneyText, Timeline, Banner } from "@/components/ui";
-import { ORDERS, PRODUCTS } from "@/lib/sample";
+import { ORDERS, PRODUCTS, type SampleOrder } from "@/lib/sample";
+import { readOrderHistory } from "@/lib/engage";
+import { addToCart } from "../../../(site)/cart/actions";
 
 export const metadata: Metadata = { title: "Order details" };
 
@@ -36,11 +38,31 @@ function title(icon: ReactNode, text: string) {
 
 export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const order = ORDERS.find((o) => o.id === id);
+
+  // Orders placed in this session live under `live-<reference>` ids and come
+  // from the server-written history cookie; sample history stays as-is.
+  let order: SampleOrder | undefined = ORDERS.find((o) => o.id === id);
+  let liveShipping: number | null = null;
+  if (!order && id.startsWith("live-")) {
+    const stored = (await readOrderHistory()).find((o) => `live-${o.reference}` === id);
+    if (stored) {
+      order = {
+        id,
+        reference: stored.reference,
+        placedAt: stored.placedAt.slice(0, 10),
+        status: "PLACED",
+        totalPaise: stored.totalPaise,
+        items: stored.items.map(({ title, qty, emoji }) => ({ title, qty, emoji })),
+        eta: "3–5 days",
+        seller: stored.items[0]?.seller,
+      };
+      liveShipping = stored.shippingPaise;
+    }
+  }
   if (!order) notFound();
 
   // Server-computed illustrative breakdown (integer paise only — no float rupee math).
-  const taxPaise = Math.round(order.totalPaise * 0.05);
+  const taxPaise = liveShipping !== null ? liveShipping : Math.round(order.totalPaise * 0.05);
   const subtotalPaise = order.totalPaise - taxPaise;
 
   const currentIndex = order.status === "RETURNED" ? LIFECYCLE.length : LIFECYCLE.findIndex((s) => s.key === order.status);
@@ -146,7 +168,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                     </span>
                     <span className="vh-row" style={{ gap: 8 }}>
                       <MoneyText paise={p.pricePaise} />
-                      <span className="vh-btn vh-btn-sm vh-btn-primary" aria-disabled>Add to cart</span>
+                      <form action={addToCart}>
+                        <input type="hidden" name="productId" value={p.id} />
+                        <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary">Add to cart</button>
+                      </form>
                     </span>
                   </li>
                 ))}
@@ -184,7 +209,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 <MoneyText paise={subtotalPaise} />
               </div>
               <div className="vh-row-between" style={{ marginBottom: 8 }}>
-                <span className="small muted">Tax (GST)</span>
+                <span className="small muted">{liveShipping !== null ? "Shipping" : "Tax (GST)"}</span>
                 <MoneyText paise={taxPaise} />
               </div>
               <hr className="vh-divider" />

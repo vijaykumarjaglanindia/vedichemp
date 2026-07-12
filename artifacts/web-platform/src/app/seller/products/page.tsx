@@ -9,8 +9,10 @@
 import type { Metadata } from "next";
 import { Search, PackagePlus, Upload, Pencil, FlaskConical } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, DataTable, StatusPill, toneForStatus, ComplianceBadge, MoneyText, type Column } from "@/components/ui";
+import { Banner, Card, DataTable, StatusPill, toneForStatus, ComplianceBadge, MoneyText, type Column } from "@/components/ui";
 import { BarList } from "@/components/ui/charts";
+import { ComplianceClass } from "@prisma/client";
+import { readSubmittedProducts } from "@/lib/engage";
 import { SELLER_PRODUCTS, LISTING_QUALITY, type SellerProduct } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Products" };
@@ -27,15 +29,35 @@ function coaSummary(p: SellerProduct): { tone: "ok" | "warn" | "danger" | "neutr
 export default async function SellerProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; submitted?: string }>;
 }) {
-  const { status: rawStatus, q } = await searchParams;
+  const { status: rawStatus, q, submitted } = await searchParams;
   const status = STATUS_TABS.includes(rawStatus as (typeof STATUS_TABS)[number])
     ? (rawStatus as (typeof STATUS_TABS)[number])
     : "ALL";
   const query = (q ?? "").trim().toLowerCase();
 
-  const rows = SELLER_PRODUCTS
+  // Listings created via Add product in this session (server-written cookie;
+  // db.product rows once the DB is attached). Regulated ones start with an
+  // empty batch list, so the CoA column correctly reads "No batches yet".
+  const mine: SellerProduct[] = (await readSubmittedProducts()).map((p) => ({
+    id: p.id,
+    title: p.title,
+    slug: p.id,
+    cls: p.cls as ComplianceClass,
+    pricePaise: p.pricePaise,
+    mrpPaise: p.mrpPaise,
+    seller: "Vedic Botanicals",
+    rating: 0,
+    emoji: "🆕",
+    labVerified: false,
+    state: p.listingState,
+    hsn: p.hsn,
+    listingState: p.listingState,
+    batches: [],
+  }));
+
+  const rows = [...mine, ...SELLER_PRODUCTS]
     .filter((p) => (status === "ALL" ? true : p.listingState === status))
     .filter((p) => (query ? p.title.toLowerCase().includes(query) : true));
 
@@ -90,6 +112,16 @@ export default async function SellerProductsPage({
         </span>
       }
     >
+      {submitted && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="ok" title={submitted === "draft" ? "Draft saved" : "Submitted for review"}>
+            {submitted === "draft"
+              ? "The listing is saved as DRAFT — finish it any time from this list."
+              : "Compliance reviews new listings within a few business days. A regulated listing also needs an approved, batch-matched CoA before it can go live (A2)."}
+          </Banner>
+        </div>
+      )}
+
       {/* Toolbar */}
       <div className="vh-row-between" style={{ marginBottom: "var(--sp-3)", flexWrap: "wrap", gap: 8 }}>
         <form method="GET" action="/seller/products" className="vh-row" style={{ gap: 8, flex: "1 1 280px", maxWidth: 420 }}>

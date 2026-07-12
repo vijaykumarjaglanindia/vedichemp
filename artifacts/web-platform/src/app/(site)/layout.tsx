@@ -16,7 +16,6 @@ import {
   Banknote,
   CreditCard,
   FlaskConical,
-  Heart,
   Landmark,
   Leaf,
   Lock,
@@ -105,6 +104,7 @@ const chromeCss = `
 
 import { GenerativeSearch, type SearchDoc } from "./_lib/GenerativeSearch";
 import { HeaderBits } from "./_lib/HeaderBits";
+import { NewsletterForm } from "./_lib/NewsletterForm";
 import { PRODUCTS } from "@/lib/sample";
 
 /**
@@ -206,9 +206,6 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
           </div>
 
           <div className="vh-row" style={{ gap: 6 }}>
-            <Link href="/account" className="vh-iconbtn" aria-label="Wishlist">
-              <Heart size={17} strokeWidth={2.2} aria-hidden />
-            </Link>
             <HeaderBits />
             <Link href="/sell" className="vh-btn vh-btn-primary vh-btn-sm">
               Sell on Vedic Hemp
@@ -265,19 +262,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
               <div className="small">Lab-report explainers and new-arrival digests. No health claims, ever.</div>
             </div>
             <span className="vh-spacer" />
-            <form action="/" method="GET" className="vh-row" style={{ gap: 8, flexWrap: "wrap" }} aria-label="Newsletter signup">
-              <label htmlFor="vh-newsletter" style={{ position: "absolute", left: -9999 }}>Email address</label>
-              <input
-                id="vh-newsletter"
-                name="newsletter"
-                type="email"
-                required
-                placeholder="you@example.in"
-                className="vh-input"
-                style={{ width: 240, background: "var(--vh-surface)", borderColor: "var(--vh-line-strong)", color: "var(--vh-ink)" }}
-              />
-              <button type="submit" className="vh-btn vh-btn-primary vh-btn-sm">Subscribe</button>
-            </form>
+            <NewsletterForm />
           </div>
 
           {/* Payment & trust row */}
