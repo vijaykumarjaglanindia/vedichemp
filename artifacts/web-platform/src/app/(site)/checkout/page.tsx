@@ -144,6 +144,12 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           <div className="vh-row-between small" style={{ padding: "3px 0" }}>
             <span className="muted">Subtotal</span><MoneyText paise={cart.subtotalPaise} />
           </div>
+          {cart.discountPaise > 0 && (
+            <div className="vh-row-between small" style={{ padding: "3px 0" }}>
+              <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Coupon {cart.couponCode}</span>
+              <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>− <MoneyText paise={cart.discountPaise} /></span>
+            </div>
+          )}
           <div className="vh-row-between small" style={{ padding: "3px 0" }}>
             <span className="muted">Shipping</span>
             {cart.shippingPaise === 0 ? <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Free</span> : <MoneyText paise={cart.shippingPaise} />}

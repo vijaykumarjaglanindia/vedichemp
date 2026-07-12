@@ -99,7 +99,7 @@ export default async function OrdersPage({
           )}
           <a
             className="vh-btn vh-btn-sm vh-btn-ghost"
-            href={`/account/orders/${o.id}#invoice`}
+            href={`/account/orders/${o.id}/invoice`}
             aria-label={`Download invoice for order ${o.reference}`}
             title="Download invoice"
           >

@@ -15,16 +15,20 @@ import { Card, StatusPill, toneForStatus, Banner, Rating } from "@/components/ui
 import { SELLER, LICENCES, CAPABILITY_MATRIX, STORE_PREVIEW, daysUntil } from "../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
 import { groupIndian } from "@/lib/money";
-import { requestOwnerTransfer } from "../actions";
+import { addLicence, requestOwnerTransfer } from "../actions";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = { title: "Store & KYC" };
 
 export default async function StorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ transfer?: string; err?: string }>;
+  searchParams: Promise<{ transfer?: string; err?: string; licence?: string }>;
 }) {
-  const { transfer, err } = await searchParams;
+  const { transfer, err, licence } = await searchParams;
+  const jar = await cookies();
+  let submittedLicences: { type: string; number: string; validTo: string; status: string }[] = [];
+  try { submittedLicences = JSON.parse(jar.get("vh-sell-lic")?.value ?? "[]") as typeof submittedLicences; } catch { submittedLicences = []; }
   return (
     <Shell active="/seller/store" breadcrumb={["Seller Central", "Store & KYC"]} title="Store & KYC">
       <div className="vh-grid cols-2" style={{ alignItems: "start", marginBottom: "var(--sp-4)" }}>
@@ -124,6 +128,16 @@ export default async function StorePage({
                 </tr>
               </thead>
               <tbody>
+                {submittedLicences.map((l) => (
+                  <tr key={l.number}>
+                    <td style={{ fontWeight: 600 }}>{l.type}</td>
+                    <td className="mono">{l.number}</td>
+                    <td className="tabular">—</td>
+                    <td className="tabular">{l.validTo}</td>
+                    <td><StatusPill tone="warn">PENDING VERIFICATION</StatusPill></td>
+                    <td className="small muted">Unlocks after verification</td>
+                  </tr>
+                ))}
                 {LICENCES.map((l) => {
                   const days = l.validTo ? daysUntil(l.validTo) : null;
                   const expiringSoon = days !== null && days <= 30;
@@ -149,6 +163,52 @@ export default async function StorePage({
       </div>
 
       <div style={{ height: "var(--sp-3)" }} />
+
+      {/* Add licence */}
+      <div id="add-licence" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-3)" }}>
+        <Card title="Add a licence">
+          {licence === "submitted" ? (
+            <Banner severity="ok" title="Licence submitted for verification">
+              Verification typically completes within a few business days. The class it unlocks stays
+              locked until then — capability is derived from VERIFIED licences only.
+            </Banner>
+          ) : (
+            <>
+              {err && err.startsWith("lic") && (
+                <div style={{ marginBottom: 12 }}>
+                  <Banner severity="danger">
+                    {err === "lictype" ? "Pick a licence type." : err === "licnumber" ? "Licence number should be 6–25 characters (letters, digits, / or -)." : "Valid-to must be a future date."}
+                  </Banner>
+                </div>
+              )}
+              <form action={addLicence} className="vh-row" style={{ gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+                <div className="vh-field" style={{ minWidth: 160 }}>
+                  <label className="vh-label" htmlFor="lic-type">Type <span className="req">*</span></label>
+                  <select className="vh-select" id="lic-type" name="type" required defaultValue="FSSAI">
+                    <option>FSSAI</option>
+                    <option>AYUSH</option>
+                    <option>GST</option>
+                    <option>TRADE</option>
+                  </select>
+                </div>
+                <div className="vh-field" style={{ minWidth: 200 }}>
+                  <label className="vh-label" htmlFor="lic-number">Licence number <span className="req">*</span></label>
+                  <input className="vh-input mono" id="lic-number" name="number" required minLength={6} maxLength={25} placeholder="10019022001234" style={{ textTransform: "uppercase" }} />
+                </div>
+                <div className="vh-field" style={{ minWidth: 160 }}>
+                  <label className="vh-label" htmlFor="lic-validto">Valid to <span className="req">*</span></label>
+                  <input className="vh-input" id="lic-validto" name="validTo" type="date" required />
+                </div>
+                <button type="submit" className="vh-btn vh-btn-primary">Submit for verification</button>
+                <span className="vh-help" style={{ flexBasis: "100%" }}>
+                  State Drug (Medical Cannabis) licensing is handled in a separate manual review — it never
+                  unlocks through this form, and the class it gates is never advertisable regardless (A1).
+                </span>
+              </form>
+            </>
+          )}
+        </Card>
+      </div>
 
       <Card title="Capability matrix (derived from licences)">
         <p className="small muted" style={{ marginTop: 0 }}>

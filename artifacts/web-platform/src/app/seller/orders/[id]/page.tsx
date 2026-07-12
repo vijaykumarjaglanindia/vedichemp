@@ -63,7 +63,7 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
           <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#invoice" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <Download size={14} strokeWidth={2.2} aria-hidden /> Invoice
           </a>
-          <a className="vh-btn vh-btn-sm vh-btn-primary" href="#label" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <a className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/orders/labels" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <Printer size={14} strokeWidth={2.2} aria-hidden /> Print label
           </a>
         </span>
@@ -126,7 +126,7 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
                 <span>Total</span>
                 <MoneyText paise={order.totalPaise} />
               </div>
-              <a id="label" className="vh-btn vh-btn-sm vh-btn-ghost" style={{ marginTop: 12, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} href="#label">
+              <a id="label" className="vh-btn vh-btn-sm vh-btn-ghost" style={{ marginTop: 12, width: "100%", display: "inline-flex", alignItems: "center", justifyContent: "center", gap: 6 }} href="/seller/orders/labels">
                 <Printer size={14} strokeWidth={2.2} aria-hidden /> Print shipping label
               </a>
             </Card>

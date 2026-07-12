@@ -11,7 +11,7 @@
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { randomUUID } from "node:crypto";
-import { clearCartCookies, priceCart, readCartLines, writeCartLines } from "@/lib/cart";
+import { clearCartCookies, COUPONS, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
 import { PRODUCTS } from "@/lib/sample";
 import { permittedClasses } from "@/lib/compliance";
 import { appendOrderHistory } from "@/lib/engage";
@@ -83,6 +83,22 @@ export async function removeFromCart(formData: FormData): Promise<void> {
   redirect("/cart");
 }
 
+/* ── Coupons ──────────────────────────────────────────────── */
+
+/** Apply a coupon CODE. The amount is never client-supplied — priceCart()
+ *  derives the deduction from the server-side coupon table. */
+export async function applyCoupon(formData: FormData): Promise<void> {
+  const code = String(formData.get("code") ?? "").trim().toUpperCase();
+  if (!(code in COUPONS)) redirect("/cart?coupon=unknown");
+  await writeCoupon(code);
+  redirect("/cart");
+}
+
+export async function removeCoupon(): Promise<void> {
+  await writeCoupon(null);
+  redirect("/cart");
+}
+
 /* ── Checkout ─────────────────────────────────────────────── */
 
 export interface OrderRecord {
@@ -94,6 +110,8 @@ export interface OrderRecord {
   payment: string;
   items: { title: string; qty: number; emoji: string; seller: string }[];
   subtotalPaise: number;
+  discountPaise?: number;
+  couponCode?: string | null;
   shippingPaise: number;
   totalPaise: number;
 }
@@ -144,6 +162,8 @@ export async function placeOrder(formData: FormData): Promise<void> {
     payment,
     items: cart.lines.map((l) => ({ title: l.product.title, qty: l.qty, emoji: l.product.emoji, seller: l.product.seller })),
     subtotalPaise: cart.subtotalPaise,
+    discountPaise: cart.discountPaise,
+    couponCode: cart.discountPaise > 0 || cart.couponCode ? cart.couponCode : null,
     shippingPaise: cart.shippingPaise,
     totalPaise: cart.totalPaise,
   };
@@ -154,5 +174,6 @@ export async function placeOrder(formData: FormData): Promise<void> {
   await appendOrderHistory(record); // powers My Account → Orders in demo mode
   jar.delete("vh-checkout-draft");
   await clearCartCookies();
+  await writeCoupon(null);
   redirect("/checkout/confirmed");
 }

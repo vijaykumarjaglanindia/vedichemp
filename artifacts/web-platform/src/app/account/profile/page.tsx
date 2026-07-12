@@ -14,10 +14,12 @@ import {
   Download, Fingerprint, KeyRound, LogOut, ShieldCheck, Sliders, Smartphone,
   Trash2, UserRound,
 } from "lucide-react";
+import { cookies } from "next/headers";
 import { signOut } from "../../(site)/signin/actions";
 import { Shell } from "../Shell";
 import { Card, StatusPill, Banner } from "@/components/ui";
 import { currentBuyer } from "@/lib/session";
+import { deleteAccount, requestPasskey, revokeSession, sendPasswordReset, toggleConsent, toggleSmsOtp } from "./actions";
 
 export const metadata: Metadata = { title: "Profile" };
 
@@ -61,8 +63,29 @@ const SECTIONS = [
   { id: "privacy", label: "Privacy" },
 ];
 
-export default function ProfilePage() {
+const SEC_NOTES: Record<string, { title: string; body: string }> = {
+  pwd: { title: "Reset link sent", body: "Check your registered email — the link expires in 30 minutes. The password never changes inline in a session." },
+  passkey: { title: "Passkey enrolment requested", body: "Finish enrolment from the prompt on a WebAuthn-capable device. Until then, sign-in continues with email + OTP." },
+  "2fa": { title: "Two-factor preference updated", body: "Sensitive changes (contact details, payout info) always re-prompt regardless of this setting." },
+  revoked: { title: "Session signed out", body: "That device's session token is revoked server-side — it takes effect on its next request." },
+  confirm: { title: "Deletion not confirmed", body: "Type DELETE exactly to confirm — nothing was changed." },
+};
+
+export default async function ProfilePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ sec?: string; sid?: string }>;
+}) {
   const viewer = currentBuyer();
+  const { sec, sid } = await searchParams;
+  const jar = await cookies();
+  const passkeyRequested = jar.get("vh-passkey")?.value === "requested";
+  const smsOtpOff = jar.get("vh-2fa-sms")?.value === "off";
+  let revoked: string[] = [];
+  try { revoked = JSON.parse(jar.get("vh-revoked")?.value ?? "[]") as string[]; } catch { revoked = []; }
+  let consentOverrides: Record<string, boolean> = {};
+  try { consentOverrides = JSON.parse(jar.get("vh-consent")?.value ?? "{}") as Record<string, boolean>; } catch { consentOverrides = {}; }
+  const sessions = SESSIONS.filter((x) => !revoked.includes(x.id) && x.id !== sid);
 
   return (
     <Shell active="/account/profile" breadcrumb={["My Account", "Profile"]} title="Profile">
@@ -108,6 +131,9 @@ export default function ProfilePage() {
         </Card>
 
         {/* Security */}
+        {sec && SEC_NOTES[sec] && (
+          <Banner severity={sec === "confirm" ? "warn" : "ok"} title={SEC_NOTES[sec].title}>{SEC_NOTES[sec].body}</Banner>
+        )}
         <Card title={title(<ShieldCheck {...I} />, "Security", "security")}>
           <div className="vh-grid cols-3" style={{ marginBottom: 16 }}>
             <div className="vh-card" style={{ padding: 16 }}>
@@ -116,27 +142,35 @@ export default function ProfilePage() {
               </span>
               <div className="small" style={{ fontWeight: 700, marginBottom: 4 }}>Password</div>
               <p className="small muted" style={{ margin: "0 0 8px" }}>Last changed 4 months ago.</p>
-              <span className="vh-btn vh-btn-sm vh-btn-ghost" aria-disabled>Change password</span>
+              <form action={sendPasswordReset}>
+                <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">Email me a reset link</button>
+              </form>
             </div>
             <div className="vh-card" style={{ padding: 16 }}>
               <span aria-hidden style={{ display: "inline-flex", color: "var(--vh-accent)", marginBottom: 8 }}>
                 <Fingerprint size={18} strokeWidth={2.2} />
               </span>
               <div className="small vh-row" style={{ fontWeight: 700, marginBottom: 4, gap: 8 }}>
-                Passkey <StatusPill tone="warn">Not set up</StatusPill>
+                Passkey <StatusPill tone={passkeyRequested ? "info" : "warn"}>{passkeyRequested ? "Enrolment pending" : "Not set up"}</StatusPill>
               </div>
               <p className="small muted" style={{ margin: "0 0 8px" }}>Sign in with your device — phishing-resistant.</p>
-              <span className="vh-btn vh-btn-sm vh-btn-primary" aria-disabled>Add passkey</span>
+              <form action={requestPasskey}>
+                <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary" disabled={passkeyRequested}>
+                  {passkeyRequested ? "Requested" : "Add passkey"}
+                </button>
+              </form>
             </div>
             <div className="vh-card" style={{ padding: 16 }}>
               <span aria-hidden style={{ display: "inline-flex", color: "var(--vh-accent)", marginBottom: 8 }}>
                 <Smartphone size={18} strokeWidth={2.2} />
               </span>
               <div className="small vh-row" style={{ fontWeight: 700, marginBottom: 4, gap: 8 }}>
-                Two-factor (SMS OTP) <StatusPill tone="ok">Enabled</StatusPill>
+                Two-factor (SMS OTP) <StatusPill tone={smsOtpOff ? "warn" : "ok"}>{smsOtpOff ? "Off" : "Enabled"}</StatusPill>
               </div>
               <p className="small muted" style={{ margin: "0 0 8px" }}>Required on sensitive changes.</p>
-              <span className="vh-btn vh-btn-sm vh-btn-ghost" aria-disabled>Manage 2FA</span>
+              <form action={toggleSmsOtp}>
+                <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">{smsOtpOff ? "Turn on" : "Turn off"}</button>
+              </form>
             </div>
           </div>
 
@@ -148,7 +182,7 @@ export default function ProfilePage() {
           <div style={{ marginTop: 16 }}>
             <div className="small muted" style={{ marginBottom: 8 }}>Active sessions</div>
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
-              {SESSIONS.map((s) => (
+              {sessions.map((s) => (
                 <li key={s.id} className="vh-row-between">
                   <span className="small vh-row" style={{ gap: 8 }}>
                     <Smartphone size={14} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} />
@@ -156,7 +190,12 @@ export default function ProfilePage() {
                   </span>
                   <span className="vh-row" style={{ gap: 8 }}>
                     <span className="small muted">{s.lastActive}</span>
-                    {!s.current && <span className="vh-btn vh-btn-sm vh-btn-ghost" aria-disabled>Sign out</span>}
+                    {!s.current && (
+                      <form action={revokeSession} style={{ display: "inline-flex" }}>
+                        <input type="hidden" name="sessionId" value={s.id} />
+                        <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">Sign out</button>
+                      </form>
+                    )}
                   </span>
                 </li>
               ))}
@@ -198,19 +237,25 @@ export default function ProfilePage() {
                 </tr>
               </thead>
               <tbody>
-                {CONSENTS.map((c) => (
-                  <tr key={c.key}>
-                    <td className="small">{c.label}</td>
-                    <td><StatusPill tone={c.on ? "ok" : "neutral"}>{c.on ? "On" : "Off"}</StatusPill></td>
-                    <td style={{ textAlign: "right" }}>
-                      {c.locked ? (
-                        <span className="small muted">Required — cannot be turned off</span>
-                      ) : (
-                        <span className="vh-btn vh-btn-sm vh-btn-ghost" aria-disabled>Toggle</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
+                {CONSENTS.map((c) => {
+                  const on = c.locked ? true : (consentOverrides[c.key] ?? c.on);
+                  return (
+                    <tr key={c.key}>
+                      <td className="small">{c.label}</td>
+                      <td><StatusPill tone={on ? "ok" : "neutral"}>{on ? "On" : "Off"}</StatusPill></td>
+                      <td style={{ textAlign: "right" }}>
+                        {c.locked ? (
+                          <span className="small muted">Required — cannot be turned off</span>
+                        ) : (
+                          <form action={toggleConsent} style={{ display: "inline-flex" }}>
+                            <input type="hidden" name="key" value={c.key} />
+                            <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">{on ? "Turn off" : "Turn on"}</button>
+                          </form>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -219,11 +264,11 @@ export default function ProfilePage() {
               Every consent change is recorded in an append-only ledger with a timestamp — you can request
               the full history with your data export.
             </p>
-            <span className="vh-btn vh-btn-sm vh-btn-ghost" aria-disabled>
+            <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/api/v1/me/export" download>
               <span className="vh-row" style={{ gap: 6 }}>
-                <Download size={14} strokeWidth={2.2} aria-hidden />Download my data
+                <Download size={14} strokeWidth={2.2} aria-hidden />Download my data (JSON)
               </span>
-            </span>
+            </a>
           </div>
         </Card>
 
@@ -247,13 +292,21 @@ export default function ProfilePage() {
             active audit trail reference) applies. Health data (prescriptions, access logs) is retained
             per the statutory record-keeping period even after deletion is otherwise approved (A3).
           </Banner>
-          <div style={{ marginTop: 16 }}>
-            <span className="vh-btn vh-btn-sm vh-btn-danger" aria-disabled>
+          <form action={deleteAccount} className="vh-row" style={{ gap: 8, marginTop: 16, flexWrap: "wrap" }}>
+            <input
+              className="vh-input mono"
+              name="confirm"
+              required
+              placeholder='Type "DELETE" to confirm'
+              aria-label="Type DELETE to confirm account deletion"
+              style={{ maxWidth: 240 }}
+            />
+            <button type="submit" className="vh-btn vh-btn-sm vh-btn-danger">
               <span className="vh-row" style={{ gap: 6 }}>
                 <Trash2 size={14} strokeWidth={2.2} aria-hidden />Delete account
               </span>
-            </span>
-          </div>
+            </button>
+          </form>
         </Card>
       </div>
     </Shell>

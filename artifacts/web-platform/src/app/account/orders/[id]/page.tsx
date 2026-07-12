@@ -98,7 +98,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       title={`Order ${order.reference}`}
       actions={
         <span className="vh-row" style={{ gap: 8 }}>
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#invoice">
+          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/account/orders/${id}/invoice`}>
             <span className="vh-row" style={{ gap: 6 }}><FileDown size={14} strokeWidth={2.2} aria-hidden />Download invoice</span>
           </a>
           {order.status === "DELIVERED" && (
@@ -217,9 +217,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 <span>Total</span>
                 <MoneyText paise={order.totalPaise} />
               </div>
-              <a className="vh-btn vh-btn-sm vh-btn-ghost" style={{ marginTop: 16, width: "100%", justifyContent: "center", display: "inline-flex", gap: 6 }} href="#invoice">
+              <a className="vh-btn vh-btn-sm vh-btn-ghost" style={{ marginTop: 16, width: "100%", justifyContent: "center", display: "inline-flex", gap: 6 }} href={`/account/orders/${id}/invoice`}>
                 <FileDown size={14} strokeWidth={2.2} aria-hidden />
-                Download invoice (PDF)
+                Print invoice (PDF)
               </a>
             </Card>
           </div>

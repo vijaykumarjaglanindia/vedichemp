@@ -138,6 +138,20 @@ export async function replyToQuestion(formData: FormData): Promise<void> {
   redirect("/seller/customers?replied=1");
 }
 
+/** Public response to a flagged review — same copy-check, same fail-closed rule. */
+export async function respondToReview(formData: FormData): Promise<void> {
+  const rid = String(formData.get("rid") ?? "").slice(0, 12);
+  const reply = String(formData.get("reply") ?? "").trim();
+  if (!/^r[0-9]+$/.test(rid)) redirect("/seller/customers");
+  if (reply.length < 10 || reply.length > 600) redirect("/seller/customers?err=short");
+  if (CLAIM_WORDS.test(reply)) redirect("/seller/customers?err=claims");
+
+  const replies = await readSellerReplies();
+  replies[rid] = reply;
+  await writeSellerReplies(replies);
+  redirect("/seller/customers?replied=1");
+}
+
 /* ── Ads: create campaign (A1-guarded) ────────────────────── */
 
 export async function createCampaign(formData: FormData): Promise<void> {
@@ -183,6 +197,29 @@ export async function createCoupon(formData: FormData): Promise<void> {
 
   await appendCoupon({ code, pct, status: "ACTIVE" });
   redirect("/seller/marketing?created=1");
+}
+
+/* ── Store: submit a licence for verification ─────────────── */
+
+const LICENCE_TYPES = ["FSSAI", "AYUSH", "GST", "TRADE"];
+
+export async function addLicence(formData: FormData): Promise<void> {
+  const type = String(formData.get("type") ?? "");
+  const number = String(formData.get("number") ?? "").trim().toUpperCase();
+  const validTo = String(formData.get("validTo") ?? "");
+
+  let err: string | null = null;
+  if (!LICENCE_TYPES.includes(type)) err = "lictype";
+  else if (!/^[A-Z0-9/-]{6,25}$/.test(number)) err = "licnumber";
+  else if (!/^\d{4}-\d{2}-\d{2}$/.test(validTo) || new Date(validTo) <= new Date()) err = "licdate";
+  if (err) redirect(`/seller/store?err=${err}#add-licence`);
+
+  const jar = await cookies();
+  let list: { type: string; number: string; validTo: string; status: string }[] = [];
+  try { list = JSON.parse(jar.get("vh-sell-lic")?.value ?? "[]") as typeof list; } catch { list = []; }
+  list.unshift({ type, number, validTo, status: "PENDING_VERIFICATION" });
+  jar.set("vh-sell-lic", JSON.stringify(list.slice(0, 4)), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 90 });
+  redirect("/seller/store?licence=submitted#add-licence");
 }
 
 /* ── Store: owner transfer request (high-impact, reason ≥ 20 chars) ── */

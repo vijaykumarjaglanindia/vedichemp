@@ -12,7 +12,7 @@ import { Shell } from "../Shell";
 import { Banner, Card, StatusPill, toneForStatus, Stat, Rating } from "@/components/ui";
 import { readSellerReplies } from "@/lib/engage";
 import { QUESTIONS, REVIEWS, MESSAGES, RESPONSE_STATS } from "../_lib/data";
-import { replyToQuestion } from "../actions";
+import { replyToQuestion, respondToReview } from "../actions";
 
 export const metadata: Metadata = { title: "Customers" };
 
@@ -112,7 +112,18 @@ export default async function CustomersPage({
                   <div style={{ fontSize: "0.9rem", marginTop: 4 }}>&ldquo;{r.text}&rdquo;</div>
                   <div className="small muted" style={{ marginTop: 2 }}>{r.buyer}</div>
                   {r.status === "FLAGGED" && (
-                    <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#respond" style={{ marginTop: 8, display: "inline-block" }}>Respond</a>
+                    myReplies[r.id] ? (
+                      <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: "var(--vh-radius-sm)", background: "var(--vh-bg-subtle)", border: "1px solid var(--vh-line)" }}>
+                        <StatusPill tone="warn">Response pending moderation</StatusPill>
+                        <p className="small" style={{ margin: "6px 0 0" }}>&ldquo;{myReplies[r.id]}&rdquo;</p>
+                      </div>
+                    ) : (
+                      <form action={respondToReview} className="vh-field" style={{ marginTop: 8 }}>
+                        <input type="hidden" name="rid" value={r.id} />
+                        <textarea className="vh-textarea" name="reply" rows={2} minLength={10} maxLength={600} required aria-label={`Respond to review of ${r.product}`} placeholder="Respond factually — no medical claims; the copy-check blocks the send otherwise." />
+                        <button className="vh-btn vh-btn-sm vh-btn-ghost" type="submit" style={{ justifySelf: "start", marginTop: 6 }}>Post response</button>
+                      </form>
+                    )
                   )}
                 </li>
               ))}

@@ -15,6 +15,7 @@ import { Card, Stat, StatusPill, toneForStatus, MoneyText, Banner, DataTable, ty
 import { Columns, Donut } from "@/components/ui/charts";
 import { SETTLEMENTS, KPIS, type SettlementRow } from "@/lib/sample";
 import { REVENUE_6M, TAX_POSITION, PERIOD_CLOSE_CHECKLIST } from "../_lib/data";
+import { initiatePeriodClose } from "../actions";
 
 export const metadata: Metadata = { title: "Finance · Admin" };
 
@@ -47,7 +48,18 @@ const totalPosted = SETTLEMENTS.filter((s) => s.status === "POSTED").reduce((sum
 const taxTotal = TAX_POSITION.gstPaise + TAX_POSITION.tcsPaise + TAX_POSITION.tdsPaise;
 const closeDone = PERIOD_CLOSE_CHECKLIST.filter((c) => c.done).length;
 
-export default function AdminFinancePage() {
+const CLOSE_NOTES: Record<string, { sev: "ok" | "danger" | "warn"; title: string; body: string }> = {
+  initiated: { sev: "ok", title: "Period close initiated (maker)", body: "A second, different admin must now sign off before the period actually closes (A6)." },
+  blocked: { sev: "danger", title: "Close blocked — checklist incomplete", body: "Open checklist items block initiation server-side. The denied attempt is logged with your reason." },
+  reason: { sev: "warn", title: "Reason required", body: "Period close is high-impact — it needs at least 20 characters of free-text reason." },
+};
+
+export default async function AdminFinancePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ close?: string }>;
+}) {
+  const { close } = await searchParams;
   return (
     <Shell active="/admin/finance" breadcrumb={["Admin", "Finance"]} title="Finance">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
@@ -154,7 +166,20 @@ export default function AdminFinancePage() {
               </li>
             ))}
           </ul>
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#close-period">Initiate period close (maker)</a>
+          <div id="close-period" style={{ scrollMarginTop: 90 }}>
+            {close && CLOSE_NOTES[close] && (
+              <div style={{ marginBottom: 12 }}>
+                <Banner severity={CLOSE_NOTES[close].sev} title={CLOSE_NOTES[close].title}>{CLOSE_NOTES[close].body}</Banner>
+              </div>
+            )}
+            <form action={initiatePeriodClose} className="vh-grid" style={{ gap: 10, maxWidth: 520 }}>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="close-reason">Reason <span className="req">*</span></label>
+                <textarea className="vh-textarea" id="close-reason" name="reason" rows={2} minLength={20} maxLength={500} required placeholder="Why is this period being closed now? (min 20 characters)" />
+              </div>
+              <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost" style={{ justifySelf: "start" }}>Initiate period close (maker)</button>
+            </form>
+          </div>
         </Card>
       </div>
     </Shell>

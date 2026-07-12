@@ -11,8 +11,10 @@ import type { Metadata } from "next";
 import {
   Search, ShieldAlert, Ban, RotateCcw, Eye, UserCog, Fingerprint, LockKeyhole,
 } from "lucide-react";
+import { cookies } from "next/headers";
 import { Shell } from "../Shell";
 import { Card, StatusPill, toneForStatus, Banner } from "@/components/ui";
+import { applyUserAction } from "../actions";
 
 export const metadata: Metadata = { title: "Users · Admin" };
 
@@ -31,7 +33,31 @@ const USERS: SampleUser[] = [
   { id: "u4", handle: "vikram.n", maskedEmail: "vi***@gmail.com", maskedPhone: "+91 9•••••112", status: "SUSPENDED", tier: "Sprout", ordersLifetime: 1, joinedAt: "2026-01-30", sessions: 0 },
 ];
 
-export default function AdminUsersPage() {
+const OP_LABELS: Record<string, string> = {
+  restrict: "Restrict account",
+  suspend: "Suspend account",
+  reinstate: "Reinstate account",
+  impersonate: "Impersonate (read-only)",
+};
+
+export default async function AdminUsersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ q?: string; act?: string; u?: string; done?: string; err?: string }>;
+}) {
+  const { q, act, u, done, err } = await searchParams;
+  const query = (q ?? "").trim().toLowerCase();
+
+  const jar = await cookies();
+  let overrides: Record<string, string> = {};
+  try { overrides = JSON.parse(jar.get("vh-adm-users")?.value ?? "{}") as Record<string, string>; } catch { overrides = {}; }
+
+  const users = USERS
+    .map((x) => ({ ...x, status: overrides[x.id] ?? x.status }))
+    .filter((x) => (query ? x.handle.toLowerCase().includes(query) : true));
+  const opLabel = act ? OP_LABELS[act] : undefined;
+  const pendingTarget = act && u && opLabel ? USERS.find((x) => x.id === u) : undefined;
+
   return (
     <Shell active="/admin/users" breadcrumb={["Admin", "Users"]} title="User management">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
@@ -46,19 +72,52 @@ export default function AdminUsersPage() {
             in plaintext) or an order reference. A raw-text lookup against contact fields is not a route this console
             exposes.
           </p>
-          <div className="vh-row" style={{ gap: 8 }}>
+          <form method="GET" action="/admin/users" className="vh-row" style={{ gap: 8 }}>
             <input
               className="vh-input"
+              name="q"
+              defaultValue={q ?? ""}
               placeholder="Search by handle, order reference, or hashed identifier…"
               style={{ flex: 1 }}
-              disabled
               aria-label="Search users by handle, order reference, or hashed identifier"
             />
-            <button className="vh-btn vh-btn-primary" disabled>
+            <button className="vh-btn vh-btn-primary" type="submit">
               <Search {...IB} aria-hidden /> Search
             </button>
-          </div>
+          </form>
         </Card>
+
+        {done && OP_LABELS[done] && (
+          <Banner severity="ok" title={`${OP_LABELS[done]} — done`}>
+            {done === "impersonate"
+              ? "A read-only impersonation session was issued. The access is logged with your reason, and the buyer is notified (A4)."
+              : "Applied with your reason on the audit trail. The change takes effect on the user's next request."}
+          </Banner>
+        )}
+
+        {pendingTarget && act && opLabel && (
+          <div id="act-form" style={{ scrollMarginTop: 90 }}>
+            <Card title={`${opLabel} · ${pendingTarget.handle}`}>
+              {err === "reason" && (
+                <div style={{ marginBottom: 12 }}>
+                  <Banner severity="danger">A reason of at least 20 characters is required — the attempt was rejected and logged.</Banner>
+                </div>
+              )}
+              <form action={applyUserAction} className="vh-grid" style={{ gap: 10, maxWidth: 560 }}>
+                <input type="hidden" name="userId" value={pendingTarget.id} />
+                <input type="hidden" name="op" value={act} />
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="ua-reason">Reason <span className="req">*</span></label>
+                  <textarea className="vh-textarea" id="ua-reason" name="reason" rows={2} minLength={20} maxLength={500} required placeholder="Why? Written to the audit trail — succeeded or denied (min 20 characters)." />
+                </div>
+                <div className="vh-row" style={{ gap: 8 }}>
+                  <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary">Confirm {(opLabel ?? "").toLowerCase()}</button>
+                  <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/users">Cancel</a>
+                </div>
+              </form>
+            </Card>
+          </div>
+        )}
 
         <Card title="All users" pad0>
           <div style={{ overflowX: "auto" }}>
@@ -75,7 +134,7 @@ export default function AdminUsersPage() {
                 </tr>
               </thead>
               <tbody>
-                {USERS.map((u) => (
+                {users.map((u) => (
                   <tr key={u.id}>
                     <td className="mono">{u.handle}</td>
                     <td className="small">
@@ -89,18 +148,20 @@ export default function AdminUsersPage() {
                     <td>
                       <div className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
                         {u.status !== "SUSPENDED" ? (
-                          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users#${u.id}-restrict`}>
+                          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users?act=restrict&u=${u.id}#act-form`}>
                             <ShieldAlert {...IB} aria-hidden /> Restrict
                           </a>
                         ) : (
-                          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users#${u.id}-reinstate`}>
+                          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users?act=reinstate&u=${u.id}#act-form`}>
                             <RotateCcw {...IB} aria-hidden /> Reinstate
                           </a>
                         )}
-                        <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users#${u.id}-suspend`}>
-                          <Ban {...IB} aria-hidden /> Suspend
-                        </a>
-                        <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users#${u.id}-impersonate`}>
+                        {u.status !== "SUSPENDED" && (
+                          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users?act=suspend&u=${u.id}#act-form`}>
+                            <Ban {...IB} aria-hidden /> Suspend
+                          </a>
+                        )}
+                        <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/users?act=impersonate&u=${u.id}#act-form`}>
                           <Eye {...IB} aria-hidden /> Impersonate (read-only)
                         </a>
                       </div>

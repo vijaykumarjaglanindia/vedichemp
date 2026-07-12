@@ -21,6 +21,7 @@ import { CampaignLabel, assertCreativeClassRenderable } from "@/components/ui/ad
 import { currentBuyer } from "@/lib/session";
 import { ORDERS, classProducts } from "@/lib/sample";
 import { CAMPAIGN_OFFERS, ACTIVITY, WALLET_TREND, WALLET_BALANCE_PAISE } from "./_lib/data";
+import { applyCoupon } from "../(site)/cart/actions";
 
 export const metadata: Metadata = { title: "My Account" };
 
@@ -270,7 +271,10 @@ export default function AccountHomePage() {
                           Min. spend <MoneyText paise={offer.minSpendPaise} />
                         </p>
                       )}
-                      <span className="vh-btn vh-btn-sm vh-btn-primary" aria-disabled>Apply to cart</span>
+                      <form action={applyCoupon}>
+                        <input type="hidden" name="code" value={offer.code} />
+                        <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary">Apply to cart</button>
+                      </form>
                     </div>
                   );
                 })}
