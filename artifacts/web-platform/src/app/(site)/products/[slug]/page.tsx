@@ -336,7 +336,7 @@ export default async function ProductDetailPage({ params }: { params: Promise<Pa
 
             {meta.ageGated && (
               <Banner severity="warn" title="Age verification required">
-                This is an age-gated (18+) product. Age is verified at checkout and on delivery
+                This is an age-gated (21+) product. Age is verified at checkout and on delivery
                 handover — the check happens on the server, per order.
               </Banner>
             )}

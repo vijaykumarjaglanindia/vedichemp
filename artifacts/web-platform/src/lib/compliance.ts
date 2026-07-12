@@ -34,7 +34,7 @@ export const CLASS_META: Record<ComplianceClass, ClassMeta> = {
   CBD_WELLNESS: {
     code: "CBD_WELLNESS", label: "Hemp Wellness / CBD", short: "CBD Wellness",
     rxRequired: false, ageGated: true, advertisable: true, emoji: "🌿",
-    blurb: "CBD balms and tinctures. AYUSH-licensed, batch CoA, age 18+.",
+    blurb: "CBD balms and tinctures. AYUSH-licensed, batch CoA, age 21+.",
   },
   MED_CANNABIS: {
     code: "MED_CANNABIS", label: "Medical Cannabis", short: "Medical Cannabis",

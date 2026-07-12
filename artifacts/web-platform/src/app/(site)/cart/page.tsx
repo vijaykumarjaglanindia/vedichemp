@@ -86,7 +86,7 @@ export default async function CartPage() {
 
           {cart.ageGated && (
             <Banner severity="warn" title="Age-restricted item in cart">
-              Your cart contains an 18+ CBD wellness product. You&rsquo;ll confirm your age at
+              Your cart contains a 21+ CBD wellness product. You&rsquo;ll confirm your age at
               checkout, and it is verified again on delivery handover.
             </Banner>
           )}

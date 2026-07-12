@@ -101,7 +101,7 @@ export default function ProfilePage() {
               <input className="vh-input" id="pf-dob" aria-label="Date of birth" defaultValue="14 Mar 1994" readOnly />
               <span className="vh-help">
                 Set once at signup and never editable — it backs the age gate for CBD Wellness and Medical
-                Cannabis products (18+) and cannot be reset from this screen.
+                Cannabis products (21+) and cannot be reset from this screen.
               </span>
             </div>
           </div>
