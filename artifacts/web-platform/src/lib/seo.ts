@@ -9,15 +9,53 @@
 import type { SampleProduct } from "@/lib/sample";
 import { rupees } from "@/lib/money";
 
-export function organizationJsonLd() {
+export const SITE_URL = "https://vedichemp.in";
+
+export function organizationJsonLd(opts?: { description?: string; email?: string }) {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
     name: "Vedic Hemp",
-    url: "https://vedichemp.in",
-    description: "India's regulated marketplace for hemp nutrition, CBD wellness and Ayurveda. Every regulated batch ships with a lab-verified Certificate of Analysis.",
+    url: SITE_URL,
+    description:
+      opts?.description ??
+      "India's regulated marketplace for hemp nutrition, CBD wellness and Ayurveda. Every regulated batch ships with a lab-verified Certificate of Analysis.",
+    ...(opts?.email
+      ? { email: opts.email, contactPoint: { "@type": "ContactPoint", email: opts.email, contactType: "customer support", areaServed: "IN" } }
+      : {}),
     address: { "@type": "PostalAddress", addressCountry: "IN" },
     sameAs: [],
+  };
+}
+
+/** WebSite + SearchAction — tells crawlers the catalogue search is a sitelinks search box. */
+export function websiteJsonLd() {
+  return {
+    "@context": "https://schema.org",
+    "@type": "WebSite",
+    name: "Vedic Hemp",
+    url: SITE_URL,
+    inLanguage: "en-IN",
+    potentialAction: {
+      "@type": "SearchAction",
+      target: { "@type": "EntryPoint", urlTemplate: `${SITE_URL}/catalogue?q={search_term_string}` },
+      "query-input": "required name=search_term_string",
+    },
+  };
+}
+
+/** Article structured data for published journal posts (plain-text description, never HTML). */
+export function articleJsonLd(post: { slug: string; title: string; body: string; updatedAt: string }) {
+  return {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: post.title,
+    description: post.body.replace(/[#*\r]/g, "").split("\n")[0]?.slice(0, 160) ?? post.title,
+    dateModified: post.updatedAt,
+    inLanguage: "en-IN",
+    author: { "@type": "Organization", name: "Vedic Hemp", url: SITE_URL },
+    publisher: { "@type": "Organization", name: "Vedic Hemp", url: SITE_URL },
+    mainEntityOfPage: `${SITE_URL}/blog/${post.slug}`,
   };
 }
 

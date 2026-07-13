@@ -27,6 +27,8 @@ import {
   Truck,
 } from "lucide-react";
 import { Banner, Card, SectionHead } from "@/components/ui";
+import { mdToHtml } from "@/lib/richtext";
+import { readSiteContent } from "@/lib/sitecontent";
 
 export const metadata: Metadata = {
   title: "How it works",
@@ -63,19 +65,20 @@ const WHO_DOES_WHAT: { who: string; items: string[] }[] = [
   },
 ];
 
-export default function HowItWorksPage() {
+export default async function HowItWorksPage() {
+  const content = await readSiteContent();
   return (
     <>
-      {/* ── Hero ─────────────────────────────────────────── */}
+      {/* ── Hero (intro admin-edited: Site content → Trust & About) ── */}
       <section className="vh-hero" style={{ padding: "clamp(36px, 4vw, 56px) 0" }}>
         <div className="vh-container">
           <span className="vh-eyebrow">How it works</span>
           <h1 style={{ marginTop: 10 }}>A marketplace, honestly described.</h1>
-          <p style={{ maxWidth: "60ch" }}>
-            Products on Vedic Hemp are listed and sold by independent sellers — not by us.
-            Sellers submit their licences when they join, ship every order through their
-            delivery partner, and are responsible for what they list. Here is exactly who does what.
-          </p>
+          <div
+            className="vh-prose"
+            style={{ maxWidth: "60ch" }}
+            dangerouslySetInnerHTML={{ __html: mdToHtml(content.trustIntro ?? "") }}
+          />
         </div>
       </section>
 

@@ -10,6 +10,7 @@
  */
 
 import { cookies, headers } from "next/headers";
+import { CLAIMS_LANGUAGE } from "@/lib/claims";
 import { redirect } from "next/navigation";
 import { permittedClasses } from "@/lib/compliance";
 import { PRODUCTS } from "@/lib/sample";
@@ -95,7 +96,7 @@ export async function subscribeNewsletter(
 
 /** Same disease-claim vocabulary the seller copy-check uses — buyer
  *  testimonials with cure claims are equally non-publishable. */
-const CLAIM_WORDS = /\b(cure|cures|heal|heals|treat|treats|treatment|prevent|prevents)\w*\b/i;
+const CLAIM_WORDS = CLAIMS_LANGUAGE;
 
 export async function submitReview(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");

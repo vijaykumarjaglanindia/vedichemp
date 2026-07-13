@@ -82,9 +82,16 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const { slug } = await params;
   const product = PRODUCTS.find((p) => p.slug === slug);
   if (!product || product.cls === "MED_CANNABIS") {
-    return { title: "Product not available" };
+    // A1: identical metadata for unknown and medical slugs — no partial reveal.
+    return { title: "Product not available", robots: { index: false } };
   }
-  return { title: product.title };
+  const description = `${product.title} by ${product.seller} — listed on Vedic Hemp, India's regulated hemp & wellness marketplace.${product.labVerified ? " Batch lab report linked on the listing." : ""}`;
+  return {
+    title: product.title,
+    description,
+    alternates: { canonical: `/products/${product.slug}` },
+    openGraph: { title: product.title, description, type: "website", url: `/products/${product.slug}` },
+  };
 }
 
 export default async function ProductDetailPage({

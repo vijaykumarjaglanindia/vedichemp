@@ -14,10 +14,13 @@ import Link from "next/link";
 import { Compass, Scale } from "lucide-react";
 import { Card, DataTable, SectionHead, type Column } from "@/components/ui";
 import { CLASS_META, type ClassMeta } from "@/lib/compliance";
+import { mdToHtml } from "@/lib/richtext";
+import { readSiteContent } from "@/lib/sitecontent";
 
 export const metadata: Metadata = {
   title: "About",
   description: "Vedic Hemp's mission, the four verticals we operate, and our regulatory posture.",
+  alternates: { canonical: "/about" },
 };
 
 const VERTICAL_ROWS: ClassMeta[] = Object.values(CLASS_META);
@@ -51,17 +54,18 @@ const VERTICAL_COLUMNS: Column<ClassMeta>[] = [
   },
 ];
 
-export default function AboutPage() {
+export default async function AboutPage() {
+  const content = await readSiteContent();
   return (
     <div className="vh-container" style={{ paddingTop: "var(--sp-5)", paddingBottom: "var(--sp-7)" }}>
       <div className="vh-section-head">
         <div className="vh-eyebrow" style={{ marginBottom: 8 }}>Company</div>
         <h1 className="vh-display" style={{ fontSize: "clamp(1.8rem, 1.3rem + 2vw, 2.6rem)" }}>About Vedic Hemp</h1>
-        <p className="muted" style={{ maxWidth: 640 }}>
-          Vedic Hemp is a regulated multi-vendor marketplace for hemp, CBD wellness, Ayurveda and
-          medical cannabis in India — built so that compliance is a property of the platform, not
-          a policy someone has to remember to follow.
-        </p>
+        <div
+          className="muted vh-prose"
+          style={{ maxWidth: 640 }}
+          dangerouslySetInnerHTML={{ __html: mdToHtml(content.aboutIntro ?? "") }}
+        />
       </div>
 
       <section className="vh-section" style={{ paddingBottom: 0 }}>

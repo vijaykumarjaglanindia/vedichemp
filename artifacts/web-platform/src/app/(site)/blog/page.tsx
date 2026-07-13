@@ -8,6 +8,7 @@
  */
 
 import type { Metadata } from "next";
+import { readSiteContent } from "@/lib/sitecontent";
 import Link from "next/link";
 import { ArrowRight, Newspaper } from "lucide-react";
 import { SectionHead } from "@/components/ui";
@@ -15,10 +16,14 @@ import { publishedPosts } from "@/lib/cms";
 
 export const dynamic = "force-dynamic";
 
-export const metadata: Metadata = {
-  title: "Wellness journal",
-  description: "Lab-report explainers, hemp nutrition guides and licensing explainers from Vedic Hemp. Educational only — no health claims, ever.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const content = await readSiteContent();
+  return {
+    title: "Wellness journal",
+    description: content.seoBlogDesc,
+    alternates: { canonical: "/blog" },
+  };
+}
 
 export default async function BlogIndexPage() {
   const posts = await publishedPosts();

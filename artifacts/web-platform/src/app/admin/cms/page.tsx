@@ -38,6 +38,13 @@ export default async function AdminCmsPage({
   return (
     <Shell active="/admin/cms" breadcrumb={["Admin", "CMS"]} title="Content management">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
+        <Card title={<span className="vh-row" style={{ gap: 8 }}><FileText {...I} aria-hidden /> Site content</span>}>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Announcement bar, homepage hero and sections, FAQ, testimonials, footer disclosure and
+            page metadata — every public copy surface, editable and published live from one place.
+          </p>
+          <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/admin/cms/site">Edit site content</Link>
+        </Card>
         <Card title={<span className="vh-row" style={{ gap: 8 }}><FileText {...I} aria-hidden /> Pages</span>} pad0>
           <div style={{ overflowX: "auto" }}>
             <table className="vh-table">

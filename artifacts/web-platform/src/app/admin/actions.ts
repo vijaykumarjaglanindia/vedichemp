@@ -15,6 +15,8 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PERIOD_CLOSE_CHECKLIST } from "./_lib/data";
 import { MAX_BODY, SAMPLE_POSTS, deletePostOverride, findPost, slugify, writePostOverride } from "@/lib/cms";
+import { CLAIMS_LANGUAGE } from "@/lib/claims";
+import { SITE_FIELDS, writeSiteContent } from "@/lib/sitecontent";
 
 const OPTS = { path: "/", httpOnly: true, sameSite: "lax" as const, maxAge: 60 * 60 * 24 * 30 };
 
@@ -89,7 +91,7 @@ export async function applyUserAction(formData: FormData): Promise<void> {
 
 /* ── CMS: WordPress-style save / publish / unpublish / delete ── */
 
-const CMS_CLAIMS = /\b(cure|cures|heal|heals|treat|treats|treatment|prevent|prevents)\w*\b/i;
+const CMS_CLAIMS = CLAIMS_LANGUAGE;
 
 export async function savePost(formData: FormData): Promise<void> {
   const intent = String(formData.get("intent") ?? "draft"); // draft | publish | unpublish | delete
@@ -136,6 +138,30 @@ export async function savePost(formData: FormData): Promise<void> {
   });
   if (result === "limit") redirect(editorUrl(slug, "cms=limit"));
   redirect(editorUrl(slug, `cms=${intent === "publish" ? "published" : intent === "unpublish" ? "unpublished" : "saved"}`));
+}
+
+/* ── CMS: site content (every public copy surface) ────────── */
+
+export async function saveSiteContent(formData: FormData): Promise<void> {
+  const group = String(formData.get("group") ?? "");
+  const fields = SITE_FIELDS.filter((f) => f.group === group);
+  const anchor = `#g-${encodeURIComponent(group)}`;
+  if (fields.length === 0) redirect("/admin/cms/site");
+
+  const patch: Record<string, string | null> = {};
+  for (const f of fields) {
+    const raw = formData.get(f.key);
+    if (raw === null) continue; // field not submitted — leave untouched
+    const value = String(raw).replace(/\r\n?/g, "\n").trim();
+    // Same copy-check as products, reviews and the journal — the homepage
+    // hero cannot carry a disease claim either (Drugs & Magic Remedies Act).
+    // Disclosure fields that NAME the forbidden verbs are the one exception.
+    if (!f.allowClaimVerbs && CMS_CLAIMS.test(value)) redirect(`/admin/cms/site?site=claims&f=${f.key}${anchor}`);
+    if (value.length > f.max) redirect(`/admin/cms/site?site=long&f=${f.key}${anchor}`);
+    patch[f.key] = value || null; // empty resets to the default copy
+  }
+  await writeSiteContent(patch);
+  redirect(`/admin/cms/site?site=saved&g=${encodeURIComponent(group)}${anchor}`);
 }
 
 /* ── CMS: new blog post draft ─────────────────────────────── */

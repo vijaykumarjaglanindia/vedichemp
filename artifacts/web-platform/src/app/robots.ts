@@ -7,7 +7,7 @@ export default function robots(): MetadataRoute.Robots {
         userAgent: "*",
         allow: "/",
         // Authenticated consoles and APIs are not for crawlers.
-        disallow: ["/account", "/seller", "/admin", "/api"],
+        disallow: ["/account", "/seller", "/admin", "/api", "/cart", "/checkout", "/signin"],
       },
     ],
     sitemap: "https://vedichemp.in/sitemap.xml",

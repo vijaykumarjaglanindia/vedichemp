@@ -15,6 +15,7 @@
  */
 
 import { cookies, headers } from "next/headers";
+import { CLAIMS_LANGUAGE } from "@/lib/claims";
 import { redirect } from "next/navigation";
 import {
   appendCampaign,
@@ -30,7 +31,7 @@ import {
 import { SELLER_ORDERS, SELLER_PRODUCTS } from "./_lib/data";
 
 /** Disease-claim vocabulary the copy-check rejects (Drugs & Magic Remedies Act). */
-const CLAIM_WORDS = /\b(cure|cures|heal|heals|treat|treats|treatment|prevent|prevents|anti[- ]?cancer|diagnos)\w*\b/i;
+const CLAIM_WORDS = CLAIMS_LANGUAGE;
 
 async function backPath(fallback: string): Promise<string> {
   const ref = (await headers()).get("referer") ?? "";

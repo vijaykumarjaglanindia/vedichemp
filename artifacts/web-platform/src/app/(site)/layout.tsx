@@ -15,21 +15,23 @@ import Link from "next/link";
 import {
   Banknote,
   CreditCard,
-  FlaskConical,
   Landmark,
   Leaf,
   Lock,
   Menu,
   RotateCcw,
-  Search,
   ShieldCheck,
-  ShoppingCart,
   Truck,
 } from "lucide-react";
-import { MoneyText } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
-import { organizationJsonLd } from "@/lib/seo";
+import { mdToHtml } from "@/lib/richtext";
+import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
+import { readSiteContent } from "@/lib/sitecontent";
 import { ComplianceClass } from "@prisma/client";
+
+// Every public page renders per-request so admin edits to site content and
+// CMS publishes are visible to all visitors immediately.
+export const dynamic = "force-dynamic";
 
 const SHOP_CLASSES: ComplianceClass[] = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
 
@@ -144,32 +146,36 @@ const SEARCH_DOCS: SearchDoc[] = PRODUCTS.filter((p) => p.cls !== "MED_CANNABIS"
   seller: p.seller, labVerified: p.labVerified,
 }));
 
-export default function SiteLayout({ children }: { children: ReactNode }) {
+export default async function SiteLayout({ children }: { children: ReactNode }) {
+  const content = await readSiteContent();
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: chromeCss }} />
       <script
         type="application/ld+json"
-        dangerouslySetInnerHTML={{ __html: JSON.stringify(organizationJsonLd()) }}
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify(organizationJsonLd({ description: content.seoSiteDesc, email: content.supportEmail })),
+        }}
+      />
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteJsonLd()) }}
       />
 
       <a href="#vh-main" className="small" style={{ position: "absolute", left: -9999, top: "auto" }}>
         Skip to content
       </a>
 
-      {/* ── Announcement bar ─────────────────────────────── */}
+      {/* ── Announcement bar (admin-edited: Site content → Global chrome) ── */}
       <div className="vh-announce">
         <span className="vh-row" style={{ justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
           <Truck size={14} strokeWidth={2.2} aria-hidden />
-          <span>
-            Free shipping on orders above <MoneyText paise={500000} />
-          </span>
-          <span aria-hidden>·</span>
-          <FlaskConical size={14} strokeWidth={2.2} aria-hidden />
-          <span>Products listed & shipped by licensed sellers</span>
-          <span aria-hidden>·</span>
-          <Banknote size={14} strokeWidth={2.2} aria-hidden />
-          <span>Cash on Delivery available</span>
+          {(content.announcement ?? "").split("·").map((seg, i) => (
+            <span key={i} className="vh-row" style={{ gap: 8 }}>
+              {i > 0 && <span aria-hidden>·</span>}
+              <span>{seg.trim()}</span>
+            </span>
+          ))}
         </span>
       </div>
 
@@ -274,10 +280,7 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
                 <Leaf size={18} strokeWidth={2.2} aria-hidden />
                 Vedic Hemp
               </div>
-              <p className="small" style={{ maxWidth: 250 }}>
-                A regulated multi-vendor marketplace for hemp, CBD wellness, Ayurveda and medical
-                cannabis in India.
-              </p>
+              <p className="small" style={{ maxWidth: 250 }}>{content.footerAbout}</p>
             </div>
 
             {FOOTER_COLUMNS.map((col) => (
@@ -332,18 +335,15 @@ export default function SiteLayout({ children }: { children: ReactNode }) {
           </div>
 
           <div style={{ borderTop: "1px solid var(--vh-line)", paddingTop: "var(--sp-3)" }}>
-            <p className="small" style={{ marginBottom: 6 }}>
-              Vedic Hemp is a marketplace intermediary: products are listed and sold by
-              independent sellers, who submit their licences when they create an account and who
-              are responsible for the genuineness, quality and compliance of their listings.
-              After you pay, your order is forwarded to the seller, who ships it and updates its
-              status. Medical Cannabis is prescription-only and is never advertised or promoted —
-              anywhere, to anyone. No product on this site claims to cure, treat or prevent any
-              disease.
-            </p>
+            <div
+              className="small vh-prose"
+              style={{ marginBottom: 6 }}
+              // Safe: mdToHtml escapes all HTML before formatting.
+              dangerouslySetInnerHTML={{ __html: mdToHtml(content.footerLegal ?? "") }}
+            />
             <p className="small" style={{ opacity: 0.75, margin: 0 }}>
               All personal data and payment data are held in Indian data centres (ap-south-1 /
-              ap-south-2). Vedic Hemp is operated by WEBMM Consultants Private Limited, Pune, Maharashtra. Support: support@vedichemp.com · © {new Date().getFullYear()}
+              ap-south-2). Vedic Hemp is operated by WEBMM Consultants Private Limited, Pune, Maharashtra. Support: {content.supportEmail} · © {new Date().getFullYear()}
             </p>
           </div>
         </div>

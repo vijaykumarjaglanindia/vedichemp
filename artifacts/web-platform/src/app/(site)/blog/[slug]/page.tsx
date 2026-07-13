@@ -13,14 +13,21 @@ import { ArrowLeft } from "lucide-react";
 import { Banner, EmptyState } from "@/components/ui";
 import { getSession } from "@/lib/auth-lite";
 import { findPost, renderMarkdownLite } from "@/lib/cms";
+import { articleJsonLd } from "@/lib/seo";
 
 export const dynamic = "force-dynamic";
 
 export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
   const { slug } = await params;
   const post = await findPost(slug);
-  if (!post || post.status !== "PUBLISHED") return { title: "Post not found" };
-  return { title: post.title };
+  if (!post || post.status !== "PUBLISHED") return { title: "Post not found", robots: { index: false } };
+  const description = post.body.replace(/[#*\r]/g, "").split("\n")[0]?.slice(0, 160) ?? post.title;
+  return {
+    title: post.title,
+    description,
+    alternates: { canonical: `/blog/${post.slug}` },
+    openGraph: { title: post.title, description, type: "article", url: `/blog/${post.slug}` },
+  };
 }
 
 export default async function BlogPostPage({
@@ -69,6 +76,9 @@ export default async function BlogPostPage({
       <Link href="/blog" className="small vh-row" style={{ gap: 4, fontWeight: 700, marginBottom: "var(--sp-3)" }}>
         <ArrowLeft size={13} aria-hidden /> Wellness journal
       </Link>
+      {!isPreview && (
+        <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd(post)) }} />
+      )}
       <article>
         <p className="small muted tabular" style={{ margin: "0 0 6px" }}>{post.updatedAt}</p>
         <h1 style={{ marginBottom: "var(--sp-3)" }}>{post.title}</h1>

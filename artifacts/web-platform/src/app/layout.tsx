@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { readSiteContent } from "@/lib/sitecontent";
 import "./globals.css";
 
 /**
@@ -22,23 +23,27 @@ const display = Plus_Jakarta_Sans({
   weight: ["600", "700", "800"],
 });
 
-export const metadata: Metadata = {
-  metadataBase: new URL("https://vedichemp.in"),
-  title: { default: "Vedic Hemp — India's regulated hemp & wellness marketplace", template: "%s · Vedic Hemp" },
-  description:
-    "India's marketplace for hemp nutrition, CBD wellness and Ayurveda — products listed and shipped by independent licensed sellers.",
-  keywords: ["hemp", "CBD", "Ayurveda", "wellness", "India", "lab verified", "marketplace"],
-  openGraph: {
-    type: "website",
-    siteName: "Vedic Hemp",
-    title: "Vedic Hemp — India's hemp, Ayurveda & CBD wellness marketplace",
-    description: "A multi-vendor marketplace: independent licensed sellers list, ship and stand behind their products.",
-    locale: "en_IN",
-  },
-  twitter: { card: "summary_large_image", title: "Vedic Hemp", description: "India's regulated hemp & wellness marketplace." },
-  robots: { index: true, follow: true },
-  alternates: { canonical: "/" },
-};
+// Site-wide metadata defaults are admin-edited (Site content → SEO & metadata).
+export async function generateMetadata(): Promise<Metadata> {
+  const content = await readSiteContent();
+  return {
+    metadataBase: new URL("https://vedichemp.in"),
+    title: { default: content.seoSiteTitle ?? "Vedic Hemp", template: "%s · Vedic Hemp" },
+    description: content.seoSiteDesc,
+    keywords: ["hemp", "CBD", "Ayurveda", "wellness", "India", "lab verified", "marketplace"],
+    applicationName: "Vedic Hemp",
+    openGraph: {
+      type: "website",
+      siteName: "Vedic Hemp",
+      title: content.seoSiteTitle,
+      description: content.seoSiteDesc,
+      locale: "en_IN",
+    },
+    twitter: { card: "summary_large_image", title: "Vedic Hemp", description: content.seoSiteDesc },
+    robots: { index: true, follow: true },
+    formatDetection: { telephone: false },
+  };
+}
 
 export const viewport: Viewport = {
   themeColor: "#f2f7f7",

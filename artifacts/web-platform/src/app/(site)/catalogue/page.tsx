@@ -12,6 +12,7 @@
  */
 
 import type { Metadata } from "next";
+import { readSiteContent } from "@/lib/sitecontent";
 import Link from "next/link";
 import { ComplianceClass } from "@prisma/client";
 import {
@@ -25,11 +26,14 @@ import { classProducts, PRODUCTS, type SampleProduct } from "@/lib/sample";
 import { addToCart } from "../cart/actions";
 import { toggleWishlist } from "../actions";
 
-export const metadata: Metadata = {
-  title: "Shop the catalogue",
-  description: "Hemp nutrition, CBD wellness and Ayurveda listed by independent licensed sellers. Filter by category, price, rating and lab-report availability.",
-  alternates: { canonical: "/catalogue" },
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const content = await readSiteContent();
+  return {
+    title: "Shop the catalogue",
+    description: content.seoCatalogueDesc,
+    alternates: { canonical: "/catalogue" },
+  };
+}
 
 interface Params {
   q?: string; class?: string; max?: string; min?: string; lab?: string;

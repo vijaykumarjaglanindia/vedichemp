@@ -27,26 +27,31 @@ import {
 import { MoneyText, Rating, SectionHead } from "@/components/ui";
 import { AdBanner, AdSlot, AdVideo, CampaignLabel } from "@/components/ui/ads";
 import { CLASS_META } from "@/lib/compliance";
+import { publishedPosts } from "@/lib/cms";
+import { mdToHtml } from "@/lib/richtext";
 import { faqJsonLd } from "@/lib/seo";
+import { parseFaqs, parseTestimonials, parseTiles, readSiteContent } from "@/lib/sitecontent";
 import { SELLERS } from "@/lib/sample";
 import { ComplianceClass } from "@prisma/client";
 import {
   DEALS,
-  EDUCATION_ARTICLES,
   FLASH_SALE,
   HEALTH_GOALS,
-  HOME_FAQS,
   PUBLIC_PRODUCTS,
-  TESTIMONIALS,
   sellerSlug,
 } from "./_lib/data";
 import { ProductCard } from "./_lib/ProductCard";
 
-export const metadata: Metadata = {
-  title: "Hemp, CBD wellness, Ayurveda — India's seller marketplace",
-  description:
-    "Shop hemp food, Ayurveda and CBD wellness listed by independent licensed sellers across India. Sellers submit licences at onboarding and ship directly to you.",
-};
+// Homepage metadata is admin-edited (Site content → SEO & metadata).
+export async function generateMetadata(): Promise<Metadata> {
+  const content = await readSiteContent();
+  return {
+    title: content.seoHomeTitle,
+    description: content.seoHomeDesc,
+    alternates: { canonical: "/" },
+    openGraph: { title: content.seoHomeTitle, description: content.seoHomeDesc, url: "/", type: "website" },
+  };
+}
 
 const SHOPPABLE_CLASSES: ComplianceClass[] = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
 
@@ -57,7 +62,15 @@ const PILLARS: { icon: typeof FlaskConical; title: string; body: string }[] = [
   { icon: Lock, title: "Your data stays in India", body: "PII and payment data live in Indian data centres. Health data is encrypted separately, and every access is logged and disclosed to you." },
 ];
 
-export default function HomePage() {
+export default async function HomePage() {
+  const content = await readSiteContent();
+  const faqs = parseFaqs(content.homeFaqs ?? "");
+  const testimonials = parseTestimonials(content.testimonials ?? "");
+  const uspTilesCopy = parseTiles(content.heroUsps ?? "");
+  // "Learn" cards come from the CMS journal — publish a post and it lands here.
+  const educationPosts = (await publishedPosts()).slice(0, 3);
+  const eduEmoji = ["🌾", "🧪", "🥗"];
+
   const bestsellers = [...PUBLIC_PRODUCTS].sort((a, b) => b.rating - a.rating).slice(0, 8);
   const heroTiles = PUBLIC_PRODUCTS.slice(0, 4);
   const featuredSellers = SELLERS.filter((s) => s.kycState === "KYC_APPROVED").slice(0, 3);
@@ -65,18 +78,14 @@ export default function HomePage() {
 
   return (
     <>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(HOME_FAQS)) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd(faqs)) }} />
 
-      {/* ── Hero ─────────────────────────────────────────── */}
+      {/* ── Hero (admin-edited: Site content → Homepage hero) ── */}
       <section className="vh-hero">
         <div className="vh-container vh-hero-grid">
           <div>
-            <h1>India&apos;s marketplace for hemp, Ayurveda &amp; CBD wellness.</h1>
-            <p style={{ marginTop: 12 }}>
-              Shop hemp nutrition, Ayurveda and CBD wellness listed by independent, licensed
-              sellers. Sellers submit their licences when they join, ship every order through
-              their delivery partner, and are responsible for the products they list.
-            </p>
+            <h1>{content.heroTitle}</h1>
+            <p style={{ marginTop: 12 }}>{content.heroSub}</p>
             <div className="vh-row" style={{ gap: 12, marginTop: "var(--sp-4)", flexWrap: "wrap" }}>
               <Link href="/catalogue" className="vh-btn vh-btn-primary vh-btn-lg">
                 Shop the catalogue
@@ -91,22 +100,18 @@ export default function HomePage() {
               </Link>
             </div>
             <div className="vh-row" style={{ gap: 18, marginTop: "var(--sp-4)", flexWrap: "wrap", color: "var(--vh-body)", fontSize: ".84rem", fontWeight: 700 }}>
-              <span>★ 4.6 average rating</span>
-              <span aria-hidden>·</span>
-              <span>10,000+ products</span>
-              <span aria-hidden>·</span>
-              <span>300+ licensed sellers</span>
+              {(content.heroStats ?? "").split("·").map((seg, i) => (
+                <span key={i} className="vh-row" style={{ gap: 18 }}>
+                  {i > 0 && <span aria-hidden>·</span>}
+                  <span>{seg.trim()}</span>
+                </span>
+              ))}
             </div>
 
             {/* USP strip — answers the four pre-purchase objections before
                 the first scroll, and balances the hero columns */}
             <div className="vh-usp-grid" style={{ marginTop: "var(--sp-4)", maxWidth: 460 }}>
-              {[
-                ["Free shipping above ₹5,000", "₹100 flat below — across 19,000+ PIN codes"],
-                ["Cash on Delivery", "Pay when it arrives"],
-                ["Easy returns", "Buyer refunded first"],
-                ["Fulfilled by sellers", "Packed & shipped by the seller who lists it"],
-              ].map(([t, s]) => (
+              {uspTilesCopy.map(({ title: t, sub: s }) => (
                 <div key={t} style={{ background: "var(--vh-surface)", border: "1px solid var(--vh-line)", borderRadius: 10, padding: "10px 12px" }}>
                   <div style={{ fontWeight: 800, fontSize: ".82rem", color: "var(--vh-ink)" }}>{t}</div>
                   <div style={{ fontSize: ".74rem", color: "var(--vh-body)" }}>{s}</div>
@@ -235,7 +240,7 @@ export default function HomePage() {
       <section className="vh-section vh-section-alt">
         <div className="vh-container">
           <div className="vh-row" style={{ gap: 12, flexWrap: "wrap", marginBottom: "var(--sp-4)" }}>
-            <CampaignLabel>Monsoon Wellness Days</CampaignLabel>
+            <CampaignLabel>{content.flashSaleName}</CampaignLabel>
             <h2 className="vh-display" style={{ margin: 0, fontSize: "1.4rem" }}>Flash sale</h2>
             <span className="vh-spacer" />
             <span className="vh-pill vh-pill-warn">
@@ -349,29 +354,30 @@ export default function HomePage() {
         <div className="vh-container">
           <SectionHead eyebrow="Learn" title="New to hemp? Start here" />
           <div className="vh-split">
+            {/* Cards are the latest published journal posts — publish in
+                Admin → CMS and the homepage picks it up on the next request. */}
             <div className="vh-grid cols-3">
-              {EDUCATION_ARTICLES.map((a) => (
-                <Link key={a.title} href={a.href} className="vh-card" style={{ display: "block", color: "inherit" }}>
-                  <div style={{ fontSize: "1.7rem", marginBottom: 8 }} aria-hidden>{a.emoji}</div>
-                  <h3 style={{ fontSize: ".98rem", marginBottom: 6 }}>{a.title}</h3>
-                  <p className="small muted" style={{ marginBottom: 8 }}>{a.teaser}</p>
-                  <span className="small" style={{ fontWeight: 700 }}>{a.minutes} min read →</span>
-                </Link>
-              ))}
+              {educationPosts.map((post, i) => {
+                const teaser = post.body.replace(/[#*]/g, "").split(/\n+/)[0]?.slice(0, 140) ?? "";
+                const minutes = Math.max(1, Math.round(post.body.split(/\s+/).length / 180));
+                return (
+                  <Link key={post.slug} href={`/blog/${post.slug}`} className="vh-card" style={{ display: "block", color: "inherit" }}>
+                    <div style={{ fontSize: "1.7rem", marginBottom: 8 }} aria-hidden>{eduEmoji[i % eduEmoji.length]}</div>
+                    <h3 style={{ fontSize: ".98rem", marginBottom: 6 }}>{post.title}</h3>
+                    <p className="small muted" style={{ marginBottom: 8 }}>{teaser}</p>
+                    <span className="small" style={{ fontWeight: 700 }}>{minutes} min read →</span>
+                  </Link>
+                );
+              })}
             </div>
             <div className="vh-card" style={{ background: "var(--vh-green-50)" }}>
               <div className="vh-eyebrow" style={{ marginBottom: 8 }}>Explainer</div>
-              <h3 style={{ marginBottom: 8 }}>Why hemp seed is FSSAI-approved food</h3>
-              <p className="small muted">
-                In 2021, FSSAI notified hemp seed, hemp seed oil and hemp seed flour as food under
-                the Food Safety and Standards regulations. Hemp seed contains no meaningful THC —
-                it&apos;s valued for complete plant protein and an omega 3:6 ratio close to what
-                nutritionists recommend.
-              </p>
-              <p className="small muted" style={{ marginBottom: 12 }}>
-                That&apos;s why hemp hearts and seed oil sit on Vedic Hemp under a standard food
-                licence, while CBD products carry AYUSH licensing and a batch lab report.
-              </p>
+              <h3 style={{ marginBottom: 8 }}>{content.explainerTitle}</h3>
+              <div
+                className="small muted vh-prose"
+                style={{ marginBottom: 12 }}
+                dangerouslySetInnerHTML={{ __html: mdToHtml(content.explainerBody ?? "") }}
+              />
               <Link href="/catalogue?class=HEMP_FOOD" className="vh-btn vh-btn-outline vh-btn-sm">
                 Shop hemp foods
               </Link>
@@ -414,11 +420,11 @@ export default function HomePage() {
         <div className="vh-container">
           <SectionHead eyebrow="Buyers" title="What buyers say" />
           <div className="vh-grid cols-3">
-            {TESTIMONIALS.map((t) => (
+            {testimonials.map((t) => (
               <figure key={t.name} className="vh-card" style={{ margin: 0 }}>
                 <Rating value={t.rating} />
-                <blockquote className="small" style={{ margin: "10px 0 14px", color: "var(--vh-body)" }}>
-                  “{t.text}”
+                <blockquote className="small vh-prose" style={{ margin: "10px 0 14px", color: "var(--vh-body)" }}>
+                  <div dangerouslySetInnerHTML={{ __html: mdToHtml(t.text) }} />
                 </blockquote>
                 <figcaption className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
                   <strong className="small" style={{ color: "var(--vh-ink)" }}>{t.name}</strong>
@@ -478,10 +484,10 @@ export default function HomePage() {
         <div className="vh-container" style={{ maxWidth: 820 }}>
           <SectionHead eyebrow="FAQ" title="Common questions, straight answers" />
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-2)" }}>
-            {HOME_FAQS.map((f) => (
+            {faqs.map((f) => (
               <details key={f.q} className="vh-card" style={{ padding: "var(--sp-3)" }}>
                 <summary style={{ cursor: "pointer", fontWeight: 800, color: "var(--vh-ink)" }}>{f.q}</summary>
-                <p className="small muted" style={{ marginTop: 10, marginBottom: 0 }}>{f.a}</p>
+                <div className="small muted vh-prose" style={{ marginTop: 10 }} dangerouslySetInnerHTML={{ __html: mdToHtml(f.a) }} />
               </details>
             ))}
           </div>
@@ -496,22 +502,16 @@ export default function HomePage() {
               <span aria-hidden style={{ display: "inline-flex", width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", background: "var(--vh-accent)", color: "var(--vh-on-accent)", marginBottom: 12 }}>
                 <Store size={19} strokeWidth={2.2} />
               </span>
-              <h3>Become a seller</h3>
-              <p className="small muted">
-                Licence checks, the CoA gate and settlement controls are built into the platform —
-                you bring the product, we bring the compliance machinery.
-              </p>
+              <h3>{content.ctaSellerTitle}</h3>
+              <p className="small muted">{content.ctaSellerBody}</p>
               <Link href="/sell" className="vh-btn vh-btn-primary">Start selling</Link>
             </div>
             <div className="vh-card">
               <span aria-hidden style={{ display: "inline-flex", width: 40, height: 40, borderRadius: 12, alignItems: "center", justifyContent: "center", background: "var(--vh-ad-bg)", color: "var(--vh-ad)", marginBottom: 12 }}>
                 <Megaphone size={19} strokeWidth={2.2} />
               </span>
-              <h3>Advertise with Vedic Hemp</h3>
-              <p className="small muted">
-                Labelled, reviewed placements across home, listings and product pages.
-                Prescription-only (medical cannabis) products are never eligible — for anyone (A1).
-              </p>
+              <h3>{content.ctaAdvertiserTitle}</h3>
+              <p className="small muted">{content.ctaAdvertiserBody}</p>
               <Link href="/sell#advertise" className="vh-btn vh-btn-outline">Explore placements</Link>
             </div>
           </div>
