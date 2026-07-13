@@ -617,3 +617,22 @@ img, svg { max-width: 100%; }
 .vh-prose p { margin: 0 0 14px; color: var(--vh-body); }
 .vh-prose h2 { font-size: 1.15rem; margin: 22px 0 8px; color: var(--vh-ink); }
 .vh-prose strong { color: var(--vh-ink); }
+
+/* ── WYSIWYG editor surface ─────────────────────────────────── */
+.vh-rte {
+  border: 1px solid var(--vh-line-strong);
+  border-radius: 0 0 8px 8px;
+  background: var(--vh-surface);
+  padding: 10px 12px;
+  font-size: .9rem;
+  color: var(--vh-body);
+  overflow-y: auto;
+}
+.vh-rte:focus-visible { outline: none; box-shadow: var(--vh-ring); border-radius: 0 0 8px 8px; }
+.vh-rte:empty::before { content: attr(data-placeholder); color: var(--vh-faint); pointer-events: none; }
+.vh-rte p { margin: 0 0 10px; }
+.vh-rte p:last-child { margin-bottom: 0; }
+.vh-rte h2 { font-size: 1.05rem; margin: 12px 0 6px; }
+.vh-rte ul { margin: 0 0 10px; padding-left: 22px; }
+.vh-prose ul { margin: 0 0 14px; padding-left: 22px; color: var(--vh-body); }
+.vh-prose em { color: var(--vh-body); }

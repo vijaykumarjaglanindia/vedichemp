@@ -10,6 +10,8 @@ import type { Metadata } from "next";
 import { MessageCircleQuestion, Star, Inbox, Timer } from "lucide-react";
 import { Shell } from "../Shell";
 import { Banner, Card, StatusPill, toneForStatus, Stat, Rating } from "@/components/ui";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
+import { mdToHtml } from "@/lib/richtext";
 import { readSellerReplies } from "@/lib/engage";
 import { QUESTIONS, REVIEWS, MESSAGES, RESPONSE_STATS } from "../_lib/data";
 import { replyToQuestion, respondToReview } from "../actions";
@@ -78,14 +80,21 @@ export default async function CustomersPage({
                           <StatusPill tone="warn">Pending moderation</StatusPill>
                           <span className="small muted">Your reply passed the copy-check</span>
                         </div>
-                        <p className="small" style={{ margin: 0 }}>&ldquo;{myReplies[q.id]}&rdquo;</p>
+                        <div className="small vh-prose" style={{ margin: 0 }} dangerouslySetInnerHTML={{ __html: mdToHtml(myReplies[q.id] ?? "") }} />
                       </div>
                     ) : (
                       <form action={replyToQuestion} className="vh-field" style={{ marginTop: 8 }}>
                         <input type="hidden" name="qid" value={q.id} />
                         <label className="vh-label" htmlFor={`reply-${q.id}`}>Your reply</label>
-                        <textarea className="vh-textarea" id={`reply-${q.id}`} name="reply" rows={2} minLength={10} maxLength={600} required placeholder="Answer factually — composition, batch CoA link, usage format. No medical claims." />
-                        <span className="vh-help">Replies pass the compliance copy-check before publishing.</span>
+                        <RichTextEditor
+                          compact
+                          name="reply"
+                          id={`reply-${q.id}`}
+                          maxLength={600}
+                          minHeight={72}
+                          placeholder="Answer factually — composition, batch CoA link, usage format. No medical claims."
+                          help="Replies pass the compliance copy-check before publishing."
+                        />
                         <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit" style={{ justifySelf: "start" }}>Post reply</button>
                       </form>
                     )
@@ -115,12 +124,19 @@ export default async function CustomersPage({
                     myReplies[r.id] ? (
                       <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: "var(--vh-radius-sm)", background: "var(--vh-bg-subtle)", border: "1px solid var(--vh-line)" }}>
                         <StatusPill tone="warn">Response pending moderation</StatusPill>
-                        <p className="small" style={{ margin: "6px 0 0" }}>&ldquo;{myReplies[r.id]}&rdquo;</p>
+                        <div className="small vh-prose" style={{ margin: "6px 0 0" }} dangerouslySetInnerHTML={{ __html: mdToHtml(myReplies[r.id] ?? "") }} />
                       </div>
                     ) : (
                       <form action={respondToReview} className="vh-field" style={{ marginTop: 8 }}>
                         <input type="hidden" name="rid" value={r.id} />
-                        <textarea className="vh-textarea" name="reply" rows={2} minLength={10} maxLength={600} required aria-label={`Respond to review of ${r.product}`} placeholder="Respond factually — no medical claims; the copy-check blocks the send otherwise." />
+                        <RichTextEditor
+                          compact
+                          name="reply"
+                          id={`respond-${r.id}`}
+                          maxLength={600}
+                          minHeight={72}
+                          placeholder="Respond factually — no medical claims; the copy-check blocks the send otherwise."
+                        />
                         <button className="vh-btn vh-btn-sm vh-btn-ghost" type="submit" style={{ justifySelf: "start", marginTop: 6 }}>Post response</button>
                       </form>
                     )

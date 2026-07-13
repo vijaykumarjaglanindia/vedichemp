@@ -13,6 +13,7 @@ import Link from "next/link";
 import { ArrowLeft, Eye, Globe, Send, Trash2 } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Banner, Card, StatusPill } from "@/components/ui";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { MAX_BODY, findPost } from "@/lib/cms";
 import { savePost } from "../../actions";
 
@@ -71,11 +72,15 @@ export default async function PostEditorPage({
                 </div>
                 <div className="vh-field">
                   <label className="vh-label" htmlFor="post-body">Body <span className="req">*</span></label>
-                  <textarea className="vh-textarea mono" id="post-body" name="body" rows={14} required minLength={40} maxLength={MAX_BODY} defaultValue={post?.body ?? ""} placeholder={"Intro paragraph…\n\n## A heading\n\nMore copy. **Bold** for emphasis."} />
-                  <span className="vh-help">
-                    Markdown-lite: blank line = new paragraph, <span className="mono">## Heading</span>, <span className="mono">**bold**</span> ·
-                    max {MAX_BODY} characters in demo mode · no disease claims (copy-checked on save).
-                  </span>
+                  <RichTextEditor
+                    name="body"
+                    id="post-body"
+                    defaultValue={post?.body ?? ""}
+                    maxLength={MAX_BODY}
+                    minHeight={280}
+                    placeholder="Write the post — headings, bold, italics and lists from the toolbar."
+                    help="What you see is what publishes. Stored as safe text (never HTML) · no disease claims (copy-checked on save)."
+                  />
                 </div>
               </div>
             </Card>

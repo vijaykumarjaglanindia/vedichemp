@@ -13,6 +13,7 @@ import Link from "next/link";
 import { ExternalLink, Plus, Users, BadgeCheck } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, toneForStatus, Banner, Rating } from "@/components/ui";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { SELLER, LICENCES, CAPABILITY_MATRIX, STORE_PREVIEW, daysUntil } from "../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
 import { groupIndian } from "@/lib/money";
@@ -141,8 +142,15 @@ export default async function StorePage({
             </div>
             <div className="vh-field">
               <label className="vh-label" htmlFor="sf-story">Store story <span className="req">*</span></label>
-              <textarea className="vh-textarea" id="sf-story" name="story" rows={4} required minLength={40} maxLength={500} defaultValue={storeCopy?.story ?? "AYUSH-licensed CBD wellness maker. Every batch is lab-tested before it ships, and the report is linked on each listing."} />
-              <span className="vh-help">Composition and craft, not claims — the copy-check runs on publish, and a failure blocks the send (fail closed).</span>
+              <RichTextEditor
+                name="story"
+                id="sf-story"
+                defaultValue={storeCopy?.story ?? "AYUSH-licensed CBD wellness maker. Every batch is lab-tested before it ships, and the report is linked on each listing."}
+                maxLength={500}
+                minHeight={120}
+                placeholder="Your craft, your facility, your testing routine."
+                help="Composition and craft, not claims — the copy-check runs on publish, and a failure blocks the send (fail closed)."
+              />
             </div>
             <button type="submit" className="vh-btn vh-btn-primary" style={{ justifySelf: "start" }}>Publish to storefront</button>
           </form>

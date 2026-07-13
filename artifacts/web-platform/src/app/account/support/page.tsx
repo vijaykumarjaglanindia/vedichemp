@@ -13,6 +13,7 @@ import type { ReactNode } from "react";
 import { ChevronRight, HelpCircle, MessageSquarePlus, Ticket } from "lucide-react";
 import { Shell } from "../Shell";
 import { Banner, Card, DataTable, StatusPill, toneForStatus, EmptyState, type Column } from "@/components/ui";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { readTickets } from "@/lib/engage";
 import { TICKETS, FAQS, type Ticket as TicketRow } from "../_lib/data";
 import { createTicket } from "./actions";
@@ -89,8 +90,15 @@ export default async function SupportPage({
                 <label className="vh-label" htmlFor="desc">
                   Describe the issue <span className="req">*</span>
                 </label>
-                <textarea className="vh-textarea" id="desc" name="desc" rows={4} minLength={20} maxLength={1000} required placeholder="Tell us what happened…" />
-                <span className="vh-help">Minimum 20 characters — the more detail, the faster the fix.</span>
+                <RichTextEditor
+                  compact
+                  name="desc"
+                  id="desc"
+                  maxLength={1000}
+                  minHeight={110}
+                  placeholder="Tell us what happened…"
+                  help="Minimum 20 characters — the more detail, the faster the fix."
+                />
               </div>
 
               <button type="submit" className="vh-btn vh-btn-primary vh-btn-sm" style={{ justifySelf: "start" }}>

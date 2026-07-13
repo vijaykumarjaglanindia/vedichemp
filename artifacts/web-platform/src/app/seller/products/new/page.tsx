@@ -15,6 +15,7 @@ import Link from "next/link";
 import { Lock, ArrowRight, FileUp } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Banner, Card, StatusPill } from "@/components/ui";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { CAPABILITY_MATRIX } from "../../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
 import { submitProduct } from "../../actions";
@@ -159,8 +160,14 @@ export default async function NewProductPage({
               </div>
               <div className="vh-field">
                 <label className="vh-label" htmlFor="desc">Description</label>
-                <textarea className="vh-textarea" id="desc" name="desc" rows={3} maxLength={2000} placeholder="Composition, format and traditional use — no disease or cure claims." />
-                <span className="vh-help">0/2000 · Wellness copy describes composition and traditional use only (Drugs &amp; Magic Remedies Act).</span>
+                <RichTextEditor
+                  name="desc"
+                  id="desc"
+                  maxLength={2000}
+                  minHeight={140}
+                  placeholder="Composition, format and traditional use — no disease or cure claims."
+                  help="Wellness copy describes composition and traditional use only (Drugs & Magic Remedies Act)."
+                />
               </div>
               <div className="vh-grid cols-2" style={{ gap: 16 }}>
                 <div className="vh-field">

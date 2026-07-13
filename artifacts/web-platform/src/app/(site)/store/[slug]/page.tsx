@@ -14,6 +14,7 @@ import { AdBanner } from "@/components/ui/ads";
 import { BadgeCheck, MapPin, ShieldCheck, UserCheck, UserPlus } from "lucide-react";
 import { Card, EmptyState, Rating, SectionHead } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
+import { mdToHtml } from "@/lib/richtext";
 import { readFollows, readStoreCopy } from "@/lib/engage";
 import { breadcrumbJsonLd } from "@/lib/seo";
 import { toggleFollowStore } from "../../actions";
@@ -147,7 +148,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
 
           <div className="vh-split">
             <Card title="About this store">
-              <p className="small" style={{ marginBottom: 0 }}>{story}</p>
+              <div className="small vh-prose" dangerouslySetInnerHTML={{ __html: mdToHtml(story) }} />
             </Card>
             <Card title="Certifications">
               <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>

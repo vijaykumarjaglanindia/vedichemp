@@ -118,22 +118,5 @@ export function slugify(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
 }
 
-/** Escape-then-format markdown-lite: ## headings, **bold**, paragraphs.
- *  HTML is escaped BEFORE any formatting, so stored content can never
- *  inject markup. */
-export function renderMarkdownLite(body: string): string {
-  const escaped = body
-    .replace(/&/g, "&amp;")
-    .replace(/</g, "&lt;")
-    .replace(/>/g, "&gt;");
-  return escaped
-    .split(/\n{2,}/)
-    .map((block) => {
-      const b = block.trim();
-      if (!b) return "";
-      if (b.startsWith("## ")) return `<h2>${b.slice(3)}</h2>`;
-      const withBold = b.replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>");
-      return `<p>${withBold.replace(/\n/g, "<br/>")}</p>`;
-    })
-    .join("\n");
-}
+/** Escape-then-format markdown-lite — shared core in src/lib/richtext.ts. */
+export { mdToHtml as renderMarkdownLite } from "@/lib/richtext";

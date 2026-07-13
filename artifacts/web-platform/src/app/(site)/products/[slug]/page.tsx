@@ -28,7 +28,9 @@ import {
 } from "lucide-react";
 import { Banner, Card, ComplianceBadge, EmptyState, MoneyText, Rating } from "@/components/ui";
 import { AdBanner, AdSlot } from "@/components/ui/ads";
+import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { CLASS_META, isRegulated } from "@/lib/compliance";
+import { mdToHtml } from "@/lib/richtext";
 import { PRODUCTS, SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
 import { addBundleToCart, addToCart } from "../../cart/actions";
@@ -277,7 +279,7 @@ export default async function ProductDetailPage({
                       <strong className="small" style={{ color: "var(--vh-ink)" }}>Your review</strong>
                       <span className="vh-pill vh-pill-warn">Pending moderation</span>
                     </div>
-                    <p className="small muted" style={{ margin: "6px 0 0" }}>&ldquo;{myReview.text}&rdquo;</p>
+                    <div className="small muted vh-prose" style={{ margin: "6px 0 0" }} dangerouslySetInnerHTML={{ __html: mdToHtml(myReview.text) }} />
                   </div>
                 ) : bought ? (
                   <form action={submitReview} style={{ display: "grid", gap: 10 }}>
@@ -302,7 +304,14 @@ export default async function ProductDetailPage({
                       </div>
                       <div className="vh-field" style={{ flex: "1 1 240px" }}>
                         <label className="vh-label" htmlFor="rv-text">Your review <span className="req">*</span></label>
-                        <textarea className="vh-textarea" id="rv-text" name="text" rows={2} minLength={10} maxLength={600} required placeholder="Packaging, delivery, how it fit your routine — no medical claims." />
+                        <RichTextEditor
+                          compact
+                          name="text"
+                          id="rv-text"
+                          maxLength={600}
+                          minHeight={72}
+                          placeholder="Packaging, delivery, how it fit your routine — no medical claims."
+                        />
                       </div>
                     </div>
                     <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary" style={{ justifySelf: "start" }}>Submit review</button>
@@ -335,7 +344,7 @@ export default async function ProductDetailPage({
                       <strong className="small" style={{ color: "var(--vh-ink)" }}>Your question</strong>
                       <span className="vh-pill vh-pill-warn">Awaiting seller answer</span>
                     </div>
-                    <p className="small muted" style={{ margin: "6px 0 0" }}>&ldquo;{myQuestion}&rdquo;</p>
+                    <div className="small muted vh-prose" style={{ margin: "6px 0 0" }} dangerouslySetInnerHTML={{ __html: mdToHtml(myQuestion) }} />
                     <p className="small muted" style={{ margin: "6px 0 0" }}>
                       The seller answers from Seller Central; replies pass the compliance copy-check before publishing.
                     </p>
@@ -348,7 +357,14 @@ export default async function ProductDetailPage({
                     )}
                     <div className="vh-field">
                       <label className="vh-label" htmlFor="qa-text">Ask the seller a question</label>
-                      <textarea className="vh-textarea" id="qa-text" name="text" rows={2} minLength={10} maxLength={300} required placeholder="Composition, batch, format — the seller answers, and answers are copy-checked." />
+                      <RichTextEditor
+                        compact
+                        name="text"
+                        id="qa-text"
+                        maxLength={300}
+                        minHeight={64}
+                        placeholder="Composition, batch, format — the seller answers, and answers are copy-checked."
+                      />
                     </div>
                     <button type="submit" className="vh-btn vh-btn-sm vh-btn-outline" style={{ justifySelf: "start" }}>Post question</button>
                   </form>
