@@ -18,7 +18,7 @@ import { Banner, Card, ComplianceBadge, DataTable, MoneyText, StatusPill, toneFo
 import { readCatalog, REGULATED_CLASSES, type CatalogProduct } from "@/lib/catalog";
 import { CLASS_META } from "@/lib/compliance";
 import { SELLERS } from "@/lib/sample";
-import { adminSaveListing } from "../../actions";
+import { adminBulkUpload, adminSaveListing } from "../../actions";
 
 export const metadata: Metadata = { title: "All listings · Admin" };
 
@@ -37,9 +37,10 @@ const ERRORS: Record<string, string> = {
 export default async function AdminAllListingsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; err?: string; deleted?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; err?: string; deleted?: string; bulk?: string; bulkerr?: string }>;
 }) {
-  const { status: rawStatus, q, err, deleted } = await searchParams;
+  const { status: rawStatus, q, err, deleted, bulk, bulkerr } = await searchParams;
+  const bulkReport = bulk ? globalThis.__vhBulkReports?.["admin"] : undefined;
   const status = STATUS_TABS.includes(rawStatus as (typeof STATUS_TABS)[number])
     ? (rawStatus as (typeof STATUS_TABS)[number])
     : "ALL";
@@ -97,6 +98,23 @@ export default async function AdminAllListingsPage({
       {err && ERRORS[err] && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="danger" title="That didn't go through">{ERRORS[err]}</Banner>
+        </div>
+      )}
+      {bulkReport && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity={bulkReport.rejected.length ? "warn" : "ok"} title={`Bulk upload: ${bulkReport.created.length} draft(s) created, ${bulkReport.rejected.length} row(s) rejected`}>
+            {bulkReport.created.length > 0 && <>Created: {bulkReport.created.join(" · ")}. </>}
+            {bulkReport.rejected.length > 0 && (
+              <>Rejected — {bulkReport.rejected.map((r) => `row ${r.row}: ${r.reason}`).join("; ")}.</>
+            )}
+          </Banner>
+        </div>
+      )}
+      {bulkerr && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="danger" title="Bulk upload failed">
+            {bulkerr === "size" ? "File too large — keep it under 200 KB (≈50 rows)." : "Choose a CSV file first."}
+          </Banner>
         </div>
       )}
 
@@ -174,6 +192,21 @@ export default async function AdminAllListingsPage({
               </div>
             </div>
             <button className="vh-btn vh-btn-primary" type="submit" style={{ justifySelf: "start" }}>Create as DRAFT</button>
+          </form>
+        </Card>
+      </div>
+
+      {/* ── Bulk upload on behalf of sellers ──────────────── */}
+      <div id="bulk-obo" style={{ marginTop: "var(--sp-4)" }}>
+        <Card title="Bulk upload (CSV) — on behalf of sellers">
+          <form action={adminBulkUpload} className="vh-grid" style={{ gap: 10 }}>
+            <input className="vh-input" type="file" name="csv" accept=".csv,text/csv,text/plain" required aria-label="CSV file of listings with seller column" />
+            <p className="small muted" style={{ margin: 0 }}>
+              One row per listing: <span className="mono">seller,title,class,pricePaise,mrpPaise,hsn,desc</span> ·
+              seller must be a KYC-approved storefront · max 50 rows. Rows with medical-claims copy are rejected —
+              the rule applies to bulk files too. Everything lands as DRAFT and the upload is audited.
+            </p>
+            <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Upload &amp; create drafts</button>
           </form>
         </Card>
       </div>

@@ -14,6 +14,7 @@ import { Banner, Card, DataTable, StatusPill, toneForStatus, ComplianceBadge, Mo
 import { BarList } from "@/components/ui/charts";
 import { getSession } from "@/lib/auth-lite";
 import { REGULATED_CLASSES, sellerListings, type CatalogProduct } from "@/lib/catalog";
+import { bulkUploadListings } from "../actions";
 import { LISTING_QUALITY } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Products" };
@@ -31,9 +32,10 @@ function coaSummary(p: CatalogProduct): { tone: "ok" | "warn" | "danger" | "neut
 export default async function SellerProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; submitted?: string; deleted?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; submitted?: string; deleted?: string; bulk?: string; bulkerr?: string }>;
 }) {
-  const { status: rawStatus, q, submitted, deleted } = await searchParams;
+  const { status: rawStatus, q, submitted, deleted, bulk, bulkerr } = await searchParams;
+  const bulkReport = bulk ? globalThis.__vhBulkReports?.["seller"] : undefined;
   const status = STATUS_TABS.includes(rawStatus as (typeof STATUS_TABS)[number])
     ? (rawStatus as (typeof STATUS_TABS)[number])
     : "ALL";
@@ -55,7 +57,10 @@ export default async function SellerProductsPage({
           <span aria-hidden style={{ fontSize: "1.5rem" }}>{p.emoji}</span>
           <span>
             <div style={{ fontWeight: 600 }}><Link href={`/seller/products/${p.id}`}>{p.title}</Link></div>
-            <ComplianceBadge cls={p.cls} />
+            <span className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
+              <ComplianceBadge cls={p.cls} />
+              {p.claimsStrike && <StatusPill tone="danger">Ad-barred · claims attempt</StatusPill>}
+            </span>
           </span>
         </span>
       ),
@@ -114,6 +119,23 @@ export default async function SellerProductsPage({
           </Banner>
         </div>
       )}
+      {bulkReport && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity={bulkReport.rejected.length ? "warn" : "ok"} title={`Bulk upload: ${bulkReport.created.length} draft(s) created, ${bulkReport.rejected.length} row(s) rejected`}>
+            {bulkReport.created.length > 0 && <>Created: {bulkReport.created.join(" · ")}. </>}
+            {bulkReport.rejected.length > 0 && (
+              <>Rejected — {bulkReport.rejected.map((r) => `row ${r.row}: ${r.reason}`).join("; ")}.</>
+            )}
+          </Banner>
+        </div>
+      )}
+      {bulkerr && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="danger" title="Bulk upload failed">
+            {bulkerr === "size" ? "File too large — keep it under 200 KB (≈50 rows)." : "Choose a CSV file first."}
+          </Banner>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="vh-row-between" style={{ marginBottom: "var(--sp-3)", flexWrap: "wrap", gap: 8 }}>
@@ -167,12 +189,24 @@ export default async function SellerProductsPage({
             Better images and complete attributes lift search rank; CoA coverage is a hard publish gate, not a score (A2).
           </p>
         </Card>
-        <Card title="Bulk upload">
-          <div id="bulk-upload" className="vh-dropzone">
-            <Upload size={20} strokeWidth={2.2} aria-hidden style={{ marginBottom: 8 }} />
-            <div style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--vh-ink)" }}>Drop a CSV to create or update listings</div>
-            <div className="small" style={{ marginTop: 4 }}>Template includes HSN, class and batch columns. Regulated rows are created as DRAFT until each batch&rsquo;s CoA is approved.</div>
-          </div>
+        <Card title="Bulk upload (CSV)">
+          <form action={bulkUploadListings} className="vh-grid" style={{ gap: 10 }} id="bulk-upload">
+            <label className="vh-dropzone" style={{ cursor: "pointer" }}>
+              <input type="file" name="csv" accept=".csv,text/csv,text/plain" required style={{ display: "block", margin: "0 auto 8px" }} aria-label="CSV file of listings" />
+              <Upload size={20} strokeWidth={2.2} aria-hidden style={{ marginBottom: 8 }} />
+              <div style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--vh-ink)" }}>Choose a CSV to create listings</div>
+              <div className="small" style={{ marginTop: 4 }}>
+                One row per listing: <span className="mono">title,class,pricePaise,mrpPaise,hsn,desc</span> ·
+                class = HEMP_FOOD / AYURVEDA / CBD_WELLNESS · max 50 rows.
+              </div>
+            </label>
+            <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Upload &amp; create drafts</button>
+            <p className="small muted" style={{ margin: 0 }}>
+              Every row passes the same server-side checks as the form — <strong>rows with medical-claims copy are
+              rejected</strong> (no listing may make medical claims), and regulated rows still need an approved batch
+              CoA before they can ever go live (A2).
+            </p>
+          </form>
         </Card>
       </div>
     </Shell>

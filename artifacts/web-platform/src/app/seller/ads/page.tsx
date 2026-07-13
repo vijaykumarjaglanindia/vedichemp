@@ -1,25 +1,28 @@
 /**
- * VEDIC HEMP — VEDIC ADS (§2.8)
+ * VEDIC HEMP — VEDIC ADS MANAGER (§2.8, full campaign structure)
  *
- * A1 is enforced at three independent layers: this API/UI rejects it, the
- * catalogue index omits it, and the ad auction drops it with a logged
- * violation. This page is layer one — Medical Cannabis is never a
- * selectable class in campaign creation. It cannot be advertised or
- * promoted, by anyone, ever. There is no override endpoint.
+ * Campaign → ad group → keywords / ads / placements, in the shape of the
+ * big ad platforms: budgets (daily + total), schedule, location targeting,
+ * placements and a bid strategy per campaign. The auction ranks by
+ * bid × listing quality and rotates proportionally, so every advertiser
+ * earns share of voice — see lib/ads.ts.
  *
- * Every example creative below renders through <AdSlot>/<SponsoredLabel>,
- * which themselves throw on a MED_CANNABIS creative.
+ * A1 is enforced at three independent layers (this UI/API, the review
+ * queue, the auction), and the claims rule is highlighted right here:
+ * NO LISTING MAY MAKE MEDICAL CLAIMS, and a listing that attempted claims
+ * copy is barred from advertising until compliance clears it.
  */
 
 import type { Metadata } from "next";
-import { Ban, Megaphone, MousePointerClick, Eye, TrendingUp, Plus } from "lucide-react";
+import Link from "next/link";
+import { Ban, Megaphone, MousePointerClick, Eye, TrendingUp, Plus, ShieldAlert } from "lucide-react";
 import { Shell } from "../Shell";
-import { Banner, Card, DataTable, StatusPill, toneForStatus, MoneyText, Stat, type Column } from "@/components/ui";
-import { Sparkline, BarList } from "@/components/ui/charts";
+import { Banner, Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
 import { AdSlot, SponsoredLabel } from "@/components/ui/ads";
-import { ComplianceClass } from "@prisma/client";
-import { readCampaigns } from "@/lib/engage";
-import { AD_CAMPAIGNS, ADS_SUMMARY, AD_PLACEMENTS, CAMPAIGN_SPARKS, SELLER_PRODUCTS, type AdCampaign } from "../_lib/data";
+import { getSession } from "@/lib/auth-lite";
+import { adEligibility, AD_LOCATIONS, BID_STRATEGIES, listCampaigns, PLACEMENTS, qualityScore, type Campaign } from "@/lib/ads";
+import { sellerListings } from "@/lib/catalog";
+import { AD_PLACEMENTS } from "../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
 import { createCampaign } from "../actions";
 
@@ -30,6 +33,7 @@ const CAMPAIGN_ERRORS: Record<string, string> = {
   type: "Pick a campaign type.",
   product: "Pick the product to promote.",
   a1: "That product's class cannot be advertised — the request was rejected and logged (A1).",
+  strike: "That listing attempted medical-claims copy and is barred from advertising until compliance clears it.",
   budget: "Budget must be at least ₹500.",
 };
 
@@ -39,45 +43,39 @@ export default async function AdsPage({
   searchParams: Promise<{ created?: string; err?: string }>;
 }) {
   const { created, err } = await searchParams;
-  const mine: AdCampaign[] = (await readCampaigns()).map((c) => ({
-    id: c.id,
-    name: c.name,
-    type: c.type as AdCampaign["type"],
-    cls: "CBD_WELLNESS" as const,
-    budgetPaise: c.budgetPaise,
-    spendPaise: 0,
-    acos: 0,
-    roas: 0,
-    status: c.status,
-  }));
-  const campaigns = [...mine, ...AD_CAMPAIGNS];
+  const session = await getSession();
+  const campaigns = await listCampaigns(session?.email ?? "seller@example.in");
+  const listings = await sellerListings(session?.email ?? "seller@example.in", "Vedic Botanicals");
 
-  const columns: Column<AdCampaign>[] = [
+  const totals = campaigns.reduce(
+    (t, c) => ({ imp: t.imp + c.impressions, clicks: t.clicks + c.clicks, spend: t.spend + c.spentPaise }),
+    { imp: 0, clicks: 0, spend: 0 },
+  );
+  const ctr = totals.imp ? ((totals.clicks / totals.imp) * 100).toFixed(1) : "0.0";
+
+  const columns: Column<Campaign>[] = [
     {
       key: "name", header: "Campaign", render: (c) => (
         <div>
-          <div style={{ fontWeight: 600 }}>{c.name}</div>
-          <div className="small muted">{c.type} · {CLASS_META[c.cls].short}</div>
+          <div style={{ fontWeight: 600 }}><Link href={`/seller/ads/${c.id}`}>{c.name}</Link></div>
+          <div className="small muted">
+            {c.objective.replace(/_/g, " ").toLowerCase()} · {c.adGroups.length} ad group{c.adGroups.length === 1 ? "" : "s"} ·{" "}
+            {c.locations.includes("ALL") ? "All India" : c.locations.join(", ")}
+          </div>
         </div>
       ),
     },
-    {
-      key: "trend", header: "7-day clicks", render: (c) => (
-        <Sparkline points={CAMPAIGN_SPARKS[c.id] ?? [0, 0]} width={110} height={32} label={`${c.name} 7-day click trend`} />
-      ),
-    },
-    { key: "budget", header: "Budget", align: "right", render: (c) => <MoneyText paise={c.budgetPaise} /> },
-    { key: "spend", header: "Spend", align: "right", render: (c) => <MoneyText paise={c.spendPaise} /> },
-    { key: "acos", header: "ACOS", align: "right", render: (c) => <span className="tabular">{c.acos}%</span> },
-    { key: "roas", header: "ROAS", align: "right", render: (c) => <span className="tabular" style={{ fontWeight: 700 }}>{c.roas}x</span> },
+    { key: "budget", header: "Daily / total", align: "right", render: (c) => (
+        <span className="small tabular"><MoneyText paise={c.dailyBudgetPaise} /> / <MoneyText paise={c.totalBudgetPaise} /></span>
+      ) },
+    { key: "spend", header: "Spend", align: "right", render: (c) => <MoneyText paise={c.spentPaise} /> },
+    { key: "imp", header: "Impr.", align: "right", render: (c) => <span className="tabular">{c.impressions}</span> },
+    { key: "clicks", header: "Clicks", align: "right", render: (c) => <span className="tabular">{c.clicks}</span> },
     { key: "status", header: "Status", render: (c) => <StatusPill tone={toneForStatus(c.status)}>{c.status.replace(/_/g, " ")}</StatusPill> },
+    { key: "manage", header: "", align: "right", render: (c) => (
+        <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/seller/ads/${c.id}`}>Manage</Link>
+      ) },
   ];
-
-  const pacingItems = AD_CAMPAIGNS.map((c) => ({
-    label: c.name,
-    value: Math.round((c.spendPaise / c.budgetPaise) * 100),
-    display: `${Math.round((c.spendPaise / c.budgetPaise) * 100)}% of budget`,
-  }));
 
   return (
     <Shell
@@ -90,11 +88,20 @@ export default async function AdsPage({
         </a>
       }
     >
+      {/* THE rule, highlighted where advertising starts */}
+      <div style={{ marginBottom: "var(--sp-3)" }}>
+        <Banner severity="warn" title="No listing may make medical claims — and flagged listings cannot advertise">
+          Listing copy, ad headlines and AI-generated text all pass the same server-side claims check
+          (no cure / treat / prevent / diagnose). A listing that attempted claims copy is flagged and
+          barred from every campaign until compliance clears it.
+        </Banner>
+      </div>
+
       {created && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
-          <Banner severity="ok" title="Campaign created — in review">
-            Every creative is reviewed before it runs. It goes ACTIVE once approved and always renders
-            with a visible Sponsored label.
+          <Banner severity="ok" title="Campaign created — creative in review">
+            Every creative is human-reviewed before it serves. The campaign goes ACTIVE on approval and
+            every paid impression renders behind a visible Sponsored label.
           </Banner>
         </div>
       )}
@@ -103,65 +110,133 @@ export default async function AdsPage({
           <Banner severity="danger" title="Campaign not created">{CAMPAIGN_ERRORS[err]}</Banner>
         </div>
       )}
-      {/* 7-day summary */}
+
+      {/* Account summary (live counters from the auction) */}
       <div className="vh-grid cols-4" style={{ marginBottom: "var(--sp-4)" }}>
         <Card>
-          <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}><Eye size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /><span className="vh-stat-label">Impressions (7d)</span></div>
-          <div className="vh-stat-value tabular">{ADS_SUMMARY.impressions7d.toLocaleString("en-IN")}</div>
+          <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}><Eye size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /><span className="vh-stat-label">Impressions</span></div>
+          <div className="vh-stat-value tabular">{totals.imp.toLocaleString("en-IN")}</div>
         </Card>
         <Card>
-          <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}><MousePointerClick size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /><span className="vh-stat-label">Clicks (7d)</span></div>
-          <div className="vh-stat-value tabular">{ADS_SUMMARY.clicks7d.toLocaleString("en-IN")}</div>
+          <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}><MousePointerClick size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /><span className="vh-stat-label">Clicks</span></div>
+          <div className="vh-stat-value tabular">{totals.clicks.toLocaleString("en-IN")}</div>
         </Card>
         <Card>
-          <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}><Megaphone size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /><span className="vh-stat-label">ACOS (7d)</span></div>
-          <div className="vh-stat-value tabular">{ADS_SUMMARY.acos7d}%</div>
+          <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}><Megaphone size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /><span className="vh-stat-label">CTR</span></div>
+          <div className="vh-stat-value tabular">{ctr}%</div>
         </Card>
         <Card>
-          <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}><TrendingUp size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /><span className="vh-stat-label">ROAS (7d)</span></div>
-          <div className="vh-stat-value tabular">{ADS_SUMMARY.roas7d}x</div>
+          <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}><TrendingUp size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /><span className="vh-stat-label">Spend</span></div>
+          <div className="vh-stat-value tabular"><MoneyText paise={totals.spend} /></div>
         </Card>
       </div>
 
-      {/* Campaigns */}
       <Card title="Campaigns" pad0>
-        <DataTable columns={columns} rows={campaigns} empty={<div className="vh-empty">No campaigns yet — create your first campaign.</div>} />
+        <DataTable columns={columns} rows={campaigns} empty={<div className="vh-empty">No campaigns yet — create your first campaign below.</div>} />
       </Card>
 
       <div style={{ height: "var(--sp-4)" }} />
 
-      {/* New campaign — A1: only advertisable products are offered, and the
-          action re-validates the class server-side */}
+      {/* New campaign — every setting on one form; A1: only ad-eligible
+          products are offered, and the action re-validates server-side. */}
       <div id="new-campaign" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
         <Card title="Create campaign">
-          <form action={createCampaign} className="vh-grid cols-2" style={{ gap: 16, alignItems: "start" }}>
-            <div className="vh-field">
-              <label className="vh-label" htmlFor="camp-name">Campaign name <span className="req">*</span></label>
-              <input className="vh-input" id="camp-name" name="name" required minLength={4} maxLength={60} placeholder="e.g. Monsoon Balm Push" />
+          <form action={createCampaign} className="vh-grid" style={{ gap: 16 }}>
+            <div className="vh-grid cols-2" style={{ gap: 16 }}>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="camp-name">Campaign name <span className="req">*</span></label>
+                <input className="vh-input" id="camp-name" name="name" required minLength={4} maxLength={60} placeholder="e.g. Monsoon Balm Push" />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="camp-type">Objective <span className="req">*</span></label>
+                <select className="vh-select" id="camp-type" name="type" defaultValue="Sponsored Product" required>
+                  <option>Sponsored Product</option>
+                  <option>Banner</option>
+                  <option>Video</option>
+                </select>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="camp-product">Product <span className="req">*</span></label>
+                <select className="vh-select" id="camp-product" name="productId" required defaultValue="">
+                  <option value="" disabled>Choose a product…</option>
+                  {listings.map((p) => {
+                    const elig = adEligibility(p);
+                    const label = elig.ok
+                      ? `${p.title} · quality ${qualityScore(p)}/10`
+                      : `${p.title} · ${elig.reason === "strike" ? "AD-BARRED (claims attempt)" : elig.reason === "state" ? "not LIVE" : elig.reason === "coa" ? "CoA pending (A2)" : "not advertisable (A1)"}`;
+                    return (
+                      <option key={p.id} value={p.id} disabled={!elig.ok}>{label}</option>
+                    );
+                  })}
+                </select>
+                <span className="vh-help">
+                  Medical Cannabis never appears (A1). Listings flagged for attempted claims copy show as
+                  AD-BARRED until compliance clears them. Quality score feeds the auction.
+                </span>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="camp-budget">Total budget (₹) <span className="req">*</span></label>
+                <input className="vh-input" id="camp-budget" name="budget" type="number" min={500} step={1} required placeholder="5000" />
+                <span className="vh-help">Minimum ₹500 · the campaign ends automatically at 100% of budget.</span>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="camp-daily">Daily budget (₹)</label>
+                <input className="vh-input" id="camp-daily" name="dailyBudget" type="number" min={100} step={1} placeholder="500" />
+                <span className="vh-help">Serving pauses for the day once daily spend is reached.</span>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="camp-bid">Default bid (₹ per click)</label>
+                <input className="vh-input" id="camp-bid" name="bid" type="number" min={2} step={1} placeholder="9" />
+                <span className="vh-help">You pay the second price — just enough to beat the runner-up, never more than your bid.</span>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="camp-strategy">Bid strategy</label>
+                <select className="vh-select" id="camp-strategy" name="bidStrategy" defaultValue="MANUAL_CPC">
+                  {BID_STRATEGIES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}
+                </select>
+                <span className="vh-help">{BID_STRATEGIES.map((b) => `${b.label}: ${b.help}`).join(" ")}</span>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="camp-acos">Target ACoS % (for Target-ACoS strategy)</label>
+                <input className="vh-input" id="camp-acos" name="targetAcos" type="number" min={1} max={100} step={1} placeholder="15" />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="camp-start">Start date</label>
+                <input className="vh-input" id="camp-start" name="startDate" type="date" />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="camp-end">End date (optional)</label>
+                <input className="vh-input" id="camp-end" name="endDate" type="date" />
+              </div>
             </div>
+
             <div className="vh-field">
-              <label className="vh-label" htmlFor="camp-type">Type <span className="req">*</span></label>
-              <select className="vh-select" id="camp-type" name="type" defaultValue="Sponsored Product" required>
-                <option>Sponsored Product</option>
-                <option>Banner</option>
-                <option>Video</option>
-              </select>
-            </div>
-            <div className="vh-field">
-              <label className="vh-label" htmlFor="camp-product">Product <span className="req">*</span></label>
-              <select className="vh-select" id="camp-product" name="productId" required defaultValue="">
-                <option value="" disabled>Choose a product…</option>
-                {SELLER_PRODUCTS.filter((p) => p.cls !== "MED_CANNABIS").map((p) => (
-                  <option key={p.id} value={p.id}>{p.title}</option>
+              <span className="vh-label">Locations</span>
+              <div className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
+                {AD_LOCATIONS.map((l) => (
+                  <label key={l.code} className="vh-row small" style={{ gap: 5 }}>
+                    <input type="checkbox" name="locations" value={l.code} defaultChecked={l.code === "ALL"} /> {l.label}
+                  </label>
                 ))}
-              </select>
-              <span className="vh-help">Medical Cannabis products are not listed — they are never advertisable (A1).</span>
+              </div>
+              <span className="vh-help">Ads serve only to buyers in the selected states (All India overrides the rest).</span>
             </div>
+
             <div className="vh-field">
-              <label className="vh-label" htmlFor="camp-budget">Budget (₹) <span className="req">*</span></label>
-              <input className="vh-input" id="camp-budget" name="budget" type="number" min={500} step={1} required placeholder="5000" />
-              <span className="vh-help">Minimum ₹500 · the campaign pauses automatically at 100% of budget.</span>
+              <span className="vh-label">Placements</span>
+              <div className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
+                {PLACEMENTS.map((p) => (
+                  <label key={p.key} className="vh-row small" style={{ gap: 5 }}>
+                    <input
+                      type="checkbox" name="placements" value={p.key}
+                      defaultChecked={["listing-sponsored", "home-sponsored-products", "listing-sidebar"].includes(p.key)}
+                    />
+                    {p.label} <span className="muted">(floor <MoneyText paise={p.floorPaise} />)</span>
+                  </label>
+                ))}
+              </div>
             </div>
+
             <button type="submit" className="vh-btn vh-btn-primary" style={{ justifySelf: "start" }}>
               Submit for creative review
             </button>
@@ -170,12 +245,14 @@ export default async function AdsPage({
       </div>
 
       <div className="vh-grid cols-2" style={{ alignItems: "start", marginBottom: "var(--sp-4)" }}>
-        {/* Budget pacing */}
-        <Card title="Budget pacing" action={<span className="small muted">This month</span>}>
-          <BarList items={pacingItems} />
-          <p className="small muted" style={{ margin: "12px 0 0" }}>
-            A campaign pauses automatically at 100% of budget. Store Spotlight is fully paced — top up or let it rest.
-          </p>
+        {/* How the auction picks a winner */}
+        <Card title="How the auction works">
+          <ul className="small" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
+            <li><strong>Rank = your bid × listing quality (1–10).</strong> Rating, an approved lab report and a real discount lift quality — money alone can&rsquo;t buy the slot.</li>
+            <li><strong>Second-price billing.</strong> A click costs just enough to beat the runner-up, never more than your bid.</li>
+            <li><strong>Fair rotation.</strong> Impressions are shared in proportion to rank, so every eligible advertiser gets seen — not only the top bidder.</li>
+            <li><strong>Keywords.</strong> Broad, phrase and exact match with per-keyword bids and negatives; each keyword shows its estimated daily impressions when you add it.</li>
+          </ul>
         </Card>
 
         {/* A1 lock — elevated, distinct */}
@@ -194,24 +271,24 @@ export default async function AdsPage({
             <h3 style={{ margin: 0, color: "var(--vh-danger)" }}>Medical Cannabis — advertising prohibited by law</h3>
           </div>
           <p className="small" style={{ margin: "0 0 8px" }}>
-            Advertising or promoting Medical Cannabis is prohibited under the <strong>Drugs &amp; Magic Remedies
-            (Objectionable Advertisements) Act, 1954</strong> and platform prohibition <strong>A1</strong>. No licence,
-            spend level or account tier changes this — it applies to anyone, ever.
+            Prohibited under the <strong>Drugs &amp; Magic Remedies (Objectionable Advertisements) Act, 1954</strong>{" "}
+            and platform prohibition <strong>A1</strong>. No licence, spend level or account tier changes this.
           </p>
           <p className="small" style={{ margin: "0 0 8px" }}>
-            Enforced at three independent layers: <strong>(1)</strong> this campaign builder and its API reject the
-            class, <strong>(2)</strong> the catalogue index omits it from every ad-eligible feed, and
-            <strong> (3)</strong> the auction drops any candidate of this class and writes a logged violation.
-            There is no override endpoint at any layer.
+            Enforced at three independent layers: <strong>(1)</strong> this builder and its API reject the class,{" "}
+            <strong>(2)</strong> the review queue cannot approve it, and <strong>(3)</strong> the auction drops any
+            such candidate with a logged violation. There is no override endpoint at any layer.
           </p>
-          <StatusPill tone="danger">Not selectable in any campaign</StatusPill>
+          <span className="vh-row small" style={{ gap: 6, color: "var(--vh-danger)", fontWeight: 700 }}>
+            <ShieldAlert size={14} strokeWidth={2.2} aria-hidden /> Claims-flagged listings are equally barred until cleared.
+          </span>
         </div>
       </div>
 
       {/* Placement inventory */}
       <Card
         title="Placement inventory"
-        action={<span className="small muted">Placements configured in Admin → Ads</span>}
+        action={<span className="small muted">Floors &amp; switches configured in Admin → Ads</span>}
       >
         <div className="vh-grid cols-2" style={{ gap: "var(--sp-3)" }}>
           {AD_PLACEMENTS.map((p) => (

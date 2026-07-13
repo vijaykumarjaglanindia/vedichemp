@@ -586,3 +586,135 @@ export async function adminSaveStorefront(formData: FormData): Promise<void> {
   await writeAudit({ actor: who, action: "STOREFRONT_EDIT_OBO", target: "Vedic Botanicals", outcome: "OK" });
   redirect("/admin/sellers?store=saved#storefront-obo");
 }
+
+/* ── Vedic Ads: creative review, platform settings, oversight ── */
+
+import { decideAd, readAdSettings as readAdsSettings, setCampaignStatus as adsSetCampaignStatus, writeAdSettings, PLACEMENTS as AD_PLACEMENT_DEFS } from "@/lib/ads";
+import { setClaimsStrike } from "@/lib/catalog";
+
+/**
+ * Approve or reject one creative. Approval is what lets a campaign serve —
+ * and it is a human act with a note on rejection, audited either way. A
+ * MED_CANNABIS creative cannot reach this queue (layer 1 rejects it), and
+ * even an approved ad is re-checked at auction time (layer 3).
+ */
+export async function decideAdReview(formData: FormData): Promise<void> {
+  const campaignId = String(formData.get("campaignId") ?? "");
+  const adId = String(formData.get("adId") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  const who = await actor();
+
+  if (decision === "reject" && note.length < 20) {
+    await writeAudit({ actor: who, action: "AD_REJECT", target: adId, outcome: "DENIED", note: "reviewer note under 20 chars" });
+    redirect("/admin/ads?ad=note#review-queue");
+  }
+  const ok = await decideAd(campaignId, adId, decision === "approve", note || undefined);
+  if (!ok) redirect("/admin/ads?ad=state#review-queue");
+  await writeAudit({ actor: who, action: decision === "approve" ? "AD_APPROVE" : "AD_REJECT", target: `${campaignId}/${adId}`, outcome: "OK", ...(note ? { note } : {}) });
+  redirect(`/admin/ads?ad=${decision === "approve" ? "approved" : "rejected"}#review-queue`);
+}
+
+/** Platform-wide auction levers: minimum bid + per-placement on/off. */
+export async function saveAdPlatformSettings(formData: FormData): Promise<void> {
+  const minBidRupees = parseInt(String(formData.get("minBid") ?? ""), 10);
+  if (!Number.isInteger(minBidRupees) || minBidRupees < 1 || minBidRupees > 500) redirect("/admin/ads?settings=minbid#platform");
+  const placementsEnabled: Record<string, boolean> = {};
+  for (const p of AD_PLACEMENT_DEFS) placementsEnabled[p.key] = formData.getAll("placements").map(String).includes(p.key);
+  await writeAdSettings({ minBidPaise: minBidRupees * 100, placementsEnabled });
+  await writeAudit({
+    actor: await actor(), action: "AD_SETTINGS", outcome: "OK",
+    target: `min bid ₹${minBidRupees} · ${Object.values(placementsEnabled).filter(Boolean).length}/${AD_PLACEMENT_DEFS.length} placements on`,
+  });
+  redirect("/admin/ads?settings=saved#platform");
+}
+
+/** Pause any campaign platform-side, with a reason the advertiser sees. */
+export async function adminPauseCampaign(formData: FormData): Promise<void> {
+  const campaignId = String(formData.get("campaignId") ?? "");
+  const op = String(formData.get("op") ?? "pause");
+  const reason = String(formData.get("reason") ?? "").trim();
+  const who = await actor();
+  if (op === "pause") {
+    if (reason.length < 20) {
+      await writeAudit({ actor: who, action: "CAMPAIGN_PAUSE", target: campaignId, outcome: "DENIED", note: "reason under 20 chars" });
+      redirect("/admin/ads?camp=reason#oversight");
+    }
+    await adsSetCampaignStatus(campaignId, "PAUSED", reason);
+    await writeAudit({ actor: who, action: "CAMPAIGN_PAUSE", target: campaignId, outcome: "OK", note: reason });
+    redirect("/admin/ads?camp=paused#oversight");
+  }
+  await adsSetCampaignStatus(campaignId, "ACTIVE");
+  await writeAudit({ actor: who, action: "CAMPAIGN_RESUME", target: campaignId, outcome: "OK" });
+  redirect("/admin/ads?camp=resumed#oversight");
+}
+
+/** Clear a listing's medical-claims strike after review (reason ≥ 20 chars). */
+export async function clearClaimsStrike(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  const who = await actor();
+  if (reason.length < 20) {
+    await writeAudit({ actor: who, action: "CLAIMS_STRIKE_CLEAR", target: id, outcome: "DENIED", note: "reason under 20 chars" });
+    redirect(`/admin/catalogue/products/${id}?err=reason`);
+  }
+  const ok = await setClaimsStrike(id, false);
+  if (!ok) redirect("/admin/catalogue/products");
+  await writeAudit({ actor: who, action: "CLAIMS_STRIKE_CLEAR", target: id, outcome: "OK", note: reason });
+  redirect(`/admin/catalogue/products/${id}?strike=cleared`);
+}
+
+/* ── Bulk upload OBO: CSV → draft listings for any seller ── */
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __vhBulkReports: Record<string, { created: string[]; rejected: { row: number; reason: string }[] }> | undefined;
+}
+
+const BULK_CLASSES = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
+
+export async function adminBulkUpload(formData: FormData): Promise<void> {
+  const file = formData.get("csv");
+  if (!(file instanceof File) || file.size === 0) redirect("/admin/catalogue/products?bulkerr=file");
+  if (file.size > 200_000) redirect("/admin/catalogue/products?bulkerr=size");
+  const text = await (file as File).text();
+  const who = await actor();
+
+  const report = { created: [] as string[], rejected: [] as { row: number; reason: string }[] };
+  const lines = text.replace(/\r\n?/g, "\n").split("\n").map((l) => l.trim()).filter(Boolean);
+  let row = 0;
+  for (const line of lines) {
+    row += 1;
+    if (row === 1 && /^seller\s*,/i.test(line)) continue; // header row
+    if (report.created.length + report.rejected.length >= 50) break;
+    const [seller = "", title = "", cls = "", priceRaw = "", mrpRaw = "", hsn = "", ...rest] = line.split(",").map((x) => x.trim());
+    const desc = rest.join(", ");
+    const pricePaise = parseInt(priceRaw, 10);
+    const mrpPaise = parseInt(mrpRaw, 10);
+    let reason: string | null = null;
+    if (!SELLERS.some((s) => s.name === seller && s.kycState === "KYC_APPROVED")) reason = "seller must be a KYC-approved storefront";
+    else if (title.length < 8 || title.length > 150) reason = "title must be 8–150 chars";
+    else if (!BULK_CLASSES.includes(cls)) reason = `class must be one of ${BULK_CLASSES.join("/")}`;
+    else if (CLAIMS_LANGUAGE.test(title) || CLAIMS_LANGUAGE.test(desc)) reason = "claims language rejected (no listing may make medical claims)";
+    else if (!Number.isInteger(pricePaise) || pricePaise <= 0) reason = "price must be integer paise";
+    else if (!Number.isInteger(mrpPaise) || mrpPaise < pricePaise) reason = "MRP must be integer paise ≥ price";
+    else if (!/^\d{4,8}$/.test(hsn)) reason = "HSN must be 4–8 digits";
+    if (reason) {
+      report.rejected.push({ row, reason });
+      continue;
+    }
+    const created = await storeCreateListing({
+      title, desc, cls: cls as ComplianceClass, pricePaise, mrpPaise, hsn,
+      emoji: "📦", seller, sellerEmail: `obo:${who}`,
+    });
+    if (created) report.created.push(`${created.title} (${seller})`);
+    else report.rejected.push({ row, reason: "class not creatable" });
+  }
+  globalThis.__vhBulkReports ??= {};
+  globalThis.__vhBulkReports["admin"] = report;
+  await writeAudit({
+    actor: who, action: "BULK_UPLOAD_OBO", outcome: "OK",
+    target: `${report.created.length} created, ${report.rejected.length} rejected`,
+  });
+  redirect("/admin/catalogue/products?bulk=1");
+}

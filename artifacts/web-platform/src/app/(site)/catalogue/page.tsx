@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { ComplianceBadge, MoneyText, Rating } from "@/components/ui";
 import { AdBanner, AdSlot } from "@/components/ui/ads";
+import { runAuction } from "@/lib/ads";
+import { withBase } from "@/lib/base";
 import { liveByClasses } from "@/lib/catalog";
 import { findCategory, readCategories } from "@/lib/categories";
 import { CLASS_META, permittedClasses } from "@/lib/compliance";
@@ -171,7 +173,11 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   if (minRating !== null) chips.push({ label: `★ ${minRating}+`, remove: href(params, { rating: null }) });
 
   const sponsored = all.find((p) => p.cls === "CBD_WELLNESS" && p.labVerified);
-  const showSponsored = chips.length === 0 && view === "grid" && !!sponsored;
+  // The REAL auction: bid × quality with fair rotation (lib/ads). A winner
+  // replaces the illustrative tile; with no active campaigns the example
+  // creative keeps the slot on the unfiltered view.
+  const adWin = await runAuction("listing-sponsored", q ? { q } : undefined);
+  const showSponsored = !adWin && chips.length === 0 && view === "grid" && !!sponsored;
   const recentlyViewed = all.slice(0, 6);
 
   return (
@@ -360,6 +366,27 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
             <div className="vh-grid cols-3">
               {results.flatMap((p, i) => {
                 const tiles = [];
+                if (adWin && view === "grid" && i === Math.min(2, results.length - 1)) {
+                  tiles.push(
+                    <AdSlot key="auction" cls={adWin.product.cls} placement="listing-sponsored" unstyled>
+                      <article className="vh-product" style={{ borderColor: "color-mix(in srgb, var(--vh-ad) 35%, transparent)" }}>
+                        <a href={withBase(`/api/v1/ads/click?cid=${adWin.campaignId}&aid=${adWin.adId}`)} className="vh-product-media" aria-hidden tabIndex={-1}>{adWin.product.emoji}</a>
+                        <div className="vh-product-body">
+                          <a href={withBase(`/api/v1/ads/click?cid=${adWin.campaignId}&aid=${adWin.adId}`)} className="vh-product-title">
+                            {adWin.headline}
+                          </a>
+                          <div className="small muted">{adWin.product.title} · {adWin.seller}</div>
+                          <Rating value={adWin.product.rating} count={Math.round(adWin.product.rating * 47)} />
+                          <div className="vh-row" style={{ gap: 6 }}>
+                            <MoneyText paise={adWin.product.pricePaise} className="vh-product-title" />
+                            <span className="small muted" style={{ textDecoration: "line-through" }}><MoneyText paise={adWin.product.mrpPaise} /></span>
+                          </div>
+                          <ComplianceBadge cls={adWin.product.cls} />
+                        </div>
+                      </article>
+                    </AdSlot>
+                  );
+                }
                 if (showSponsored && i === 2 && sponsored) {
                   tiles.push(
                     <AdSlot key="sponsored" cls={sponsored.cls} placement="listing-sponsored" unstyled>

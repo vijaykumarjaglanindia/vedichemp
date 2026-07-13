@@ -1,227 +1,177 @@
 /**
- * VEDIC HEMP — ADVERTISING GOVERNANCE (§3.1 / A1)
+ * VEDIC HEMP — ADS ADMIN (§3.6, working console)
  *
- * A1 is the single hardest line on the platform: MED_CANNABIS is never
- * advertised or promoted, by anyone, ever. That is enforced in three
- * independent layers so one bug cannot produce an unlawful outcome —
- * the API rejects the campaign, the search/recommendation index omits the
- * product, and the ad auction drops any candidate of that class with a
- * logged violation. This page is a governance console over those three
- * layers, not a fourth place the rule lives.
+ * Three functional surfaces over the ads engine:
+ *   1. Creative review queue — a human approves every ad before it serves;
+ *      rejection carries a note the advertiser sees. Audited both ways.
+ *   2. Platform settings — minimum bid and per-placement switches; the
+ *      auction reads these live.
+ *   3. Campaign oversight — pause any campaign with a written reason.
  *
- * It also hosts the ad-inventory registry: every configurable placement on
- * the platform, each of which renders on its surface through <AdSlot> so it
- * is always visibly labelled and A1-guarded at render time too.
+ * A1 remains three independent layers: campaign creation rejects the class,
+ * this queue can never receive it, and the auction drops any such candidate
+ * with a logged violation. There is no override at any layer.
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
-import { Megaphone, LayoutTemplate, Pencil, Timer, Eye, Gauge, ShieldCheck } from "lucide-react";
+import { Ban, FlagTriangleRight, Megaphone, SlidersHorizontal } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, Stat, StatusPill, toneForStatus, MoneyText, Banner, ComplianceBadge } from "@/components/ui";
-import { Sparkline } from "@/components/ui/charts";
-import { PRODUCTS, COMPLIANCE_QUEUE } from "@/lib/sample";
-import { AD_PLACEMENTS, AUCTION_HEALTH, slaCountdown } from "../_lib/data";
+import { Banner, Card, ComplianceBadge, DataTable, MoneyText, StatusPill, toneForStatus, type Column } from "@/components/ui";
+import { listCampaigns, PLACEMENTS, qualityScore, readAdSettings, reviewQueue, type Campaign } from "@/lib/ads";
+import { adminPauseCampaign, decideAdReview, saveAdPlatformSettings } from "../actions";
 
 export const metadata: Metadata = { title: "Ads · Admin" };
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
-const IB = { size: 14, strokeWidth: 2.2 } as const;
 
-const AD_CREATIVE_QUEUE = COMPLIANCE_QUEUE.filter((q) => q.kind === "Ad Creative Review");
-const advertisableCandidates = PRODUCTS.filter((p) => p.cls !== "MED_CANNABIS");
+const MESSAGES: Record<string, { severity: "ok" | "danger" | "warn"; title: string; body: string }> = {
+  approved: { severity: "ok", title: "Creative approved", body: "The campaign is eligible to serve; the auction takes it from here (bid × quality, fair rotation)." },
+  rejected: { severity: "ok", title: "Creative rejected", body: "The advertiser sees your note on the campaign page." },
+  note: { severity: "danger", title: "A reviewer note is required to reject", body: "Write what failed (≥ 20 characters). The attempt was logged." },
+  state: { severity: "warn", title: "Nothing pending on that creative", body: "It has already been decided." },
+};
 
-// Ad-class violation monitor: blocked must always be true for MED_CANNABIS.
-// This sample row demonstrates what the log looks like — blocked:false here
-// would be a SEV-1, not a data point.
-const VIOLATION_LOG = [
-  { id: "v1", layer: "API", productClass: "MED_CANNABIS", blocked: true, at: "2026-07-09 09:41" },
-  { id: "v2", layer: "INDEX", productClass: "MED_CANNABIS", blocked: true, at: "2026-07-08 22:03" },
-  { id: "v3", layer: "AUCTION", productClass: "MED_CANNABIS", blocked: true, at: "2026-07-08 18:17" },
-];
+export default async function AdminAdsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ ad?: string; settings?: string; camp?: string }>;
+}) {
+  const { ad, settings: settingsFlag, camp } = await searchParams;
+  const queue = await reviewQueue();
+  const settings = await readAdSettings();
+  const campaigns = await listCampaigns();
+  const msg = ad ? MESSAGES[ad] : undefined;
 
-export default function AdminAdsPage() {
+  const campaignColumns: Column<Campaign>[] = [
+    { key: "name", header: "Campaign", render: (c) => (
+        <div>
+          <div style={{ fontWeight: 600 }}>{c.name}</div>
+          <div className="small muted">{c.seller} · {c.adGroups.reduce((n, g) => n + g.ads.length, 0)} ads · {c.locations.includes("ALL") ? "All India" : c.locations.join(", ")}</div>
+        </div>
+      ) },
+    { key: "budget", header: "Spend / budget", align: "right", render: (c) => (
+        <span className="small tabular"><MoneyText paise={c.spentPaise} /> / <MoneyText paise={c.totalBudgetPaise} /></span>
+      ) },
+    { key: "perf", header: "Impr. · clicks", align: "right", render: (c) => <span className="tabular">{c.impressions} · {c.clicks}</span> },
+    { key: "status", header: "Status", render: (c) => <StatusPill tone={toneForStatus(c.status)}>{c.status.replace(/_/g, " ")}</StatusPill> },
+    { key: "act", header: "", align: "right", render: (c) =>
+        c.status === "ACTIVE" ? (
+          <details style={{ position: "relative" }}>
+            <summary className="vh-btn vh-btn-sm vh-btn-ghost" style={{ listStyle: "none", cursor: "pointer" }}>Pause…</summary>
+            <form action={adminPauseCampaign} className="vh-card" style={{ position: "absolute", right: 0, zIndex: 5, padding: 12, width: 300, display: "grid", gap: 8, textAlign: "left" }}>
+              <input type="hidden" name="campaignId" value={c.id} />
+              <input type="hidden" name="op" value="pause" />
+              <label className="vh-label" htmlFor={`pz-${c.id}`}>Reason the advertiser will see (≥ 20 chars)</label>
+              <textarea className="vh-textarea" id={`pz-${c.id}`} name="reason" rows={2} maxLength={300} placeholder="e.g. Creative landing page mismatch reported by buyers." />
+              <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit">Pause campaign</button>
+            </form>
+          </details>
+        ) : c.status === "PAUSED" ? (
+          <form action={adminPauseCampaign} style={{ display: "inline-flex" }}>
+            <input type="hidden" name="campaignId" value={c.id} />
+            <input type="hidden" name="op" value="resume" />
+            <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">Resume</button>
+          </form>
+        ) : null },
+  ];
+
   return (
-    <Shell active="/admin/ads" breadcrumb={["Admin", "Ads"]} title="Advertising governance">
+    <Shell active="/admin/ads" breadcrumb={["Admin", "Ads"]} title="Ads administration">
+      {msg && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity={msg.severity} title={msg.title}>{msg.body}</Banner></div>}
+      {settingsFlag === "saved" && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="ok" title="Platform ad settings saved">The auction reads them on the next request — floors and switched-off placements apply immediately.</Banner></div>}
+      {settingsFlag === "minbid" && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="danger" title="Minimum bid must be ₹1–₹500">Nothing was changed.</Banner></div>}
+      {camp === "paused" && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="ok" title="Campaign paused platform-side">The advertiser sees your reason on their campaign page.</Banner></div>}
+      {camp === "resumed" && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="ok" title="Campaign resumed">It re-enters auctions immediately.</Banner></div>}
+      {camp === "reason" && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="danger" title="A written reason is required to pause">≥ 20 characters. The attempt was logged.</Banner></div>}
+
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
-        <Banner severity="danger" title="A1 — no MED_CANNABIS advertising, ever">
-          There is no column, flag or override endpoint that makes a Medical Cannabis product advertisable. This is
-          asserted at three independent layers, each of which is a test that fails the build if weakened:
-          <ol style={{ margin: "8px 0 0", paddingLeft: 18 }}>
-            <li><strong>API</strong> — <code>assertAdvertisable()</code> rejects a campaign at creation.</li>
-            <li><strong>Index</strong> — the search/recommendation index omits MED_CANNABIS from any advertisable
-              feed at ingest time; it is absent, not filtered client-side.</li>
-            <li><strong>Auction</strong> — <code>auctionAssertClass()</code> drops any surviving candidate on every
-              single auction call and writes an <code>AdClassViolation</code> row.</li>
-          </ol>
-        </Banner>
-
-        {/* Auction health */}
-        <Card
-          title={<span className="vh-row" style={{ gap: 8 }}><Gauge {...I} aria-hidden /> Auction health</span>}
-          action={<span className="small muted">7-day trend under each figure</span>}
-        >
-          <div className="vh-grid cols-3">
-            <div style={{ display: "grid", gap: 8 }}>
-              <Stat label="Fill rate" value={`${AUCTION_HEALTH.fillRatePct}%`} delta={{ dir: "up", text: "1.2 pts this week" }} />
-              <Sparkline points={AUCTION_HEALTH.fillRateSpark} width={150} height={36} label="Auction fill rate, last 7 days" />
-            </div>
-            <div style={{ display: "grid", gap: 8 }}>
-              <Stat label="Avg CPC" value={<MoneyText paise={AUCTION_HEALTH.avgCpcPaise} />} />
-              <Sparkline points={AUCTION_HEALTH.cpcSparkPaise} width={150} height={36} label="Average cost per click, last 7 days" />
-            </div>
-            <div style={{ display: "grid", gap: 8 }}>
-              <Stat label="A1 violations (unblocked)" value={AUCTION_HEALTH.violations24h} delta={{ dir: "up", text: "flat at zero — as designed" }} />
-              <Sparkline points={AUCTION_HEALTH.violationSpark} width={150} height={36} stroke="var(--vh-ok)" label="Unblocked A1 violations, last 7 days — zero throughout" />
-            </div>
-          </div>
-        </Card>
-
-        {/* Ad inventory registry */}
-        <Card
-          title={<span className="vh-row" style={{ gap: 8 }}><LayoutTemplate {...I} aria-hidden /> Ad inventory registry</span>}
-          action={<StatusPill tone="info">{AD_PLACEMENTS.length} placements</StatusPill>}
-          pad0
-        >
-          <div style={{ overflowX: "auto" }}>
-            <table className="vh-table">
-              <thead>
-                <tr>
-                  <th>Placement</th>
-                  <th>Surface</th>
-                  <th>Format</th>
-                  <th style={{ textAlign: "right" }}>Floor price</th>
-                  <th>Status</th>
-                  <th>Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {AD_PLACEMENTS.map((p) => (
-                  <tr key={p.id}>
-                    <td className="mono small" style={{ fontWeight: 600 }}>{p.placement}</td>
-                    <td>{p.surface}</td>
-                    <td className="small">{p.format}</td>
-                    <td style={{ textAlign: "right" }}>
-                      <MoneyText paise={p.floorPaise} />{" "}
-                      <span className="small muted">{p.pricing === "flat/day" ? "/day" : p.pricing}</span>
-                    </td>
-                    <td><StatusPill tone={toneForStatus(p.status)}>{p.status}</StatusPill></td>
-                    <td>
-                      <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/ads#${p.id}-edit`} aria-label={`Edit placement ${p.placement}`}>
-                        <Pencil {...IB} aria-hidden /> Edit
-                      </Link>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-          <p className="small muted" style={{ margin: 0, padding: "12px 18px 16px" }}>
-            Every placement above renders on its surface through <code>&lt;AdSlot&gt;</code> — it is always visibly
-            labelled &quot;Sponsored&quot;, and the A1 render guard throws before a MED_CANNABIS creative could paint. Editing
-            a placement changes floor price and format only; class eligibility is not a field on this form.
-          </p>
-        </Card>
-
-        {/* Violations monitor */}
-        <Card
-          title={<span className="vh-row" style={{ gap: 8 }}><ShieldCheck {...I} aria-hidden /> Ad-class violations monitor</span>}
-          action={<StatusPill tone="ok">0 leaks / 24h</StatusPill>}
-        >
-          <p className="small muted" style={{ marginTop: 0 }}>
-            Every row below must read <code>blocked = true</code>. A single row with <code>blocked = false</code> for
-            a MED_CANNABIS candidate is not a bug ticket — it is a SEV-1 page to Compliance and Security.
-          </p>
-          <table className="vh-table">
-            <thead>
-              <tr><th>Layer</th><th>Product class</th><th>Blocked</th><th>At</th></tr>
-            </thead>
-            <tbody>
-              {VIOLATION_LOG.map((v) => (
-                <tr key={v.id}>
-                  <td>{v.layer}</td>
-                  <td className="mono small">{v.productClass}</td>
-                  <td>
-                    {v.blocked ? <StatusPill tone="ok">true</StatusPill> : <StatusPill tone="danger">false — SEV-1</StatusPill>}
-                  </td>
-                  <td className="small muted">{v.at}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </Card>
-
-        {/* Creative approval queue */}
-        <Card
-          title={<span className="vh-row" style={{ gap: 8 }}><Megaphone {...I} aria-hidden /> Campaign approval queue</span>}
-          action={<StatusPill tone={AD_CREATIVE_QUEUE.length ? "warn" : "ok"}>{AD_CREATIVE_QUEUE.length} pending</StatusPill>}
-        >
-          {AD_CREATIVE_QUEUE.length === 0 ? (
-            <p className="small muted">No creatives pending review.</p>
-          ) : (
-            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: "var(--sp-2)" }}>
-              {AD_CREATIVE_QUEUE.map((q) => {
-                const cd = slaCountdown(q.sla, q.ageHours);
-                return (
-                  <li key={q.id} className="vh-row-between" style={{ borderBottom: "1px solid var(--vh-line)", paddingBottom: "var(--sp-2)", gap: 8, flexWrap: "wrap" }}>
-                    <span>
+        {/* ── 1. Creative review queue ──────────────────────── */}
+        <div id="review-queue">
+          <Card
+            title={<span className="vh-row" style={{ gap: 8 }}><FlagTriangleRight {...I} aria-hidden /> Creative review queue</span>}
+            action={<StatusPill tone={queue.length ? "warn" : "ok"}>{queue.length} pending</StatusPill>}
+          >
+            <p className="small muted" style={{ marginTop: 0 }}>
+              Every creative is reviewed by a human before it can serve. The reviewer checks the headline
+              against the claims rule (no cure/treat/prevent — the same check the API already ran), the
+              landing listing, and the Sponsored-label rendering. MED_CANNABIS cannot reach this queue
+              (A1, layer 1) and would be dropped at auction regardless (layer 3).
+            </p>
+            {queue.length === 0 ? (
+              <p className="small muted">Queue is empty.</p>
+            ) : (
+              <div className="vh-grid cols-2">
+                {queue.map(({ campaign, group, ad: creative, product }) => (
+                  <div key={creative.id} className="vh-card" style={{ padding: "var(--sp-3)", display: "grid", gap: "var(--sp-2)" }}>
+                    <div className="vh-row-between" style={{ gap: 8 }}>
+                      <strong style={{ minWidth: 0 }}>{creative.headline}</strong>
+                      {product && <ComplianceBadge cls={product.cls} />}
+                    </div>
+                    <div className="small muted">
+                      {campaign.name} → {group.name} · {product?.title ?? creative.productId} · {campaign.seller}
+                      {product && <> · quality {qualityScore(product)}/10</>}
+                    </div>
+                    <form action={decideAdReview} style={{ display: "grid", gap: 8 }}>
+                      <input type="hidden" name="campaignId" value={campaign.id} />
+                      <input type="hidden" name="adId" value={creative.id} />
+                      <textarea className="vh-textarea" name="note" rows={2} maxLength={300}
+                        placeholder="Rejection note the advertiser will see (≥ 20 chars; not needed to approve)" aria-label={`Reviewer note for ${creative.headline}`} />
                       <div className="vh-row" style={{ gap: 8 }}>
-                        <span style={{ fontWeight: 600 }}>{q.subject}</span>
-                        <StatusPill tone={cd.tone}>
-                          <Timer size={12} strokeWidth={2.2} aria-hidden /> {cd.label}
-                        </StatusPill>
+                        <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit" name="decision" value="approve">Approve — eligible to serve</button>
+                        <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit" name="decision" value="reject">Reject</button>
                       </div>
-                      <div className="small muted vh-row" style={{ gap: 8, marginTop: 4 }}>
-                        SLA {q.sla} · age {q.ageHours}h {q.class && <ComplianceBadge cls={q.class} />}
-                      </div>
-                    </span>
-                    <span className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                      <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/ads#${q.id}-creative`}>
-                        <Eye {...IB} aria-hidden /> View creative
-                      </Link>
-                      <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/ads#${q.id}-approve`}>Approve (maker)</Link>
-                      <Link className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/ads#${q.id}-reject`}>Reject</Link>
-                    </span>
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-          <p className="small muted" style={{ marginTop: "var(--sp-2)", marginBottom: 0 }}>
-            CBD Wellness creatives need maker–checker approval: a copy reviewer approves the claim language, and a
-            second, different reviewer confirms no disease claim or medical-benefit language slipped through before
-            the campaign goes live.
-          </p>
-        </Card>
-
-        {/* Auction governance + billing */}
-        <div className="vh-grid cols-2">
-          <Card title="Auction governance">
-            <p className="small muted" style={{ marginTop: 0 }}>
-              {advertisableCandidates.length} products across HEMP_FOOD, AYURVEDA and CBD_WELLNESS are eligible auction
-              candidates today. Auction fill rate and floor pricing are operational levers — they never touch class
-              eligibility, which is decided before a candidate reaches the auction at all.
-            </p>
-            <div className="vh-grid cols-2">
-              <div className="vh-stat">
-                <span className="vh-stat-label">Eligible candidates</span>
-                <span className="vh-stat-value tabular">{advertisableCandidates.length}</span>
+                    </form>
+                  </div>
+                ))}
               </div>
-              <div className="vh-stat">
-                <span className="vh-stat-label">Structurally ineligible</span>
-                <span className="vh-stat-value tabular">{PRODUCTS.length - advertisableCandidates.length}</span>
-              </div>
-            </div>
-          </Card>
-          <Card title="Ad billing">
-            <p className="small muted" style={{ marginTop: 0 }}>
-              Ad spend settles through the same seller settlement pipeline as order revenue — no separate,
-              unaudited ad-billing ledger exists.
-            </p>
-            <MoneyText paise={4_12_600} />
-            <span className="small muted"> billed to sellers this week</span>
+            )}
           </Card>
         </div>
+
+        {/* ── 2. Platform settings ──────────────────────────── */}
+        <div id="platform">
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><SlidersHorizontal {...I} aria-hidden /> Platform auction settings</span>}>
+            <form action={saveAdPlatformSettings} className="vh-grid" style={{ gap: 14 }}>
+              <div className="vh-field" style={{ maxWidth: 260 }}>
+                <label className="vh-label" htmlFor="ads-minbid">Minimum bid (₹ per click)</label>
+                <input className="vh-input" id="ads-minbid" name="minBid" type="number" min={1} max={500} defaultValue={Math.round(settings.minBidPaise / 100)} />
+                <span className="vh-help">Applies beneath every placement floor. Current: <MoneyText paise={settings.minBidPaise} /></span>
+              </div>
+              <div className="vh-field">
+                <span className="vh-label">Placements on sale</span>
+                <div className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
+                  {PLACEMENTS.map((p) => (
+                    <label key={p.key} className="vh-row small" style={{ gap: 5 }}>
+                      <input type="checkbox" name="placements" value={p.key} defaultChecked={settings.placementsEnabled[p.key] !== false} />
+                      {p.label} <span className="muted">(floor <MoneyText paise={p.floorPaise} />)</span>
+                    </label>
+                  ))}
+                </div>
+                <span className="vh-help">A switched-off placement returns no ad — the slot simply doesn&rsquo;t sell.</span>
+              </div>
+              <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Save platform settings</button>
+            </form>
+          </Card>
+        </div>
+
+        {/* ── 3. Campaign oversight ─────────────────────────── */}
+        <div id="oversight">
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><Megaphone {...I} aria-hidden /> Campaign oversight</span>} pad0>
+            <DataTable columns={campaignColumns} rows={campaigns} empty={<div className="vh-empty">No campaigns yet.</div>} />
+          </Card>
+        </div>
+
+        <Banner severity="danger" title="A1 — Medical Cannabis advertising: absent at three independent layers">
+          <span className="vh-row" style={{ gap: 8, alignItems: "flex-start" }}>
+            <Ban size={16} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
+            <span>
+              (1) campaign creation and its API reject the class and log the attempt; (2) this review queue can never
+              receive it; (3) the auction re-checks every candidate and drops violations with an audit row. Claims-flagged
+              listings are equally barred until compliance clears the flag. There is no override endpoint at any layer,
+              for any role.
+            </span>
+          </span>
+        </Banner>
       </div>
     </Shell>
   );

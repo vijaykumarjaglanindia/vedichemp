@@ -40,6 +40,12 @@ export interface CatalogProduct extends SampleProduct {
   sellerEmail?: string; // creator, when created from Seller Central
   custom: boolean; // true = created at runtime (hard-deletable as a draft)
   reviewNote?: string; // reviewer note on reject/suspend — shown to the seller
+  /**
+   * Set when someone ATTEMPTS to save medical-claims copy on this listing.
+   * A flagged listing cannot be advertised (the rule every seller sees on
+   * the form) until compliance clears the flag — the attempt is audited.
+   */
+  claimsStrike?: boolean;
 }
 
 /* Launch fixtures → store defaults. CBD items launched with approved batches. */
@@ -263,6 +269,14 @@ export async function deleteListing(id: string): Promise<TransitionResult> {
   const s = store();
   s.deleted.push(id);
   return { ok: true };
+}
+
+/** Flag / clear the medical-claims strike (clearing is an audited admin act). */
+export async function setClaimsStrike(id: string, on: boolean): Promise<boolean> {
+  const p = await findProduct(id);
+  if (!p) return false;
+  apply(id, { claimsStrike: on });
+  return true;
 }
 
 /* ── CoA (A2) ─────────────────────────────────────────────── */

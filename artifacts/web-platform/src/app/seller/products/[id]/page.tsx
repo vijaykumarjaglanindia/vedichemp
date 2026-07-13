@@ -132,6 +132,15 @@ export default async function ProductEditorPage({
           <Banner severity="warn" title="Reviewer note">{product!.reviewNote}</Banner>
         </div>
       )}
+      {product!.claimsStrike && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="danger" title="No listing may make medical claims — this listing is barred from advertising">
+            An attempt to save claims copy (cure / treat / prevent / diagnose) was rejected on this listing
+            and logged. Until compliance clears the flag, this listing cannot enter any ad campaign.
+            Describe composition and traditional use instead — that is the platform rule, for everyone.
+          </Banner>
+        </div>
+      )}
 
       <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
         {/* ── Left: the edit form (writes to the live store) ── */}

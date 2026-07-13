@@ -17,7 +17,7 @@ import { Shell } from "../../../Shell";
 import { Banner, Card, ComplianceBadge, MoneyText, StatusPill, toneForStatus } from "@/components/ui";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { findProduct, REGULATED_CLASSES } from "@/lib/catalog";
-import { adminListingLifecycle, adminSaveListing, adminSubmitCoa, moderateListing, takedownListing } from "../../../actions";
+import { adminListingLifecycle, adminSaveListing, adminSubmitCoa, clearClaimsStrike, moderateListing, takedownListing } from "../../../actions";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -50,10 +50,10 @@ export default async function AdminListingManagerPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string; created?: string; done?: string; err?: string; coa?: string }>;
+  searchParams: Promise<{ saved?: string; created?: string; done?: string; err?: string; coa?: string; strike?: string }>;
 }) {
   const { id } = await params;
-  const { saved, created, done, err, coa } = await searchParams;
+  const { saved, created, done, err, coa, strike } = await searchParams;
   const product = await findProduct(id);
   if (!product) notFound();
   const regulated = REGULATED_CLASSES.includes(product!.cls);
@@ -111,6 +111,11 @@ export default async function AdminListingManagerPage({
       {product!.reviewNote && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="warn" title="Current reviewer note (the seller sees this)">{product!.reviewNote}</Banner>
+        </div>
+      )}
+      {strike === "cleared" && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="ok" title="Claims strike cleared">The listing may enter ad campaigns again. The clearance and its reason are in the audit trail.</Banner>
         </div>
       )}
 
@@ -204,6 +209,22 @@ export default async function AdminListingManagerPage({
               {product!.status === "ARCHIVED" && lifecycleBtn("restore", "Restore to draft", RotateCcw, "vh-btn-primary")}
             </div>
           </Card>
+
+          {product!.claimsStrike && (
+            <Card title="Medical-claims strike — barred from advertising">
+              <p className="small" style={{ marginTop: 0, color: "var(--vh-danger)" }}>
+                An attempt to save claims copy was rejected and logged on this listing. It cannot enter any
+                ad campaign while flagged. Clear the flag only after reviewing the listing with the seller.
+              </p>
+              <form action={clearClaimsStrike} className="vh-grid" style={{ gap: 10 }}>
+                <input type="hidden" name="productId" value={product!.id} />
+                <label className="vh-label" htmlFor="strike-reason">Clearance reason (≥ 20 chars, audited) <span className="req">*</span></label>
+                <textarea className="vh-textarea" id="strike-reason" name="reason" rows={2} maxLength={300}
+                  placeholder="e.g. Reviewed with seller on call; copy re-written to composition-only language." />
+                <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit" style={{ justifySelf: "start" }}>Clear strike</button>
+              </form>
+            </Card>
+          )}
 
           {product!.custom && (product!.status === "DRAFT" || product!.status === "ARCHIVED") && (
             <Card title="Delete permanently">

@@ -23,15 +23,16 @@ import {
   deleteListing,
   findProduct,
   restoreArchived,
+  setClaimsStrike,
   submitCoa,
   submitForReview,
   unpublishListing,
   updateListing,
 } from "@/lib/catalog";
+import { writeAudit } from "@/lib/audit";
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
 import { redirect } from "next/navigation";
 import {
-  appendCampaign,
   appendCoupon,
   readSellerOrderOverrides,
   readSellerReplies,
@@ -40,7 +41,7 @@ import {
   writeSellerReplies,
   writeStockAdds,
 } from "@/lib/engage";
-import { SELLER_ORDERS, SELLER_PRODUCTS } from "./_lib/data";
+import { SELLER_ORDERS } from "./_lib/data";
 
 /** Disease-claim vocabulary the copy-check rejects (Drugs & Magic Remedies Act). */
 const CLAIM_WORDS = CLAIMS_LANGUAGE;
@@ -135,7 +136,23 @@ export async function submitProduct(formData: FormData): Promise<void> {
 export async function updateProductListing(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");
   const parsed = readListingFields(formData);
-  if ("err" in parsed) redirect(`/seller/products/${id}?err=${parsed.err}`);
+  if ("err" in parsed) {
+    // Attempting medical-claims copy is not a silent validation miss: the
+    // listing is flagged (barred from advertising until compliance clears
+    // it) and the attempt is logged. This is the rule shown on the form.
+    if (parsed.err === "claims") {
+      await setClaimsStrike(id, true);
+      const session = await getSession();
+      await writeAudit({
+        actor: session?.email ?? "seller",
+        action: "LISTING_CLAIMS_ATTEMPT",
+        target: id,
+        outcome: "DENIED",
+        note: "medical-claims copy rejected; listing barred from ads until cleared",
+      });
+    }
+    redirect(`/seller/products/${id}?err=${parsed.err}`);
+  }
   const ok = await updateListing(id, (parsed as { fields: ListingFields }).fields);
   redirect(ok ? `/seller/products/${id}?saved=1` : "/seller/products");
 }
@@ -207,35 +224,274 @@ export async function respondToReview(formData: FormData): Promise<void> {
   redirect("/seller/customers?replied=1");
 }
 
-/* ── Ads: create campaign (A1-guarded) ────────────────────── */
+/* ── Vedic Ads: full campaign structure (A1-guarded) ──────── */
 
+const OBJECTIVE_BY_TYPE: Record<string, "SPONSORED_PRODUCTS" | "BANNER" | "VIDEO"> = {
+  "Sponsored Product": "SPONSORED_PRODUCTS",
+  Banner: "BANNER",
+  Video: "VIDEO",
+};
+
+/**
+ * Quick-create: one form builds a complete, well-formed campaign — campaign
+ * settings, one ad group with sensible placements, and one creative that
+ * lands in the admin review queue. The full builder on the campaign page
+ * then adds keywords, negatives, more groups and more ads.
+ */
 export async function createCampaign(formData: FormData): Promise<void> {
   const name = String(formData.get("name") ?? "").trim();
-  const type = String(formData.get("type") ?? "");
+  const type = String(formData.get("type") ?? "Sponsored Product");
   const productId = String(formData.get("productId") ?? "");
   const budgetRupees = parseInt(String(formData.get("budget") ?? ""), 10);
+  const dailyRupees = parseInt(String(formData.get("dailyBudget") ?? ""), 10);
+  const bidRupees = parseInt(String(formData.get("bid") ?? ""), 10);
+  const strategy = String(formData.get("bidStrategy") ?? "MANUAL_CPC");
+  const targetAcos = parseInt(String(formData.get("targetAcos") ?? ""), 10);
+  const startDate = String(formData.get("startDate") ?? "") || new Date().toISOString().slice(0, 10);
+  const endDate = String(formData.get("endDate") ?? "");
+  const locations = formData.getAll("locations").map(String).filter(Boolean);
+  const placements = formData.getAll("placements").map(String).filter(Boolean);
 
-  const product = SELLER_PRODUCTS.find((p) => p.id === productId);
+  const product = await findProduct(productId);
   let err: string | null = null;
   if (name.length < 4 || name.length > 60) err = "name";
-  else if (!["Sponsored Product", "Banner", "Video"].includes(type)) err = "type";
+  else if (!OBJECTIVE_BY_TYPE[type]) err = "type";
   else if (!product) err = "product";
-  // A1 — enforced here AND at the ad API/index/auction layers. A medical
-  // product id submitted via crafted form data dies at this line, and the
-  // denied attempt would be logged as a violation in production.
-  else if (product.cls === "MED_CANNABIS") err = "a1";
   else if (!Number.isInteger(budgetRupees) || budgetRupees < 500) err = "budget";
-
+  if (!err && product) {
+    // A1 — enforced here AND at the review layer AND at the auction. A
+    // medical product id in crafted form data dies here, logged.
+    const { adEligibility } = await import("@/lib/ads");
+    const elig = adEligibility(product);
+    if (!elig.ok) {
+      if (elig.reason === "a1") {
+        await writeAudit({ actor: (await getSession())?.email ?? "seller", action: "CAMPAIGN_CREATE", target: productId, outcome: "DENIED", note: "A1: MED_CANNABIS is never advertisable" });
+        err = "a1";
+      } else if (elig.reason === "strike") err = "strike";
+      else err = "product";
+    }
+  }
   if (err) redirect(`/seller/ads?err=${err}#new-campaign`);
 
-  await appendCampaign({
-    id: `c-${Date.now().toString(36)}`,
+  const { addAd, addAdGroup, createAdCampaign, PLACEMENTS } = await import("@/lib/ads");
+  const session = await getSession();
+  const chosenPlacements = (placements.length
+    ? placements.filter((p) => PLACEMENTS.some((d) => d.key === p))
+    : ["listing-sponsored", "home-sponsored-products", "listing-sidebar"]) as import("@/lib/ads").PlacementKey[];
+
+  const campaign = await createAdCampaign({
+    seller: DEMO_STORE,
+    sellerEmail: session?.email ?? "seller@example.in",
     name,
-    type,
-    budgetPaise: budgetRupees * 100,
-    status: "IN_REVIEW",
+    objective: OBJECTIVE_BY_TYPE[type]!,
+    dailyBudgetPaise: (Number.isInteger(dailyRupees) && dailyRupees > 0 ? dailyRupees : Math.max(100, Math.round(budgetRupees / 10))) * 100,
+    totalBudgetPaise: budgetRupees * 100,
+    startDate,
+    ...(endDate ? { endDate } : {}),
+    locations: locations.length ? locations : ["ALL"],
+    bidStrategy: (["MANUAL_CPC", "ENHANCED_CPC", "TARGET_ACOS", "MAX_CLICKS"].includes(strategy) ? strategy : "MANUAL_CPC") as import("@/lib/ads").BidStrategy,
+    ...(Number.isInteger(targetAcos) && targetAcos > 0 ? { targetAcosPct: Math.min(targetAcos, 100) } : {}),
   });
-  redirect("/seller/ads?created=1");
+  const group = await addAdGroup(campaign.id, {
+    name: "Ad group 1",
+    defaultBidPaise: (Number.isInteger(bidRupees) && bidRupees > 0 ? bidRupees : 9) * 100,
+    placements: chosenPlacements,
+  });
+  if (group && product) {
+    await addAd(campaign.id, group.id, { productId, headline: `${product.title} — from a licensed seller` });
+  }
+  redirect(`/seller/ads?created=1`);
+}
+
+/* ── Vedic Ads: campaign detail management ────────────────── */
+
+export async function saveCampaignSettings(formData: FormData): Promise<void> {
+  const id = String(formData.get("campaignId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const dailyRupees = parseInt(String(formData.get("dailyBudget") ?? ""), 10);
+  const totalRupees = parseInt(String(formData.get("totalBudget") ?? ""), 10);
+  const strategy = String(formData.get("bidStrategy") ?? "MANUAL_CPC");
+  const targetAcos = parseInt(String(formData.get("targetAcos") ?? ""), 10);
+  const startDate = String(formData.get("startDate") ?? "");
+  const endDate = String(formData.get("endDate") ?? "");
+  const locations = formData.getAll("locations").map(String).filter(Boolean);
+
+  if (name.length < 4 || name.length > 60) redirect(`/seller/ads/${id}?err=name`);
+  if (!Number.isInteger(totalRupees) || totalRupees < 500) redirect(`/seller/ads/${id}?err=budget`);
+  if (!Number.isInteger(dailyRupees) || dailyRupees < 100) redirect(`/seller/ads/${id}?err=daily`);
+
+  const { updateCampaignSettings } = await import("@/lib/ads");
+  const ok = await updateCampaignSettings(id, {
+    name,
+    dailyBudgetPaise: dailyRupees * 100,
+    totalBudgetPaise: totalRupees * 100,
+    bidStrategy: (["MANUAL_CPC", "ENHANCED_CPC", "TARGET_ACOS", "MAX_CLICKS"].includes(strategy) ? strategy : "MANUAL_CPC") as import("@/lib/ads").BidStrategy,
+    ...(Number.isInteger(targetAcos) && targetAcos > 0 ? { targetAcosPct: Math.min(targetAcos, 100) } : {}),
+    ...(startDate ? { startDate } : {}),
+    ...(endDate ? { endDate } : {}),
+    locations: locations.length ? locations : ["ALL"],
+  });
+  redirect(ok ? `/seller/ads/${id}?saved=1` : "/seller/ads");
+}
+
+export async function toggleCampaign(formData: FormData): Promise<void> {
+  const id = String(formData.get("campaignId") ?? "");
+  const to = String(formData.get("to") ?? "");
+  if (to !== "ACTIVE" && to !== "PAUSED") redirect(`/seller/ads/${id}`);
+  const { findCampaign, setCampaignStatus } = await import("@/lib/ads");
+  const c = await findCampaign(id);
+  if (!c) redirect("/seller/ads");
+  // Resuming requires at least one APPROVED creative — review is not optional.
+  if (to === "ACTIVE" && !c!.adGroups.some((g) => g.ads.some((a) => a.status === "APPROVED"))) {
+    redirect(`/seller/ads/${id}?err=review`);
+  }
+  await setCampaignStatus(id, to);
+  redirect(`/seller/ads/${id}?state=${to.toLowerCase()}`);
+}
+
+export async function createAdGroup(formData: FormData): Promise<void> {
+  const id = String(formData.get("campaignId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const bidRupees = parseInt(String(formData.get("defaultBid") ?? ""), 10);
+  const placements = formData.getAll("placements").map(String).filter(Boolean);
+  const { PLACEMENTS, addAdGroup, readAdSettings } = await import("@/lib/ads");
+  const settings = await readAdSettings();
+  if (name.length < 3 || name.length > 50) redirect(`/seller/ads/${id}?err=groupname`);
+  if (!Number.isInteger(bidRupees) || bidRupees * 100 < settings.minBidPaise) redirect(`/seller/ads/${id}?err=bidfloor`);
+  const valid = placements.filter((p) => PLACEMENTS.some((d) => d.key === p));
+  if (valid.length === 0) redirect(`/seller/ads/${id}?err=placement`);
+  await addAdGroup(id, { name, defaultBidPaise: bidRupees * 100, placements: valid as import("@/lib/ads").PlacementKey[] });
+  redirect(`/seller/ads/${id}?group=created`);
+}
+
+export async function addKeywordToGroup(formData: FormData): Promise<void> {
+  const id = String(formData.get("campaignId") ?? "");
+  const groupId = String(formData.get("groupId") ?? "");
+  const text = String(formData.get("text") ?? "").trim();
+  const match = String(formData.get("match") ?? "BROAD");
+  const bidRupees = parseInt(String(formData.get("bid") ?? ""), 10);
+  const negative = String(formData.get("negative") ?? "") === "1";
+  const { addKeyword, addNegativeKeyword } = await import("@/lib/ads");
+  if (text.length < 2 || text.length > 60) redirect(`/seller/ads/${id}?err=keyword`);
+  if (negative) {
+    await addNegativeKeyword(id, groupId, text);
+    redirect(`/seller/ads/${id}?kw=negative`);
+  }
+  const result = await addKeyword(id, groupId, {
+    text,
+    match: (["BROAD", "PHRASE", "EXACT"].includes(match) ? match : "BROAD") as import("@/lib/ads").MatchType,
+    ...(Number.isInteger(bidRupees) && bidRupees > 0 ? { bidPaise: bidRupees * 100 } : {}),
+  });
+  redirect(result.ok ? `/seller/ads/${id}?kw=added&est=${result.estimate ?? 0}` : `/seller/ads/${id}?err=keyword`);
+}
+
+export async function createAdCreative(formData: FormData): Promise<void> {
+  const id = String(formData.get("campaignId") ?? "");
+  const groupId = String(formData.get("groupId") ?? "");
+  const productId = String(formData.get("productId") ?? "");
+  const headline = String(formData.get("headline") ?? "").trim();
+  if (headline.length < 8 || headline.length > 90) redirect(`/seller/ads/${id}?err=headline`);
+  const { addAd } = await import("@/lib/ads");
+  const result = await addAd(id, groupId, { productId, headline });
+  if (!result.ok) redirect(`/seller/ads/${id}?err=${result.reason}`);
+  redirect(`/seller/ads/${id}?ad=created`);
+}
+
+/* ── Vedic Ads: AI assistance (claims-gated, review-before-apply) ── */
+
+export async function aiSuggestHeadline(formData: FormData): Promise<void> {
+  const id = String(formData.get("campaignId") ?? "");
+  const groupId = String(formData.get("groupId") ?? "");
+  const productId = String(formData.get("productId") ?? "");
+  const product = await findProduct(productId);
+  if (!product) redirect(`/seller/ads/${id}`);
+  const { aiComplete } = await import("@/lib/ai");
+  const { violatesClaimsCopy } = await import("@/lib/claims");
+  const { findCampaign, findGroup } = await import("@/lib/ads");
+  const fallback = () => `${product!.title} — batch-tested, from a licensed seller`;
+  const { text } = await aiComplete(
+    `Write ONE ad headline under 80 characters for the wellness product "${product!.title}". Plain text only. Never claim to cure, treat, prevent or diagnose anything — describe composition, tradition or logistics instead.`,
+    fallback,
+  );
+  // The platform's rules outrank the model: claims output is discarded.
+  const safe = violatesClaimsCopy(text) ? fallback() : text.slice(0, 90).replace(/^["']|["']$/g, "");
+  const c = await findCampaign(id);
+  const g = c && findGroup(c, groupId);
+  if (g) g.aiHeadline = safe;
+  redirect(`/seller/ads/${id}?ai=headline`);
+}
+
+export async function aiSuggestKeywords(formData: FormData): Promise<void> {
+  const id = String(formData.get("campaignId") ?? "");
+  const groupId = String(formData.get("groupId") ?? "");
+  const productId = String(formData.get("productId") ?? "");
+  const product = await findProduct(productId);
+  if (!product) redirect(`/seller/ads/${id}`);
+  const { aiComplete } = await import("@/lib/ai");
+  const { violatesClaimsCopy } = await import("@/lib/claims");
+  const { findCampaign, findGroup } = await import("@/lib/ads");
+  const fallback = () => {
+    const base = product!.title.toLowerCase().replace(/[0-9]+\s*(g|ml|ct|caps?)\b/g, "").replace(/[^a-z\s]/g, " ").split(/\s+/).filter((w) => w.length > 3);
+    return [...new Set([...base, "lab tested", "licensed seller", "wellness gift"])].slice(0, 8).join("\n");
+  };
+  const { text } = await aiComplete(
+    `List 8 short ad keywords (one per line, plain text) buyers might search for "${product!.title}" on an Indian wellness marketplace. No medical claims words.`,
+    fallback,
+  );
+  const lines = (violatesClaimsCopy(text) ? fallback() : text)
+    .split("\n").map((l) => l.replace(/^[\d.\-•*\s]+/, "").trim().toLowerCase()).filter((l) => l.length > 1 && l.length < 40 && !violatesClaimsCopy(l)).slice(0, 8);
+  const c = await findCampaign(id);
+  const g = c && findGroup(c, groupId);
+  if (g) g.aiKeywords = lines;
+  redirect(`/seller/ads/${id}?ai=keywords`);
+}
+
+/* ── Bulk upload: CSV → draft listings ────────────────────── */
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __vhBulkReports: Record<string, { created: string[]; rejected: { row: number; reason: string }[] }> | undefined;
+}
+
+export async function bulkUploadListings(formData: FormData): Promise<void> {
+  const file = formData.get("csv");
+  if (!(file instanceof File) || file.size === 0) redirect("/seller/products?bulkerr=file");
+  if (file.size > 200_000) redirect("/seller/products?bulkerr=size");
+  const text = await (file as File).text();
+  const session = await getSession();
+
+  const report = { created: [] as string[], rejected: [] as { row: number; reason: string }[] };
+  const lines = text.replace(/\r\n?/g, "\n").split("\n").map((l) => l.trim()).filter(Boolean);
+  let row = 0;
+  for (const line of lines) {
+    row += 1;
+    if (row === 1 && /^title\s*,/i.test(line)) continue; // header row
+    if (report.created.length + report.rejected.length >= 50) break; // per-file cap
+    const [title = "", cls = "", priceRaw = "", mrpRaw = "", hsn = "", ...rest] = line.split(",").map((x) => x.trim());
+    const desc = rest.join(", ");
+    const pricePaise = parseInt(priceRaw, 10);
+    const mrpPaise = parseInt(mrpRaw, 10);
+    let reason: string | null = null;
+    if (title.length < 8 || title.length > 150) reason = "title must be 8–150 chars";
+    else if (!SELLABLE_CLASSES.includes(cls)) reason = `class must be one of ${SELLABLE_CLASSES.join("/")}`;
+    else if (CLAIM_WORDS.test(title) || CLAIM_WORDS.test(desc)) reason = "claims language rejected (no cure/treat/prevent copy — the rule on every listing)";
+    else if (!Number.isInteger(pricePaise) || pricePaise <= 0) reason = "price must be integer paise";
+    else if (!Number.isInteger(mrpPaise) || mrpPaise < pricePaise) reason = "MRP must be integer paise ≥ price";
+    else if (!/^\d{4,8}$/.test(hsn)) reason = "HSN must be 4–8 digits";
+    if (reason) {
+      report.rejected.push({ row, reason });
+      continue;
+    }
+    const created = await createListing({
+      title, desc, cls: cls as ComplianceClass, pricePaise, mrpPaise, hsn,
+      emoji: "📦", seller: DEMO_STORE, sellerEmail: session?.email ?? "seller@example.in",
+    });
+    if (created) report.created.push(created.title);
+    else report.rejected.push({ row, reason: "class not creatable" });
+  }
+  globalThis.__vhBulkReports ??= {};
+  globalThis.__vhBulkReports["seller"] = report;
+  redirect("/seller/products?bulk=1");
 }
 
 /* ── Marketing: create coupon ─────────────────────────────── */
