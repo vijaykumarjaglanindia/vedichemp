@@ -49,6 +49,8 @@ const FOOTER_COLUMNS: { heading: string; links: { href: string; label: string }[
       { href: "/catalogue?class=HEMP_FOOD", label: "Hemp Nutrition & Food" },
       { href: "/catalogue?class=AYURVEDA", label: "Ayurveda" },
       { href: "/catalogue?class=CBD_WELLNESS", label: "Hemp Wellness / CBD" },
+      { href: "/gifts", label: "AI Gift Finder" },
+      { href: "/verify", label: "Verify a batch" },
     ],
   },
   {

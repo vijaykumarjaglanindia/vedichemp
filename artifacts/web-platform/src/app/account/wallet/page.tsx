@@ -10,7 +10,8 @@ import Link from "next/link";
 import type { ReactNode } from "react";
 import { Landmark, PieChart, ReceiptText, TrendingUp } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
+import { Banner, Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
+import { readGiftCredit, redeemGiftCard } from "./actions";
 import { Sparkline, Donut } from "@/components/ui/charts";
 import { LEDGER, type LedgerRow, WALLET_SPLIT, WALLET_BALANCE_PAISE, WALLET_TREND } from "../_lib/data";
 
@@ -33,7 +34,13 @@ const SPLIT_SEGMENTS = [
   { label: "Refunds", value: WALLET_SPLIT.refundsPaise, color: "var(--vh-info)" },
 ];
 
-export default function WalletPage() {
+export default async function WalletPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ gift?: string }>;
+}) {
+  const { gift } = await searchParams;
+  const giftCredit = await readGiftCredit();
   const columns: Column<LedgerRow>[] = [
     { key: "at", header: "Date", render: (r) => <span className="tabular">{r.at}</span> },
     {
@@ -104,6 +111,26 @@ export default function WalletPage() {
         >
           <DataTable columns={columns} rows={LEDGER} />
         </Card>
+
+        <div id="giftcard" style={{ scrollMarginTop: 90 }}>
+          <Card title="Gift cards & store credit">
+            {gift === "ok" && <div style={{ marginBottom: 10 }}><Banner severity="ok" title="Gift card redeemed">The credit is in your ledger and applies automatically at checkout.</Banner></div>}
+            {gift === "bad" && <div style={{ marginBottom: 10 }}><Banner severity="danger">That code doesn&rsquo;t match an active gift card — check for typos.</Banner></div>}
+            {gift === "used" && <div style={{ marginBottom: 10 }}><Banner severity="warn">That gift card was already redeemed on this account.</Banner></div>}
+            <div className="vh-row-between" style={{ marginBottom: 10 }}>
+              <span className="small muted">Gift credit on account</span>
+              <strong><MoneyText paise={giftCredit} /></strong>
+            </div>
+            <form action={redeemGiftCard} className="vh-row" style={{ gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <div className="vh-field" style={{ flex: "1 1 200px" }}>
+                <label className="vh-label" htmlFor="gc-code">Redeem a gift card</label>
+                <input className="vh-input mono" id="gc-code" name="code" placeholder="VEDIC-GIFT-500" maxLength={20} required />
+              </div>
+              <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit">Redeem</button>
+            </form>
+            <p className="small muted" style={{ margin: "8px 0 0" }}>Codes redeem once per account, server-validated. Credit spends at checkout; it is never withdrawable as cash.</p>
+          </Card>
+        </div>
 
         <div className="vh-grid cols-2">
           <Card title="Vedic Points — loyalty">

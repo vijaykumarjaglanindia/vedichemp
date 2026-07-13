@@ -105,6 +105,29 @@ export default async function AssistantPage({
           </div>
           <div className="small muted" style={{ marginTop: 4 }}>Driven mainly by CBD Wellness Balm and Roll-On seasonal demand.</div>
         </SuggestionCard>
+        <SuggestionCard icon={<PenLine size={16} strokeWidth={2.2} />} title="SEO & keywords">
+          <p className="small muted" style={{ marginTop: 0 }}>CBD Wellness Balm 30g</p>
+          <div className="vh-row" style={{ gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+            {["cbd balm india", "hemp balm 30g", "muscle balm lab tested", "ayush licensed cbd", "post workout balm", "batch coa balm"].map((k) => (
+              <span key={k} className="vh-pill vh-pill-neutral">{k}</span>
+            ))}
+          </div>
+          <div className="small muted">Suggested meta title: &ldquo;CBD Wellness Balm 30g — batch lab report linked · Vedic Botanicals&rdquo;</div>
+          <div className="small" style={{ marginTop: 8, color: "var(--vh-ok)", fontWeight: 600 }}>Copy-check: keyword set contains no claims language · passed</div>
+        </SuggestionCard>
+
+        <SuggestionCard icon={<TrendingUp size={16} strokeWidth={2.2} />} title="Review analyzer">
+          <p className="small muted" style={{ marginTop: 0 }}>Last 90 days · all listings</p>
+          <div className="vh-row-between" style={{ marginBottom: 6 }}>
+            <span className="small muted">Sentiment</span>
+            <span className="small"><strong>82% positive</strong> · 11% neutral · 7% negative</span>
+          </div>
+          <ul className="small muted" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 4 }}>
+            <li>Top praise: packaging (34 mentions), delivery speed (28), CoA link on invoice (19)</li>
+            <li>Top complaint: 30g balm sells out (9 mentions) — matches the inventory forecast</li>
+            <li>2 reviews mention symptoms — auto-redacted before reaching this console (A4)</li>
+          </ul>
+        </SuggestionCard>
       </div>
     </Shell>
   );
