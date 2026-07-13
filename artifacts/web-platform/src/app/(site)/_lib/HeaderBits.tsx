@@ -54,8 +54,8 @@ export function HeaderBits() {
             Sign in <span aria-hidden style={{ fontSize: ".7em" }}>▾</span>
           </summary>
           <nav className="vhx-signin-panel" aria-label="Sign in as">
-            <Link href="/signin?as=buyer">As a buyer</Link>
-            <Link href="/signin?as=seller">As a seller</Link>
+            <Link href="/signin">As a buyer</Link>
+            <Link href="/seller-login">As a seller</Link>
             <Link href="/sell" style={{ color: "var(--vh-accent)" }}>New seller? Start here</Link>
           </nav>
         </details>

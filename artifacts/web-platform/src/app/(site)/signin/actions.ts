@@ -58,27 +58,30 @@ function otpFor(phone: string): string {
 export async function requestOtp(formData: FormData): Promise<void> {
   const phone = String(formData.get("phone") ?? "").replace(/\D/g, "");
   const role = String(formData.get("otprole") ?? "BUYER");
-  if (role === "ADMIN") redirect("/signin?err=admin-otp#phone");
-  if (!["BUYER", "SELLER"].includes(role)) redirect("/signin?err=role#phone");
-  if (!/^[6-9]\d{9}$/.test(phone)) redirect("/signin?err=phone#phone");
+  const backRaw = String(formData.get("back") ?? "/signin");
+  const back = backRaw === "/seller-login" ? "/seller-login" : "/signin";
+  if (role === "ADMIN") redirect(`${back}?err=admin-otp#phone`);
+  if (!["BUYER", "SELLER"].includes(role)) redirect(`${back}?err=role#phone`);
+  if (!/^[6-9]\d{9}$/.test(phone)) redirect(`${back}?err=phone#phone`);
 
   const jar = await cookies();
-  jar.set("vh-otp", JSON.stringify({ p: phone, r: role, exp: Date.now() + 10 * 60_000 }), {
+  jar.set("vh-otp", JSON.stringify({ p: phone, r: role, b: back, exp: Date.now() + 10 * 60_000 }), {
     path: "/", httpOnly: true, sameSite: "lax", maxAge: 600,
   });
   // SMS seam: if a provider key exists, send otpFor(phone) via the gateway here.
-  redirect("/signin?otp=sent#phone");
+  redirect(`${back}?otp=sent#phone`);
 }
 
 export async function verifyOtp(formData: FormData): Promise<void> {
   const code = String(formData.get("code") ?? "").replace(/\D/g, "");
   const name = String(formData.get("name") ?? "").trim().slice(0, 40) || "Member";
   const jar = await cookies();
-  type Pending = { p: string; r: string; exp: number };
+  type Pending = { p: string; r: string; b?: string; exp: number };
   let pending: Pending | null = null;
   try { pending = JSON.parse(jar.get("vh-otp")?.value ?? "null") as Pending | null; } catch { pending = null; }
-  if (!pending || pending.exp < Date.now()) redirect("/signin?err=otp-expired#phone");
-  if (code !== otpFor(pending!.p)) redirect("/signin?otp=sent&err=otp-wrong#phone");
+  const back = pending?.b === "/seller-login" ? "/seller-login" : "/signin";
+  if (!pending || pending.exp < Date.now()) redirect(`${back}?err=otp-expired#phone`);
+  if (code !== otpFor(pending!.p)) redirect(`${back}?otp=sent&err=otp-wrong#phone`);
 
   jar.delete("vh-otp");
   const role = pending!.r as "BUYER" | "SELLER";

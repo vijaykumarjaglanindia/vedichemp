@@ -1,5 +1,5 @@
 /**
- * VEDIC HEMP — SIGN IN
+ * VEDIC HEMP — SELLER SIGN IN
  *
  * Issues a real signed session (auth-lite) and routes the user to their
  * console. The role picker exists because the demo has no user directory yet;
@@ -11,9 +11,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Banner } from "@/components/ui";
 import { withBase } from "@/lib/base";
-import { pendingOtpPreview, requestOtp, signIn, verifyOtp } from "./actions";
+import { pendingOtpPreview, requestOtp, signIn, verifyOtp } from "../signin/actions";
 
-export const metadata: Metadata = { title: "Sign in" };
+export const metadata: Metadata = { title: "Seller sign in" };
 
 const ERRORS: Record<string, string> = {
   email: "That email doesn't look right — check it and try again.",
@@ -24,16 +24,16 @@ const ERRORS: Record<string, string> = {
   "otp-wrong": "That code doesn't match — check the SMS and try again.",
 };
 
-export default async function SignInPage({ searchParams }: { searchParams: Promise<{ err?: string; next?: string; bye?: string; otp?: string }> }) {
+export default async function SellerLoginPage({ searchParams }: { searchParams: Promise<{ err?: string; next?: string; bye?: string; otp?: string }> }) {
   const { err, next, bye, otp } = await searchParams;
   const otpPreview = otp === "sent" ? await pendingOtpPreview() : null;
 
   return (
     <div className="vh-container" style={{ paddingTop: "var(--sp-6)", paddingBottom: "var(--sp-8)", maxWidth: 480 }}>
       <div style={{ textAlign: "center", marginBottom: "var(--sp-4)" }}>
-        <h1 style={{ marginBottom: 6 }}>Sign in to shop</h1>
+        <h1 style={{ marginBottom: 6 }}>Seller sign in</h1>
         <p className="muted small" style={{ margin: 0 }}>
-          Buyer accounts — orders, wallet, wishlist and prescriptions.
+          Seller Central — listings, orders, settlements and your storefront.
         </p>
       </div>
 
@@ -60,14 +60,14 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
           <span className="vh-help">We&rsquo;ll send a one-time code here once OTP delivery is connected.</span>
         </div>
 
-        <input type="hidden" name="role" value="BUYER" />
+        <input type="hidden" name="role" value="SELLER" />
 
         <button type="submit" className="vh-btn vh-btn-primary vh-btn-lg" style={{ width: "100%" }}>
           Continue
         </button>
         <p className="small muted" style={{ margin: 0, textAlign: "center" }}>
-          New here? The same form creates your buyer account.{" "}
-          Selling on the marketplace? <Link href="/seller-login" style={{ fontWeight: 700 }}>Seller sign in →</Link>
+          New to selling here? <Link href="/sell" style={{ fontWeight: 700 }}>Start onboarding &amp; licence submission</Link>.{" "}
+          Shopping instead? <Link href="/signin">Buyer sign in →</Link>
         </p>
       </form>
 
@@ -78,10 +78,10 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
         <span style={{ flex: 1, height: 1, background: "var(--vh-line)" }} aria-hidden />
       </div>
       <div className="vh-grid cols-2" style={{ gap: 10 }}>
-        <a className="vh-btn vh-btn-outline" href={withBase("/api/v1/auth/google?role=BUYER")} style={{ justifyContent: "center" }}>
+        <a className="vh-btn vh-btn-outline" href={withBase("/api/v1/auth/google?role=SELLER")} style={{ justifyContent: "center" }}>
           <span aria-hidden style={{ fontWeight: 800 }}>G</span> Google
         </a>
-        <a className="vh-btn vh-btn-outline" href={withBase("/api/v1/auth/facebook?role=BUYER")} style={{ justifyContent: "center" }}>
+        <a className="vh-btn vh-btn-outline" href={withBase("/api/v1/auth/facebook?role=SELLER")} style={{ justifyContent: "center" }}>
           <span aria-hidden style={{ fontWeight: 800 }}>f</span> Facebook
         </a>
       </div>
@@ -102,8 +102,8 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
                 <input className="vh-input" id="si-phone" name="phone" type="tel" inputMode="numeric" pattern="[6-9][0-9]{9}" maxLength={10} placeholder="98765 43210" required style={{ flex: 1 }} />
               </div>
             </div>
-            <input type="hidden" name="otprole" value="BUYER" />
-            <input type="hidden" name="back" value="/signin" />
+            <input type="hidden" name="otprole" value="SELLER" />
+            <input type="hidden" name="back" value="/seller-login" />
             <button className="vh-btn vh-btn-outline" type="submit">Send one-time code</button>
           </form>
         ) : (
@@ -126,7 +126,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
               <input className="vh-input" id="si-name" name="name" maxLength={40} placeholder="How should we greet you?" />
             </div>
             <button className="vh-btn vh-btn-primary" type="submit">Verify & sign in</button>
-            <p className="small muted" style={{ margin: 0 }}><Link href="/signin#phone">Use a different number</Link></p>
+            <p className="small muted" style={{ margin: 0 }}><Link href="/seller-login#phone">Use a different number</Link></p>
           </form>
         )}
       </div>

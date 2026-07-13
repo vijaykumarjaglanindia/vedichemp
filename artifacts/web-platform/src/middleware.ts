@@ -20,7 +20,9 @@ export function middleware(req: NextRequest) {
     return NextResponse.next();
   }
   const signin = req.nextUrl.clone();
-  signin.pathname = "/signin";
+  // Each audience has its own door. /admin deliberately redirects to the
+  // BUYER page — the operator door stays unlisted (wp-admin style).
+  signin.pathname = pathname.startsWith("/seller") ? "/seller-login" : "/signin";
   signin.search = `?next=${encodeURIComponent(pathname)}`;
   return NextResponse.redirect(signin);
 }
