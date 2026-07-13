@@ -68,7 +68,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
       <section
         style={{
           background:
-            "radial-gradient(700px 400px at 85% -30%, color-mix(in srgb, var(--vh-green-400) 40%, transparent), transparent 60%), linear-gradient(160deg, #ffffff, var(--vh-green-100))",
+            "radial-gradient(700px 400px at 85% -30%, color-mix(in srgb, var(--vh-green-400) 40%, transparent), transparent 60%), linear-gradient(160deg, var(--vh-bg), var(--vh-green-100))",
           padding: "var(--sp-6) 0",
           color: "var(--vh-ink)",
         }}
