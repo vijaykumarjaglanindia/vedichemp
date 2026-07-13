@@ -7,6 +7,7 @@
  */
 
 import type { ReactNode } from "react";
+import Link from "next/link";
 import { ComplianceClass } from "@prisma/client";
 import { formatPaise } from "@/lib/money";
 import { CLASS_META } from "@/lib/compliance";
@@ -52,7 +53,7 @@ export function ComplianceBadge({ cls }: { cls: ComplianceClass }) {
       <span className="vh-cbadge vh-cbadge-ayush">{meta.short}</span>
       {isRegulatedBadge(cls) && <span className="vh-cbadge vh-cbadge-lab">Lab Report</span>}
       {meta.rxRequired && <span className="vh-cbadge vh-cbadge-rx">Rx Required</span>}
-      {meta.ageGated && <span className="vh-cbadge vh-cbadge-age">Age 18+</span>}
+      {meta.ageGated && <span className="vh-cbadge vh-cbadge-age">Age 21+</span>}
     </span>
   );
 }
@@ -85,7 +86,7 @@ export function EmptyState({
       <div className="vh-empty-icon" aria-hidden>{icon}</div>
       <h3 style={{ marginBottom: 4 }}>{headline}</h3>
       {sub && <p className="small" style={{ maxWidth: 380, margin: "0 auto 12px" }}>{sub}</p>}
-      {cta && <a className="vh-btn vh-btn-primary vh-btn-sm" href={cta.href}>{cta.label}</a>}
+      {cta && <Link className="vh-btn vh-btn-primary vh-btn-sm" href={cta.href}>{cta.label}</Link>}
     </div>
   );
 }

@@ -6,12 +6,16 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
 import { FileDown, LifeBuoy, Package, Receipt, RotateCcw, Truck } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Card, StatusPill, toneForStatus, MoneyText, Timeline, Banner } from "@/components/ui";
-import { ORDERS, PRODUCTS } from "@/lib/sample";
+import { ORDERS, PRODUCTS, type SampleOrder } from "@/lib/sample";
+import { readOrderHistory, readReturns } from "@/lib/engage";
+import { addToCart } from "../../../(site)/cart/actions";
+import { requestReturn } from "../actions";
 
 export const metadata: Metadata = { title: "Order details" };
 
@@ -34,13 +38,41 @@ function title(icon: ReactNode, text: string) {
   );
 }
 
-export default async function OrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
+export default async function OrderDetailPage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ id: string }>;
+  searchParams: Promise<{ ret?: string }>;
+}) {
   const { id } = await params;
-  const order = ORDERS.find((o) => o.id === id);
+  const { ret } = await searchParams;
+  const returnRequest = (await readReturns())[id];
+
+  // Orders placed in this session live under `live-<reference>` ids and come
+  // from the server-written history cookie; sample history stays as-is.
+  let order: SampleOrder | undefined = ORDERS.find((o) => o.id === id);
+  let liveShipping: number | null = null;
+  if (!order && id.startsWith("live-")) {
+    const stored = (await readOrderHistory()).find((o) => `live-${o.reference}` === id);
+    if (stored) {
+      order = {
+        id,
+        reference: stored.reference,
+        placedAt: stored.placedAt.slice(0, 10),
+        status: "PLACED",
+        totalPaise: stored.totalPaise,
+        items: stored.items.map(({ title, qty, emoji }) => ({ title, qty, emoji })),
+        eta: "3–5 days",
+        seller: stored.items[0]?.seller,
+      };
+      liveShipping = stored.shippingPaise;
+    }
+  }
   if (!order) notFound();
 
   // Server-computed illustrative breakdown (integer paise only — no float rupee math).
-  const taxPaise = Math.round(order.totalPaise * 0.05);
+  const taxPaise = liveShipping !== null ? liveShipping : Math.round(order.totalPaise * 0.05);
   const subtotalPaise = order.totalPaise - taxPaise;
 
   const currentIndex = order.status === "RETURNED" ? LIFECYCLE.length : LIFECYCLE.findIndex((s) => s.key === order.status);
@@ -76,9 +108,9 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
       title={`Order ${order.reference}`}
       actions={
         <span className="vh-row" style={{ gap: 8 }}>
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#invoice">
+          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/account/orders/${id}/invoice`}>
             <span className="vh-row" style={{ gap: 6 }}><FileDown size={14} strokeWidth={2.2} aria-hidden />Download invoice</span>
-          </a>
+          </Link>
           {order.status === "DELIVERED" && (
             <a className="vh-btn vh-btn-sm vh-btn-danger" href="#return">
               <span className="vh-row" style={{ gap: 6 }}><RotateCcw size={14} strokeWidth={2.2} aria-hidden />Request return</span>
@@ -146,7 +178,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                     </span>
                     <span className="vh-row" style={{ gap: 8 }}>
                       <MoneyText paise={p.pricePaise} />
-                      <span className="vh-btn vh-btn-sm vh-btn-primary" aria-disabled>Add to cart</span>
+                      <form action={addToCart}>
+                        <input type="hidden" name="productId" value={p.id} />
+                        <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary">Add to cart</button>
+                      </form>
                     </span>
                   </li>
                 ))}
@@ -184,7 +219,7 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 <MoneyText paise={subtotalPaise} />
               </div>
               <div className="vh-row-between" style={{ marginBottom: 8 }}>
-                <span className="small muted">Tax (GST)</span>
+                <span className="small muted">{liveShipping !== null ? "Shipping" : "Tax (GST)"}</span>
                 <MoneyText paise={taxPaise} />
               </div>
               <hr className="vh-divider" />
@@ -192,10 +227,10 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
                 <span>Total</span>
                 <MoneyText paise={order.totalPaise} />
               </div>
-              <a className="vh-btn vh-btn-sm vh-btn-ghost" style={{ marginTop: 16, width: "100%", justifyContent: "center", display: "inline-flex", gap: 6 }} href="#invoice">
+              <Link className="vh-btn vh-btn-sm vh-btn-ghost" style={{ marginTop: 16, width: "100%", justifyContent: "center", display: "inline-flex", gap: 6 }} href={`/account/orders/${id}/invoice`}>
                 <FileDown size={14} strokeWidth={2.2} aria-hidden />
-                Download invoice (PDF)
-              </a>
+                Print invoice (PDF)
+              </Link>
             </Card>
           </div>
 
@@ -206,17 +241,51 @@ export default async function OrderDetailPage({ params }: { params: Promise<{ id
               <span className="mono">{order.reference}</span>. Refunds always reach you first; we recover
               from the seller afterwards.
             </p>
-            <a className="vh-btn vh-btn-sm vh-btn-outline" href="/account/support">Contact support</a>
+            <Link className="vh-btn vh-btn-sm vh-btn-outline" href="/account/support">Contact support</Link>
           </Card>
 
-          {order.status === "DELIVERED" ? (
-            <Banner severity="info" title="Return window open" icon="↩️">
-              <span id="return">Eligible for return until 7 days after delivery.</span>{" "}
-              <a href="#return">Start a return →</a>
-            </Banner>
+          {order.status === "DELIVERED" && returnRequest ? (
+            <div id="return" style={{ scrollMarginTop: 90 }}>
+              <Banner severity="ok" title="Return requested" icon="↩️">
+                Reason: {returnRequest.reason} · requested {returnRequest.at}. The seller&rsquo;s
+                delivery partner picks it up; your refund is issued on pickup confirmation —
+                recovery from the seller happens afterwards, never at your expense.
+              </Banner>
+            </div>
+          ) : order.status === "DELIVERED" ? (
+            <div id="return" style={{ scrollMarginTop: 90 }}>
+              <Card title="Start a return">
+                {ret === "reason" && (
+                  <div style={{ marginBottom: 10 }}>
+                    <Banner severity="danger">Pick a return reason first.</Banner>
+                  </div>
+                )}
+                <p className="small muted" style={{ marginTop: 0 }}>
+                  Eligible until 7 days after delivery. Refund-first: you are credited on pickup
+                  confirmation, before any seller-side recovery.
+                </p>
+                <form action={requestReturn} className="vh-row" style={{ gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
+                  <input type="hidden" name="orderId" value={order.id} />
+                  <div className="vh-field" style={{ minWidth: 220 }}>
+                    <label className="vh-label" htmlFor="ret-reason">Reason <span className="req">*</span></label>
+                    <select className="vh-select" id="ret-reason" name="reason" required defaultValue="">
+                      <option value="" disabled>Choose a reason…</option>
+                      <option>Damaged in transit</option>
+                      <option>Wrong item received</option>
+                      <option>Expired or near expiry</option>
+                      <option>Quality not as described</option>
+                      <option>No longer needed</option>
+                    </select>
+                  </div>
+                  <button type="submit" className="vh-btn vh-btn-sm vh-btn-danger">
+                    <RotateCcw size={14} strokeWidth={2.2} aria-hidden /> Request return
+                  </button>
+                </form>
+              </Card>
+            </div>
           ) : order.status === "RETURNED" ? (
             <Banner severity="ok" title="Return processed" icon="✅">
-              Refund credited to your Wallet — see <a href="/account/wallet">Wallet</a>.
+              Refund credited to your Wallet — see <Link href="/account/wallet">Wallet</Link>.
             </Banner>
           ) : null}
         </div>

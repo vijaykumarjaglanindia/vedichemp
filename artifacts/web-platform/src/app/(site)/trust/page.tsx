@@ -130,7 +130,7 @@ export default function HowItWorksPage() {
       </section>
 
       {/* ── Seller documents ─────────────────────────────── */}
-      <section className="vh-section">
+      <section id="coa" className="vh-section" style={{ scrollMarginTop: 90 }}>
         <div className="vh-container">
           <SectionHead
             eyebrow="Paperwork on the listing"
@@ -167,7 +167,7 @@ export default function HowItWorksPage() {
       </section>
 
       {/* ── Buyer protections ────────────────────────────── */}
-      <section className="vh-section vh-section-alt">
+      <section id="prescriptions" className="vh-section vh-section-alt" style={{ scrollMarginTop: 90 }}>
         <div className="vh-container">
           <SectionHead eyebrow="If something goes wrong" title="You are never the collateral" />
           <div className="vh-grid cols-3">
@@ -200,7 +200,7 @@ export default function HowItWorksPage() {
       </section>
 
       {/* ── Marketplace rules ────────────────────────────── */}
-      <section className="vh-section">
+      <section id="prohibitions" className="vh-section" style={{ scrollMarginTop: 90 }}>
         <div className="vh-container">
           <SectionHead
             eyebrow="Rules we enforce on everyone"

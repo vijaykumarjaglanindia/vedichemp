@@ -9,16 +9,27 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { ExternalLink, Plus, Users, BadgeCheck } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, toneForStatus, Banner, Rating } from "@/components/ui";
 import { SELLER, LICENCES, CAPABILITY_MATRIX, STORE_PREVIEW, daysUntil } from "../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
 import { groupIndian } from "@/lib/money";
+import { addLicence, requestOwnerTransfer } from "../actions";
+import { cookies } from "next/headers";
 
 export const metadata: Metadata = { title: "Store & KYC" };
 
-export default function StorePage() {
+export default async function StorePage({
+  searchParams,
+}: {
+  searchParams: Promise<{ transfer?: string; err?: string; licence?: string }>;
+}) {
+  const { transfer, err, licence } = await searchParams;
+  const jar = await cookies();
+  let submittedLicences: { type: string; number: string; validTo: string; status: string }[] = [];
+  try { submittedLicences = JSON.parse(jar.get("vh-sell-lic")?.value ?? "[]") as typeof submittedLicences; } catch { submittedLicences = []; }
   return (
     <Shell active="/seller/store" breadcrumb={["Seller Central", "Store & KYC"]} title="Store & KYC">
       <div className="vh-grid cols-2" style={{ alignItems: "start", marginBottom: "var(--sp-4)" }}>
@@ -26,9 +37,9 @@ export default function StorePage() {
         <Card
           title="Storefront preview"
           action={
-            <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/store/${STORE_PREVIEW.handle}`} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/store/${STORE_PREVIEW.handle}`} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
               <ExternalLink size={13} strokeWidth={2.2} aria-hidden /> View live store
-            </a>
+            </Link>
           }
           pad0
         >
@@ -118,6 +129,16 @@ export default function StorePage() {
                 </tr>
               </thead>
               <tbody>
+                {submittedLicences.map((l) => (
+                  <tr key={l.number}>
+                    <td style={{ fontWeight: 600 }}>{l.type}</td>
+                    <td className="mono">{l.number}</td>
+                    <td className="tabular">—</td>
+                    <td className="tabular">{l.validTo}</td>
+                    <td><StatusPill tone="warn">PENDING VERIFICATION</StatusPill></td>
+                    <td className="small muted">Unlocks after verification</td>
+                  </tr>
+                ))}
                 {LICENCES.map((l) => {
                   const days = l.validTo ? daysUntil(l.validTo) : null;
                   const expiringSoon = days !== null && days <= 30;
@@ -143,6 +164,52 @@ export default function StorePage() {
       </div>
 
       <div style={{ height: "var(--sp-3)" }} />
+
+      {/* Add licence */}
+      <div id="add-licence" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-3)" }}>
+        <Card title="Add a licence">
+          {licence === "submitted" ? (
+            <Banner severity="ok" title="Licence submitted for verification">
+              Verification typically completes within a few business days. The class it unlocks stays
+              locked until then — capability is derived from VERIFIED licences only.
+            </Banner>
+          ) : (
+            <>
+              {err && err.startsWith("lic") && (
+                <div style={{ marginBottom: 12 }}>
+                  <Banner severity="danger">
+                    {err === "lictype" ? "Pick a licence type." : err === "licnumber" ? "Licence number should be 6–25 characters (letters, digits, / or -)." : "Valid-to must be a future date."}
+                  </Banner>
+                </div>
+              )}
+              <form action={addLicence} className="vh-row" style={{ gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
+                <div className="vh-field" style={{ minWidth: 160 }}>
+                  <label className="vh-label" htmlFor="lic-type">Type <span className="req">*</span></label>
+                  <select className="vh-select" id="lic-type" name="type" required defaultValue="FSSAI">
+                    <option>FSSAI</option>
+                    <option>AYUSH</option>
+                    <option>GST</option>
+                    <option>TRADE</option>
+                  </select>
+                </div>
+                <div className="vh-field" style={{ minWidth: 200 }}>
+                  <label className="vh-label" htmlFor="lic-number">Licence number <span className="req">*</span></label>
+                  <input className="vh-input mono" id="lic-number" name="number" required minLength={6} maxLength={25} placeholder="10019022001234" style={{ textTransform: "uppercase" }} />
+                </div>
+                <div className="vh-field" style={{ minWidth: 160 }}>
+                  <label className="vh-label" htmlFor="lic-validto">Valid to <span className="req">*</span></label>
+                  <input className="vh-input" id="lic-validto" name="validTo" type="date" required />
+                </div>
+                <button type="submit" className="vh-btn vh-btn-primary">Submit for verification</button>
+                <span className="vh-help" style={{ flexBasis: "100%" }}>
+                  State Drug (Medical Cannabis) licensing is handled in a separate manual review — it never
+                  unlocks through this form, and the class it gates is never advertisable regardless (A1).
+                </span>
+              </form>
+            </>
+          )}
+        </Card>
+      </div>
 
       <Card title="Capability matrix (derived from licences)">
         <p className="small muted" style={{ marginTop: 0 }}>
@@ -201,12 +268,32 @@ export default function StorePage() {
       <div style={{ height: "var(--sp-3)" }} />
 
       <Card title="Owner transfer">
-        <p className="small muted" style={{ marginTop: 0 }}>
-          Transferring ownership re-runs full KYC on the incoming owner and pauses payouts until it clears. This is a
-          high-impact action — it requires a reason of at least 20 characters and is logged whether it succeeds or is
-          denied.
-        </p>
-        <button className="vh-btn vh-btn-sm vh-btn-danger" type="button">Start owner transfer</button>
+        {transfer === "requested" ? (
+          <Banner severity="ok" title="Transfer request logged">
+            The incoming owner receives a KYC link; payouts pause until it clears. The request — and
+            every decision on it — is written to the audit trail.
+          </Banner>
+        ) : (
+          <>
+            <p className="small muted" style={{ marginTop: 0 }}>
+              Transferring ownership re-runs full KYC on the incoming owner and pauses payouts until it clears. This is a
+              high-impact action — it requires a reason of at least 20 characters and is logged whether it succeeds or is
+              denied.
+            </p>
+            {err === "reason" && (
+              <div style={{ marginBottom: 12 }}>
+                <Banner severity="danger">A reason of at least 20 characters is required — the request was denied and the denial logged.</Banner>
+              </div>
+            )}
+            <form action={requestOwnerTransfer} className="vh-grid" style={{ gap: 12, maxWidth: 560 }}>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="transfer-reason">Reason <span className="req">*</span></label>
+                <textarea className="vh-textarea" id="transfer-reason" name="reason" rows={2} minLength={20} maxLength={500} required placeholder="Why is ownership changing? (min 20 characters)" />
+              </div>
+              <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit" style={{ justifySelf: "start" }}>Start owner transfer</button>
+            </form>
+          </>
+        )}
       </Card>
     </Shell>
   );

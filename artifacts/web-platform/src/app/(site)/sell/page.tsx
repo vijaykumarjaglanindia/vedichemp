@@ -22,6 +22,7 @@ import {
 import { Banner, Card, SectionHead, Timeline } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
 import { ComplianceClass } from "@prisma/client";
+import { applyToSell } from "./actions";
 
 export const metadata: Metadata = {
   title: "Sell on Vedic Hemp",
@@ -57,7 +58,19 @@ const COMMISSION_ROWS: { cls: string; rate: string; note: string }[] = [
   { cls: "No surprise fees", rate: "Ever", note: "No supply-chain, listing or hidden platform charges" },
 ];
 
-export default function SellPage() {
+const APPLY_ERRORS: Record<string, string> = {
+  business: "Business name should be 3–80 characters.",
+  email: "That email doesn't look right — check it and try again.",
+  gstin: "That GSTIN doesn't match the 15-character format (e.g. 27ABCDE1234F1Z5).",
+  classes: "Pick at least one category you plan to sell in.",
+};
+
+export default async function SellPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ applied?: string; err?: string }>;
+}) {
+  const { applied, err } = await searchParams;
   return (
     <>
       <section className="vh-hero">
@@ -69,9 +82,9 @@ export default function SellPage() {
             compliance machinery already built, so you can focus on product and fulfilment.
           </p>
           <div className="vh-row" style={{ gap: 12, marginTop: "var(--sp-4)", flexWrap: "wrap" }}>
-            <Link href="/seller" className="vh-btn vh-btn-primary vh-btn-lg">
+            <a href="#apply" className="vh-btn vh-btn-primary vh-btn-lg">
               Start selling
-            </Link>
+            </a>
             <Link href="/trust" className="vh-btn vh-btn-ghost" style={{ background: "var(--vh-surface)", borderColor: "var(--vh-line-strong)", color: "var(--vh-ink)" }}>
               See how we verify products
             </Link>
@@ -222,15 +235,63 @@ export default function SellPage() {
             </p>
           </Card>
 
-          <Card title="Ready to list your first product?">
-            <p className="small" style={{ marginBottom: 14 }}>
-              Create your seller account in the seller console — GSTIN and bank verification take
-              a few minutes, licence review typically completes within a few business days.
-            </p>
-            <Link href="/seller" className="vh-btn vh-btn-primary">
-              Go to seller console
-            </Link>
-          </Card>
+          <div id="apply" style={{ scrollMarginTop: 90 }}>
+            <Card title="Apply to sell on Vedic Hemp">
+              {applied ? (
+                <Banner severity="ok" title={`Application ${applied} received`}>
+                  We&rsquo;ve emailed you the Marketplace Agreement and a licence-upload link. GSTIN and
+                  bank verification typically complete the same day; licence review takes a few
+                  business days. Track progress from <Link href="/seller">Seller Central</Link>.
+                </Banner>
+              ) : (
+                <>
+                  {err && APPLY_ERRORS[err] && (
+                    <div style={{ marginBottom: "var(--sp-3)" }}>
+                      <Banner severity="danger">{APPLY_ERRORS[err]}</Banner>
+                    </div>
+                  )}
+                  <form action={applyToSell} className="vh-grid cols-2" style={{ gap: 16, alignItems: "start" }}>
+                    <div className="vh-field">
+                      <label className="vh-label" htmlFor="ap-business">Business name <span className="req">*</span></label>
+                      <input className="vh-input" id="ap-business" name="business" required minLength={3} maxLength={80} placeholder="e.g. Himalayan Hemp Co." />
+                    </div>
+                    <div className="vh-field">
+                      <label className="vh-label" htmlFor="ap-email">Work email <span className="req">*</span></label>
+                      <input className="vh-input" id="ap-email" name="email" type="email" required placeholder="you@company.in" />
+                    </div>
+                    <div className="vh-field">
+                      <label className="vh-label" htmlFor="ap-gstin">GSTIN <span className="req">*</span></label>
+                      <input className="vh-input mono" id="ap-gstin" name="gstin" required maxLength={15} placeholder="27ABCDE1234F1Z5" style={{ textTransform: "uppercase" }} />
+                      <span className="vh-help">Validated server-side; bank verification follows in onboarding.</span>
+                    </div>
+                    <fieldset className="vh-field" style={{ border: 0, padding: 0, margin: 0 }}>
+                      <legend className="vh-label" style={{ marginBottom: 6 }}>Categories you&rsquo;ll sell in <span className="req">*</span></legend>
+                      <div style={{ display: "grid", gap: 6 }}>
+                        {(["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"] as ComplianceClass[]).map((cls) => (
+                          <label key={cls} className="vh-row small" style={{ gap: 8, cursor: "pointer" }}>
+                            <input type="checkbox" name="classes" value={cls} style={{ accentColor: "var(--vh-accent)" }} />
+                            <span aria-hidden>{CLASS_META[cls].emoji}</span> {CLASS_META[cls].label}
+                          </label>
+                        ))}
+                      </div>
+                      <span className="vh-help" style={{ marginTop: 6 }}>
+                        Medical Cannabis onboarding is handled separately — it needs NDPS/state licensing
+                        review and is never part of the standard flow.
+                      </span>
+                    </fieldset>
+                    <button type="submit" className="vh-btn vh-btn-primary" style={{ justifySelf: "start" }}>
+                      Submit application
+                    </button>
+                  </form>
+                  <p className="small muted" style={{ margin: "12px 0 0" }}>
+                    Submitting sends you the Marketplace Agreement to review and sign. Licences are
+                    uploaded during onboarding — your listings stay yours, and you remain responsible
+                    for their genuineness, quality and compliance.
+                  </p>
+                </>
+              )}
+            </Card>
+          </div>
         </section>
       </div>
     </>

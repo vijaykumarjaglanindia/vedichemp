@@ -39,6 +39,9 @@ export interface PricedCart {
   lines: PricedLine[];
   count: number;
   subtotalPaise: number;
+  discountPaise: number;
+  couponCode: string | null;
+  couponNote: string | null; // why an applied coupon is currently not deducting
   shippingPaise: number;
   totalPaise: number;
   ageGated: boolean; // any CBD_WELLNESS line → age confirmation at checkout
@@ -47,6 +50,33 @@ export interface PricedCart {
 /** Free shipping at/above ₹5,000; ₹100 flat below (Marketplace Agreement). */
 const FREE_SHIPPING_AT_PAISE = 5_000 * 100;
 const FLAT_SHIPPING_PAISE = 100 * 100;
+
+/**
+ * Coupon table — server-side only; the client submits a code, never an
+ * amount. `cls` scopes a coupon to one compliance class's lines. A1 note:
+ * there is deliberately no coupon type that could apply to MED_CANNABIS —
+ * a discount is a promotion.
+ */
+export const COUPONS: Record<string, { pct: number; capPaise: number; minPaise: number; cls?: string; freeShip?: boolean; label: string }> = {
+  VEDIC10: { pct: 10, capPaise: 200_00, minPaise: 0, label: "10% off up to ₹200" },
+  FLAT15: { pct: 15, capPaise: 1_000_00, minPaise: 999_00, cls: "CBD_WELLNESS", label: "15% off CBD Wellness over ₹999" },
+  FREESHIP499: { pct: 0, capPaise: 0, minPaise: 499_00, cls: "HEMP_FOOD", freeShip: true, label: "Free shipping on Hemp Food over ₹499" },
+  MONSOON15: { pct: 15, capPaise: 500_00, minPaise: 0, label: "15% off up to ₹500" },
+};
+
+const COUPON_COOKIE = "vh-coupon";
+
+export async function readCoupon(): Promise<string | null> {
+  const jar = await cookies();
+  const code = jar.get(COUPON_COOKIE)?.value ?? "";
+  return code in COUPONS ? code : null;
+}
+
+export async function writeCoupon(code: string | null): Promise<void> {
+  const jar = await cookies();
+  if (code) jar.set(COUPON_COOKIE, code, { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 7 });
+  else jar.delete(COUPON_COOKIE);
+}
 
 export async function readCartLines(): Promise<CartLine[]> {
   const jar = await cookies();
@@ -95,13 +125,38 @@ export async function priceCart(): Promise<PricedCart> {
     priced.push({ product, qty, linePaise: product.pricePaise * qty });
   }
   const subtotalPaise = priced.reduce((n, l) => n + l.linePaise, 0);
-  const shippingPaise = subtotalPaise === 0 || subtotalPaise >= FREE_SHIPPING_AT_PAISE ? 0 : FLAT_SHIPPING_PAISE;
+  let shippingPaise = subtotalPaise === 0 || subtotalPaise >= FREE_SHIPPING_AT_PAISE ? 0 : FLAT_SHIPPING_PAISE;
+
+  // Coupon: the cookie stores only a CODE — every rupee of discount is
+  // derived here from the coupon table and the priced lines (V-G-07).
+  const couponCode = await readCoupon();
+  let discountPaise = 0;
+  let couponNote: string | null = null;
+  if (couponCode && subtotalPaise > 0) {
+    const c = COUPONS[couponCode]!;
+    const eligiblePaise = c.cls
+      ? priced.filter((l) => l.product.cls === c.cls).reduce((n, l) => n + l.linePaise, 0)
+      : subtotalPaise;
+    if (eligiblePaise < c.minPaise) {
+      couponNote = c.cls
+        ? `Needs ${c.label.toLowerCase()} — eligible items in your cart don't reach the minimum yet.`
+        : `Minimum spend not reached for ${couponCode}.`;
+    } else if (c.freeShip) {
+      shippingPaise = 0;
+    } else {
+      discountPaise = Math.min(Math.floor((eligiblePaise * c.pct) / 100), c.capPaise);
+    }
+  }
+
   return {
     lines: priced,
     count: priced.reduce((n, l) => n + l.qty, 0),
     subtotalPaise,
+    discountPaise,
+    couponCode,
+    couponNote,
     shippingPaise,
-    totalPaise: subtotalPaise + shippingPaise,
+    totalPaise: subtotalPaise - discountPaise + shippingPaise,
     ageGated: priced.some((l) => l.product.cls === "CBD_WELLNESS"),
   };
 }

@@ -42,7 +42,7 @@ const VERTICAL_COLUMNS: Column<ClassMeta>[] = [
   {
     key: "age",
     header: "Age-gated",
-    render: (row) => <span className="small">{row.ageGated ? "18+" : "No"}</span>,
+    render: (row) => <span className="small">{row.ageGated ? "21+" : "No"}</span>,
   },
   {
     key: "ads",

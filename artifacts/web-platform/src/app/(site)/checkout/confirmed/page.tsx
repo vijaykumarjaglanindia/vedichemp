@@ -75,6 +75,12 @@ export default async function ConfirmedPage() {
           <div className="vh-row-between small" style={{ padding: "3px 0" }}>
             <span className="muted">Subtotal</span><MoneyText paise={order.subtotalPaise} />
           </div>
+          {(order.discountPaise ?? 0) > 0 && (
+            <div className="vh-row-between small" style={{ padding: "3px 0" }}>
+              <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Coupon {order.couponCode}</span>
+              <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>− <MoneyText paise={order.discountPaise ?? 0} /></span>
+            </div>
+          )}
           <div className="vh-row-between small" style={{ padding: "3px 0" }}>
             <span className="muted">Shipping</span>
             {order.shippingPaise === 0 ? <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Free</span> : <MoneyText paise={order.shippingPaise} />}

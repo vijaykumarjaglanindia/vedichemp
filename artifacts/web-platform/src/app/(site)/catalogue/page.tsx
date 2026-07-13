@@ -23,6 +23,7 @@ import { AdBanner, AdSlot } from "@/components/ui/ads";
 import { CLASS_META, permittedClasses } from "@/lib/compliance";
 import { classProducts, PRODUCTS, type SampleProduct } from "@/lib/sample";
 import { addToCart } from "../cart/actions";
+import { toggleWishlist } from "../actions";
 
 export const metadata: Metadata = {
   title: "Shop the catalogue",
@@ -87,7 +88,10 @@ function ProductTile({ p, sponsored }: { p: SampleProduct; sponsored?: boolean }
             <input type="hidden" name="productId" value={p.id} />
             <button type="submit" className="vh-btn vh-btn-primary vh-btn-sm" style={{ flex: 1 }}><ShoppingCart size={14} aria-hidden /> Add to cart</button>
           </form>
-          <button className="vh-iconbtn" aria-label={`Add ${p.title} to wishlist`}><Heart size={15} aria-hidden /></button>
+          <form action={toggleWishlist} style={{ display: "inline-flex" }}>
+            <input type="hidden" name="productId" value={p.id} />
+            <button type="submit" className="vh-iconbtn" aria-label={`Toggle ${p.title} in wishlist`} title="Save to wishlist"><Heart size={15} aria-hidden /></button>
+          </form>
         </div>
       </div>
     </article>
@@ -297,7 +301,10 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                       <span className="vh-pill vh-pill-ok" style={{ fontSize: ".68rem" }}><span aria-hidden>●</span>{discountPct(p)}% off</span>
                     </div>
                     <div className="vh-row" style={{ gap: 8 }}>
-                      <button className="vh-iconbtn" aria-label={`Add ${p.title} to wishlist`}><Heart size={15} aria-hidden /></button>
+                      <form action={toggleWishlist} style={{ display: "inline-flex" }}>
+                        <input type="hidden" name="productId" value={p.id} />
+                        <button type="submit" className="vh-iconbtn" aria-label={`Toggle ${p.title} in wishlist`} title="Save to wishlist"><Heart size={15} aria-hidden /></button>
+                      </form>
                       <form action={addToCart}>
                         <input type="hidden" name="productId" value={p.id} />
                         <button type="submit" className="vh-btn vh-btn-primary vh-btn-sm"><ShoppingCart size={14} aria-hidden /> Add to cart</button>

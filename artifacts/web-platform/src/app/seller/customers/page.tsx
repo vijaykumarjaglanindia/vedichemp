@@ -9,14 +9,39 @@
 import type { Metadata } from "next";
 import { MessageCircleQuestion, Star, Inbox, Timer } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, StatusPill, toneForStatus, Stat, Rating } from "@/components/ui";
+import { Banner, Card, StatusPill, toneForStatus, Stat, Rating } from "@/components/ui";
+import { readSellerReplies } from "@/lib/engage";
 import { QUESTIONS, REVIEWS, MESSAGES, RESPONSE_STATS } from "../_lib/data";
+import { replyToQuestion, respondToReview } from "../actions";
 
 export const metadata: Metadata = { title: "Customers" };
 
-export default function CustomersPage() {
+const REPLY_ERRORS: Record<string, string> = {
+  short: "Replies need 10–600 characters.",
+  claims: "The copy-check blocked that reply — claims language (cure/treat/prevent/heal) can't be published. It was not sent.",
+};
+
+export default async function CustomersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ replied?: string; err?: string }>;
+}) {
+  const { replied, err } = await searchParams;
+  const myReplies = await readSellerReplies();
   return (
     <Shell active="/seller/customers" breadcrumb={["Seller Central", "Customers"]} title="Customers">
+      {replied && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="ok" title="Reply queued">
+            It passed the automated copy-check and publishes after moderation review.
+          </Banner>
+        </div>
+      )}
+      {err && REPLY_ERRORS[err] && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="danger" title="Reply not sent">{REPLY_ERRORS[err]}</Banner>
+        </div>
+      )}
       {/* Response-time stats */}
       <div className="vh-grid cols-3" style={{ marginBottom: "var(--sp-4)" }}>
         <Card>
@@ -47,12 +72,23 @@ export default function CustomersPage() {
                   <div style={{ fontSize: "0.9rem", fontWeight: 600 }}>&ldquo;{q.text}&rdquo;</div>
                   <div className="small muted" style={{ marginTop: 2 }}>{q.buyer} · {q.askedAt}</div>
                   {q.status === "UNANSWERED" && (
-                    <div className="vh-field" style={{ marginTop: 8 }}>
-                      <label className="vh-label" htmlFor={`reply-${q.id}`}>Your reply</label>
-                      <textarea className="vh-textarea" id={`reply-${q.id}`} rows={2} placeholder="Answer factually — composition, batch CoA link, usage format. No medical claims." />
-                      <span className="vh-help">Replies pass the compliance copy-check before publishing.</span>
-                      <button className="vh-btn vh-btn-sm vh-btn-primary" type="button" style={{ justifySelf: "start" }}>Post reply</button>
-                    </div>
+                    myReplies[q.id] ? (
+                      <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: "var(--vh-radius-sm)", background: "var(--vh-bg-subtle)", border: "1px solid var(--vh-line)" }}>
+                        <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}>
+                          <StatusPill tone="warn">Pending moderation</StatusPill>
+                          <span className="small muted">Your reply passed the copy-check</span>
+                        </div>
+                        <p className="small" style={{ margin: 0 }}>&ldquo;{myReplies[q.id]}&rdquo;</p>
+                      </div>
+                    ) : (
+                      <form action={replyToQuestion} className="vh-field" style={{ marginTop: 8 }}>
+                        <input type="hidden" name="qid" value={q.id} />
+                        <label className="vh-label" htmlFor={`reply-${q.id}`}>Your reply</label>
+                        <textarea className="vh-textarea" id={`reply-${q.id}`} name="reply" rows={2} minLength={10} maxLength={600} required placeholder="Answer factually — composition, batch CoA link, usage format. No medical claims." />
+                        <span className="vh-help">Replies pass the compliance copy-check before publishing.</span>
+                        <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit" style={{ justifySelf: "start" }}>Post reply</button>
+                      </form>
+                    )
                   )}
                 </li>
               ))}
@@ -76,7 +112,18 @@ export default function CustomersPage() {
                   <div style={{ fontSize: "0.9rem", marginTop: 4 }}>&ldquo;{r.text}&rdquo;</div>
                   <div className="small muted" style={{ marginTop: 2 }}>{r.buyer}</div>
                   {r.status === "FLAGGED" && (
-                    <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#respond" style={{ marginTop: 8, display: "inline-block" }}>Respond</a>
+                    myReplies[r.id] ? (
+                      <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: "var(--vh-radius-sm)", background: "var(--vh-bg-subtle)", border: "1px solid var(--vh-line)" }}>
+                        <StatusPill tone="warn">Response pending moderation</StatusPill>
+                        <p className="small" style={{ margin: "6px 0 0" }}>&ldquo;{myReplies[r.id]}&rdquo;</p>
+                      </div>
+                    ) : (
+                      <form action={respondToReview} className="vh-field" style={{ marginTop: 8 }}>
+                        <input type="hidden" name="rid" value={r.id} />
+                        <textarea className="vh-textarea" name="reply" rows={2} minLength={10} maxLength={600} required aria-label={`Respond to review of ${r.product}`} placeholder="Respond factually — no medical claims; the copy-check blocks the send otherwise." />
+                        <button className="vh-btn vh-btn-sm vh-btn-ghost" type="submit" style={{ justifySelf: "start", marginTop: 6 }}>Post response</button>
+                      </form>
+                    )
                   )}
                 </li>
               ))}

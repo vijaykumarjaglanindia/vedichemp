@@ -8,15 +8,20 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowRight, Minus, Plus, ShieldCheck, ShoppingBag, Trash2, Truck } from "lucide-react";
+import { ArrowRight, Minus, Plus, ShieldCheck, ShoppingBag, TicketPercent, Trash2, Truck, X } from "lucide-react";
 import { Banner, EmptyState, MoneyText } from "@/components/ui";
 import { AdSlot } from "@/components/ui/ads";
 import { priceCart } from "@/lib/cart";
-import { removeFromCart, setQty } from "./actions";
+import { applyCoupon, removeCoupon, removeFromCart, setQty } from "./actions";
 
 export const metadata: Metadata = { title: "Your cart" };
 
-export default async function CartPage() {
+export default async function CartPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ coupon?: string }>;
+}) {
+  const { coupon } = await searchParams;
   const cart = await priceCart();
 
   if (cart.lines.length === 0) {
@@ -86,21 +91,21 @@ export default async function CartPage() {
 
           {cart.ageGated && (
             <Banner severity="warn" title="Age-restricted item in cart">
-              Your cart contains an 18+ CBD wellness product. You&rsquo;ll confirm your age at
+              Your cart contains a 21+ CBD wellness product. You&rsquo;ll confirm your age at
               checkout, and it is verified again on delivery handover.
             </Banner>
           )}
 
           {/* Sponsored upsell (cart-upsell) — labelled, outside the order totals */}
           <AdSlot cls="HEMP_FOOD" placement="cart-upsell" unstyled>
-            <a href="/products/hemp-hearts-400g" className="vh-product-row" style={{ textDecoration: "none", borderColor: "color-mix(in srgb, var(--vh-ad) 30%, var(--vh-line))" }}>
+            <Link href="/products/hemp-hearts-400g" className="vh-product-row" style={{ textDecoration: "none", borderColor: "color-mix(in srgb, var(--vh-ad) 30%, var(--vh-line))" }}>
               <span className="vh-product-media" style={{ fontSize: "1.6rem" }} aria-hidden>🌾</span>
               <span style={{ minWidth: 0 }}>
                 <span className="vh-product-title" style={{ display: "block" }}>Add Hemp Hearts 400g — pairs with your order</span>
                 <span className="small muted">Ananda Foods · ships with the same courier window</span>
               </span>
               <MoneyText paise={64900} className="vh-product-title" />
-            </a>
+            </Link>
           </AdSlot>
         </div>
 
@@ -111,6 +116,43 @@ export default async function CartPage() {
             <span className="muted">Subtotal</span>
             <MoneyText paise={cart.subtotalPaise} />
           </div>
+
+          {/* Coupon — the client submits a CODE; the server derives the amount */}
+          {cart.couponCode ? (
+            <div style={{ padding: "6px 0" }}>
+              <div className="vh-row-between small">
+                <span className="vh-row" style={{ gap: 6, color: "var(--vh-ok)", fontWeight: 600 }}>
+                  <TicketPercent size={13} aria-hidden /> {cart.couponCode}
+                  <form action={removeCoupon} style={{ display: "inline-flex" }}>
+                    <button type="submit" className="vh-iconbtn" aria-label={`Remove coupon ${cart.couponCode}`} title="Remove coupon" style={{ width: 20, height: 20 }}>
+                      <X size={11} aria-hidden />
+                    </button>
+                  </form>
+                </span>
+                {cart.discountPaise > 0
+                  ? <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>− <MoneyText paise={cart.discountPaise} /></span>
+                  : <span className="muted">—</span>}
+              </div>
+              {cart.couponNote && <p className="small muted" style={{ margin: "2px 0 0" }}>{cart.couponNote}</p>}
+            </div>
+          ) : (
+            <form action={applyCoupon} className="vh-row" style={{ gap: 8, padding: "6px 0" }}>
+              <input
+                name="code"
+                className="vh-input mono"
+                placeholder="Coupon code"
+                aria-label="Coupon code"
+                style={{ flex: 1, minWidth: 0, textTransform: "uppercase", padding: "7px 10px", fontSize: ".82rem" }}
+              />
+              <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm">Apply</button>
+            </form>
+          )}
+          {coupon === "unknown" && !cart.couponCode && (
+            <p className="small" style={{ color: "var(--vh-danger)", margin: "0 0 4px" }}>
+              That code isn&rsquo;t valid — try VEDIC10.
+            </p>
+          )}
+
           <div className="vh-row-between small" style={{ padding: "6px 0" }}>
             <span className="muted">Shipping</span>
             {cart.shippingPaise === 0 ? <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Free</span> : <MoneyText paise={cart.shippingPaise} />}

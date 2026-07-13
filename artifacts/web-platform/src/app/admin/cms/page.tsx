@@ -8,10 +8,13 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { FileText, Pencil, Trash2, Image as ImageIcon, Film, Newspaper, HelpCircle, GalleryHorizontal } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, Banner } from "@/components/ui";
 import { MEDIA_ITEMS } from "../_lib/data";
+import { cookies } from "next/headers";
+import { createPost } from "../actions";
 
 export const metadata: Metadata = { title: "CMS · Admin" };
 
@@ -26,7 +29,21 @@ const PAGES = [
   { id: "pg5", title: "Shipping & returns FAQ", type: "FAQ", views: 63_500, status: "PUBLISHED" },
 ];
 
-export default function AdminCmsPage() {
+const POST_NOTES: Record<string, { sev: "ok" | "danger"; text: string }> = {
+  created: { sev: "ok", text: "Draft created — it goes live after editorial review (and the copy-check)." },
+  title: { sev: "danger", text: "Title should be 6-90 characters." },
+  claims: { sev: "danger", text: "The copy-check rejected claims language (cure/treat/prevent/heal) — no surface on this platform may carry a disease claim." },
+};
+
+export default async function AdminCmsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ post?: string }>;
+}) {
+  const { post } = await searchParams;
+  const jar = await cookies();
+  let myPosts: string[] = [];
+  try { myPosts = JSON.parse(jar.get("vh-adm-posts")?.value ?? "[]") as string[]; } catch { myPosts = []; }
   return (
     <Shell active="/admin/cms" breadcrumb={["Admin", "CMS"]} title="Content management">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
@@ -43,12 +60,12 @@ export default function AdminCmsPage() {
                     <td><StatusPill tone={p.status === "PUBLISHED" ? "ok" : "neutral"}>{p.status}</StatusPill></td>
                     <td>
                       <div className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
-                        <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/cms#${p.id}-edit`}>
+                        <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/cms#${p.id}-edit`}>
                           <Pencil {...IB} aria-hidden /> Edit
-                        </a>
-                        <a className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/cms#${p.id}-delete`}>
+                        </Link>
+                        <Link className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/cms#${p.id}-delete`}>
                           <Trash2 {...IB} aria-hidden /> {p.views > 1000 ? "Delete (needs checker)" : "Delete"}
-                        </a>
+                        </Link>
                       </div>
                     </td>
                   </tr>
@@ -66,8 +83,23 @@ export default function AdminCmsPage() {
 
         <div className="vh-grid cols-2">
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Newspaper {...I} aria-hidden /> Blog posts</span>}>
-            <p className="small muted" style={{ marginTop: 0 }}>3 published · 1 draft awaiting editorial review</p>
-            <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#new-post">New post</a>
+            <p className="small muted" style={{ marginTop: 0 }}>3 published · {1 + myPosts.length} draft{myPosts.length === 0 ? "" : "s"} awaiting editorial review</p>
+            {myPosts.length > 0 && (
+              <ul className="small" style={{ margin: "0 0 10px", paddingLeft: 18, display: "grid", gap: 4 }}>
+                {myPosts.map((t) => <li key={t}>{t} <span className="muted">— DRAFT</span></li>)}
+              </ul>
+            )}
+            <div id="new-post" style={{ scrollMarginTop: 90 }}>
+              {post && POST_NOTES[post] && (
+                <div style={{ marginBottom: 10 }}>
+                  <Banner severity={POST_NOTES[post].sev}>{POST_NOTES[post].text}</Banner>
+                </div>
+              )}
+              <form action={createPost} className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
+                <input className="vh-input" name="title" required minLength={6} maxLength={90} placeholder="Post title" aria-label="New post title" style={{ flex: "1 1 200px" }} />
+                <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">Create draft</button>
+              </form>
+            </div>
           </Card>
           <Card title={<span className="vh-row" style={{ gap: 8 }}><ImageIcon {...I} aria-hidden /> Media library</span>}>
             <div className="vh-grid cols-3" style={{ gap: "var(--sp-2)" }}>
@@ -101,7 +133,7 @@ export default function AdminCmsPage() {
             <p className="small muted" style={{ margin: 0 }}>
               Banners advertising CBD Wellness still pass through the same copy-check as CBD ad creatives — no
               disease claims. Banners cannot reference MED_CANNABIS at all (A1). Paid banner slots are configured in{" "}
-              <a href="/admin/ads">Admin → Ads</a> and always render through <code>AdSlot</code>.
+              <Link href="/admin/ads">Admin → Ads</Link> and always render through <code>AdSlot</code>.
             </p>
           </Card>
         </div>

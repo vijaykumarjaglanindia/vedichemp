@@ -10,6 +10,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import {
   BadgeCheck, Ban, RotateCcw, SearchCheck, Percent, Timer, Store, UsersRound, CalendarClock,
 } from "lucide-react";
@@ -61,17 +62,17 @@ const columns: Column<SampleSeller>[] = [
   { key: "gmv", header: "GMV (lifetime)", align: "right", render: (s) => <MoneyText paise={s.gmvPaise} /> },
   { key: "actions", header: "Actions", render: (s) => (
       <div className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
-        <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/sellers#${s.id}-commission`}>
+        <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/sellers#${s.id}-commission`}>
           <Percent {...IB} aria-hidden /> Commission plan
-        </a>
+        </Link>
         {s.state !== "SUSPENDED" ? (
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/sellers#${s.id}-suspend`}>
+          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/sellers#${s.id}-suspend`}>
             <Ban {...IB} aria-hidden /> Suspend
-          </a>
+          </Link>
         ) : (
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/sellers#${s.id}-reinstate`}>
+          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/sellers#${s.id}-reinstate`}>
             <RotateCcw {...IB} aria-hidden /> Reinstate
-          </a>
+          </Link>
         )}
       </div>
     ) },
@@ -108,11 +109,11 @@ export default function AdminSellersPage() {
                         </div>
                       </span>
                       <span className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                        <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/sellers#${s.id}-registry`}>
+                        <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/sellers#${s.id}-registry`}>
                           <SearchCheck {...IB} aria-hidden /> Registry lookup
-                        </a>
-                        <a className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/sellers#${s.id}-approve`}>Approve (maker)</a>
-                        <a className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/sellers#${s.id}-reject`}>Reject</a>
+                        </Link>
+                        <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/sellers#${s.id}-approve`}>Approve (maker)</Link>
+                        <Link className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/sellers#${s.id}-reject`}>Reject</Link>
                       </span>
                     </div>
                   </div>

@@ -14,15 +14,44 @@
 import type { Metadata } from "next";
 import { Ban, Megaphone, MousePointerClick, Eye, TrendingUp, Plus } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, DataTable, StatusPill, toneForStatus, MoneyText, Stat, type Column } from "@/components/ui";
+import { Banner, Card, DataTable, StatusPill, toneForStatus, MoneyText, Stat, type Column } from "@/components/ui";
 import { Sparkline, BarList } from "@/components/ui/charts";
 import { AdSlot, SponsoredLabel } from "@/components/ui/ads";
-import { AD_CAMPAIGNS, ADS_SUMMARY, AD_PLACEMENTS, CAMPAIGN_SPARKS, type AdCampaign } from "../_lib/data";
+import { ComplianceClass } from "@prisma/client";
+import { readCampaigns } from "@/lib/engage";
+import { AD_CAMPAIGNS, ADS_SUMMARY, AD_PLACEMENTS, CAMPAIGN_SPARKS, SELLER_PRODUCTS, type AdCampaign } from "../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
+import { createCampaign } from "../actions";
 
 export const metadata: Metadata = { title: "Vedic Ads" };
 
-export default function AdsPage() {
+const CAMPAIGN_ERRORS: Record<string, string> = {
+  name: "Campaign name should be 4–60 characters.",
+  type: "Pick a campaign type.",
+  product: "Pick the product to promote.",
+  a1: "That product's class cannot be advertised — the request was rejected and logged (A1).",
+  budget: "Budget must be at least ₹500.",
+};
+
+export default async function AdsPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ created?: string; err?: string }>;
+}) {
+  const { created, err } = await searchParams;
+  const mine: AdCampaign[] = (await readCampaigns()).map((c) => ({
+    id: c.id,
+    name: c.name,
+    type: c.type as AdCampaign["type"],
+    cls: "CBD_WELLNESS" as const,
+    budgetPaise: c.budgetPaise,
+    spendPaise: 0,
+    acos: 0,
+    roas: 0,
+    status: c.status,
+  }));
+  const campaigns = [...mine, ...AD_CAMPAIGNS];
+
   const columns: Column<AdCampaign>[] = [
     {
       key: "name", header: "Campaign", render: (c) => (
@@ -56,11 +85,24 @@ export default function AdsPage() {
       breadcrumb={["Seller Central", "Vedic Ads"]}
       title="Vedic Ads"
       actions={
-        <button className="vh-btn vh-btn-sm vh-btn-primary" type="button" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+        <a className="vh-btn vh-btn-sm vh-btn-primary" href="#new-campaign" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
           <Plus size={14} strokeWidth={2.2} aria-hidden /> Create campaign
-        </button>
+        </a>
       }
     >
+      {created && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="ok" title="Campaign created — in review">
+            Every creative is reviewed before it runs. It goes ACTIVE once approved and always renders
+            with a visible Sponsored label.
+          </Banner>
+        </div>
+      )}
+      {err && CAMPAIGN_ERRORS[err] && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="danger" title="Campaign not created">{CAMPAIGN_ERRORS[err]}</Banner>
+        </div>
+      )}
       {/* 7-day summary */}
       <div className="vh-grid cols-4" style={{ marginBottom: "var(--sp-4)" }}>
         <Card>
@@ -83,10 +125,49 @@ export default function AdsPage() {
 
       {/* Campaigns */}
       <Card title="Campaigns" pad0>
-        <DataTable columns={columns} rows={AD_CAMPAIGNS} empty={<div className="vh-empty">No campaigns yet — create your first campaign.</div>} />
+        <DataTable columns={columns} rows={campaigns} empty={<div className="vh-empty">No campaigns yet — create your first campaign.</div>} />
       </Card>
 
       <div style={{ height: "var(--sp-4)" }} />
+
+      {/* New campaign — A1: only advertisable products are offered, and the
+          action re-validates the class server-side */}
+      <div id="new-campaign" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
+        <Card title="Create campaign">
+          <form action={createCampaign} className="vh-grid cols-2" style={{ gap: 16, alignItems: "start" }}>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="camp-name">Campaign name <span className="req">*</span></label>
+              <input className="vh-input" id="camp-name" name="name" required minLength={4} maxLength={60} placeholder="e.g. Monsoon Balm Push" />
+            </div>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="camp-type">Type <span className="req">*</span></label>
+              <select className="vh-select" id="camp-type" name="type" defaultValue="Sponsored Product" required>
+                <option>Sponsored Product</option>
+                <option>Banner</option>
+                <option>Video</option>
+              </select>
+            </div>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="camp-product">Product <span className="req">*</span></label>
+              <select className="vh-select" id="camp-product" name="productId" required defaultValue="">
+                <option value="" disabled>Choose a product…</option>
+                {SELLER_PRODUCTS.filter((p) => p.cls !== "MED_CANNABIS").map((p) => (
+                  <option key={p.id} value={p.id}>{p.title}</option>
+                ))}
+              </select>
+              <span className="vh-help">Medical Cannabis products are not listed — they are never advertisable (A1).</span>
+            </div>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="camp-budget">Budget (₹) <span className="req">*</span></label>
+              <input className="vh-input" id="camp-budget" name="budget" type="number" min={500} step={1} required placeholder="5000" />
+              <span className="vh-help">Minimum ₹500 · the campaign pauses automatically at 100% of budget.</span>
+            </div>
+            <button type="submit" className="vh-btn vh-btn-primary" style={{ justifySelf: "start" }}>
+              Submit for creative review
+            </button>
+          </form>
+        </Card>
+      </div>
 
       <div className="vh-grid cols-2" style={{ alignItems: "start", marginBottom: "var(--sp-4)" }}>
         {/* Budget pacing */}

@@ -7,10 +7,12 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { Eye, FileDown, MapPin } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
 import { ORDERS, type SampleOrder } from "@/lib/sample";
+import { readOrderHistory, readReturns } from "@/lib/engage";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -31,10 +33,27 @@ export default async function OrdersPage({
   const params = await searchParams;
   const filter = params.filter ?? "all";
 
-  const rows = ORDERS.filter((o) => {
+  // Orders actually placed in this session (demo persistence — becomes
+  // db.order.findMany with a real database). They surface ahead of the
+  // illustrative history and behave like any PENDING order.
+  const placed: SampleOrder[] = (await readOrderHistory()).map((o) => ({
+    id: `live-${o.reference}`,
+    reference: o.reference,
+    placedAt: o.placedAt.slice(0, 10),
+    status: "PENDING",
+    totalPaise: o.totalPaise,
+    items: o.items.map(({ title, qty, emoji }) => ({ title, qty, emoji })),
+    eta: "3–5 days",
+    seller: o.items[0]?.seller,
+  }));
+
+  const returns = await readReturns();
+  const rows = [...placed, ...ORDERS]
+    .map((o) => (returns[o.id] ? { ...o, status: "RETURN_REQUESTED" } : o))
+    .filter((o) => {
     if (filter === "open") return OPEN_STATUSES.has(o.status);
     if (filter === "delivered") return o.status === "DELIVERED";
-    if (filter === "returned") return o.status === "RETURNED";
+    if (filter === "returned") return o.status === "RETURNED" || o.status === "RETURN_REQUESTED";
     return true;
   });
 
@@ -70,34 +89,34 @@ export default async function OrdersPage({
       key: "actions", header: "", align: "right", render: (o) => (
         <span className="vh-row" style={{ gap: 8, justifyContent: "flex-end" }}>
           {o.status !== "DELIVERED" && o.status !== "RETURNED" && (
-            <a
+            <Link
               className="vh-btn vh-btn-sm vh-btn-ghost"
               href={`/account/orders/${o.id}`}
               aria-label={`Track order ${o.reference}`}
               title="Track"
             >
               <MapPin size={14} strokeWidth={2.2} aria-hidden />
-            </a>
+            </Link>
           )}
           {o.status === "DELIVERED" && (
-            <a className="vh-btn vh-btn-sm vh-btn-primary" href={`/account/orders/${o.id}`}>Buy again</a>
+            <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/account/orders/${o.id}`}>Buy again</Link>
           )}
-          <a
+          <Link
             className="vh-btn vh-btn-sm vh-btn-ghost"
-            href={`/account/orders/${o.id}#invoice`}
+            href={`/account/orders/${o.id}/invoice`}
             aria-label={`Download invoice for order ${o.reference}`}
             title="Download invoice"
           >
             <FileDown size={14} strokeWidth={2.2} aria-hidden />
-          </a>
-          <a
+          </Link>
+          <Link
             className="vh-btn vh-btn-sm vh-btn-ghost"
             href={`/account/orders/${o.id}`}
             aria-label={`View details of order ${o.reference}`}
             title="Details"
           >
             <Eye size={14} strokeWidth={2.2} aria-hidden />
-          </a>
+          </Link>
         </span>
       ),
     },
@@ -109,14 +128,14 @@ export default async function OrdersPage({
       <div className="vh-row-between" style={{ marginBottom: 16, flexWrap: "wrap", gap: 8 }}>
         <nav className="vh-seg" aria-label="Filter orders by status">
           {FILTERS.map((f) => (
-            <a
+            <Link
               key={f.key}
               href={f.key === "all" ? "/account/orders" : `/account/orders?filter=${f.key}`}
               className={f.key === filter ? "on" : undefined}
               aria-current={f.key === filter ? "true" : undefined}
             >
               {f.label}
-            </a>
+            </Link>
           ))}
         </nav>
         <span className="small muted tabular">
