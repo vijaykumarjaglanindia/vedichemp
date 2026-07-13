@@ -84,41 +84,11 @@
   color-scheme: light;
 }
 
-/* ── Tokens: dark (OS preference) ────────────────────────────── */
-@media (prefers-color-scheme: dark) {
-  :root {
-    --vh-green-100: #0f3532;
-    --vh-green-50: #0c2b29;
-    --vh-clay-100: #2b2113;
-    --vh-saffron-soft: #2a2211;
-    --vh-ink: #e7f3f2;
-    --vh-body: #bcd4d2;
-    --vh-muted: #86a8a5;
-    --vh-faint: #698c89;
-    --vh-line: #1f3735;
-    --vh-line-strong: #2a4643;
-    --vh-surface: #10201f;
-    --vh-bg: #0a1716;
-    --vh-bg-raised: #142625;
-    --vh-bg-subtle: #152726;
-    --vh-ok: #5ac98d; --vh-ok-bg: #113222;
-    --vh-warn: #e5bc68; --vh-warn-bg: #2b2310;
-    --vh-danger: #f0918a; --vh-danger-bg: #2e1614;
-    --vh-info: #82b5ec; --vh-info-bg: #13253a;
-    --vh-ad: #a99bf0; --vh-ad-bg: #221d3d;
-    --vh-campaign: #e08bad; --vh-campaign-bg: #331523;
-    --vh-accent: var(--vh-green-400);
-    --vh-on-accent: #042221;
-    --vh-rail-bg: linear-gradient(190deg, #081d1c, #0b2423 55%, #061715);
-    --vh-rail-fg: #b5d3d1;
-    --vh-glass: rgba(12, 26, 25, 0.82);
-    --vh-scrim: rgba(0, 0, 0, 0.6);
-    --vh-shadow-sm: 0 1px 2px rgba(0, 0, 0, 0.4);
-    --vh-shadow: 0 2px 4px rgba(0, 0, 0, 0.3), 0 12px 32px rgba(0, 0, 0, 0.4);
-    --vh-shadow-lg: 0 16px 48px rgba(0, 0, 0, 0.55);
-    color-scheme: dark;
-  }
-}
+/* ── Light theme ONLY — by decision ──────────────────────────────
+   There is deliberately no `prefers-color-scheme: dark` block: the
+   platform renders light with dark (near-black) text for every visitor,
+   regardless of the device's OS theme. `color-scheme: light` above also
+   keeps browser-native controls (inputs, selects, scrollbars) light. */
 
 /* ── Base ────────────────────────────────────────────────────── */
 * { box-sizing: border-box; }

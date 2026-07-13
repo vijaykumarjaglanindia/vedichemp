@@ -42,6 +42,9 @@ export const metadata: Metadata = {
 
 export const viewport: Viewport = {
   themeColor: "#f2f7f7",
+  // Light theme only — the browser is told not to auto-darken anything
+  // (form controls, scrollbars, UA surfaces) even when the OS is in dark mode.
+  colorScheme: "light",
   width: "device-width",
   initialScale: 1,
 };

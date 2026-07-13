@@ -114,22 +114,25 @@ export function AdVideo({
         <div
           style={{
             aspectRatio: "16 / 9", position: "relative", display: "flex", alignItems: "center", justifyContent: "center",
+            // Light poster — the platform is light-theme-only, ad units included.
             background:
-              "radial-gradient(420px 220px at 78% 22%, color-mix(in srgb, var(--vh-green-400) 22%, transparent), transparent 60%), linear-gradient(150deg, var(--vh-green-900), var(--vh-green-700))",
+              "radial-gradient(420px 220px at 78% 22%, color-mix(in srgb, var(--vh-green-400) 26%, transparent), transparent 60%), linear-gradient(150deg, var(--vh-green-100), var(--vh-green-50))",
+            borderBottom: "1px solid var(--vh-line)",
           }}
         >
           <span
             aria-hidden
             style={{
               width: 58, height: 58, borderRadius: 999, background: "rgba(255,255,255,.94)",
+              border: "1px solid var(--vh-line)",
               display: "inline-flex", alignItems: "center", justifyContent: "center",
-              boxShadow: "0 10px 30px rgba(0,0,0,.25)",
+              boxShadow: "0 10px 30px rgba(6, 48, 43, 0.18)",
             }}
           >
             {/* play triangle */}
             <span style={{ width: 0, height: 0, borderTop: "11px solid transparent", borderBottom: "11px solid transparent", borderLeft: "18px solid var(--vh-green-700)", marginLeft: 5 }} />
           </span>
-          <span className="small" style={{ position: "absolute", right: 10, bottom: 10, background: "rgba(0,0,0,.55)", color: "#fff", borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>
+          <span className="small" style={{ position: "absolute", right: 10, bottom: 10, background: "rgba(255,255,255,.92)", color: "var(--vh-ink)", border: "1px solid var(--vh-line)", borderRadius: 6, padding: "2px 8px", fontWeight: 600 }}>
             {duration}
           </span>
           <span style={{ position: "absolute", left: 10, top: 10 }}><SponsoredLabel kind="Ad" /></span>

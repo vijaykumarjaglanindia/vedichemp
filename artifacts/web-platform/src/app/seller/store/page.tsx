@@ -32,7 +32,7 @@ export default function StorePage() {
           }
           pad0
         >
-          <div style={{ height: 88, background: "linear-gradient(120deg, var(--vh-green-700), var(--vh-green-500))", borderRadius: "var(--vh-radius) var(--vh-radius) 0 0" }} aria-hidden />
+          <div style={{ height: 88, background: "linear-gradient(120deg, var(--vh-green-100), var(--vh-green-50))", borderBottom: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius) var(--vh-radius) 0 0" }} aria-hidden />
           <div style={{ padding: "0 18px 18px" }}>
             <div className="vh-row" style={{ gap: 14, marginTop: -28, alignItems: "flex-end" }}>
               <span

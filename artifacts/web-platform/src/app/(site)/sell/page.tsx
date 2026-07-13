@@ -62,7 +62,7 @@ export default function SellPage() {
     <>
       <section className="vh-hero">
         <div className="vh-container">
-          <div className="vh-eyebrow" style={{ color: "#9fd4b4", marginBottom: 12 }}>For sellers</div>
+          <div className="vh-eyebrow" style={{ color: "var(--vh-accent)", marginBottom: 12 }}>For sellers</div>
           <h1>Sell on Vedic Hemp</h1>
           <p style={{ marginTop: 10 }}>
             Reach verified buyers across hemp food, Ayurveda and CBD wellness — with the
