@@ -86,7 +86,7 @@ export default async function ConfirmedPage() {
             {order.shippingPaise === 0 ? <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Free</span> : <MoneyText paise={order.shippingPaise} />}
           </div>
           <div className="vh-row-between" style={{ padding: "6px 0" }}>
-            <span style={{ fontWeight: 600 }}>Paid · {order.payment.toUpperCase()}</span>
+            <span style={{ fontWeight: 600 }}>{order.payment === "cod" ? "Pay on delivery (COD)" : `Paid · ${order.payment.toUpperCase()}`}</span>
             <MoneyText paise={order.totalPaise} className="vh-product-title" />
           </div>
           <div style={{ display: "grid", gap: 8, marginTop: 10 }}>

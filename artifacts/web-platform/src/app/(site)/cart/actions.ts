@@ -10,6 +10,7 @@
 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
+import { readEnabledPayments } from "@/lib/payments";
 import { randomUUID } from "node:crypto";
 import { clearCartCookies, COUPONS, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
 import { PRODUCTS } from "@/lib/sample";
@@ -118,7 +119,6 @@ export interface OrderRecord {
 
 // Prepaid only: the platform forwards an order to the seller only after
 // payment capture. "cod" is not a member — a forged value is rejected.
-const PAYMENTS = ["upi", "card", "netbanking"] as const;
 
 export async function placeOrder(formData: FormData): Promise<void> {
   const cart = await priceCart();
@@ -141,7 +141,10 @@ export async function placeOrder(formData: FormData): Promise<void> {
   else if (line1.length < 8) err = "address";
   else if (!city || !state) err = "city";
   else if (!/^\d{6}$/.test(pincode)) err = "pincode";
-  else if (!PAYMENTS.includes(payment as (typeof PAYMENTS)[number])) err = "payment";
+  // The accepted set is the ADMIN's payment configuration (Admin → Finance →
+  // Payments) — a forged value for a disabled method fails here regardless
+  // of anything the client rendered.
+  else if (!(await readEnabledPayments()).some((m) => m.key === payment)) err = "payment";
   else if (cart.ageGated && !ageConfirm) err = "age";
 
   const jar = await cookies();

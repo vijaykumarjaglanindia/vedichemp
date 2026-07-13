@@ -45,6 +45,7 @@ const ADMIN_NAV: NavGroup[] = [
     group: "Money",
     items: [
       { href: "/admin/finance", label: "Finance", icon: <Landmark {...I} /> },
+      { href: "/admin/finance/payments", label: "Payments", icon: <Landmark {...I} /> },
       { href: "/admin/ads", label: "Ads", icon: <Megaphone {...I} /> },
     ],
   },

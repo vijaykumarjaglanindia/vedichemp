@@ -27,6 +27,7 @@ import { CLASS_META } from "@/lib/compliance";
 import { mdToHtml } from "@/lib/richtext";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 import { readFeatures } from "@/lib/features";
+import { codEnabled } from "@/lib/payments";
 import { parseMenu, readSiteContent } from "@/lib/sitecontent";
 import { ComplianceClass } from "@prisma/client";
 
@@ -152,6 +153,7 @@ const SEARCH_DOCS: SearchDoc[] = PRODUCTS.filter((p) => p.cls !== "MED_CANNABIS"
 export default async function SiteLayout({ children }: { children: ReactNode }) {
   const content = await readSiteContent();
   const flags = await readFeatures();
+  const cod = await codEnabled();
   // Menus are admin-edited (Site content → Menus); defaults mirror launch nav.
   const navLinks = parseMenu(content.navHeader ?? "");
   const footerCols = [
@@ -333,7 +335,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
           <div className="vh-row" style={{ flexWrap: "wrap", gap: "var(--sp-4)", padding: "var(--sp-3) 0" }}>
             {[
               { icon: CreditCard, label: "UPI · Cards · Netbanking" },
-              { icon: Banknote, label: "100% prepaid orders" },
+              { icon: Banknote, label: cod ? "UPI · Cards · COD available" : "100% prepaid orders" },
               { icon: ShieldCheck, label: "PCI-DSS checkout" },
               { icon: RotateCcw, label: "Buyer-first refunds" },
               { icon: Landmark, label: "FSSAI · AYUSH licensed sellers" },

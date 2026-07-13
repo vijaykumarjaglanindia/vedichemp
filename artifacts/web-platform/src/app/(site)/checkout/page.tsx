@@ -16,6 +16,7 @@ import { Banner, MoneyText } from "@/components/ui";
 import { priceCart } from "@/lib/cart";
 import { readAddresses } from "@/lib/engage";
 import { placeOrder } from "../cart/actions";
+import { readEnabledPayments } from "@/lib/payments";
 
 export const metadata: Metadata = { title: "Checkout" };
 
@@ -29,6 +30,10 @@ const ERRORS: Record<string, string> = {
   age: "Please confirm you are 21 or older — your cart contains an age-restricted item.",
 };
 
+const PAY_ICONS: Record<string, typeof Banknote> = {
+  upi: Smartphone, card: CreditCard, netbanking: Banknote, wallet: CreditCard, emi: CreditCard, cod: Banknote,
+};
+
 interface Draft { name?: string; mobile?: string; line1?: string; city?: string; state?: string; pincode?: string; payment?: string }
 
 export default async function CheckoutPage({ searchParams }: { searchParams: Promise<{ err?: string }> }) {
@@ -37,6 +42,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   if (cart.lines.length === 0) redirect("/cart");
 
   const jar = await cookies();
+  const methods = await readEnabledPayments();
+  const hasCod = methods.some((mm) => mm.kind === "cod");
   let draft: Draft = {};
   try { draft = JSON.parse(jar.get("vh-checkout-draft")?.value ?? "{}") as Draft; } catch { /* fresh form */ }
 
@@ -116,24 +123,24 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           <section className="vh-card">
             <h3 style={{ marginBottom: 6 }}>Payment</h3>
             <p className="small muted" style={{ margin: "0 0 14px" }}>
-              Vedic Hemp is 100% prepaid — orders are forwarded to sellers only after payment is
-              captured. Cash on Delivery is not offered.
+              {hasCod
+                ? "Prepaid orders are forwarded to sellers after payment capture; COD orders are confirmed instantly and paid to the courier — with an ID check on age-gated items."
+                : "Vedic Hemp is currently 100% prepaid — orders are forwarded to sellers only after payment is captured."}
             </p>
             <div style={{ display: "grid", gap: 8 }}>
-              {[
-                { value: "upi", icon: Smartphone, label: "UPI", sub: "GPay, PhonePe, Paytm — pay on the next screen" },
-                { value: "card", icon: CreditCard, label: "Card", sub: "Credit or debit · processed by a PCI-DSS gateway, card data never touches Vedic Hemp" },
-                { value: "netbanking", icon: Banknote, label: "Netbanking", sub: "All major Indian banks — redirected to your bank to authorise" },
-              ].map(({ value, icon: Icon, label, sub }) => (
+              {methods.map(({ key: value, label, sub }) => {
+                const Icon = PAY_ICONS[value] ?? Banknote;
+                return (
                 <label key={value} className="vh-row" style={{ gap: 12, border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "12px 14px", cursor: "pointer", alignItems: "flex-start" }}>
-                  <input type="radio" name="payment" value={value} defaultChecked={(draft.payment ?? "upi") === value} style={{ marginTop: 3, accentColor: "var(--vh-accent)" }} />
+                  <input type="radio" name="payment" value={value} defaultChecked={(draft.payment ?? methods[0]?.key) === value} style={{ marginTop: 3, accentColor: "var(--vh-accent)" }} />
                   <Icon size={17} aria-hidden style={{ color: "var(--vh-accent)", marginTop: 1, flexShrink: 0 }} />
                   <span>
                     <span style={{ fontWeight: 600, color: "var(--vh-ink)", display: "block" }}>{label}</span>
                     <span className="small muted">{sub}</span>
                   </span>
                 </label>
-              ))}
+                );
+              })}
             </div>
           </section>
 
