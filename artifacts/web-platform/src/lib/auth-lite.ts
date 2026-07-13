@@ -23,6 +23,8 @@ export interface Session {
   email: string;
   name: string;
   role: "BUYER" | "SELLER" | "ADMIN";
+  /** How this session was established: email | phone | google | facebook. */
+  provider?: string;
   iat: number;
 }
 
