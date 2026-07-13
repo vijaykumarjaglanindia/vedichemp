@@ -279,3 +279,157 @@ export async function createPost(formData: FormData): Promise<void> {
   jar.set("vh-adm-posts", JSON.stringify(posts.slice(0, 5)), OPTS);
   redirect("/admin/cms?post=created#new-post");
 }
+
+/* ── Catalogue: listing moderation (approve / reject / takedown) ── */
+
+import {
+  approveListing as storeApproveListing,
+  decideCoa,
+  rejectListing as storeRejectListing,
+  restoreListing as storeRestoreListing,
+  suspendListing as storeSuspendListing,
+} from "@/lib/catalog";
+import { createCategory, deleteCategory, updateCategory } from "@/lib/categories";
+
+/**
+ * Approve or reject an UNDER_REVIEW listing. Approval is where A2 bites: the
+ * store refuses a regulated class without an APPROVED, batch-matched CoA and
+ * the DENIED attempt is audited — an admin cannot wave a listing past the
+ * gate any more than a seller can.
+ */
+export async function moderateListing(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  const who = await actor();
+
+  if (decision === "approve") {
+    const result = await storeApproveListing(id);
+    if (!result.ok && result.reason === "coa") {
+      await writeAudit({ actor: who, action: "LISTING_APPROVE", target: id, outcome: "DENIED", note: "A2: no approved batch-matched CoA" });
+      redirect(`/admin/catalogue?mod=coa&id=${id}#approvals`);
+    }
+    if (!result.ok) redirect(`/admin/catalogue?mod=state#approvals`);
+    await writeAudit({ actor: who, action: "LISTING_APPROVE", target: id, outcome: "OK" });
+    redirect(`/admin/catalogue?mod=approved#approvals`);
+  }
+
+  if (decision === "reject") {
+    // Rejection is high-impact for the seller: reviewer note ≥ 20 chars.
+    if (note.length < 20) {
+      await writeAudit({ actor: who, action: "LISTING_REJECT", target: id, outcome: "DENIED", note: "note under 20 chars" });
+      redirect(`/admin/catalogue?mod=note#approvals`);
+    }
+    const result = await storeRejectListing(id, note);
+    if (!result.ok) redirect(`/admin/catalogue?mod=state#approvals`);
+    await writeAudit({ actor: who, action: "LISTING_REJECT", target: id, outcome: "OK", note });
+    redirect(`/admin/catalogue?mod=rejected#approvals`);
+  }
+
+  redirect("/admin/catalogue");
+}
+
+/** Take a LIVE listing down (reason ≥ 20 chars, seller sees it) or restore it. */
+export async function takedownListing(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const op = String(formData.get("op") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  const who = await actor();
+
+  if (op === "suspend") {
+    if (note.length < 20) {
+      await writeAudit({ actor: who, action: "LISTING_SUSPEND", target: id, outcome: "DENIED", note: "reason under 20 chars" });
+      redirect(`/admin/catalogue?mod=note&id=${id}#live`);
+    }
+    const result = await storeSuspendListing(id, note);
+    if (!result.ok) redirect(`/admin/catalogue?mod=state#live`);
+    await writeAudit({ actor: who, action: "LISTING_SUSPEND", target: id, outcome: "OK", note });
+    redirect(`/admin/catalogue?mod=suspended#live`);
+  }
+
+  if (op === "restore") {
+    const result = await storeRestoreListing(id);
+    if (!result.ok && result.reason === "coa") {
+      await writeAudit({ actor: who, action: "LISTING_RESTORE", target: id, outcome: "DENIED", note: "A2: CoA no longer approved" });
+      redirect(`/admin/catalogue?mod=coa&id=${id}#live`);
+    }
+    if (!result.ok) redirect(`/admin/catalogue?mod=state#live`);
+    await writeAudit({ actor: who, action: "LISTING_RESTORE", target: id, outcome: "OK" });
+    redirect(`/admin/catalogue?mod=restored#live`);
+  }
+
+  redirect("/admin/catalogue");
+}
+
+/**
+ * Decide ONE batch's CoA — a per-batch legal assertion by a human reviewer,
+ * with a note ≥ 20 chars either way. There is deliberately no bulk approve.
+ * Rejecting the CoA of a LIVE regulated listing suspends it (fails closed).
+ */
+export async function decideCoaReview(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  const who = await actor();
+  const action = decision === "approve" ? "COA_APPROVE" : "COA_REJECT";
+
+  if (note.length < 20) {
+    await writeAudit({ actor: who, action, target: id, outcome: "DENIED", note: "reviewer note under 20 chars" });
+    redirect(`/admin/catalogue?coa=note&id=${id}#coa-queue`);
+  }
+  const result = await decideCoa(id, decision === "approve", note);
+  if (!result.ok) redirect(`/admin/catalogue?coa=state#coa-queue`);
+  await writeAudit({ actor: who, action, target: id, outcome: "OK", note });
+  redirect(`/admin/catalogue?coa=${decision === "approve" ? "approved" : "rejected"}#coa-queue`);
+}
+
+/* ── Catalogue: category CRUD (editorial taxonomy) ────────── */
+
+export async function saveCategory(formData: FormData): Promise<void> {
+  const id = String(formData.get("categoryId") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const blurb = String(formData.get("blurb") ?? "").trim();
+  const emoji = String(formData.get("emoji") ?? "").trim().slice(0, 4);
+  const cls = String(formData.get("cls") ?? "");
+  const q = String(formData.get("q") ?? "").trim().slice(0, 60);
+  const who = await actor();
+
+  if (name.length < 3 || name.length > 40) redirect("/admin/catalogue/categories?cat=name");
+  if (blurb.length > 140) redirect("/admin/catalogue/categories?cat=blurb");
+  // Category copy is public marketing copy — same claims check as everything.
+  if (CLAIMS_LANGUAGE.test(name) || CLAIMS_LANGUAGE.test(blurb)) {
+    await writeAudit({ actor: who, action: id ? "CATEGORY_UPDATE" : "CATEGORY_CREATE", target: name, outcome: "DENIED", note: "claims language" });
+    redirect("/admin/catalogue/categories?cat=claims");
+  }
+
+  const result = id
+    ? await updateCategory(id, { name, blurb, emoji, cls, q })
+    : await createCategory({ name, blurb, emoji, ...(cls ? { cls } : {}), ...(q ? { q } : {}) });
+  if (!result.ok) {
+    // "class" = attempted MED_CANNABIS collection (A1) — log the attempt.
+    await writeAudit({ actor: who, action: id ? "CATEGORY_UPDATE" : "CATEGORY_CREATE", target: name, outcome: "DENIED", note: result.reason === "class" ? "A1: medical collection refused" : result.reason });
+    redirect(`/admin/catalogue/categories?cat=${result.reason === "class" ? "a1" : "state"}`);
+  }
+  await writeAudit({ actor: who, action: id ? "CATEGORY_UPDATE" : "CATEGORY_CREATE", target: name, outcome: "OK" });
+  redirect("/admin/catalogue/categories?cat=saved");
+}
+
+export async function toggleCategory(formData: FormData): Promise<void> {
+  const id = String(formData.get("categoryId") ?? "");
+  const visible = String(formData.get("visible") ?? "") === "1";
+  const result = await updateCategory(id, { visible });
+  if (result.ok) await writeAudit({ actor: await actor(), action: "CATEGORY_TOGGLE", target: `${id} → ${visible ? "visible" : "hidden"}`, outcome: "OK" });
+  redirect("/admin/catalogue/categories?cat=saved");
+}
+
+export async function removeCategory(formData: FormData): Promise<void> {
+  const id = String(formData.get("categoryId") ?? "");
+  const who = await actor();
+  const result = await deleteCategory(id);
+  if (!result.ok) {
+    await writeAudit({ actor: who, action: "CATEGORY_DELETE", target: id, outcome: "DENIED", note: result.reason === "fixture" ? "launch categories can be hidden, not deleted" : result.reason });
+    redirect(`/admin/catalogue/categories?cat=${result.reason === "fixture" ? "fixture" : "state"}`);
+  }
+  await writeAudit({ actor: who, action: "CATEGORY_DELETE", target: id, outcome: "OK" });
+  redirect("/admin/catalogue/categories?cat=deleted");
+}

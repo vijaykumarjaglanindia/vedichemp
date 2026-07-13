@@ -13,11 +13,12 @@ import { ArrowRight, CheckCircle2, PackageCheck, Send, Truck } from "lucide-reac
 import { EmptyState, MoneyText, Timeline } from "@/components/ui";
 import type { OrderRecord } from "../../cart/actions";
 import { AdSlot, SponsoredLabel } from "@/components/ui/ads";
-import { PRODUCTS } from "@/lib/sample";
+import { readLiveProducts } from "@/lib/catalog";
 
 export const metadata: Metadata = { title: "Order confirmed" };
 
 export default async function ConfirmedPage() {
+  const liveCatalogue = await readLiveProducts();
   const jar = await cookies();
   let order: OrderRecord | null = null;
   try { order = JSON.parse(jar.get("vh-last-order")?.value ?? "null") as OrderRecord | null; } catch { order = null; }
@@ -112,7 +113,7 @@ export default async function ConfirmedPage() {
             <span className="small muted" style={{ fontWeight: 600 }}>People also ordered</span>
           </div>
           <div className="vh-grid cols-3">
-            {PRODUCTS.filter((sp) => sp.cls !== "MED_CANNABIS").slice(5, 8).map((sp) => (
+            {liveCatalogue.filter((sp) => sp.cls !== "MED_CANNABIS").slice(5, 8).map((sp) => (
               <Link key={sp.id} href={`/products/${sp.slug}`} className="vh-product" style={{ textDecoration: "none" }}>
                 <span className="vh-product-media" style={{ fontSize: "1.8rem" }} aria-hidden>{sp.emoji}</span>
                 <span className="vh-product-body">

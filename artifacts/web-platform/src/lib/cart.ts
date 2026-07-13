@@ -16,8 +16,9 @@ import "server-only";
  */
 
 import { cookies } from "next/headers";
+import { readLiveProducts } from "@/lib/catalog";
 import { readActiveCoupons, readCommerce } from "@/lib/commerce";
-import { PRODUCTS, type SampleProduct } from "@/lib/sample";
+import { type SampleProduct } from "@/lib/sample";
 import { permittedClasses } from "@/lib/compliance";
 
 const CART_COOKIE = "vh-cart";
@@ -104,16 +105,19 @@ export async function clearCartCookies(): Promise<void> {
 }
 
 /**
- * Price the cart from the canonical catalogue. Unknown ids are dropped;
+ * Price the cart from the canonical LIVE catalogue. Unknown ids are dropped;
  * a product outside the viewer's permitted classes can never be priced in
- * (A1 — the medical catalogue cannot enter a public cart even by crafted id).
+ * (A1 — the medical catalogue cannot enter a public cart even by crafted id),
+ * and a listing that was archived or suspended after being carted simply
+ * drops out — an unsellable product cannot be bought.
  */
 export async function priceCart(): Promise<PricedCart> {
   const lines = await readCartLines();
   const permitted = permittedClasses({ hasRx: false });
+  const catalogue = await readLiveProducts();
   const priced: PricedLine[] = [];
   for (const line of lines) {
-    const product = PRODUCTS.find((p) => p.id === line.id && permitted.includes(p.cls));
+    const product = catalogue.find((p) => p.id === line.id && permitted.includes(p.cls));
     if (!product) continue;
     const qty = Math.min(line.qty, MAX_QTY);
     priced.push({ product, qty, linePaise: product.pricePaise * qty });

@@ -54,7 +54,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
   // A1: a public storefront never shows MED_CANNABIS — not as a product,
   // not as a licence badge on a shoppable surface.
   const publicClasses = seller.classes.filter((c) => c !== "MED_CANNABIS");
-  const products = sellerProducts(seller.name);
+  const products = await sellerProducts(seller.name);
   const following = (await readFollows()).includes(slug);
   // Seller-published copy overrides the sample profile (their own store only).
   const storeCopy = slug === "vedic-botanicals" ? await readStoreCopy() : null;

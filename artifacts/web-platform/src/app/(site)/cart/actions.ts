@@ -13,19 +13,20 @@ import { cookies } from "next/headers";
 import { readEnabledPayments } from "@/lib/payments";
 import { randomUUID } from "node:crypto";
 import { clearCartCookies, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
+import { readLiveProducts } from "@/lib/catalog";
 import { readActiveCoupons } from "@/lib/commerce";
-import { PRODUCTS } from "@/lib/sample";
 import { permittedClasses } from "@/lib/compliance";
 import { appendOrderHistory, readAddresses, validateAddressFields, writeAddresses } from "@/lib/engage";
 
 const MAX_QTY = 10;
 
-function assertPurchasable(productId: string): void {
+async function assertPurchasable(productId: string): Promise<void> {
   const permitted = permittedClasses({ hasRx: false });
-  const product = PRODUCTS.find((p) => p.id === productId && permitted.includes(p.cls));
+  const product = (await readLiveProducts()).find((p) => p.id === productId && permitted.includes(p.cls));
   if (!product) {
-    // Unknown id OR a class this viewer may not buy (A1: the medical catalogue
-    // cannot enter a public cart even by crafted form data).
+    // Unknown id, a non-LIVE listing (draft/suspended/archived), OR a class
+    // this viewer may not buy (A1: the medical catalogue cannot enter a
+    // public cart even by crafted form data).
     redirect("/catalogue");
   }
 }
@@ -34,7 +35,7 @@ export async function addToCart(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");
   const qty = Math.min(Math.max(parseInt(String(formData.get("qty") ?? "1"), 10) || 1, 1), MAX_QTY);
   const intent = String(formData.get("intent") ?? "cart");
-  assertPurchasable(id);
+  await assertPurchasable(id);
 
   const lines = await readCartLines();
   const existing = lines.find((l) => l.id === id);
@@ -55,9 +56,10 @@ export async function addBundleToCart(formData: FormData): Promise<void> {
     .filter(Boolean)
     .slice(0, 6);
   const permitted = permittedClasses({ hasRx: false });
+  const catalogue = await readLiveProducts();
   const lines = await readCartLines();
   for (const id of ids) {
-    if (!PRODUCTS.some((p) => p.id === id && permitted.includes(p.cls))) continue;
+    if (!catalogue.some((p) => p.id === id && permitted.includes(p.cls))) continue;
     const existing = lines.find((l) => l.id === id);
     if (existing) existing.qty = Math.min(existing.qty + 1, MAX_QTY);
     else lines.push({ id, qty: 1 });

@@ -14,31 +14,44 @@
 
 import type { LucideIcon } from "lucide-react";
 import { Brain, Dumbbell, Moon, Soup, Sparkles, Wheat } from "lucide-react";
+import { liveByClasses } from "@/lib/catalog";
 import { permittedClasses } from "@/lib/compliance";
-import { classProducts, SELLERS, type SampleProduct, type SampleSeller } from "@/lib/sample";
+import { SELLERS, type SampleProduct, type SampleSeller } from "@/lib/sample";
 
 /* ── Public product universe (A1: permitted classes only) ──────── */
 
-/** Every public collection starts here — MED_CANNABIS cannot enter. */
-export const PUBLIC_PRODUCTS: SampleProduct[] = classProducts(permittedClasses({ hasRx: false }));
+/**
+ * Every public collection starts here — the LIVE catalogue store filtered to
+ * permitted classes, so MED_CANNABIS cannot enter and an archived or
+ * suspended listing is structurally absent from every shoppable strip.
+ */
+export async function publicProducts(): Promise<SampleProduct[]> {
+  return liveByClasses(permittedClasses({ hasRx: false }));
+}
 
 export function discountPct(p: SampleProduct): number {
   if (p.mrpPaise <= p.pricePaise) return 0;
   return Math.round(((p.mrpPaise - p.pricePaise) / p.mrpPaise) * 100);
 }
 
-/** Today's deals: permitted products, deepest discount first. */
-export const DEALS: SampleProduct[] = [...PUBLIC_PRODUCTS]
-  .filter((p) => discountPct(p) > 0)
-  .sort((a, b) => discountPct(b) - discountPct(a));
+/** Today's deals: permitted LIVE products, deepest discount first. */
+export async function deals(): Promise<SampleProduct[]> {
+  return [...(await publicProducts())]
+    .filter((p) => discountPct(p) > 0)
+    .sort((a, b) => discountPct(b) - discountPct(a));
+}
 
 /** Flash-sale line-up (campaign: Monsoon Wellness Days). */
-export const FLASH_SALE: SampleProduct[] = DEALS.slice(0, 4);
+export async function flashSale(): Promise<SampleProduct[]> {
+  return (await deals()).slice(0, 4);
+}
 
 /** "Recently viewed" strip — illustrative; a real one is session-derived server-side. */
-export const RECENTLY_VIEWED: SampleProduct[] = PUBLIC_PRODUCTS.filter((p) =>
-  ["hemp-seed-oil-250ml", "ashwagandha-60", "cbd-rollon-50ml", "hemp-hearts-400g"].includes(p.slug),
-);
+export async function recentlyViewed(): Promise<SampleProduct[]> {
+  return (await publicProducts()).filter((p) =>
+    ["hemp-seed-oil-250ml", "ashwagandha-60", "cbd-rollon-50ml", "hemp-hearts-400g"].includes(p.slug),
+  );
+}
 
 /* ── Health goals (composition / traditional-use copy only) ────── */
 
@@ -166,9 +179,9 @@ export function sellerBySlug(slug: string): SampleSeller | undefined {
   return SELLERS.find((s) => sellerSlug(s.name) === slug);
 }
 
-/** Products for a seller — always drawn from the public (permitted) universe. */
-export function sellerProducts(sellerName: string): SampleProduct[] {
-  return PUBLIC_PRODUCTS.filter((p) => p.seller === sellerName);
+/** Products for a seller — always drawn from the public (permitted, LIVE) universe. */
+export async function sellerProducts(sellerName: string): Promise<SampleProduct[]> {
+  return (await publicProducts()).filter((p) => p.seller === sellerName);
 }
 
 export interface StoreProfile {
@@ -262,13 +275,14 @@ export const PDP_QA: { q: string; a: string }[] = [
 ];
 
 /** "Frequently bought together": up to `n` other permitted products, same class first. */
-export function frequentlyBoughtWith(p: SampleProduct, n = 2): SampleProduct[] {
-  const sameClass = PUBLIC_PRODUCTS.filter((x) => x.id !== p.id && x.cls === p.cls);
-  const others = PUBLIC_PRODUCTS.filter((x) => x.id !== p.id && x.cls !== p.cls);
+export async function frequentlyBoughtWith(p: SampleProduct, n = 2): Promise<SampleProduct[]> {
+  const all = await publicProducts();
+  const sameClass = all.filter((x) => x.id !== p.id && x.cls === p.cls);
+  const others = all.filter((x) => x.id !== p.id && x.cls !== p.cls);
   return [...sameClass, ...others].slice(0, n);
 }
 
 /** "Similar products": same class, else the rest of the permitted universe. */
-export function similarProducts(p: SampleProduct, n = 6): SampleProduct[] {
+export async function similarProducts(p: SampleProduct, n = 6): Promise<SampleProduct[]> {
   return frequentlyBoughtWith(p, n);
 }

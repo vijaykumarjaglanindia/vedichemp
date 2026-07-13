@@ -13,7 +13,7 @@ import Link from "next/link";
 import { FlaskConical, Search, ShieldCheck } from "lucide-react";
 import { Banner, Card, StatusPill } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
-import { PUBLIC_PRODUCTS, specsFor } from "../_lib/data";
+import { publicProducts, specsFor } from "../_lib/data";
 
 export const metadata: Metadata = {
   title: "Verify a batch",
@@ -22,10 +22,10 @@ export const metadata: Metadata = {
 };
 
 /** batch code → the public product it belongs to (permitted classes only). */
-function findByBatch(code: string) {
+async function findByBatch(code: string) {
   const norm = code.trim().toUpperCase();
   if (!norm) return null;
-  for (const p of PUBLIC_PRODUCTS) {
+  for (const p of await publicProducts()) {
     const specs = specsFor(p);
     if (specs.batch.toUpperCase() === norm) return { product: p, specs };
   }
@@ -38,7 +38,7 @@ export default async function VerifyPage({
   searchParams: Promise<{ code?: string }>;
 }) {
   const { code } = await searchParams;
-  const hit = code !== undefined ? findByBatch(code) : null;
+  const hit = code !== undefined ? await findByBatch(code) : null;
 
   return (
     <div className="vh-container" style={{ paddingTop: "var(--sp-5)", paddingBottom: "var(--sp-7)", maxWidth: 760 }}>

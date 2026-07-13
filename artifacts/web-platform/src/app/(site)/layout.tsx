@@ -153,21 +153,23 @@ const chromeCss = `
 import { GenerativeSearch, type SearchDoc } from "./_lib/GenerativeSearch";
 import { HeaderBits } from "./_lib/HeaderBits";
 import { NewsletterForm } from "./_lib/NewsletterForm";
-import { PRODUCTS } from "@/lib/sample";
-
-/**
- * The generative-search corpus. Built server-side WITHOUT MED_CANNABIS (A1):
- * the client island can never surface what it was never given.
- */
-const SEARCH_DOCS: SearchDoc[] = PRODUCTS.filter((p) => p.cls !== "MED_CANNABIS").map((p) => ({
-  title: p.title, slug: p.slug, pricePaise: p.pricePaise, cls: p.cls,
-  clsLabel: CLASS_META[p.cls].short, rating: p.rating, emoji: p.emoji,
-  seller: p.seller, labVerified: p.labVerified,
-}));
+import { readLiveProducts } from "@/lib/catalog";
 
 export default async function SiteLayout({ children }: { children: ReactNode }) {
   const content = await readSiteContent();
   const flags = await readFeatures();
+  /**
+   * The generative-search corpus — the LIVE store, per request, WITHOUT
+   * MED_CANNABIS (A1): the client island can never surface what it was never
+   * given, and a new or archived listing is searchable (or not) immediately.
+   */
+  const searchDocs: SearchDoc[] = (await readLiveProducts())
+    .filter((p) => p.cls !== "MED_CANNABIS")
+    .map((p) => ({
+      title: p.title, slug: p.slug, pricePaise: p.pricePaise, cls: p.cls,
+      clsLabel: CLASS_META[p.cls].short, rating: p.rating, emoji: p.emoji,
+      seller: p.seller, labVerified: p.labVerified,
+    }));
   const cod = await codEnabled();
   // Menus are admin-edited (Site content → Menus); defaults mirror launch nav.
   const navLinks = parseMenu(content.navHeader ?? "");
@@ -265,7 +267,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
           <span className="vh-spacer" />
 
           <div className="vhx-hide-sm" style={{ flex: 1, maxWidth: 430, display: "flex" }}>
-            <GenerativeSearch docs={SEARCH_DOCS} />
+            <GenerativeSearch docs={searchDocs} />
           </div>
 
           <div className="vh-row" style={{ gap: 6 }}>

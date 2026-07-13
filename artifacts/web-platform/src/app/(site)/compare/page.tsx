@@ -12,7 +12,8 @@ import { Scale } from "lucide-react";
 import { Card, EmptyState, MoneyText, Rating } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
 import { aiProviderName } from "@/lib/ai";
-import { PUBLIC_PRODUCTS, specsFor } from "../_lib/data";
+import type { SampleProduct } from "@/lib/sample";
+import { publicProducts, specsFor } from "../_lib/data";
 
 export const metadata: Metadata = {
   title: "Compare products",
@@ -20,7 +21,7 @@ export const metadata: Metadata = {
   alternates: { canonical: "/compare" },
 };
 
-function verdict(a: (typeof PUBLIC_PRODUCTS)[number], b: (typeof PUBLIC_PRODUCTS)[number]): string {
+function verdict(a: SampleProduct, b: SampleProduct): string {
   const cheaper = a.pricePaise <= b.pricePaise ? a : b;
   const rated = a.rating >= b.rating ? a : b;
   const parts = [
@@ -39,8 +40,9 @@ export default async function ComparePage({
   searchParams: Promise<{ a?: string; b?: string }>;
 }) {
   const { a: aSlug = "cbd-balm-30g", b: bSlug = "cbd-rollon-50ml" } = await searchParams;
-  const a = PUBLIC_PRODUCTS.find((p) => p.slug === aSlug);
-  const b = PUBLIC_PRODUCTS.find((p) => p.slug === bSlug);
+  const universe = await publicProducts();
+  const a = universe.find((p) => p.slug === aSlug);
+  const b = universe.find((p) => p.slug === bSlug);
 
   if (!a || !b) {
     return (

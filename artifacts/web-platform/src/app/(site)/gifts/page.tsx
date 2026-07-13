@@ -11,7 +11,7 @@ import { Gift } from "lucide-react";
 import { Card, EmptyState } from "@/components/ui";
 import { aiProviderName } from "@/lib/ai";
 import { readFeatures } from "@/lib/features";
-import { PUBLIC_PRODUCTS } from "../_lib/data";
+import { publicProducts } from "../_lib/data";
 import { ProductCard } from "../_lib/ProductCard";
 
 export const metadata: Metadata = {
@@ -43,7 +43,8 @@ export default async function GiftFinderPage({
   }
   const budgetPaise = Math.max(1, parseInt(budget, 10) || 1500) * 100;
   const g = GOALS[goal] ?? GOALS.any!;
-  let picks = PUBLIC_PRODUCTS
+  const universe = await publicProducts();
+  let picks = universe
     .filter((p) => g.classes.includes(p.cls) && p.pricePaise <= budgetPaise)
     .sort((a, b) => b.rating - a.rating)
     .slice(0, 6);
@@ -52,7 +53,7 @@ export default async function GiftFinderPage({
   let overBudget = false;
   if (picks.length === 0) {
     overBudget = true;
-    picks = PUBLIC_PRODUCTS
+    picks = universe
       .filter((p) => g.classes.includes(p.cls))
       .sort((a, b) => a.pricePaise - b.pricePaise)
       .slice(0, 3);

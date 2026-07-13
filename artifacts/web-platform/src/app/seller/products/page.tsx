@@ -12,57 +12,43 @@ import { Search, PackagePlus, Upload, Pencil, FlaskConical } from "lucide-react"
 import { Shell } from "../Shell";
 import { Banner, Card, DataTable, StatusPill, toneForStatus, ComplianceBadge, MoneyText, type Column } from "@/components/ui";
 import { BarList } from "@/components/ui/charts";
-import { ComplianceClass } from "@prisma/client";
-import { readSubmittedProducts } from "@/lib/engage";
-import { SELLER_PRODUCTS, LISTING_QUALITY, type SellerProduct } from "../_lib/data";
+import { getSession } from "@/lib/auth-lite";
+import { REGULATED_CLASSES, sellerListings, type CatalogProduct } from "@/lib/catalog";
+import { LISTING_QUALITY } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Products" };
 
-const STATUS_TABS = ["ALL", "LIVE", "DRAFT"] as const;
+const STATUS_TABS = ["ALL", "LIVE", "UNDER_REVIEW", "DRAFT", "ARCHIVED"] as const;
 
-function coaSummary(p: SellerProduct): { tone: "ok" | "warn" | "danger" | "neutral"; text: string } {
-  if (p.batches.length === 0) return { tone: "neutral", text: "No batches yet" };
-  if (p.batches.some((b) => b.coaStatus === "MISSING" || b.coaStatus === "REJECTED")) return { tone: "danger", text: "Action needed" };
-  if (p.batches.some((b) => b.coaStatus === "PENDING_REVIEW")) return { tone: "warn", text: "Under review" };
-  return { tone: "ok", text: "All approved" };
+function coaSummary(p: CatalogProduct): { tone: "ok" | "warn" | "danger" | "neutral"; text: string } {
+  if (!REGULATED_CLASSES.includes(p.cls)) return { tone: "neutral", text: "Not regulated" };
+  if (p.coaState === "APPROVED") return { tone: "ok", text: "Approved" };
+  if (p.coaState === "PENDING_REVIEW") return { tone: "warn", text: "Under review" };
+  if (p.coaState === "REJECTED") return { tone: "danger", text: "Rejected" };
+  return { tone: "danger", text: "No CoA yet" };
 }
 
 export default async function SellerProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; submitted?: string }>;
+  searchParams: Promise<{ status?: string; q?: string; submitted?: string; deleted?: string }>;
 }) {
-  const { status: rawStatus, q, submitted } = await searchParams;
+  const { status: rawStatus, q, submitted, deleted } = await searchParams;
   const status = STATUS_TABS.includes(rawStatus as (typeof STATUS_TABS)[number])
     ? (rawStatus as (typeof STATUS_TABS)[number])
     : "ALL";
   const query = (q ?? "").trim().toLowerCase();
 
-  // Listings created via Add product in this session (server-written cookie;
-  // db.product rows once the DB is attached). Regulated ones start with an
-  // empty batch list, so the CoA column correctly reads "No batches yet".
-  const mine: SellerProduct[] = (await readSubmittedProducts()).map((p) => ({
-    id: p.id,
-    title: p.title,
-    slug: p.id,
-    cls: p.cls as ComplianceClass,
-    pricePaise: p.pricePaise,
-    mrpPaise: p.mrpPaise,
-    seller: "Vedic Botanicals",
-    rating: 0,
-    emoji: "🆕",
-    labVerified: false,
-    state: p.listingState,
-    hsn: p.hsn,
-    listingState: p.listingState,
-    batches: [],
-  }));
+  // The live catalog store: this storefront's launch listings plus everything
+  // created in Seller Central — one list, one lifecycle, no cookie shadow copy.
+  const session = await getSession();
+  const listings = await sellerListings(session?.email ?? "seller@example.in", "Vedic Botanicals");
 
-  const rows = [...mine, ...SELLER_PRODUCTS]
-    .filter((p) => (status === "ALL" ? true : p.listingState === status))
+  const rows = listings
+    .filter((p) => (status === "ALL" ? true : p.status === status))
     .filter((p) => (query ? p.title.toLowerCase().includes(query) : true));
 
-  const columns: Column<SellerProduct>[] = [
+  const columns: Column<CatalogProduct>[] = [
     {
       key: "title", header: "Product", render: (p) => (
         <span className="vh-row" style={{ gap: 10 }}>
@@ -75,14 +61,13 @@ export default async function SellerProductsPage({
       ),
     },
     { key: "price", header: "Price", align: "right", render: (p) => <MoneyText paise={p.pricePaise} /> },
-    { key: "state", header: "Listing", render: (p) => <StatusPill tone={toneForStatus(p.listingState)}>{p.listingState}</StatusPill> },
+    { key: "state", header: "Listing", render: (p) => <StatusPill tone={toneForStatus(p.status)}>{p.status}</StatusPill> },
     {
       key: "coa", header: "CoA status", render: (p) => {
         const s = coaSummary(p);
         return <StatusPill tone={s.tone}>{s.text}</StatusPill>;
       },
     },
-    { key: "batches", header: "Batches", align: "right", render: (p) => <span className="tabular">{p.batches.length}</span> },
     {
       key: "actions", header: "", align: "right", render: (p) => (
         <span className="vh-row" style={{ gap: 4, justifyContent: "flex-end" }}>
@@ -122,6 +107,13 @@ export default async function SellerProductsPage({
           </Banner>
         </div>
       )}
+      {deleted && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="ok" title="Listing deleted">
+            The draft was permanently removed. Listings that have sold stay archived instead — order history never dangles.
+          </Banner>
+        </div>
+      )}
 
       {/* Toolbar */}
       <div className="vh-row-between" style={{ marginBottom: "var(--sp-3)", flexWrap: "wrap", gap: 8 }}>
@@ -146,9 +138,10 @@ export default async function SellerProductsPage({
             const href = t === "ALL"
               ? `/seller/products${query ? `?q=${encodeURIComponent(query)}` : ""}`
               : `/seller/products?status=${t}${query ? `&q=${encodeURIComponent(query)}` : ""}`;
+            const label = t === "ALL" ? "All" : t.charAt(0) + t.slice(1).toLowerCase().replace(/_/g, " ");
             return (
               <Link key={t} href={href} className={t === status ? "on" : undefined} aria-current={t === status ? "true" : undefined}>
-                {t === "ALL" ? "All" : t.charAt(0) + t.slice(1).toLowerCase()}
+                {label}
               </Link>
             );
           })}
@@ -168,7 +161,7 @@ export default async function SellerProductsPage({
       </p>
 
       <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
-        <Card title="Listing quality" action={<span className="small muted">Across {SELLER_PRODUCTS.length} listings</span>}>
+        <Card title="Listing quality" action={<span className="small muted">Across {listings.length} listings</span>}>
           <BarList items={LISTING_QUALITY} />
           <p className="small muted" style={{ marginBottom: 0, marginTop: 12 }}>
             Better images and complete attributes lift search rank; CoA coverage is a hard publish gate, not a score (A2).

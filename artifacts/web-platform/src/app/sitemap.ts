@@ -1,6 +1,10 @@
 import type { MetadataRoute } from "next";
+import { readLiveProducts } from "@/lib/catalog";
+
+// The sitemap reflects the LIVE store per request — a listing that goes live
+// (or is archived) is in (or out) of the next crawl, not the next deploy.
+export const dynamic = "force-dynamic";
 import { publishedPosts } from "@/lib/cms";
-import { PRODUCTS } from "@/lib/sample";
 import { STORE_PROFILES } from "./(site)/_lib/data";
 
 /**
@@ -20,7 +24,8 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "weekly" as const,
     priority: p === "" ? 1 : 0.7,
   }));
-  const products = PRODUCTS.filter((p) => p.cls !== "MED_CANNABIS").map((p) => ({
+  // The LIVE store only — a draft or archived listing has no public URL to list.
+  const products = (await readLiveProducts()).filter((p) => p.cls !== "MED_CANNABIS").map((p) => ({
     url: `${base}/products/${p.slug}`,
     lastModified: now,
     changeFrequency: "daily" as const,

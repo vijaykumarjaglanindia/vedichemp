@@ -22,8 +22,10 @@ import {
 } from "lucide-react";
 import { ComplianceBadge, MoneyText, Rating } from "@/components/ui";
 import { AdBanner, AdSlot } from "@/components/ui/ads";
+import { liveByClasses } from "@/lib/catalog";
+import { findCategory, readCategories } from "@/lib/categories";
 import { CLASS_META, permittedClasses } from "@/lib/compliance";
-import { classProducts, PRODUCTS, type SampleProduct } from "@/lib/sample";
+import { type SampleProduct } from "@/lib/sample";
 import { addToCart } from "../cart/actions";
 import { toggleWishlist } from "../actions";
 
@@ -37,7 +39,7 @@ export async function generateMetadata(): Promise<Metadata> {
 }
 
 interface Params {
-  q?: string; class?: string; max?: string; min?: string; lab?: string;
+  q?: string; class?: string; cat?: string; max?: string; min?: string; lab?: string;
   rating?: string; sort?: string; view?: string;
 }
 
@@ -106,11 +108,19 @@ function ProductTile({ p, sponsored }: { p: SampleProduct; sponsored?: boolean }
 export default async function CataloguePage({ searchParams }: { searchParams: Promise<Params> }) {
   const params = await searchParams;
   const permitted = permittedClasses({ hasRx: false });
-  const all = classProducts(permitted);
+  // The LIVE catalogue store — seller-created listings appear here the moment
+  // they're approved; archived/suspended listings are structurally absent.
+  const all = await liveByClasses(permitted);
+  const categories = await readCategories();
 
   // ── Parse + validate filters (server is the authority) ──
   const q = (params.q ?? "").trim().toLowerCase();
-  const cls = permitted.includes(params.class as ComplianceClass) ? (params.class as ComplianceClass) : null;
+  let cls = permitted.includes(params.class as ComplianceClass) ? (params.class as ComplianceClass) : null;
+  // Admin-managed collection: its class/query filters compose with the rest.
+  // A hidden or deleted collection is simply ignored (absent, not erroring).
+  const cat = params.cat ? await findCategory(params.cat) : null;
+  const activeCat = cat && cat.visible ? cat : null;
+  if (activeCat?.cls && permitted.includes(activeCat.cls)) cls = activeCat.cls;
   const max = params.max ? parseInt(params.max, 10) : null;
   const min = params.min ? parseInt(params.min, 10) : null;
   const labOnly = params.lab === "1";
@@ -121,6 +131,10 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   // ── Apply ──
   let results = all.filter((p) => {
     if (cls && p.cls !== cls) return false;
+    if (activeCat?.q) {
+      const hay = `${p.title} ${p.seller} ${CLASS_META[p.cls].label}`;
+      if (!matchesQuery(hay, activeCat.q.toLowerCase())) return false;
+    }
     if (max !== null && !Number.isNaN(max) && p.pricePaise > max * 100) return false;
     if (min !== null && !Number.isNaN(min) && p.pricePaise < min * 100) return false;
     if (labOnly && !p.labVerified) return false;
@@ -144,6 +158,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
 
   // ── Applied chips ──
   const chips: { label: string; remove: string }[] = [];
+  if (activeCat) chips.push({ label: `${activeCat.emoji} ${activeCat.name}`, remove: href(params, { cat: null, class: null }) });
   if (q) chips.push({ label: `“${params.q}”`, remove: href(params, { q: null }) });
   if (cls) chips.push({ label: CLASS_META[cls].short, remove: href(params, { class: null }) });
   if (max !== null || min !== null) {
@@ -155,7 +170,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   if (labOnly) chips.push({ label: "Lab report", remove: href(params, { lab: null }) });
   if (minRating !== null) chips.push({ label: `★ ${minRating}+`, remove: href(params, { rating: null }) });
 
-  const sponsored = PRODUCTS.find((p) => p.cls === "CBD_WELLNESS" && p.labVerified);
+  const sponsored = all.find((p) => p.cls === "CBD_WELLNESS" && p.labVerified);
   const showSponsored = chips.length === 0 && view === "grid" && !!sponsored;
   const recentlyViewed = all.slice(0, 6);
 
@@ -187,6 +202,27 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
           </nav>
         </div>
       </div>
+
+      {/* Collections (admin-managed categories — Admin → Catalogue → Categories) */}
+      {categories.length > 0 && (
+        <nav aria-label="Collections" className="vh-row" style={{ gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+          {categories.map((c) => {
+            const on = activeCat?.id === c.id;
+            return (
+              <Link
+                key={c.id}
+                href={on ? href(params, { cat: null, class: null }) : href(params, { cat: c.slug, class: null })}
+                className={`vh-chip-x${on ? " on" : ""}`}
+                title={c.blurb}
+                aria-current={on ? "true" : undefined}
+                style={on ? { background: "var(--vh-green-100)", borderColor: "var(--vh-accent)", fontWeight: 700 } : undefined}
+              >
+                <span aria-hidden>{c.emoji}</span> {c.name}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
 
       {/* Applied filters */}
       {chips.length > 0 && (

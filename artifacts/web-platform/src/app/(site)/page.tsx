@@ -41,9 +41,9 @@ import { parseFaqs, parseGoals, parseHeadedBlocks, parseTestimonials, parseTiles
 import { SELLERS } from "@/lib/sample";
 import { ComplianceClass } from "@prisma/client";
 import {
-  DEALS,
-  FLASH_SALE,
-  PUBLIC_PRODUCTS,
+  deals,
+  flashSale,
+  publicProducts,
   sellerSlug,
 } from "./_lib/data";
 import { ProductCard } from "./_lib/ProductCard";
@@ -83,10 +83,13 @@ export default async function HomePage() {
   const educationPosts = (await publishedPosts()).slice(0, 3);
   const eduEmoji = ["🌾", "🧪", "🥗"];
 
-  const bestsellers = [...PUBLIC_PRODUCTS].sort((a, b) => b.rating - a.rating).slice(0, 8);
-  const heroTiles = PUBLIC_PRODUCTS.slice(0, 4);
+  const universe = await publicProducts();
+  const dealsList = await deals();
+  const flashSaleList = await flashSale();
+  const bestsellers = [...universe].sort((a, b) => b.rating - a.rating).slice(0, 8);
+  const heroTiles = universe.slice(0, 4);
   const featuredSellers = SELLERS.filter((s) => s.kycState === "KYC_APPROVED").slice(0, 3);
-  const adProduct = PUBLIC_PRODUCTS.find((p) => p.cls === "CBD_WELLNESS" && p.seller === "Vedic Botanicals");
+  const adProduct = universe.find((p) => p.cls === "CBD_WELLNESS" && p.seller === "Vedic Botanicals");
 
   return (
     <>
@@ -210,7 +213,7 @@ export default async function HomePage() {
             action={<Link href="/catalogue" className="small vh-row" style={{ gap: 4, fontWeight: 700 }}>All deals <ArrowRight size={14} strokeWidth={2.2} aria-hidden /></Link>}
           />
           <div className="vh-scroller" style={{ gridAutoColumns: "minmax(230px, 260px)" }}>
-            {DEALS.map((p) => (
+            {dealsList.map((p) => (
               <ProductCard key={p.id} p={p} />
             ))}
           </div>
@@ -230,7 +233,7 @@ export default async function HomePage() {
             <div style={{ display: "grid", gap: 12 }}>
               <AdSlot cls="CBD_WELLNESS" placement="home-sponsored-products" unstyled>
                 <div style={{ display: "grid", gap: 12 }}>
-                  {PUBLIC_PRODUCTS.filter((sp) => sp.seller === "Vedic Botanicals").slice(0, 3).map((sp) => (
+                  {universe.filter((sp) => sp.seller === "Vedic Botanicals").slice(0, 3).map((sp) => (
                     <Link key={sp.id} href={`/products/${sp.slug}`} className="vh-product-row" style={{ textDecoration: "none" }}>
                       <span className="vh-product-media" style={{ fontSize: "1.6rem" }} aria-hidden>{sp.emoji}</span>
                       <span style={{ minWidth: 0 }}>
@@ -260,7 +263,7 @@ export default async function HomePage() {
             </span>
           </div>
           <div className="vh-grid cols-4">
-            {FLASH_SALE.map((p) => (
+            {flashSaleList.map((p) => (
               <ProductCard key={p.id} p={p} />
             ))}
           </div>

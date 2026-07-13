@@ -15,12 +15,24 @@
  */
 
 import { cookies, headers } from "next/headers";
+import { ComplianceClass } from "@prisma/client";
+import { getSession } from "@/lib/auth-lite";
+import {
+  archiveListing,
+  createListing,
+  deleteListing,
+  findProduct,
+  restoreArchived,
+  submitCoa,
+  submitForReview,
+  unpublishListing,
+  updateListing,
+} from "@/lib/catalog";
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
 import { redirect } from "next/navigation";
 import {
   appendCampaign,
   appendCoupon,
-  appendSubmittedProduct,
   readSellerOrderOverrides,
   readSellerReplies,
   readStockAdds,
@@ -71,56 +83,98 @@ export async function sellerOrderAction(formData: FormData): Promise<void> {
   redirect(back);
 }
 
-/* ── Products: submit / save draft ────────────────────────── */
+/* ── Products: create / edit / lifecycle (the catalog store) ── */
 
 const SELLABLE_CLASSES = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
+const DEMO_STORE = "Vedic Botanicals"; // this session's storefront, per CONTRACT
 
-export async function submitProduct(formData: FormData): Promise<void> {
-  const cls = String(formData.get("cls") ?? "");
+interface ListingFields {
+  title: string; desc: string; pricePaise: number; mrpPaise: number; hsn: string;
+}
+
+/** Shared validation for create + edit. Returns the error key or the fields. */
+function readListingFields(formData: FormData): { err: string } | { fields: ListingFields } {
   const title = String(formData.get("title") ?? "").trim();
   const desc = String(formData.get("desc") ?? "").trim();
   const pricePaise = parseInt(String(formData.get("pricePaise") ?? ""), 10);
   const mrpPaise = parseInt(String(formData.get("mrpPaise") ?? ""), 10);
   const hsn = String(formData.get("hsn") ?? "").trim();
+  if (title.length < 8 || title.length > 150) return { err: "title" };
+  if (CLAIM_WORDS.test(title) || CLAIM_WORDS.test(desc)) return { err: "claims" };
+  if (!Number.isInteger(pricePaise) || pricePaise <= 0) return { err: "price" };
+  if (!Number.isInteger(mrpPaise) || mrpPaise < pricePaise) return { err: "mrp" };
+  if (!/^\d{4,8}$/.test(hsn)) return { err: "hsn" };
+  return { fields: { title, desc, pricePaise, mrpPaise, hsn } };
+}
+
+export async function submitProduct(formData: FormData): Promise<void> {
+  const cls = String(formData.get("cls") ?? "");
   const intent = String(formData.get("intent") ?? "submit");
 
   // A1/A2 boundary: MED_CANNABIS is not creatable here at all, and no path
-  // from this action reaches LIVE.
-  let err: string | null = null;
-  if (!SELLABLE_CLASSES.includes(cls)) err = "cls";
-  else if (title.length < 8 || title.length > 150) err = "title";
-  else if (CLAIM_WORDS.test(title) || CLAIM_WORDS.test(desc)) err = "claims";
-  else if (!Number.isInteger(pricePaise) || pricePaise <= 0) err = "price";
-  else if (!Number.isInteger(mrpPaise) || mrpPaise < pricePaise) err = "mrp";
-  else if (!/^\d{4,8}$/.test(hsn)) err = "hsn";
+  // from this action reaches LIVE — a human reviews every submission, and a
+  // regulated class additionally needs an approved, batch-matched CoA.
+  if (!SELLABLE_CLASSES.includes(cls)) redirect("/seller/products/new?err=cls");
+  const parsed = readListingFields(formData);
+  if ("err" in parsed) redirect(`/seller/products/new?err=${parsed.err}`);
+  const { fields } = parsed as { fields: ListingFields };
 
-  if (err) redirect(`/seller/products/new?err=${err}`);
-
-  await appendSubmittedProduct({
-    id: `sp-${Date.now().toString(36)}`,
-    title,
-    cls,
-    pricePaise,
-    mrpPaise,
-    hsn,
-    listingState: intent === "draft" ? "DRAFT" : "UNDER_REVIEW",
+  const session = await getSession();
+  const created = await createListing({
+    ...fields,
+    cls: cls as ComplianceClass,
+    emoji: "🆕",
+    seller: DEMO_STORE,
+    sellerEmail: session?.email ?? "seller@example.in",
   });
+  if (!created) redirect("/seller/products/new?err=cls");
+  if (intent !== "draft") await submitForReview(created!.id);
   redirect(`/seller/products?submitted=${intent === "draft" ? "draft" : "review"}`);
 }
 
-/* ── Products: publish (A2 gate re-checked server-side) ───── */
+export async function updateProductListing(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const parsed = readListingFields(formData);
+  if ("err" in parsed) redirect(`/seller/products/${id}?err=${parsed.err}`);
+  const ok = await updateListing(id, (parsed as { fields: ListingFields }).fields);
+  redirect(ok ? `/seller/products/${id}?saved=1` : "/seller/products");
+}
 
-export async function publishListing(formData: FormData): Promise<void> {
-  const productId = String(formData.get("productId") ?? "");
-  const product = SELLER_PRODUCTS.find((p) => p.id === productId);
+/**
+ * Lifecycle ops, server-validated against the state machine in lib/catalog:
+ * submit (DRAFT→UNDER_REVIEW), unpublish (LIVE→DRAFT), archive, restore
+ * (ARCHIVED→DRAFT), delete (custom drafts/archived only). Publishing to LIVE
+ * is NOT here — only an admin review approves a listing, and the A2 CoA gate
+ * is enforced inside the store where no button can bypass it.
+ */
+export async function productLifecycle(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const op = String(formData.get("op") ?? "");
+  const ops: Record<string, (x: string) => Promise<{ ok: boolean; reason?: string }>> = {
+    submit: submitForReview,
+    unpublish: unpublishListing,
+    archive: archiveListing,
+    restore: restoreArchived,
+    delete: deleteListing,
+  };
+  const run = ops[op];
+  if (!run) redirect("/seller/products");
+  const result = await run!(id);
+  if (op === "delete" && result.ok) redirect("/seller/products?deleted=1");
+  if (!result.ok) redirect(`/seller/products/${id}?err=${result.reason ?? "state"}`);
+  redirect(`/seller/products/${id}?done=${op}`);
+}
+
+/* ── Products: batch CoA submission (A2) ──────────────────── */
+
+export async function submitCoaForBatch(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const batchCode = String(formData.get("batchCode") ?? "").trim().toUpperCase();
+  if (!/^[A-Z0-9-]{4,20}$/.test(batchCode)) redirect(`/seller/products/${id}?err=batch`);
+  const product = await findProduct(id);
   if (!product) redirect("/seller/products");
-
-  // The button state in the UI is decoration — the gate is re-derived here.
-  // A regulated product with any batch lacking an APPROVED, batch-matched CoA
-  // cannot publish; the denied attempt is itself a logged event in production.
-  const gateOpen = product.batches.length > 0 && product.batches.every((b) => b.coaStatus === "APPROVED");
-  if (!gateOpen) redirect(`/seller/products/${productId}?err=coa`);
-  redirect(`/seller/products/${productId}?published=1`);
+  const result = await submitCoa(id, batchCode);
+  redirect(result.ok ? `/seller/products/${id}?coa=submitted` : `/seller/products/${id}?err=${result.reason}`);
 }
 
 /* ── Q&A replies (copy-checked) ───────────────────────────── */

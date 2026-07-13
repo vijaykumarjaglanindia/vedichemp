@@ -32,7 +32,8 @@ import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { CLASS_META, isRegulated } from "@/lib/compliance";
 import { aiProviderName, summarizeReviews } from "@/lib/ai";
 import { mdToHtml } from "@/lib/richtext";
-import { PRODUCTS, SELLERS } from "@/lib/sample";
+import { findLiveBySlug } from "@/lib/catalog";
+import { SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
 import { addBundleToCart, addToCart } from "../../cart/actions";
 import { askQuestion, submitReview, toggleWishlist } from "../../actions";
@@ -41,7 +42,7 @@ import {
   discountPct,
   frequentlyBoughtWith,
   PDP_QA,
-  PUBLIC_PRODUCTS,
+  publicProducts,
   sellerSlug,
   similarProducts,
   specsFor,
@@ -81,7 +82,7 @@ function checkPin(pin: string, cls: string): { ok: boolean; title: string; body:
 
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { slug } = await params;
-  const product = PRODUCTS.find((p) => p.slug === slug);
+  const product = await findLiveBySlug(slug);
   if (!product || product.cls === "MED_CANNABIS") {
     // A1: identical metadata for unknown and medical slugs — no partial reveal.
     return { title: "Product not available", robots: { index: false } };
@@ -104,7 +105,9 @@ export default async function ProductDetailPage({
 }) {
   const { slug } = await params;
   const { pin, review: reviewErr, q: qErr } = await searchParams;
-  const product = PRODUCTS.find((p) => p.slug === slug);
+  // The LIVE store only — a draft, suspended or archived listing gets the
+  // identical empty state as an unknown slug.
+  const product = await findLiveBySlug(slug);
 
   // A1: absent, not blurred — a public visitor gets the identical empty state
   // whether the slug is unknown or belongs to the medical-cannabis catalogue.
@@ -127,10 +130,10 @@ export default async function ProductDetailPage({
   const specs = specsFor(product);
   const reviewCount = reviewCountFor(product);
   const off = discountPct(product);
-  const fbt = frequentlyBoughtWith(product, 2);
+  const fbt = await frequentlyBoughtWith(product, 2);
   const bundlePaise = product.pricePaise + fbt.reduce((sum, x) => sum + x.pricePaise, 0);
-  const similar = similarProducts(product, 6);
-  const adProduct = PUBLIC_PRODUCTS.find((p) => p.cls === "CBD_WELLNESS" && p.id !== product.id);
+  const similar = await similarProducts(product, 6);
+  const adProduct = (await publicProducts()).find((p) => p.cls === "CBD_WELLNESS" && p.id !== product.id);
   const pinResult = pin !== undefined ? checkPin(pin, product.cls) : null;
   const myReview = (await readMyReviews())[product.slug];
   const myQuestion = (await readMyQuestions())[product.slug];

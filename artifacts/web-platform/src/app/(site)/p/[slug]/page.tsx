@@ -15,7 +15,7 @@ import { getSession } from "@/lib/auth-lite";
 import { findMedia, findPage, type Block } from "@/lib/pagebuilder";
 import { mdToHtml } from "@/lib/richtext";
 import { parseFaqs } from "@/lib/sitecontent";
-import { PUBLIC_PRODUCTS } from "../../_lib/data";
+import { publicProducts } from "../../_lib/data";
 import { ProductCard } from "../../_lib/ProductCard";
 
 export const dynamic = "force-dynamic";
@@ -56,7 +56,8 @@ async function BlockView({ block }: { block: Block }) {
       );
     case "products": {
       const cls = (p.cls ?? "TOP").toUpperCase();
-      const items = (cls === "TOP" ? [...PUBLIC_PRODUCTS].sort((a, b) => b.rating - a.rating) : PUBLIC_PRODUCTS.filter((x) => x.cls === cls)).slice(0, 4);
+      const universe = await publicProducts();
+      const items = (cls === "TOP" ? [...universe].sort((a, b) => b.rating - a.rating) : universe.filter((x) => x.cls === cls)).slice(0, 4);
       return (
         <section className="vh-section" style={{ paddingBottom: 0 }}>
           <div className="vh-container">

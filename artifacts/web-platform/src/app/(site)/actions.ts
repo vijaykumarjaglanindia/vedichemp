@@ -12,8 +12,8 @@
 import { cookies, headers } from "next/headers";
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
 import { redirect } from "next/navigation";
+import { readLiveProducts } from "@/lib/catalog";
 import { permittedClasses } from "@/lib/compliance";
-import { PRODUCTS } from "@/lib/sample";
 import {
   readFollows,
   readMyQuestions,
@@ -39,15 +39,15 @@ async function backPath(fallback = "/"): Promise<string> {
   }
 }
 
-function isWishable(productId: string): boolean {
+async function isWishable(productId: string): Promise<boolean> {
   const permitted = permittedClasses({ hasRx: false });
-  return PRODUCTS.some((p) => p.id === productId && permitted.includes(p.cls));
+  return (await readLiveProducts()).some((p) => p.id === productId && permitted.includes(p.cls));
 }
 
 export async function toggleWishlist(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");
   const back = await backPath();
-  if (!isWishable(id)) redirect(back); // A1: medical ids never enter the list
+  if (!(await isWishable(id))) redirect(back); // A1: medical ids never enter the list
   const list = await readWishlist();
   await writeWishlist(list.includes(id) ? list.filter((x) => x !== id) : [id, ...list]);
   redirect(back);
@@ -62,7 +62,7 @@ export async function removeFromWishlist(formData: FormData): Promise<void> {
 /** Move a wishlist line into the cart (adds 1, drops it from the wishlist). */
 export async function moveWishlistItemToCart(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");
-  if (!isWishable(id)) redirect("/account/wishlist");
+  if (!(await isWishable(id))) redirect("/account/wishlist");
   const lines = await readCartLines();
   const existing = lines.find((l) => l.id === id);
   if (existing) existing.qty = Math.min(existing.qty + 1, 10);
@@ -102,7 +102,7 @@ export async function submitReview(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");
   const rating = parseInt(String(formData.get("rating") ?? ""), 10);
   const text = String(formData.get("text") ?? "").trim();
-  const product = PRODUCTS.find((p) => p.id === id);
+  const product = (await readLiveProducts()).find((p) => p.id === id);
   if (!product) redirect("/catalogue");
 
   const back = `/products/${product!.slug}#reviews`;
@@ -123,7 +123,7 @@ export async function submitReview(formData: FormData): Promise<void> {
 export async function askQuestion(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");
   const text = String(formData.get("text") ?? "").trim();
-  const product = PRODUCTS.find((p) => p.id === id);
+  const product = (await readLiveProducts()).find((p) => p.id === id);
   if (!product) redirect("/catalogue");
   if (text.length < 10 || text.length > 300) redirect(`/products/${product!.slug}?q=short#qa`);
 
