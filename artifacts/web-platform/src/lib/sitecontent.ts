@@ -72,7 +72,7 @@ export const SITE_FIELDS: SiteField[] = [
   {
     key: "navHeader", group: "Menus", label: "Header navigation", kind: "rich", max: 400,
     help: "One link per line: Label | /path. The Shop mega-panel stays automatic.",
-    def: "- All products | /catalogue\n- How it works | /trust\n- About | /about",
+    def: "- All products | /catalogue\n- How it works | /trust\n- Help | /help\n- About | /about",
   },
   {
     key: "footerShop", group: "Menus", label: "Footer — Shop column", kind: "rich", max: 500,
@@ -84,7 +84,7 @@ export const SITE_FIELDS: SiteField[] = [
   },
   {
     key: "footerCompany", group: "Menus", label: "Footer — Company column", kind: "rich", max: 500,
-    def: "- About Vedic Hemp | /about\n- Wellness journal | /blog\n- My account | /account\n- Featured stores | /store/vedic-botanicals",
+    def: "- Help Centre | /help\n- About Vedic Hemp | /about\n- Wellness journal | /blog\n- My account | /account\n- Featured stores | /store/vedic-botanicals",
   },
   {
     key: "footerPartners", group: "Menus", label: "Footer — Partners column", kind: "rich", max: 500,

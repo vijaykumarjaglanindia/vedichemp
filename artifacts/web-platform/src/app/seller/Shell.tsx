@@ -51,7 +51,10 @@ const SELLER_NAV: NavGroup[] = [
   },
   {
     group: "Store",
-    items: [{ href: "/seller/store", label: "Store & KYC", icon: <Store {...I} /> }],
+    items: [
+      { href: "/seller/store", label: "Store & KYC", icon: <Store {...I} /> },
+      { href: "/seller/help", label: "Help & guide", icon: <Sparkles {...I} /> },
+    ],
   },
 ];
 
