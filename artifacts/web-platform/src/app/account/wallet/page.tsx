@@ -105,6 +105,26 @@ export default function WalletPage() {
           <DataTable columns={columns} rows={LEDGER} />
         </Card>
 
+        <div className="vh-grid cols-2">
+          <Card title="Vedic Points — loyalty">
+            <div className="vh-stat-value tabular" style={{ marginBottom: 4 }}>1,240 pts</div>
+            <p className="small muted" style={{ margin: 0 }}>
+              5 points per ₹100 on delivered orders; 100 points = ₹10 wallet credit at checkout.
+              Points post when the return window closes, and they never expire while your account
+              stays active. Computed by the platform from verified orders only.
+            </p>
+          </Card>
+          <Card title="Refer & earn">
+            <p className="small" style={{ marginTop: 0 }}>
+              Your code: <strong className="mono" style={{ color: "var(--vh-ink)" }}>VEDIC-ASHA-21</strong>
+            </p>
+            <p className="small muted" style={{ margin: 0 }}>
+              Friends get ₹200 off their first order above ₹999; you get ₹200 wallet credit when it
+              delivers. Referral credits appear in the ledger above — same append-only rules.
+            </p>
+          </Card>
+        </div>
+
         <Card title="If your balance ever goes negative">
           <p className="small muted" style={{ margin: 0 }}>
             A negative wallet balance can occur when a promo credit is clawed back after a return. It is

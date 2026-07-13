@@ -30,6 +30,7 @@ import { Banner, Card, ComplianceBadge, EmptyState, MoneyText, Rating } from "@/
 import { AdBanner, AdSlot } from "@/components/ui/ads";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { CLASS_META, isRegulated } from "@/lib/compliance";
+import { aiProviderName, summarizeReviews } from "@/lib/ai";
 import { mdToHtml } from "@/lib/richtext";
 import { PRODUCTS, SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
@@ -279,6 +280,16 @@ export default async function ProductDetailPage({
                 </li>
               </ul>
               <div style={{ marginTop: "var(--sp-3)", borderTop: "1px solid var(--vh-line)", paddingTop: "var(--sp-3)" }}>
+                {/* AI review summary — provider seam in lib/ai.ts; labelled, never a claim */}
+                <div id="ai-summary" style={{ background: "var(--vh-green-50)", border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "12px 14px", marginBottom: "var(--sp-3)" }}>
+                  <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}>
+                    <span className="vh-pill vh-pill-info">AI summary</span>
+                    <span className="small muted">from verified-purchase reviews · engine: {aiProviderName()}</span>
+                  </div>
+                  <p className="small" style={{ margin: 0 }}>
+                    {summarizeReviews({ title: product.title, rating: product.rating, reviewCount, labVerified: product.labVerified })}
+                  </p>
+                </div>
                 {myReview ? (
                   <div>
                     <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
@@ -548,7 +559,14 @@ export default async function ProductDetailPage({
       {/* ── Similar products ──────────────────────────────── */}
       {similar.length > 0 && (
         <section className="vh-section" style={{ paddingBottom: 0 }}>
-          <h2 className="vh-display" style={{ fontSize: "1.3rem", marginBottom: "var(--sp-3)" }}>Similar products</h2>
+          <div className="vh-row-between" style={{ marginBottom: "var(--sp-3)" }}>
+            <h2 className="vh-display" style={{ fontSize: "1.3rem", margin: 0 }}>Similar products</h2>
+            {similar[0] && (
+              <Link href={`/compare?a=${product.slug}&b=${similar[0].slug}`} className="small" style={{ fontWeight: 700 }}>
+                Compare side by side →
+              </Link>
+            )}
+          </div>
           <div className="vh-scroller" style={{ gridAutoColumns: "minmax(220px, 250px)" }}>
             {similar.map((p) => (
               <ProductCard key={p.id} p={p} />

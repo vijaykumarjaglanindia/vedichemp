@@ -14,6 +14,10 @@ export interface OpenRecall {
 }
 
 export interface CommissionScheduleRow {
+  /** Which level this schedule binds: GLOBAL | CATEGORY | SELLER | PRODUCT. */
+  scope?: "GLOBAL" | "CATEGORY" | "SELLER" | "PRODUCT";
+  /** Class name, seller name, product slug — or "GLOBAL". */
+  target: string;
   cls: string;
   ratePct: number;
   noticeSentAt: string; // ISO date the change notice went to sellers

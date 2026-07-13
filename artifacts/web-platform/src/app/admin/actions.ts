@@ -17,7 +17,8 @@ import { PERIOD_CLOSE_CHECKLIST } from "./_lib/data";
 import { MAX_BODY, SAMPLE_POSTS, deletePostOverride, findPost, slugify, writePostOverride } from "@/lib/cms";
 import { getSession } from "@/lib/auth-lite";
 import { writeAudit } from "@/lib/audit";
-import { addCommission, minEffectiveFrom, readOpenRecall, setOpenRecall } from "@/lib/adminstate";
+import { addCommission, minEffectiveFrom, readCommissions, readOpenRecall, setOpenRecall } from "@/lib/adminstate";
+import { LAUNCH_COMMISSION_PCT } from "@/lib/commissions";
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
 import { SITE_FIELDS, writeSiteContent } from "@/lib/sitecontent";
 
@@ -76,25 +77,38 @@ export async function closeRecall(): Promise<void> {
 /* ── Finance: commission schedules (A5 — 30-day notice, never retroactive) ── */
 
 export async function saveCommissionSchedule(formData: FormData): Promise<void> {
+  const scope = String(formData.get("scope") ?? "CATEGORY") as "GLOBAL" | "CATEGORY" | "SELLER" | "PRODUCT";
   const cls = String(formData.get("cls") ?? "");
+  const freeTarget = String(formData.get("target") ?? "").trim().slice(0, 80);
   const ratePct = Number(formData.get("ratePct"));
   const effectiveFrom = String(formData.get("effectiveFrom") ?? "");
   const who = await actor();
 
-  if (!["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS", "MED_CANNABIS"].includes(cls)) redirect("/admin/finance/commissions?cs=cls");
+  if (!["GLOBAL", "CATEGORY", "SELLER", "PRODUCT"].includes(scope)) redirect("/admin/finance/commissions?cs=cls");
+  const target = scope === "GLOBAL" ? "GLOBAL" : scope === "CATEGORY" ? cls : freeTarget;
+  if (scope === "CATEGORY" && !["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS", "MED_CANNABIS"].includes(cls)) redirect("/admin/finance/commissions?cs=cls");
+  if ((scope === "SELLER" || scope === "PRODUCT") && !target) redirect("/admin/finance/commissions?cs=target");
   if (!Number.isFinite(ratePct) || ratePct <= 0 || ratePct > 40) redirect("/admin/finance/commissions?cs=rate");
 
-  // A5: the notice goes out today; the schedule cannot take effect for 30
-  // days — mirrored by CHECK a5_thirty_day_notice on CommissionSchedule.
+  // A5 protects sellers from INCREASES: a rise needs 30 days' notice
+  // (mirrored by CHECK a5_thirty_day_notice). A decrease only ever benefits
+  // the seller and may apply from today.
+  const rows = await readCommissions();
+  const today = new Date().toISOString().slice(0, 10);
+  const current =
+    rows.find((r) => (r.scope ?? "CATEGORY") === scope && r.target === target && r.effectiveFrom <= today)?.ratePct
+    ?? LAUNCH_COMMISSION_PCT;
+  const isIncrease = ratePct > current;
   const noticeSentAt = new Date();
   const from = new Date(`${effectiveFrom}T00:00:00Z`);
-  if (!effectiveFrom || Number.isNaN(from.getTime()) || from < minEffectiveFrom(noticeSentAt)) {
-    await writeAudit({ actor: who, action: "COMMISSION_SCHEDULE", target: cls, outcome: "DENIED", note: `A5: effectiveFrom ${effectiveFrom || "(empty)"} inside 30-day notice window` });
+  if (!effectiveFrom || Number.isNaN(from.getTime())) redirect("/admin/finance/commissions?cs=date");
+  if (isIncrease && from < minEffectiveFrom(noticeSentAt)) {
+    await writeAudit({ actor: who, action: "COMMISSION_SCHEDULE", target: `${scope}:${target}`, outcome: "DENIED", note: `A5: increase to ${ratePct}% (from ${current}%) inside 30-day notice window` });
     redirect("/admin/finance/commissions?cs=date");
   }
 
-  await addCommission({ cls, ratePct, noticeSentAt: noticeSentAt.toISOString().slice(0, 10), effectiveFrom, by: who });
-  await writeAudit({ actor: who, action: "COMMISSION_SCHEDULE", target: `${cls} → ${ratePct}%`, outcome: "OK", note: `effective ${effectiveFrom}, notice ${noticeSentAt.toISOString().slice(0, 10)}` });
+  await addCommission({ scope, target, cls: scope === "CATEGORY" ? cls : "", ratePct, noticeSentAt: noticeSentAt.toISOString().slice(0, 10), effectiveFrom, by: who });
+  await writeAudit({ actor: who, action: "COMMISSION_SCHEDULE", target: `${scope}:${target} → ${ratePct}%`, outcome: "OK", note: `effective ${effectiveFrom}, notice ${noticeSentAt.toISOString().slice(0, 10)}${isIncrease ? "" : " (decrease — immediate allowed)"}` });
   redirect("/admin/finance/commissions?cs=saved");
 }
 
