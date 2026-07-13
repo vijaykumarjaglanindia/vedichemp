@@ -9,7 +9,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { LayoutDashboard, Store, UserRound } from "lucide-react";
+import { Store, UserRound } from "lucide-react";
 import { Banner } from "@/components/ui";
 import { withBase } from "@/lib/base";
 import { pendingOtpPreview, requestOtp, signIn, verifyOtp } from "./actions";
@@ -25,8 +25,9 @@ const ERRORS: Record<string, string> = {
   "otp-wrong": "That code doesn't match — check the SMS and try again.",
 };
 
-export default async function SignInPage({ searchParams }: { searchParams: Promise<{ err?: string; next?: string; bye?: string; otp?: string }> }) {
-  const { err, next, bye, otp } = await searchParams;
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ err?: string; next?: string; bye?: string; otp?: string; as?: string }> }) {
+  const { err, next, bye, otp, as: asRole } = await searchParams;
+  const preselect = asRole === "seller" ? "SELLER" : "BUYER";
   const otpPreview = otp === "sent" ? await pendingOtpPreview() : null;
 
   return (
@@ -67,10 +68,9 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
             {[
               { value: "BUYER", icon: UserRound, label: "Buyer", sub: "Shop, track orders, manage prescriptions" },
               { value: "SELLER", icon: Store, label: "Seller", sub: "Seller Central — listings, orders, settlements" },
-              { value: "ADMIN", icon: LayoutDashboard, label: "Marketplace admin", sub: "Operations console (passkey-gated in production)" },
             ].map(({ value, icon: Icon, label, sub }) => (
               <label key={value} className="vh-row" style={{ gap: 12, border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "11px 13px", cursor: "pointer", alignItems: "flex-start" }}>
-                <input type="radio" name="role" value={value} defaultChecked={value === "BUYER"} style={{ marginTop: 3, accentColor: "var(--vh-accent)" }} />
+                <input type="radio" name="role" value={value} defaultChecked={value === preselect} style={{ marginTop: 3, accentColor: "var(--vh-accent)" }} />
                 <Icon size={16} aria-hidden style={{ color: "var(--vh-accent)", marginTop: 2, flexShrink: 0 }} />
                 <span>
                   <span style={{ fontWeight: 600, color: "var(--vh-ink)", display: "block" }}>{label}</span>

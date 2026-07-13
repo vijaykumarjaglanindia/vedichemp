@@ -108,6 +108,21 @@ const chromeCss = `
   border: 1.5px solid var(--vh-surface);
 }
 @media (max-width: 900px) { .vhx-hide-sm { display: none !important; } }
+/* Sign-in dropdown — same pattern as the mobile menu, always visible */
+.vhx-signin { position: relative; }
+.vhx-signin > summary { list-style: none; cursor: pointer; }
+.vhx-signin > summary::-webkit-details-marker { display: none; }
+.vhx-signin-panel {
+  position: absolute; right: 0; top: calc(100% + 8px); width: min(240px, 88vw);
+  background: var(--vh-bg-raised); border: 1px solid var(--vh-line);
+  border-radius: var(--vh-radius); box-shadow: var(--vh-shadow-lg);
+  padding: 10px; display: grid; gap: 2px; z-index: 70;
+}
+.vhx-signin-panel a {
+  display: block; padding: 9px 12px; border-radius: 8px;
+  font-weight: 600; font-size: .9rem; color: var(--vh-ink);
+}
+.vhx-signin-panel a:hover { background: var(--vh-bg-subtle); }
 /* Mobile menu — <details>-based, works without JS */
 .vhx-mnav { display: none; position: relative; }
 @media (max-width: 900px) { .vhx-mnav { display: block; } }

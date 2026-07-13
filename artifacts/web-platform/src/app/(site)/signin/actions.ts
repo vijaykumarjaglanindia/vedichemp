@@ -25,6 +25,11 @@ export async function signIn(formData: FormData): Promise<void> {
     redirect(`/signin?err=email${next ? `&next=${encodeURIComponent(next)}` : ""}`);
   }
   if (!["BUYER", "SELLER", "ADMIN"].includes(role)) redirect("/signin?err=role");
+  // The public sign-in page has no admin option at all (WordPress-style:
+  // operators use the unlisted /vh-admin door). Real protection is the
+  // passkey ceremony that replaces this issuer; the gate keeps the public
+  // form from ever minting an admin session.
+  if (role === "ADMIN" && String(formData.get("gate")) !== "vh-admin") redirect("/signin?err=role");
 
   const name = (email.split("@")[0] ?? "there").replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   await createSession({ email, name, role, provider: "email" });

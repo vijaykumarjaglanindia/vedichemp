@@ -46,9 +46,19 @@ export function HeaderBits() {
           {user.split(" ")[0]}
         </Link>
       ) : (
-        <Link href="/signin" className="vh-btn vh-btn-ghost vh-btn-sm vhx-hide-sm">
-          Sign in
-        </Link>
+        <details className="vhx-signin">
+          <summary
+            className="vh-btn vh-btn-ghost vh-btn-sm"
+            style={{ listStyle: "none", cursor: "pointer", width: "auto", height: "auto", border: "1px solid var(--vh-line)" }}
+          >
+            Sign in <span aria-hidden style={{ fontSize: ".7em" }}>▾</span>
+          </summary>
+          <nav className="vhx-signin-panel" aria-label="Sign in as">
+            <Link href="/signin?as=buyer">As a buyer</Link>
+            <Link href="/signin?as=seller">As a seller</Link>
+            <Link href="/sell" style={{ color: "var(--vh-accent)" }}>New seller? Start here</Link>
+          </nav>
+        </details>
       )}
     </>
   );
