@@ -718,3 +718,64 @@ export async function adminBulkUpload(formData: FormData): Promise<void> {
   });
   redirect("/admin/catalogue/products?bulk=1");
 }
+
+/* ── Orders: oversight + returns adjudication (buyer-first) ── */
+
+import {
+  approveReturn as ordApproveReturn,
+  findOrder as ordFind,
+  markSellerRecovered as ordMarkRecovered,
+  refundBuyer as ordRefundBuyer,
+  rejectReturn as ordRejectReturn,
+} from "@/lib/orders";
+
+/**
+ * Issue the refund to the buyer. The constitution's load-bearing move: the
+ * buyer's money moves NOW and a separate seller-recovery ledger opens as
+ * PENDING — the platform pursues the seller afterwards, never blocking the
+ * buyer. Works on a requested OR seller-approved return.
+ */
+export async function adminRefundBuyer(formData: FormData): Promise<void> {
+  const reference = String(formData.get("reference") ?? "").slice(0, 30);
+  const who = await actor();
+  const result = await ordRefundBuyer(reference, who);
+  if (!result.ok) redirect(`/admin/orders?err=${result.reason}#returns`);
+  await writeAudit({ actor: who, action: "REFUND_BUYER", target: reference, outcome: "OK", note: "buyer refunded first; seller recovery opened" });
+  redirect("/admin/orders?refunded=1#returns");
+}
+
+/** Approve a return without refunding yet (hands it to the settlement step). */
+export async function adminApproveReturn(formData: FormData): Promise<void> {
+  const reference = String(formData.get("reference") ?? "").slice(0, 30);
+  const who = await actor();
+  const result = await ordApproveReturn(reference, who);
+  if (!result.ok) redirect(`/admin/orders?err=${result.reason}#returns`);
+  await writeAudit({ actor: who, action: "RETURN_APPROVE", target: reference, outcome: "OK" });
+  redirect("/admin/orders?approved=1#returns");
+}
+
+/** Reject a return with a written reason the buyer sees (≥ 20 chars). */
+export async function adminRejectReturn(formData: FormData): Promise<void> {
+  const reference = String(formData.get("reference") ?? "").slice(0, 30);
+  const note = String(formData.get("note") ?? "").trim();
+  const who = await actor();
+  const order = await ordFind(reference);
+  if (!order) redirect("/admin/orders");
+  const result = await ordRejectReturn(reference, who, note);
+  if (!result.ok) {
+    await writeAudit({ actor: who, action: "RETURN_REJECT", target: reference, outcome: "DENIED", note: result.reason === "note" ? "note under 20 chars" : result.reason });
+    redirect(`/admin/orders?err=${result.reason}#returns`);
+  }
+  await writeAudit({ actor: who, action: "RETURN_REJECT", target: reference, outcome: "OK", note });
+  redirect("/admin/orders?rejected=1#returns");
+}
+
+/** Settle the seller-recovery ledger after the fact (recovery ≠ buyer refund). */
+export async function adminMarkRecovered(formData: FormData): Promise<void> {
+  const reference = String(formData.get("reference") ?? "").slice(0, 30);
+  const who = await actor();
+  const result = await ordMarkRecovered(reference, who);
+  if (!result.ok) redirect(`/admin/orders?err=${result.reason}#recovery`);
+  await writeAudit({ actor: who, action: "SELLER_RECOVERY", target: reference, outcome: "OK", note: "recovery settled" });
+  redirect("/admin/orders?recovered=1#recovery");
+}

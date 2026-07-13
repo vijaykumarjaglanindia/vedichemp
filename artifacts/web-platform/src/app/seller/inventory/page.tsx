@@ -9,15 +9,43 @@
 import type { Metadata } from "next";
 import { Hourglass, RotateCcw, Warehouse as WarehouseIcon } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, DataTable, StatusPill, Stat, type Column } from "@/components/ui";
+import { Banner, Card, DataTable, StatusPill, Stat, MoneyText, type Column } from "@/components/ui";
 import { Donut } from "@/components/ui/charts";
+import { getSession } from "@/lib/auth-lite";
+import { isLowStock, sellerListings, type CatalogProduct } from "@/lib/catalog";
 import { readStockAdds } from "@/lib/engage";
 import { WAREHOUSE_STOCK, LOW_STOCK_THRESHOLD, type WarehouseStock } from "../_lib/data";
-import { addStock } from "../actions";
+import { addStock, saveStock } from "../actions";
 
 export const metadata: Metadata = { title: "Inventory" };
 
-export default async function InventoryPage() {
+export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
+  const { saved } = await searchParams;
+  const session = await getSession();
+  // The stock that actually gates purchases: the live catalog store's on-hand
+  // quantity per listing. An order decrements it; zero blocks add-to-cart.
+  const listings = (await sellerListings(session?.email ?? "seller@example.in", "Vedic Botanicals"))
+    .filter((p) => p.status === "LIVE" || p.status === "DRAFT" || p.status === "UNDER_REVIEW");
+  const lowCount = listings.filter((p) => isLowStock(p)).length;
+  const outCount = listings.filter((p) => p.stockQty === 0).length;
+
+  const listingCols: Column<CatalogProduct>[] = [
+    { key: "product", header: "Listing", render: (p) => <span className="vh-row" style={{ gap: 8 }}><span aria-hidden>{p.emoji}</span><span style={{ fontWeight: 600 }}>{p.title}</span></span> },
+    { key: "price", header: "Price", align: "right", render: (p) => <MoneyText paise={p.pricePaise} /> },
+    { key: "onhand", header: "On hand", align: "right", render: (p) => (
+        <StatusPill tone={p.stockQty === 0 ? "danger" : isLowStock(p) ? "warn" : "ok"}>
+          {p.stockQty === 0 ? "Out of stock" : `${p.stockQty} left${isLowStock(p) ? " · low" : ""}`}
+        </StatusPill>
+      ) },
+    { key: "set", header: "Set stock / low-at", align: "right", render: (p) => (
+        <form action={saveStock} className="vh-row" style={{ gap: 6, justifyContent: "flex-end" }}>
+          <input type="hidden" name="productId" value={p.id} />
+          <input className="vh-input" name="stockQty" type="number" min={0} defaultValue={p.stockQty} style={{ width: 90 }} aria-label={`On-hand stock for ${p.title}`} />
+          <input className="vh-input" name="lowStockAt" type="number" min={0} defaultValue={p.lowStockAt} style={{ width: 80 }} aria-label={`Low-stock threshold for ${p.title}`} />
+          <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">Save</button>
+        </form>
+      ) },
+  ];
   const isLow = (w: WarehouseStock) => w.qty - w.reserved < LOW_STOCK_THRESHOLD && w.qty - w.reserved > 0;
   const isOut = (w: WarehouseStock) => w.qty - w.reserved <= 0;
 
@@ -72,6 +100,23 @@ export default async function InventoryPage() {
       title="Inventory"
       actions={<a className="vh-btn vh-btn-sm vh-btn-primary" href="#restock">Add stock</a>}
     >
+      {saved && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="ok" title="Stock updated">The new on-hand quantity is live — it gates add-to-cart and checkout immediately.</Banner></div>}
+
+      {/* Live listing stock — the quantity that actually gates purchases */}
+      <div style={{ marginBottom: "var(--sp-4)" }}>
+        <Card
+          title={<span className="vh-row" style={{ gap: 8 }}><WarehouseIcon size={16} strokeWidth={2.2} aria-hidden /> Live listing stock</span>}
+          action={<StatusPill tone={outCount ? "danger" : lowCount ? "warn" : "ok"}>{outCount} out · {lowCount} low</StatusPill>}
+          pad0
+        >
+          <DataTable columns={listingCols} rows={listings} empty={<div className="vh-empty">No listings yet.</div>} />
+        </Card>
+        <p className="small muted" style={{ marginTop: 8 }}>
+          On-hand is the server&rsquo;s authority on stock: an order decrements it, a return/cancel restocks it, and a
+          listing at zero cannot be added to a cart or bought — no overselling. &ldquo;Low-at&rdquo; sets the amber threshold.
+        </p>
+      </div>
+
       <div className="vh-grid cols-2" style={{ alignItems: "start", marginBottom: "var(--sp-4)" }}>
         <Card title="Stock health">
           <div className="vh-row" style={{ gap: 24, alignItems: "center" }}>

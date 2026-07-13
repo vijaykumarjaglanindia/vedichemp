@@ -35,6 +35,8 @@ export interface PricedLine {
   product: SampleProduct;
   qty: number;
   linePaise: number;
+  stockQty: number; // on-hand at pricing time; the cap the buyer can order
+  capped: boolean; // true if requested qty was trimmed to available stock
 }
 
 export interface PricedCart {
@@ -119,8 +121,12 @@ export async function priceCart(): Promise<PricedCart> {
   for (const line of lines) {
     const product = catalogue.find((p) => p.id === line.id && permitted.includes(p.cls));
     if (!product) continue;
-    const qty = Math.min(line.qty, MAX_QTY);
-    priced.push({ product, qty, linePaise: product.pricePaise * qty });
+    // Out-of-stock lines drop out entirely; in-stock lines are capped at what's
+    // actually on hand — the server never prices in units it cannot fulfil.
+    if (product.stockQty <= 0) continue;
+    const requested = Math.min(line.qty, MAX_QTY);
+    const qty = Math.min(requested, product.stockQty);
+    priced.push({ product, qty, linePaise: product.pricePaise * qty, stockQty: product.stockQty, capped: qty < requested });
   }
   const subtotalPaise = priced.reduce((n, l) => n + l.linePaise, 0);
   const commerce = await readCommerce();

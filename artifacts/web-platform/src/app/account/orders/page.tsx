@@ -12,7 +12,9 @@ import { Eye, FileDown, MapPin } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
 import { ORDERS, type SampleOrder } from "@/lib/sample";
-import { readOrderHistory, readReturns } from "@/lib/engage";
+import { readReturns } from "@/lib/engage";
+import { getSession } from "@/lib/auth-lite";
+import { ordersForBuyer } from "@/lib/orders";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -23,7 +25,7 @@ const FILTERS = [
   { key: "returned", label: "Returned" },
 ] as const;
 
-const OPEN_STATUSES = new Set(["OUT_FOR_DELIVERY", "SHIPPED", "PACKED", "PENDING"]);
+const OPEN_STATUSES = new Set(["OUT_FOR_DELIVERY", "SHIPPED", "PACKED", "PENDING", "PLACED", "ACCEPTED"]);
 
 export default async function OrdersPage({
   searchParams,
@@ -33,17 +35,18 @@ export default async function OrdersPage({
   const params = await searchParams;
   const filter = params.filter ?? "all";
 
-  // Orders actually placed in this session (demo persistence — becomes
-  // db.order.findMany with a real database). They surface ahead of the
-  // illustrative history and behave like any PENDING order.
-  const placed: SampleOrder[] = (await readOrderHistory()).map((o) => ({
+  // Real orders from the order store, scoped to this buyer, routed as
+  // `live-<reference>`. They carry a genuine lifecycle status set by
+  // fulfilment/return actions — not a fixed PENDING.
+  const session = await getSession();
+  const placed: SampleOrder[] = (await ordersForBuyer(session?.email ?? "guest@vedichemp.in")).map((o) => ({
     id: `live-${o.reference}`,
     reference: o.reference,
     placedAt: o.placedAt.slice(0, 10),
-    status: "PENDING",
+    status: o.status,
     totalPaise: o.totalPaise,
     items: o.items.map(({ title, qty, emoji }) => ({ title, qty, emoji })),
-    eta: "3–5 days",
+    eta: o.status === "DELIVERED" || o.status === "REFUNDED" || o.status === "CANCELLED" ? undefined : "3–5 days",
     seller: o.items[0]?.seller,
   }));
 
@@ -53,7 +56,7 @@ export default async function OrdersPage({
     .filter((o) => {
     if (filter === "open") return OPEN_STATUSES.has(o.status);
     if (filter === "delivered") return o.status === "DELIVERED";
-    if (filter === "returned") return o.status === "RETURNED" || o.status === "RETURN_REQUESTED";
+    if (filter === "returned") return ["RETURNED", "RETURN_REQUESTED", "RETURN_APPROVED", "REFUNDED", "CANCELLED"].includes(o.status);
     return true;
   });
 

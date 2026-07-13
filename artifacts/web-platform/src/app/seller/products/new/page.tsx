@@ -186,6 +186,11 @@ export default async function NewProductPage({
                 <input className="vh-input mono" id="hsn" name="hsn" type="text" maxLength={8} placeholder="33049910" />
                 <span className="vh-help">0/8 · Determines the GST rate on every invoice line.</span>
               </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="stockQty">Opening stock (units)</label>
+                <input className="vh-input" id="stockQty" name="stockQty" type="number" min={0} step={1} defaultValue={25} placeholder="25" />
+                <span className="vh-help">On-hand units once live. Adjust any time in Inventory; zero means out of stock.</span>
+              </div>
             </div>
           </Card>
 

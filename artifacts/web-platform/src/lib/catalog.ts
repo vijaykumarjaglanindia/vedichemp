@@ -46,10 +46,16 @@ export interface CatalogProduct extends SampleProduct {
    * the form) until compliance clears the flag — the attempt is audited.
    */
   claimsStrike?: boolean;
+  /** On-hand sellable units. The server is the authority on stock: an order
+   *  decrements it, a return that restocks adds it back, and a listing with
+   *  zero stock cannot be added to a cart or bought (fail closed). */
+  stockQty: number;
+  lowStockAt: number; // seller-set threshold for the low-stock signal
 }
 
 /* Launch fixtures → store defaults. CBD items launched with approved batches. */
 const DEFAULT_BATCH: Record<string, string> = { p4: "VB-2405", p5: "VB-2408", p8: "VB-2401" };
+const DEFAULT_STOCK: Record<string, number> = { p1: 120, p2: 64, p3: 8, p4: 96, p5: 40, p6: 210, p7: 150, p8: 3 };
 const DEFAULTS: CatalogProduct[] = PRODUCTS.map((p) => ({
   ...p,
   desc: "",
@@ -58,6 +64,8 @@ const DEFAULTS: CatalogProduct[] = PRODUCTS.map((p) => ({
   coaState: p.labVerified ? "APPROVED" : "NONE",
   batchCode: DEFAULT_BATCH[p.id] ?? "",
   custom: false,
+  stockQty: DEFAULT_STOCK[p.id] ?? 50,
+  lowStockAt: 10,
 }));
 
 interface CatalogStore {
@@ -125,6 +133,7 @@ export interface CreateListingInput {
   emoji: string;
   seller: string;
   sellerEmail: string;
+  stockQty?: number;
 }
 
 /** Create as DRAFT. Validation (claims, ranges) happens in the calling action. */
@@ -153,6 +162,11 @@ export async function createListing(input: CreateListingInput): Promise<CatalogP
     batchCode: "",
     sellerEmail: input.sellerEmail,
     custom: true,
+    // Opening stock: the form value when given, else a sellable starter the
+    // seller can adjust in Inventory. A brand-new listing should be buyable
+    // the moment it's approved, not silently stuck at zero.
+    stockQty: Number.isInteger(input.stockQty) && input.stockQty! >= 0 ? input.stockQty! : 25,
+    lowStockAt: 10,
   };
   s.created.push(product);
   return product;
@@ -269,6 +283,48 @@ export async function deleteListing(id: string): Promise<TransitionResult> {
   const s = store();
   s.deleted.push(id);
   return { ok: true };
+}
+
+/* ── Inventory (server is the authority on stock) ─────────── */
+
+export function inStock(p: CatalogProduct): boolean {
+  return p.stockQty > 0;
+}
+export function isLowStock(p: CatalogProduct): boolean {
+  return p.stockQty > 0 && p.stockQty <= p.lowStockAt;
+}
+
+/** Set an absolute on-hand quantity (seller/admin restock). */
+export async function setStock(id: string, qty: number): Promise<boolean> {
+  const p = await findProduct(id);
+  if (!p || !Number.isInteger(qty) || qty < 0) return false;
+  apply(id, { stockQty: Math.min(qty, 1_000_000) });
+  return true;
+}
+/** Set the low-stock threshold. */
+export async function setLowStockAt(id: string, at: number): Promise<boolean> {
+  const p = await findProduct(id);
+  if (!p || !Number.isInteger(at) || at < 0) return false;
+  apply(id, { lowStockAt: Math.min(at, 100_000) });
+  return true;
+}
+
+/**
+ * Atomically decrement stock for a sale. Returns false (and changes nothing)
+ * if there isn't enough on hand — an order can never oversell (fail closed).
+ */
+export async function decrementStock(id: string, qty: number): Promise<boolean> {
+  const p = await findProduct(id);
+  if (!p || qty <= 0 || p.stockQty < qty) return false;
+  apply(id, { stockQty: p.stockQty - qty });
+  return true;
+}
+
+/** Return units to stock (a restocking return/cancel). */
+export async function restock(id: string, qty: number): Promise<void> {
+  const p = await findProduct(id);
+  if (!p || qty <= 0) return;
+  apply(id, { stockQty: Math.min(p.stockQty + qty, 1_000_000) });
 }
 
 /** Flag / clear the medical-claims strike (clearing is an audited admin act). */

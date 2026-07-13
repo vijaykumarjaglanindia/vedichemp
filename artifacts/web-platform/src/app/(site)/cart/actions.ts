@@ -13,9 +13,11 @@ import { cookies } from "next/headers";
 import { readEnabledPayments } from "@/lib/payments";
 import { randomUUID } from "node:crypto";
 import { clearCartCookies, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
-import { readLiveProducts } from "@/lib/catalog";
+import { decrementStock, readLiveProducts } from "@/lib/catalog";
 import { readActiveCoupons } from "@/lib/commerce";
 import { permittedClasses } from "@/lib/compliance";
+import { getSession } from "@/lib/auth-lite";
+import { createOrder, type OrderItem } from "@/lib/orders";
 import { appendOrderHistory, readAddresses, validateAddressFields, writeAddresses } from "@/lib/engage";
 
 const MAX_QTY = 10;
@@ -29,6 +31,8 @@ async function assertPurchasable(productId: string): Promise<void> {
     // public cart even by crafted form data).
     redirect("/catalogue");
   }
+  // Out of stock cannot enter the cart — the server is the authority on stock.
+  if (product!.stockQty <= 0) redirect(`/products/${product!.slug}?oos=1`);
 }
 
 export async function addToCart(formData: FormData): Promise<void> {
@@ -175,11 +179,41 @@ export async function placeOrder(formData: FormData): Promise<void> {
     shippingPaise: cart.shippingPaise,
     totalPaise: cart.totalPaise,
   };
-  // Demo persistence: the confirmation cookie. With DATABASE_URL attached this
-  // becomes db.order.create({ idempotencyKey }) via src/server (PRODUCTION.md).
-  void randomUUID(); // idempotency key placeholder for the DB write
+  // Real order: decrement stock atomically per line, then create the order.
+  // An Idempotency-Key (form-supplied UUIDv4, else generated) makes a replay
+  // return the same order rather than double-charging or double-decrementing.
+  const idempotencyKey = (() => {
+    const k = String(formData.get("idempotencyKey") ?? "");
+    return /^[0-9a-f-]{16,}$/i.test(k) ? k : randomUUID();
+  })();
+  const session = await getSession();
+  const buyerEmail = session?.email ?? "guest@vedichemp.in";
+  const orderItems: OrderItem[] = cart.lines.map((l) => ({
+    productId: l.product.id,
+    title: l.product.title,
+    emoji: l.product.emoji,
+    seller: l.product.seller,
+    qty: l.qty,
+    unitPaise: l.product.pricePaise,
+    linePaise: l.linePaise,
+  }));
+  for (const it of orderItems) await decrementStock(it.productId, it.qty);
+  await createOrder({
+    idempotencyKey,
+    buyerEmail,
+    reference,
+    city,
+    pincode,
+    payment,
+    items: orderItems,
+    subtotalPaise: cart.subtotalPaise,
+    discountPaise: cart.discountPaise,
+    couponCode: cart.discountPaise > 0 || cart.couponCode ? cart.couponCode : null,
+    shippingPaise: cart.shippingPaise,
+    totalPaise: cart.totalPaise,
+  });
   jar.set("vh-last-order", JSON.stringify(record), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 3600 });
-  await appendOrderHistory(record); // powers My Account → Orders in demo mode
+  await appendOrderHistory(record); // confirmation page still reads the cookie
 
   // "Save this address" — validated again here, deduped on line1+PIN (§1.3).
   if (formData.get("saveAddress") === "on") {

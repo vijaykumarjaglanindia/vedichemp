@@ -120,6 +120,7 @@ export async function submitProduct(formData: FormData): Promise<void> {
   if ("err" in parsed) redirect(`/seller/products/new?err=${parsed.err}`);
   const { fields } = parsed as { fields: ListingFields };
 
+  const openingStock = parseInt(String(formData.get("stockQty") ?? ""), 10);
   const session = await getSession();
   const created = await createListing({
     ...fields,
@@ -127,6 +128,7 @@ export async function submitProduct(formData: FormData): Promise<void> {
     emoji: "🆕",
     seller: DEMO_STORE,
     sellerEmail: session?.email ?? "seller@example.in",
+    ...(Number.isInteger(openingStock) && openingStock >= 0 ? { stockQty: openingStock } : {}),
   });
   if (!created) redirect("/seller/products/new?err=cls");
   if (intent !== "draft") await submitForReview(created!.id);
@@ -577,4 +579,44 @@ export async function addStock(formData: FormData): Promise<void> {
   adds[batch] = Math.min((adds[batch] ?? 0) + qty, 100000);
   await writeStockAdds(adds);
   redirect(back);
+}
+
+/* ── Fulfilment on real orders (order store) ──────────────── */
+
+export async function fulfilOrder(formData: FormData): Promise<void> {
+  const reference = String(formData.get("reference") ?? "").slice(0, 30);
+  const op = String(formData.get("op") ?? "");
+  const { advanceOrder, findOrder } = await import("@/lib/orders");
+  const order = await findOrder(reference);
+  if (!order || !order.items.some((it) => it.seller === DEMO_STORE)) redirect("/seller/orders");
+  const result = await advanceOrder(reference, op, `seller:${DEMO_STORE}`);
+  if (!result.ok) redirect(`/seller/orders?err=${result.reason}`);
+  await writeAudit({ actor: DEMO_STORE, action: `ORDER_${op.toUpperCase()}`, target: reference, outcome: "OK" });
+  redirect(`/seller/orders?done=${op}#real-orders`);
+}
+
+/** Seller approves a return (buyer keeps the buyer-first refund path). */
+export async function sellerApproveReturn(formData: FormData): Promise<void> {
+  const reference = String(formData.get("reference") ?? "").slice(0, 30);
+  const { approveReturn, findOrder } = await import("@/lib/orders");
+  const order = await findOrder(reference);
+  if (!order || !order.items.some((it) => it.seller === DEMO_STORE)) redirect("/seller/orders");
+  const result = await approveReturn(reference, `seller:${DEMO_STORE}`);
+  if (!result.ok) redirect(`/seller/orders?err=${result.reason}#real-orders`);
+  await writeAudit({ actor: DEMO_STORE, action: "RETURN_APPROVE", target: reference, outcome: "OK" });
+  redirect(`/seller/orders?done=return_approved#real-orders`);
+}
+
+/* ── Inventory management ─────────────────────────────────── */
+
+export async function saveStock(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const qty = parseInt(String(formData.get("stockQty") ?? ""), 10);
+  const lowAt = parseInt(String(formData.get("lowStockAt") ?? ""), 10);
+  const { setStock, setLowStockAt, findProduct } = await import("@/lib/catalog");
+  const product = await findProduct(id);
+  if (!product || product.seller !== DEMO_STORE) redirect("/seller/inventory");
+  if (Number.isInteger(qty) && qty >= 0) await setStock(id, qty);
+  if (Number.isInteger(lowAt) && lowAt >= 0) await setLowStockAt(id, lowAt);
+  redirect("/seller/inventory?saved=1");
 }

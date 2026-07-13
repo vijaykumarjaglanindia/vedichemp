@@ -453,22 +453,37 @@ export default async function ProductDetailPage({
               <span className="small" style={{ paddingLeft: 22 }}>Free shipping on orders above ₹5,000 · ₹100 flat below · COD available</span>
             </div>
 
-            <form action={addToCart}>
-              <input type="hidden" name="productId" value={product.id} />
-              <div className="vh-field" style={{ marginBottom: 12, maxWidth: 120 }}>
-                <label htmlFor="pdp-qty" className="vh-label">Quantity</label>
-                <select id="pdp-qty" name="qty" className="vh-select" defaultValue="1">
-                  {[1, 2, 3, 4, 5].map((n) => (
-                    <option key={n} value={n}>{n}</option>
-                  ))}
-                </select>
+            {/* Stock status — the server is the authority; the button follows it. */}
+            {product.stockQty <= 0 ? (
+              <div role="status" style={{ marginBottom: 12, padding: "12px 14px", borderRadius: "var(--vh-radius-sm)", border: "1px solid var(--vh-line)", borderLeft: "3px solid var(--vh-danger)", background: "color-mix(in srgb, var(--vh-danger-bg) 40%, var(--vh-surface))" }}>
+                <div style={{ fontWeight: 700, color: "var(--vh-danger)" }}>Out of stock</div>
+                <div className="small muted">The seller has no units on hand. Add it to your wishlist and we&rsquo;ll show it again when it&rsquo;s restocked.</div>
               </div>
+            ) : (
+              <>
+                {product.stockQty <= product.lowStockAt && (
+                  <div className="small" role="status" style={{ marginBottom: 8, fontWeight: 700, color: "var(--vh-warn)" }}>
+                    ● Only {product.stockQty} left — order soon
+                  </div>
+                )}
+                <form action={addToCart}>
+                  <input type="hidden" name="productId" value={product.id} />
+                  <div className="vh-field" style={{ marginBottom: 12, maxWidth: 120 }}>
+                    <label htmlFor="pdp-qty" className="vh-label">Quantity</label>
+                    <select id="pdp-qty" name="qty" className="vh-select" defaultValue="1">
+                      {[1, 2, 3, 4, 5].filter((n) => n <= product.stockQty).map((n) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                  </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
-                <button type="submit" name="intent" value="cart" className="vh-btn vh-btn-primary vh-btn-lg">Add to cart</button>
-                <button type="submit" name="intent" value="buy" className="vh-btn vh-btn-outline">Buy now</button>
-              </div>
-            </form>
+                  <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
+                    <button type="submit" name="intent" value="cart" className="vh-btn vh-btn-primary vh-btn-lg">Add to cart</button>
+                    <button type="submit" name="intent" value="buy" className="vh-btn vh-btn-outline">Buy now</button>
+                  </div>
+                </form>
+              </>
+            )}
 
             <form action={toggleWishlist} style={{ marginBottom: "var(--sp-3)" }}>
               <input type="hidden" name="productId" value={product.id} />

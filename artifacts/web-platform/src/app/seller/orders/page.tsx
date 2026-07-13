@@ -4,13 +4,16 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Printer } from "lucide-react";
+import { ClipboardList, Printer } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
 import type { SampleOrder } from "@/lib/sample";
 import { readSellerOrderOverrides } from "@/lib/engage";
+import { ORDER_TONE, ordersForSeller } from "@/lib/orders";
 import { SELLER_ORDERS, ORDER_STATUS_TABS } from "../_lib/data";
-import { sellerOrderAction } from "../actions";
+import { fulfilOrder, sellerApproveReturn, sellerOrderAction } from "../actions";
+
+const DEMO_STORE = "Vedic Botanicals";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -46,6 +49,7 @@ export default async function SellerOrdersPage({
   const overrides = await readSellerOrderOverrides();
   const orders = SELLER_ORDERS.map((o) => ({ ...o, status: overrides[o.id] ?? o.status }));
   const rows = status === "ALL" ? orders : orders.filter((o) => o.status === status);
+  const realOrders = await ordersForSeller(DEMO_STORE);
 
   const columns: Column<SampleOrder>[] = [
     { key: "reference", header: "Order", render: (o) => <div><div style={{ fontWeight: 600 }}>{o.reference}</div><div className="small muted">{o.placedAt}</div></div> },
@@ -100,6 +104,57 @@ export default async function SellerOrdersPage({
         Buyer addresses stay masked until label generation. Refunds always credit the buyer first — recovery from
         this store happens afterwards, via settlement.
       </p>
+
+      {/* ── Real orders (order store): live fulfilment + returns ── */}
+      <div id="real-orders" style={{ marginTop: "var(--sp-5)", scrollMarginTop: 90 }}>
+        <Card
+          title={<span className="vh-row" style={{ gap: 8 }}><ClipboardList size={16} strokeWidth={2.2} aria-hidden /> Live orders &amp; returns</span>}
+          action={<StatusPill tone={realOrders.length ? "info" : "ok"}>{realOrders.length} live</StatusPill>}
+          pad0
+        >
+          {realOrders.length === 0 ? (
+            <div className="vh-empty">No live orders yet — buyer purchases land here for accept → pack → ship → deliver.</div>
+          ) : (
+            <div style={{ display: "grid", gap: 0 }}>
+              {realOrders.map((o) => {
+                const myItems = o.items.filter((it) => it.seller === DEMO_STORE);
+                const myTotal = myItems.reduce((n, it) => n + it.linePaise, 0);
+                const nextOp = o.status === "PLACED" ? "accept" : o.status === "ACCEPTED" ? "pack" : o.status === "PACKED" ? "ship" : o.status === "SHIPPED" ? "deliver" : null;
+                const nextLabel = nextOp === "accept" ? "Accept" : nextOp === "pack" ? "Pack" : nextOp === "ship" ? "Mark shipped" : nextOp === "deliver" ? "Mark delivered" : null;
+                return (
+                  <div key={o.reference} id={`ord-${o.reference}`} className="vh-row-between" style={{ gap: 12, padding: "12px 16px", borderTop: "1px solid var(--vh-line)", flexWrap: "wrap" }}>
+                    <span style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600 }}>{o.reference}</div>
+                      <div className="small muted">{o.placedAt.slice(0, 10)} · {myItems.map((it) => `${it.emoji} ${it.title} ×${it.qty}`).join(", ")} · {o.city}</div>
+                    </span>
+                    <span className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
+                      <MoneyText paise={myTotal} />
+                      <StatusPill tone={ORDER_TONE[o.status]}>{o.status.replace(/_/g, " ")}</StatusPill>
+                      {nextOp && nextLabel && (
+                        <form action={fulfilOrder} style={{ display: "inline-flex" }}>
+                          <input type="hidden" name="reference" value={o.reference} />
+                          <input type="hidden" name="op" value={nextOp} />
+                          <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">{nextLabel}</button>
+                        </form>
+                      )}
+                      {o.status === "RETURN_REQUESTED" && (
+                        <form action={sellerApproveReturn} style={{ display: "inline-flex" }}>
+                          <input type="hidden" name="reference" value={o.reference} />
+                          <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit" title={`Return reason: ${o.returnReason}`}>Approve return</button>
+                        </form>
+                      )}
+                    </span>
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </Card>
+        <p className="small muted" style={{ marginTop: 8 }}>
+          Approving a return does not touch the buyer&rsquo;s refund timing — the platform refunds the buyer first and
+          recovers from this store afterwards (buyers are never collateral).
+        </p>
+      </div>
     </Shell>
   );
 }
