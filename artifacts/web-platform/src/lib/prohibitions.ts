@@ -19,7 +19,9 @@ export class ProhibitionError extends Error {
     message: string,
     public remediation?: { label: string; href: string }
   ) {
-    super(message);
+    // The code is part of the message so logs, tests and API error bodies all
+    // carry the machine-readable prohibition code alongside the human text.
+    super(`${code}: ${message}`);
     this.name = "ProhibitionError";
   }
 }

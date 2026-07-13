@@ -15,10 +15,17 @@ import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PERIOD_CLOSE_CHECKLIST } from "./_lib/data";
 import { MAX_BODY, SAMPLE_POSTS, deletePostOverride, findPost, slugify, writePostOverride } from "@/lib/cms";
+import { getSession } from "@/lib/auth-lite";
+import { writeAudit } from "@/lib/audit";
+import { addCommission, minEffectiveFrom, readOpenRecall, setOpenRecall } from "@/lib/adminstate";
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
 import { SITE_FIELDS, writeSiteContent } from "@/lib/sitecontent";
 
 const OPTS = { path: "/", httpOnly: true, sameSite: "lax" as const, maxAge: 60 * 60 * 24 * 30 };
+
+async function actor(): Promise<string> {
+  return (await getSession())?.email ?? "unknown-admin";
+}
 
 /* ── Finance: period close (maker step) ───────────────────── */
 
@@ -42,20 +49,53 @@ export async function initiateRecall(formData: FormData): Promise<void> {
   const reason = String(formData.get("reason") ?? "").trim();
   if (reason.length < 20) redirect("/admin/compliance?recall=reason#recall");
 
-  const jar = await cookies();
+  const who = await actor();
   const ref = `RC${Date.now().toString(36).toUpperCase().slice(-5)}`;
-  jar.set("vh-adm-recall", JSON.stringify({ ref, at: new Date().toISOString().slice(0, 10) }), OPTS);
+  // Shared server-side record — a DIFFERENT admin must be able to see and
+  // close it (A6), so it cannot live in the maker's cookies.
+  await setOpenRecall({ ref, at: new Date().toISOString().slice(0, 10), initiator: who, reason });
+  await writeAudit({ actor: who, action: "RECALL_INITIATE", target: ref, outcome: "OK", note: reason });
   redirect(`/admin/compliance?recall=initiated&ref=${ref}#recall`);
 }
 
 export async function closeRecall(): Promise<void> {
-  const jar = await cookies();
-  const open = jar.get("vh-adm-recall")?.value;
+  const open = await readOpenRecall();
   if (!open) redirect("/admin/compliance?recall=none#recall");
-  // A6: the admin who initiated the recall cannot also close it. In this
-  // demo session you ARE the initiator, so the close is denied — and the
-  // denied attempt is itself an audit event.
-  redirect("/admin/compliance?recall=denied#recall");
+  const who = await actor();
+  // A6: the admin who initiated the recall cannot also close it. A different
+  // admin signing in CAN. Either way, the attempt is an audit event.
+  if (open.initiator === who) {
+    await writeAudit({ actor: who, action: "RECALL_CLOSE", target: open.ref, outcome: "DENIED", note: "A6: maker cannot be checker" });
+    redirect("/admin/compliance?recall=denied#recall");
+  }
+  await setOpenRecall(null);
+  await writeAudit({ actor: who, action: "RECALL_CLOSE", target: open.ref, outcome: "OK", note: `initiated by ${open.initiator}` });
+  redirect(`/admin/compliance?recall=closed&ref=${open.ref}#recall`);
+}
+
+/* ── Finance: commission schedules (A5 — 30-day notice, never retroactive) ── */
+
+export async function saveCommissionSchedule(formData: FormData): Promise<void> {
+  const cls = String(formData.get("cls") ?? "");
+  const ratePct = Number(formData.get("ratePct"));
+  const effectiveFrom = String(formData.get("effectiveFrom") ?? "");
+  const who = await actor();
+
+  if (!["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS", "MED_CANNABIS"].includes(cls)) redirect("/admin/finance/commissions?cs=cls");
+  if (!Number.isFinite(ratePct) || ratePct <= 0 || ratePct > 40) redirect("/admin/finance/commissions?cs=rate");
+
+  // A5: the notice goes out today; the schedule cannot take effect for 30
+  // days — mirrored by CHECK a5_thirty_day_notice on CommissionSchedule.
+  const noticeSentAt = new Date();
+  const from = new Date(`${effectiveFrom}T00:00:00Z`);
+  if (!effectiveFrom || Number.isNaN(from.getTime()) || from < minEffectiveFrom(noticeSentAt)) {
+    await writeAudit({ actor: who, action: "COMMISSION_SCHEDULE", target: cls, outcome: "DENIED", note: `A5: effectiveFrom ${effectiveFrom || "(empty)"} inside 30-day notice window` });
+    redirect("/admin/finance/commissions?cs=date");
+  }
+
+  await addCommission({ cls, ratePct, noticeSentAt: noticeSentAt.toISOString().slice(0, 10), effectiveFrom, by: who });
+  await writeAudit({ actor: who, action: "COMMISSION_SCHEDULE", target: `${cls} → ${ratePct}%`, outcome: "OK", note: `effective ${effectiveFrom}, notice ${noticeSentAt.toISOString().slice(0, 10)}` });
+  redirect("/admin/finance/commissions?cs=saved");
 }
 
 /* ── Users: restrict / suspend / reinstate / impersonate ──── */
@@ -76,7 +116,10 @@ export async function applyUserAction(formData: FormData): Promise<void> {
   // Every mutating admin action — impersonation included — carries a reason
   // of at least 20 characters; without it the action is rejected AND the
   // rejection is logged (CLAUDE.md §2).
-  if (reason.length < 20) redirect(`/admin/users?act=${op}&u=${userId}&err=reason#act-form`);
+  if (reason.length < 20) {
+    await writeAudit({ actor: await actor(), action: `USER_${op.toUpperCase()}`, target: userId, outcome: "DENIED", note: "reason under 20 chars" });
+    redirect(`/admin/users?act=${op}&u=${userId}&err=reason#act-form`);
+  }
 
   const newStatus = USER_OPS[op];
   if (newStatus) {
@@ -86,6 +129,7 @@ export async function applyUserAction(formData: FormData): Promise<void> {
     map[userId] = newStatus;
     jar.set("vh-adm-users", JSON.stringify(map), OPTS);
   }
+  await writeAudit({ actor: await actor(), action: `USER_${op.toUpperCase()}`, target: userId, outcome: "OK", note: reason });
   redirect(`/admin/users?done=${op}&u=${userId}`);
 }
 
@@ -106,7 +150,10 @@ export async function savePost(formData: FormData): Promise<void> {
     if (!post) redirect("/admin/cms");
     // Deletion gate: high-traffic pages (the sample posts) are maker–checker —
     // a single editor's delete is DENIED here and the denial logged.
-    if (post.sample) redirect(editorUrl(existingSlug, "cms=delete-denied"));
+    if (post.sample) {
+      await writeAudit({ actor: await actor(), action: "CMS_DELETE", target: existingSlug, outcome: "DENIED", note: "maker-checker: high-traffic page" });
+      redirect(editorUrl(existingSlug, "cms=delete-denied"));
+    }
     await deletePostOverride(existingSlug);
     redirect("/admin/cms?cms=deleted");
   }
@@ -137,6 +184,7 @@ export async function savePost(formData: FormData): Promise<void> {
     sample: SAMPLE_POSTS.some((p) => p.slug === slug),
   });
   if (result === "limit") redirect(editorUrl(slug, "cms=limit"));
+  await writeAudit({ actor: await actor(), action: `CMS_${intent.toUpperCase()}`, target: slug, outcome: "OK" });
   redirect(editorUrl(slug, `cms=${intent === "publish" ? "published" : intent === "unpublish" ? "unpublished" : "saved"}`));
 }
 
@@ -156,11 +204,15 @@ export async function saveSiteContent(formData: FormData): Promise<void> {
     // Same copy-check as products, reviews and the journal — the homepage
     // hero cannot carry a disease claim either (Drugs & Magic Remedies Act).
     // Disclosure fields that NAME the forbidden verbs are the one exception.
-    if (!f.allowClaimVerbs && CMS_CLAIMS.test(value)) redirect(`/admin/cms/site?site=claims&f=${f.key}${anchor}`);
+    if (!f.allowClaimVerbs && CMS_CLAIMS.test(value)) {
+      await writeAudit({ actor: await actor(), action: "SITE_CONTENT_SAVE", target: `${group}.${f.key}`, outcome: "DENIED", note: "claims language" });
+      redirect(`/admin/cms/site?site=claims&f=${f.key}${anchor}`);
+    }
     if (value.length > f.max) redirect(`/admin/cms/site?site=long&f=${f.key}${anchor}`);
     patch[f.key] = value || null; // empty resets to the default copy
   }
   await writeSiteContent(patch);
+  await writeAudit({ actor: await actor(), action: "SITE_CONTENT_SAVE", target: group, outcome: "OK", note: `${Object.keys(patch).length} fields` });
   redirect(`/admin/cms/site?site=saved&g=${encodeURIComponent(group)}${anchor}`);
 }
 

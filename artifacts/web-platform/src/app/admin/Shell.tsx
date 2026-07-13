@@ -16,7 +16,7 @@
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, Store, Package, Receipt, Landmark, Megaphone,
-  ShieldCheck, Ban, FileText, Target, BarChart3, Settings,
+  ShieldCheck, Ban, FileText, Target, BarChart3, Settings, ScrollText,
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
 
@@ -61,6 +61,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/cms", label: "CMS", icon: <FileText {...I} /> },
       { href: "/admin/marketing", label: "Marketing", icon: <Target {...I} /> },
       { href: "/admin/analytics", label: "Analytics", icon: <BarChart3 {...I} /> },
+      { href: "/admin/audit", label: "Audit trail", icon: <ScrollText {...I} /> },
       { href: "/admin/settings", label: "Settings", icon: <Settings {...I} /> },
     ],
   },

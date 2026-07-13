@@ -39,7 +39,8 @@ const SUB_CARDS: { id: string; icon: ReactNode; title: string; href: string; des
 const RECALL_NOTES: Record<string, { sev: "ok" | "danger" | "warn"; title: string; body: string }> = {
   initiated: { sev: "ok", title: "Recall initiated (maker)", body: "Affected batches are frozen from sale immediately; a second, different compliance officer must review before the recall can ever be closed. The record is append-only (A3)." },
   denied: { sev: "danger", title: "Close denied — maker cannot be checker (A6)", body: "You initiated this recall, so you cannot also close it. The denied attempt has been logged. A different compliance officer must close it." },
-  none: { sev: "warn", title: "No open recall", body: "There is no recall in this session to close." },
+  closed: { sev: "ok", title: "Recall closed (checker)", body: "A second, different compliance officer reviewed and closed the recall. Both the initiation and the close are in the audit trail — the record itself is append-only (A3)." },
+  none: { sev: "warn", title: "No open recall", body: "There is no open recall to close." },
   reason: { sev: "warn", title: "Reason required", body: "Initiating a recall needs at least 20 characters of free-text reason — it is written into the immutable recall record." },
 };
 

@@ -205,7 +205,7 @@ export default async function ProductDetailPage({
                     <tr><td>Net weight</td><td>{specs.netWeight}</td></tr>
                     <tr><td>Ingredients</td><td>{specs.ingredients}</td></tr>
                     <tr><td>HSN code</td><td className="mono">{specs.hsn}</td></tr>
-                    <tr><td>Batch</td><td className="mono">{specs.batch}</td></tr>
+                    <tr><td>Batch</td><td className="mono">{specs.batch}{specs.batch !== "\u2014" && (<> <Link href={`/verify?code=${specs.batch}`} className="small" style={{ fontWeight: 700, marginLeft: 8 }}>Verify this batch →</Link></>)}</td></tr>
                     <tr><td>Testing / facility</td><td>{specs.lab}</td></tr>
                   </tbody>
                 </table>

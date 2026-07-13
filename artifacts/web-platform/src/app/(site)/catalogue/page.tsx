@@ -12,6 +12,7 @@
  */
 
 import type { Metadata } from "next";
+import { matchesQuery } from "@/lib/search";
 import { readSiteContent } from "@/lib/sitecontent";
 import Link from "next/link";
 import { ComplianceClass } from "@prisma/client";
@@ -125,9 +126,10 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
     if (labOnly && !p.labVerified) return false;
     if (minRating !== null && p.rating < minRating) return false;
     if (q) {
-      const hay = `${p.title} ${p.seller} ${CLASS_META[p.cls].label}`.toLowerCase();
-      const terms = q.split(/\s+/).filter(Boolean);
-      if (!terms.some((t) => hay.includes(t))) return false;
+      // Server-side search: synonym expansion (Hinglish included) + typo
+      // tolerance. The corpus is permitted classes only (A1).
+      const hay = `${p.title} ${p.seller} ${CLASS_META[p.cls].label}`;
+      if (!matchesQuery(hay, q)) return false;
     }
     return true;
   });

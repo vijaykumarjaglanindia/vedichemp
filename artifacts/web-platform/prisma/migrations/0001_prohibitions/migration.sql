@@ -152,6 +152,22 @@ ALTER TABLE "CommissionSchedule"
 COMMENT ON CONSTRAINT a5_thirty_day_notice ON "CommissionSchedule" IS
   'A5: historic statements must never move.';
 
+-- Statements are immutable once POSTED. Posting (DRAFT -> POSTED) is the last
+-- write a settlement row ever receives; corrections are new rows.
+CREATE OR REPLACE FUNCTION a5_settlement_immutable() RETURNS trigger AS $$
+BEGIN
+  IF OLD.status = 'POSTED' THEN
+    RAISE EXCEPTION 'A5: a POSTED settlement is immutable — corrections are new rows referencing the old.';
+  END IF;
+  IF TG_OP = 'DELETE' THEN RETURN OLD; END IF;
+  RETURN NEW;
+END $$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS a5_settlement_immutable ON "Settlement";
+CREATE TRIGGER a5_settlement_immutable
+  BEFORE UPDATE OR DELETE ON "Settlement"
+  FOR EACH ROW EXECUTE FUNCTION a5_settlement_immutable();
+
 
 -- ───────────────────────── A6 ─────────────────────────
 -- No single admin moves money. Two distinct human identities, neither a
@@ -189,4 +205,5 @@ CREATE VIEW prohibition_status AS
   UNION ALL SELECT 'A3', EXISTS (SELECT 1 FROM pg_trigger    WHERE tgname  = 'a3_auditlog_immutable')
   UNION ALL SELECT 'A4', EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'a4_reason_text_substantive')
   UNION ALL SELECT 'A5', EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'a5_thirty_day_notice')
+                     AND EXISTS (SELECT 1 FROM pg_trigger    WHERE tgname  = 'a5_settlement_immutable')
   UNION ALL SELECT 'A6', EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'a6_maker_is_not_checker');
