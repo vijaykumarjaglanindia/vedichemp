@@ -26,6 +26,7 @@ import {
 import { CLASS_META } from "@/lib/compliance";
 import { mdToHtml } from "@/lib/richtext";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
+import { readFeatures } from "@/lib/features";
 import { parseMenu, readSiteContent } from "@/lib/sitecontent";
 import { ComplianceClass } from "@prisma/client";
 
@@ -150,6 +151,7 @@ const SEARCH_DOCS: SearchDoc[] = PRODUCTS.filter((p) => p.cls !== "MED_CANNABIS"
 
 export default async function SiteLayout({ children }: { children: ReactNode }) {
   const content = await readSiteContent();
+  const flags = await readFeatures();
   // Menus are admin-edited (Site content → Menus); defaults mirror launch nav.
   const navLinks = parseMenu(content.navHeader ?? "");
   const footerCols = [
@@ -176,8 +178,8 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
         Skip to content
       </a>
 
-      {/* ── Announcement bar (admin-edited: Site content → Global chrome) ── */}
-      <div className="vh-announce">
+      {/* ── Announcement bar (admin-edited; switchable in Features) ── */}
+      {flags.announcementBar && <div className="vh-announce">
         <span className="vh-row" style={{ justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
           <Truck size={14} strokeWidth={2.2} aria-hidden />
           {(content.announcement ?? "").split("·").map((seg, i) => (
@@ -187,7 +189,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
             </span>
           ))}
         </span>
-      </div>
+      </div>}
 
       {/* ── Sticky glass header ──────────────────────────── */}
       <header className="vh-site-header">
@@ -311,8 +313,8 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
             ))}
           </div>
 
-          {/* Newsletter */}
-          <div
+          {/* Newsletter (switchable in Features) */}
+          {flags.newsletterBlock && <div
             className="vh-row"
             style={{
               flexWrap: "wrap", gap: 12, padding: "var(--sp-3) 0",
@@ -325,7 +327,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
             </div>
             <span className="vh-spacer" />
             <NewsletterForm />
-          </div>
+          </div>}
 
           {/* Payment & trust row */}
           <div className="vh-row" style={{ flexWrap: "wrap", gap: "var(--sp-4)", padding: "var(--sp-3) 0" }}>

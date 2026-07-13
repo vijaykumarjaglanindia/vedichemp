@@ -13,7 +13,7 @@
  */
 
 import { useRef, type CSSProperties } from "react";
-import { Bold, Heading2, Italic, List, RemoveFormatting } from "lucide-react";
+import { Bold, Heading2, Italic, Link2, List, RemoveFormatting } from "lucide-react";
 import { mdToHtml } from "@/lib/richtext";
 
 /** Serialize the contentEditable DOM back to markdown-lite. */
@@ -25,6 +25,11 @@ function htmlToMd(root: HTMLElement): string {
     const tag = node.tagName;
     if (tag === "STRONG" || tag === "B") return inner.trim() ? `**${inner}**` : inner;
     if (tag === "EM" || tag === "I") return inner.trim() ? `*${inner}*` : inner;
+    if (tag === "A") {
+      const href = node.getAttribute("href") ?? "";
+      // Only internal paths and https links serialize; anything else is text.
+      return inner.trim() && /^(\/|https:\/\/)/.test(href) ? `[${inner}](${href})` : inner;
+    }
     if (tag === "BR") return "\n";
     return inner;
   };
@@ -113,7 +118,8 @@ export function RichTextEditor({
     const md = htmlToMd(surface.current);
     hidden.current.value = md;
     if (counter.current && maxLength !== undefined) {
-      counter.current.textContent = `${md.length}/${maxLength}`;
+      const words = md.trim() ? md.trim().split(/\s+/).length : 0;
+      counter.current.textContent = `${words} words · ${md.length}/${maxLength}`;
       const over = md.length > maxLength;
       counter.current.style.color = over ? "var(--vh-danger)" : "var(--vh-muted)";
       surface.current.style.borderColor = over ? "var(--vh-danger)" : "";
@@ -146,6 +152,16 @@ export function RichTextEditor({
         <button type="button" style={btn} title="Italic" aria-label="Italic" onMouseDown={(e) => { e.preventDefault(); exec("italic"); }}>
           <Italic size={14} strokeWidth={2.4} aria-hidden />
         </button>
+        <button
+          type="button" style={btn} title="Link" aria-label="Insert link"
+          onMouseDown={(e) => {
+            e.preventDefault();
+            const url = window.prompt("Link URL (/path or https://…)");
+            if (url && /^(\/|https:\/\/)/.test(url)) exec("createLink", url);
+          }}
+        >
+          <Link2 size={14} strokeWidth={2.4} aria-hidden />
+        </button>
         {!compact && (
           <>
             <button type="button" style={btn} title="Heading" aria-label="Heading" onMouseDown={(e) => { e.preventDefault(); exec("formatBlock", "h2"); }}>
@@ -162,7 +178,7 @@ export function RichTextEditor({
         <span className="vh-spacer" />
         {maxLength !== undefined && (
           <span ref={counter} className="small tabular" style={{ color: defaultValue.length > maxLength ? "var(--vh-danger)" : "var(--vh-muted)" }}>
-            {defaultValue.length}/{maxLength}
+            {defaultValue.trim() ? defaultValue.trim().split(/\s+/).length : 0} words · {defaultValue.length}/{maxLength}
           </span>
         )}
       </div>

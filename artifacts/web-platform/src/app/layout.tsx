@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { readThemePreset, themeCss } from "@/lib/features";
 import { readSiteContent } from "@/lib/sitecontent";
 import "./globals.css";
 
@@ -54,10 +55,17 @@ export const viewport: Viewport = {
   initialScale: 1,
 };
 
-export default function RootLayout({ children }: { children: ReactNode }) {
+export default async function RootLayout({ children }: { children: ReactNode }) {
+  // Curated light-only theme preset (Admin > Features & tools). Dark type on
+  // light backgrounds is policy, not a preset — only accent/shape vary.
+  const preset = await readThemePreset();
+  const css = themeCss(preset);
   return (
     <html lang="en-IN" suppressHydrationWarning className={`${sans.variable} ${display.variable}`}>
-      <body>{children}</body>
+      <body>
+        {css && <style dangerouslySetInnerHTML={{ __html: css }} />}
+        {children}
+      </body>
     </html>
   );
 }

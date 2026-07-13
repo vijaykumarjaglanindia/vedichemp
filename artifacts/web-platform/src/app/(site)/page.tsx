@@ -30,6 +30,7 @@ import { CLASS_META } from "@/lib/compliance";
 import { publishedPosts } from "@/lib/cms";
 import { mdToHtml } from "@/lib/richtext";
 import { faqJsonLd } from "@/lib/seo";
+import { readFeatures } from "@/lib/features";
 import { parseFaqs, parseTestimonials, parseTiles, readSiteContent } from "@/lib/sitecontent";
 import { SELLERS } from "@/lib/sample";
 import { ComplianceClass } from "@prisma/client";
@@ -64,6 +65,7 @@ const PILLARS: { icon: typeof FlaskConical; title: string; body: string }[] = [
 
 export default async function HomePage() {
   const content = await readSiteContent();
+  const flags = await readFeatures();
   const faqs = parseFaqs(content.homeFaqs ?? "");
   const testimonials = parseTestimonials(content.testimonials ?? "");
   const uspTilesCopy = parseTiles(content.heroUsps ?? "");
@@ -183,13 +185,13 @@ export default async function HomePage() {
       <section className="vh-section" style={{ paddingTop: 0 }}>
         <div className="vh-container">
           {/* Leaderboard banner — configured in Admin → Ads (home-leaderboard) */}
-          <div style={{ marginBottom: "var(--sp-5)" }}>
+          {flags.sponsoredSections && <div style={{ marginBottom: "var(--sp-5)" }}>
             <AdBanner
               cls="HEMP_FOOD" placement="home-leaderboard" brand="Himalayan Hemp Co."
               headline="Cold-pressed hemp seed oil — this week's storewide 25% off"
               body="FSSAI-licensed hemp foods, shipped by the seller." cta="Shop the range" href="/store/himalayan-hemp-co"
             />
-          </div>
+          </div>}
 
           <SectionHead
             eyebrow="Today's deals"
@@ -205,9 +207,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── From our sponsors: video + product carousel ─────
-          Placements home-video / home-sponsored-products — A1-guarded, always labelled. */}
-      <section className="vh-section" style={{ paddingTop: 0 }}>
+      {/* ── From our sponsors (switchable in Features; A1-guarded regardless) ── */}
+      {flags.sponsoredSections && <section className="vh-section" style={{ paddingTop: 0 }}>
         <div className="vh-container">
           <SectionHead eyebrow="From our sponsors" title="Sponsored picks" sub="Clearly labelled, never mixed into rankings — and never a prescription product." />
           <div className="vh-split-wide">
@@ -234,10 +235,10 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
-      </section>
+      </section>}
 
-      {/* ── Flash sale strip ─────────────────────────────── */}
-      <section className="vh-section vh-section-alt">
+      {/* ── Flash sale strip (switchable in Features) ────── */}
+      {flags.flashSale && <section className="vh-section vh-section-alt">
         <div className="vh-container">
           <div className="vh-row" style={{ gap: 12, flexWrap: "wrap", marginBottom: "var(--sp-4)" }}>
             <CampaignLabel>{content.flashSaleName}</CampaignLabel>
@@ -258,7 +259,7 @@ export default async function HomePage() {
             server&apos;s clock, not your device&apos;s.
           </p>
         </div>
-      </section>
+      </section>}
 
       {/* ── Bestsellers ──────────────────────────────────── */}
       <section className="vh-section">
@@ -276,8 +277,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Sponsored placement (A1-safe, always labelled) ── */}
-      <section className="vh-section" style={{ paddingTop: 0 }}>
+      {/* ── Sponsored placement (switchable; A1-safe, always labelled) ── */}
+      {flags.sponsoredSections && <section className="vh-section" style={{ paddingTop: 0 }}>
         <div className="vh-container">
           <AdSlot cls="CBD_WELLNESS" placement="home-mid-banner">
             <div className="vh-row" style={{ gap: "var(--sp-4)", flexWrap: "wrap" }}>
@@ -316,7 +317,7 @@ export default async function HomePage() {
             any placement (A1).
           </p>
         </div>
-      </section>
+      </section>}
 
       {/* ── Shop by health goal ──────────────────────────── */}
       <section className="vh-section vh-section-alt">
@@ -349,8 +350,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Hemp education ───────────────────────────────── */}
-      <section className="vh-section">
+      {/* ── Hemp education (switchable in Features) ──────── */}
+      {flags.educationSection && <section className="vh-section">
         <div className="vh-container">
           <SectionHead eyebrow="Learn" title="New to hemp? Start here" />
           <div className="vh-split">
@@ -384,7 +385,7 @@ export default async function HomePage() {
             </div>
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* ── Why Vedic Hemp ───────────────────────────────── */}
       <section className="vh-section vh-section-alt">
@@ -415,8 +416,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── Testimonials ─────────────────────────────────── */}
-      <section className="vh-section">
+      {/* ── Testimonials (switchable in Features) ────────── */}
+      {flags.testimonials && <section className="vh-section">
         <div className="vh-container">
           <SectionHead eyebrow="Buyers" title="What buyers say" />
           <div className="vh-grid cols-3">
@@ -435,7 +436,7 @@ export default async function HomePage() {
             ))}
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* ── Featured sellers ─────────────────────────────── */}
       <section className="vh-section vh-section-alt">
@@ -479,8 +480,8 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {/* ── FAQ ──────────────────────────────────────────── */}
-      <section className="vh-section">
+      {/* ── FAQ (switchable in Features) ─────────────────── */}
+      {flags.homeFaq && <section className="vh-section">
         <div className="vh-container" style={{ maxWidth: 820 }}>
           <SectionHead eyebrow="FAQ" title="Common questions, straight answers" />
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-2)" }}>
@@ -492,7 +493,7 @@ export default async function HomePage() {
             ))}
           </div>
         </div>
-      </section>
+      </section>}
 
       {/* ── Final CTA band ───────────────────────────────── */}
       <section className="vh-section" style={{ paddingTop: 0 }}>

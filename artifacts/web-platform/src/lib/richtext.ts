@@ -14,7 +14,10 @@ export function escapeHtml(s: string): string {
 function inlineMd(escaped: string): string {
   return escaped
     .replace(/\*\*([^*]+)\*\*/g, "<strong>$1</strong>")
-    .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>");
+    .replace(/(^|[^*])\*([^*\n]+)\*(?!\*)/g, "$1<em>$2</em>")
+    // Links: [text](href) — internal paths and https only; the input is
+    // already HTML-escaped, so quotes cannot break out of the attribute.
+    .replace(/\[([^\]\n]+)\]\(((?:\/|https:\/\/)[^)\s"']+)\)/g, '<a href="$2">$1</a>');
 }
 
 /** markdown-lite → safe HTML (escape first, format second). */

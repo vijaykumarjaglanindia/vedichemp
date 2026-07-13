@@ -10,6 +10,7 @@ import type { Metadata } from "next";
 import { Gift } from "lucide-react";
 import { Card, EmptyState } from "@/components/ui";
 import { aiProviderName } from "@/lib/ai";
+import { readFeatures } from "@/lib/features";
 import { PUBLIC_PRODUCTS } from "../_lib/data";
 import { ProductCard } from "../_lib/ProductCard";
 
@@ -32,6 +33,14 @@ export default async function GiftFinderPage({
   searchParams: Promise<{ budget?: string; goal?: string }>;
 }) {
   const { budget = "1500", goal = "any" } = await searchParams;
+  const flags = await readFeatures();
+  if (!flags.giftFinder) {
+    return (
+      <div className="vh-container" style={{ paddingTop: "var(--sp-5)", paddingBottom: "var(--sp-7)" }}>
+        <EmptyState icon="🎁" headline="The gift finder is taking a break" sub="This feature is currently switched off." cta={{ label: "Browse the catalogue", href: "/catalogue" }} />
+      </div>
+    );
+  }
   const budgetPaise = Math.max(1, parseInt(budget, 10) || 1500) * 100;
   const g = GOALS[goal] ?? GOALS.any!;
   let picks = PUBLIC_PRODUCTS
