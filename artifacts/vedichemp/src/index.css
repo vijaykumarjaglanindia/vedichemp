@@ -95,6 +95,7 @@
 
 /* LIGHT MODE */
 :root {
+  color-scheme: light;
   --button-outline: rgba(0,0,0, .10);
   --badge-outline: rgba(0,0,0, .05);
 
@@ -213,89 +214,8 @@
   --destructive-border: hsl(from hsl(var(--destructive)) h s calc(l + var(--opaque-button-border-intensity)) / alpha);
 }
 
-.dark {
-  --button-outline: rgba(255,255,255, .10);
-  --badge-outline: rgba(255,255,255, .05);
-
-  --opaque-button-border-intensity: 9;  /* In terms of percentages */
-
-  /* Backgrounds applied on top of other backgrounds when hovered/active */
-  --elevate-1: rgba(255,255,255, .04);
-  --elevate-2: rgba(255,255,255, .09);
-
-  --background: 160 12% 8%;
-
-  --foreground: 140 10% 92%;
-
-  --border: 155 8% 20%;
-
-  --card: 158 12% 11%;
-
-  --card-foreground: 140 10% 92%;
-
-  --card-border: 155 8% 22%;
-
-  --sidebar: 160 12% 10%;
-
-  --sidebar-foreground: 140 10% 90%;
-
-  --sidebar-border: 155 8% 20%;
-
-  --sidebar-primary: 150 45% 45%;
-
-  --sidebar-primary-foreground: 160 12% 8%;
-
-  --sidebar-accent: 155 10% 16%;
-
-  --sidebar-accent-foreground: 140 10% 90%;
-
-  --sidebar-ring: 150 45% 45%;
-
-  --popover: 158 12% 12%;
-
-  --popover-foreground: 140 10% 92%;
-
-  --popover-border: 155 8% 22%;
-
-  --primary: 150 45% 45%;
-
-  --primary-foreground: 160 12% 8%;
-
-  --secondary: 155 10% 18%;
-
-  --secondary-foreground: 140 10% 90%;
-
-  --muted: 155 10% 16%;
-
-  --muted-foreground: 145 6% 60%;
-
-  --accent: 155 10% 20%;
-
-  --accent-foreground: 140 10% 92%;
-
-  --destructive: 0 62% 50%;
-
-  --destructive-foreground: 0 0% 100%;
-
-  /* Used as the border around inputs. Dark mode: Should be a border that is light enough to have high contrast when rendered on a --card background. More contrast than standard --border */
-  --input: 155 8% 28%;
-  --ring: 150 45% 45%;
-  --chart-1: 150 45% 50%;
-  --chart-2: 95 45% 55%;
-  --chart-3: 40 70% 55%;
-  --chart-4: 200 50% 55%;
-  --chart-5: 0 60% 55%;
-
-  --shadow-2xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-xs: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-sm: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 1px 2px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-md: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 2px 4px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-lg: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 4px 6px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00), 0px 8px 10px -1px hsl(202.8169 89.1213% 53.1373% / 0.00);
-  --shadow-2xl: 0px 2px 0px 0px hsl(202.8169 89.1213% 53.1373% / 0.00);
-
-}
+/* Light theme only — the .dark token block was removed by decision:
+   the platform always renders light with dark fonts. */
 
 @layer base {
   * {
