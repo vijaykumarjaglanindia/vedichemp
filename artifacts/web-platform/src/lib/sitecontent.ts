@@ -45,6 +45,10 @@ export const SITE_GROUPS = [
 export const SITE_FIELDS: SiteField[] = [
   /* ── Global chrome ─────────────────────────────────────────────── */
   {
+    key: "siteName", group: "Global chrome", label: "Site name (brand)", kind: "text", max: 40,
+    def: "Vedic Hemp",
+  },
+  {
     key: "announcement", group: "Global chrome", label: "Announcement bar", kind: "text", max: 200,
     help: "Separate segments with a middle dot (·).",
     def: "Free shipping on orders above ₹5,000 · Products listed & shipped by licensed sellers · 100% prepaid, secure checkout",

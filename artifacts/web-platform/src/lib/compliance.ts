@@ -20,7 +20,7 @@ export interface ClassMeta {
   blurb: string;
 }
 
-export const CLASS_META: Record<ComplianceClass, ClassMeta> = {
+const CLASS_META_DEFAULTS: Record<ComplianceClass, ClassMeta> = {
   HEMP_FOOD: {
     code: "HEMP_FOOD", label: "Hemp Nutrition & Food", short: "Hemp Food",
     rxRequired: false, ageGated: false, advertisable: true, emoji: "🌾",
@@ -42,6 +42,22 @@ export const CLASS_META: Record<ComplianceClass, ClassMeta> = {
     blurb: "Prescription-only. Never advertised. Requires a verified prescription.",
   },
 };
+
+/**
+ * CLASS_META with the admin's display copy overlaid (label/short/blurb/emoji
+ * only). Compliance flags — rxRequired, ageGated, advertisable — always come
+ * from the defaults above: the owner edits words, never the law.
+ */
+import { classDisplayOverride } from "@/lib/commerce";
+
+export const CLASS_META: Record<ComplianceClass, ClassMeta> = new Proxy(CLASS_META_DEFAULTS, {
+  get(target, prop: string) {
+    const base = target[prop as ComplianceClass];
+    if (!base) return base;
+    const o = classDisplayOverride(prop);
+    return { ...base, label: o.label ?? base.label, short: o.short ?? base.short, blurb: o.blurb ?? base.blurb, emoji: o.emoji ?? base.emoji };
+  },
+}) as Record<ComplianceClass, ClassMeta>;
 
 /**
  * Which classes a viewer may see. Restricted products are ABSENT, not hidden —

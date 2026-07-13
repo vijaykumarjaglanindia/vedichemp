@@ -63,6 +63,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/marketing", label: "Marketing", icon: <Target {...I} /> },
       { href: "/admin/analytics", label: "Analytics", icon: <BarChart3 {...I} /> },
       { href: "/admin/ai", label: "AI Intelligence", icon: <BarChart3 {...I} /> },
+      { href: "/admin/settings/commerce", label: "Commerce", icon: <Settings {...I} /> },
       { href: "/admin/features", label: "Features & tools", icon: <Settings {...I} /> },
       { href: "/admin/audit", label: "Audit trail", icon: <ScrollText {...I} /> },
       { href: "/admin/settings", label: "Settings", icon: <Settings {...I} /> },

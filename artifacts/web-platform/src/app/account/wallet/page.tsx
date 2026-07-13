@@ -11,6 +11,7 @@ import type { ReactNode } from "react";
 import { Landmark, PieChart, ReceiptText, TrendingUp } from "lucide-react";
 import { Shell } from "../Shell";
 import { Banner, Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
+import { readCommerce } from "@/lib/commerce";
 import { readGiftCredit, redeemGiftCard } from "./actions";
 import { Sparkline, Donut } from "@/components/ui/charts";
 import { LEDGER, type LedgerRow, WALLET_SPLIT, WALLET_BALANCE_PAISE, WALLET_TREND } from "../_lib/data";
@@ -41,6 +42,7 @@ export default async function WalletPage({
 }) {
   const { gift } = await searchParams;
   const giftCredit = await readGiftCredit();
+  const commerce = await readCommerce();
   const columns: Column<LedgerRow>[] = [
     { key: "at", header: "Date", render: (r) => <span className="tabular">{r.at}</span> },
     {
@@ -136,7 +138,7 @@ export default async function WalletPage({
           <Card title="Vedic Points — loyalty">
             <div className="vh-stat-value tabular" style={{ marginBottom: 4 }}>1,240 pts</div>
             <p className="small muted" style={{ margin: 0 }}>
-              5 points per ₹100 on delivered orders; 100 points = ₹10 wallet credit at checkout.
+              {commerce.loyaltyPtsPer100} points per ₹100 on delivered orders; 100 points = ₹{Math.round(commerce.loyaltyPtsValuePaise / 100)} wallet credit at checkout.
               Points post when the return window closes, and they never expire while your account
               stays active. Computed by the platform from verified orders only.
             </p>
@@ -146,8 +148,8 @@ export default async function WalletPage({
               Your code: <strong className="mono" style={{ color: "var(--vh-ink)" }}>VEDIC-ASHA-21</strong>
             </p>
             <p className="small muted" style={{ margin: 0 }}>
-              Friends get ₹200 off their first order above ₹999; you get ₹200 wallet credit when it
-              delivers. Referral credits appear in the ledger above — same append-only rules.
+              Friends get ₹{Math.round(commerce.referralCreditPaise / 100)} off their first order above ₹999; you get the same
+              wallet credit when it delivers. Referral credits appear in the ledger above — same append-only rules.
             </p>
           </Card>
         </div>

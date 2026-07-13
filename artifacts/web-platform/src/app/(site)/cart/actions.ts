@@ -12,7 +12,8 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { readEnabledPayments } from "@/lib/payments";
 import { randomUUID } from "node:crypto";
-import { clearCartCookies, COUPONS, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
+import { clearCartCookies, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
+import { readActiveCoupons } from "@/lib/commerce";
 import { PRODUCTS } from "@/lib/sample";
 import { permittedClasses } from "@/lib/compliance";
 import { appendOrderHistory, readAddresses, validateAddressFields, writeAddresses } from "@/lib/engage";
@@ -90,7 +91,7 @@ export async function removeFromCart(formData: FormData): Promise<void> {
  *  derives the deduction from the server-side coupon table. */
 export async function applyCoupon(formData: FormData): Promise<void> {
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
-  if (!(code in COUPONS)) redirect("/cart?coupon=unknown");
+  if (!(code in (await readActiveCoupons()))) redirect("/cart?coupon=unknown");
   await writeCoupon(code);
   redirect("/cart");
 }

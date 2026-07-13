@@ -16,6 +16,7 @@ import "server-only";
  */
 
 import { cookies } from "next/headers";
+import { readActiveCoupons, readCommerce } from "@/lib/commerce";
 import { PRODUCTS, type SampleProduct } from "@/lib/sample";
 import { permittedClasses } from "@/lib/compliance";
 
@@ -47,9 +48,7 @@ export interface PricedCart {
   ageGated: boolean; // any CBD_WELLNESS line → age confirmation at checkout
 }
 
-/** Free shipping at/above ₹5,000; ₹100 flat below (Marketplace Agreement). */
-const FREE_SHIPPING_AT_PAISE = 5_000 * 100;
-const FLAT_SHIPPING_PAISE = 100 * 100;
+/** Shipping thresholds come from Admin → Settings → Commerce. */
 
 /**
  * Coupon table — server-side only; the client submits a code, never an
@@ -57,19 +56,14 @@ const FLAT_SHIPPING_PAISE = 100 * 100;
  * there is deliberately no coupon type that could apply to MED_CANNABIS —
  * a discount is a promotion.
  */
-export const COUPONS: Record<string, { pct: number; capPaise: number; minPaise: number; cls?: string; freeShip?: boolean; label: string }> = {
-  VEDIC10: { pct: 10, capPaise: 200_00, minPaise: 0, label: "10% off up to ₹200" },
-  FLAT15: { pct: 15, capPaise: 1_000_00, minPaise: 999_00, cls: "CBD_WELLNESS", label: "15% off CBD Wellness over ₹999" },
-  FREESHIP499: { pct: 0, capPaise: 0, minPaise: 499_00, cls: "HEMP_FOOD", freeShip: true, label: "Free shipping on Hemp Food over ₹499" },
-  MONSOON15: { pct: 15, capPaise: 500_00, minPaise: 0, label: "15% off up to ₹500" },
-};
+// Coupons are admin-managed — see lib/commerce.ts (launch table + overrides).
 
 const COUPON_COOKIE = "vh-coupon";
 
 export async function readCoupon(): Promise<string | null> {
   const jar = await cookies();
   const code = jar.get(COUPON_COOKIE)?.value ?? "";
-  return code in COUPONS ? code : null;
+  return code in (await readActiveCoupons()) ? code : null;
 }
 
 export async function writeCoupon(code: string | null): Promise<void> {
@@ -125,7 +119,8 @@ export async function priceCart(): Promise<PricedCart> {
     priced.push({ product, qty, linePaise: product.pricePaise * qty });
   }
   const subtotalPaise = priced.reduce((n, l) => n + l.linePaise, 0);
-  let shippingPaise = subtotalPaise === 0 || subtotalPaise >= FREE_SHIPPING_AT_PAISE ? 0 : FLAT_SHIPPING_PAISE;
+  const commerce = await readCommerce();
+  let shippingPaise = subtotalPaise === 0 || subtotalPaise >= commerce.freeShipAtPaise ? 0 : commerce.flatShipPaise;
 
   // Coupon: the cookie stores only a CODE — every rupee of discount is
   // derived here from the coupon table and the priced lines (V-G-07).
@@ -133,7 +128,7 @@ export async function priceCart(): Promise<PricedCart> {
   let discountPaise = 0;
   let couponNote: string | null = null;
   if (couponCode && subtotalPaise > 0) {
-    const c = COUPONS[couponCode]!;
+    const c = (await readActiveCoupons())[couponCode]!;
     const eligiblePaise = c.cls
       ? priced.filter((l) => l.product.cls === c.cls).reduce((n, l) => n + l.linePaise, 0)
       : subtotalPaise;

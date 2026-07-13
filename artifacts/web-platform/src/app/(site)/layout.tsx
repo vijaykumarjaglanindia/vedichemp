@@ -207,7 +207,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
             >
               <Leaf size={17} strokeWidth={2.2} />
             </span>
-            Vedic Hemp
+            {content.siteName}
           </Link>
 
           <nav aria-label="Primary" className="vh-row vhx-hide-sm" style={{ gap: 18 }}>
@@ -292,7 +292,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
             <div>
               <div className="vh-row" style={{ fontWeight: 800, fontSize: "1.05rem", color: "var(--vh-ink)", gap: 8, marginBottom: 8 }}>
                 <Leaf size={18} strokeWidth={2.2} aria-hidden />
-                Vedic Hemp
+                {content.siteName}
               </div>
               <p className="small" style={{ maxWidth: 250 }}>{content.footerAbout}</p>
             </div>

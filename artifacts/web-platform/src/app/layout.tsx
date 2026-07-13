@@ -29,7 +29,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const content = await readSiteContent();
   return {
     metadataBase: new URL("https://vedichemp.in"),
-    title: { default: content.seoSiteTitle ?? "Vedic Hemp", template: "%s · Vedic Hemp" },
+    title: { default: content.seoSiteTitle ?? "Vedic Hemp", template: `%s · ${content.siteName ?? "Vedic Hemp"}` },
     description: content.seoSiteDesc,
     keywords: ["hemp", "CBD", "Ayurveda", "wellness", "India", "lab verified", "marketplace"],
     applicationName: "Vedic Hemp",

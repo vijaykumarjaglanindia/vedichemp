@@ -12,14 +12,11 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 
-const GIFT_CARDS: Record<string, number> = {
-  "VEDIC-GIFT-500": 50000,
-  "VEDIC-GIFT-1000": 100000,
-};
+import { readGiftCards } from "@/lib/commerce";
 
 export async function redeemGiftCard(formData: FormData): Promise<void> {
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
-  const paise = GIFT_CARDS[code];
+  const paise = (await readGiftCards())[code];
   if (!paise) redirect("/account/wallet?gift=bad#giftcard");
 
   const jar = await cookies();
