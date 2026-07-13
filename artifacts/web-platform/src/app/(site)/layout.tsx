@@ -333,7 +333,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
           <div className="vh-row" style={{ flexWrap: "wrap", gap: "var(--sp-4)", padding: "var(--sp-3) 0" }}>
             {[
               { icon: CreditCard, label: "UPI · Cards · Netbanking" },
-              { icon: Banknote, label: "Cash on Delivery" },
+              { icon: Banknote, label: "100% prepaid orders" },
               { icon: ShieldCheck, label: "PCI-DSS checkout" },
               { icon: RotateCcw, label: "Buyer-first refunds" },
               { icon: Landmark, label: "FSSAI · AYUSH licensed sellers" },

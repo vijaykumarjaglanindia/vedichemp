@@ -116,7 +116,9 @@ export interface OrderRecord {
   totalPaise: number;
 }
 
-const PAYMENTS = ["cod", "upi", "card"] as const;
+// Prepaid only: the platform forwards an order to the seller only after
+// payment capture. "cod" is not a member — a forged value is rejected.
+const PAYMENTS = ["upi", "card", "netbanking"] as const;
 
 export async function placeOrder(formData: FormData): Promise<void> {
   const cart = await priceCart();

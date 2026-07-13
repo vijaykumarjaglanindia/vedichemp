@@ -90,7 +90,7 @@ export default function AdminSettingsPage() {
 
         <div className="vh-grid cols-2">
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Truck {...I} aria-hidden /> Shipping</span>}>
-            <p className="small muted" style={{ marginTop: 0 }}>Carrier zones, SLA tiers, COD eligibility by pincode and compliance class (MED_CANNABIS ships signature-required only).</p>
+            <p className="small muted" style={{ marginTop: 0 }}>Carrier zones, SLA tiers by pincode and compliance class (MED_CANNABIS ships signature-required only). The platform is prepaid-only — no COD configuration exists.</p>
           </Card>
           <Card title={<span className="vh-row" style={{ gap: 8 }}><CreditCard {...I} aria-hidden /> Payments</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>Gateway routing, settlement bank accounts (masked here — full account numbers are never returned to this console).</p>

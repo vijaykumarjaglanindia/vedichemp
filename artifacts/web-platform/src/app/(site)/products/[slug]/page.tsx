@@ -75,7 +75,7 @@ function checkPin(pin: string, cls: string): { ok: boolean; title: string; body:
     title: `Delivers to ${pin} by ${eta}`,
     body: regulated
       ? "Shipped by the seller's delivery partner · ID checked on handover (21+)."
-      : "Shipped by the seller's delivery partner · Cash on Delivery available.",
+      : "Shipped by the seller's delivery partner · prepaid checkout (UPI, cards, netbanking).",
   };
 }
 

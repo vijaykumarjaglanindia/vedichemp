@@ -35,6 +35,7 @@ export const SITE_GROUPS = [
   "Global chrome",
   "Menus",
   "Homepage hero",
+  "Homepage headings",
   "Homepage sections",
   "Voices & FAQ",
   "Trust & About",
@@ -46,7 +47,7 @@ export const SITE_FIELDS: SiteField[] = [
   {
     key: "announcement", group: "Global chrome", label: "Announcement bar", kind: "text", max: 200,
     help: "Separate segments with a middle dot (·).",
-    def: "Free shipping on orders above ₹5,000 · Products listed & shipped by licensed sellers · Cash on Delivery available",
+    def: "Free shipping on orders above ₹5,000 · Products listed & shipped by licensed sellers · 100% prepaid, secure checkout",
   },
   {
     key: "footerAbout", group: "Global chrome", label: "Footer — about blurb", kind: "text", max: 260,
@@ -103,8 +104,29 @@ export const SITE_FIELDS: SiteField[] = [
   {
     key: "heroUsps", group: "Homepage hero", label: "USP tiles", kind: "rich", max: 480,
     help: "One bullet per tile: bold title, then a pipe (|), then the support line.",
-    def: "- **Free shipping above ₹5,000** | ₹100 flat below — across 19,000+ PIN codes\n- **Cash on Delivery** | Pay when it arrives\n- **Easy returns** | Buyer refunded first\n- **Fulfilled by sellers** | Packed & shipped by the seller who lists it",
+    def: "- **Free shipping above ₹5,000** | ₹100 flat below — across 19,000+ PIN codes\n- **Secure prepaid checkout** | UPI, cards & netbanking\n- **Easy returns** | Buyer refunded first\n- **Fulfilled by sellers** | Packed & shipped by the seller who lists it",
   },
+
+  {
+    key: "heroCtaPrimary", group: "Homepage hero", label: "Hero — primary button label", kind: "text", max: 40,
+    def: "Shop the catalogue",
+  },
+  {
+    key: "heroCtaSecondary", group: "Homepage hero", label: "Hero — secondary button label", kind: "text", max: 50,
+    def: "How the marketplace works",
+  },
+
+  /* ── Homepage headings (every section title) ───────────────────── */
+  { key: "headCategories", group: "Homepage headings", label: "Categories section", kind: "text", max: 90, def: "Three ways in — hemp, Ayurveda, CBD" },
+  { key: "headDeals", group: "Homepage headings", label: "Deals section", kind: "text", max: 90, def: "Today's deals from sellers" },
+  { key: "headSponsored", group: "Homepage headings", label: "Sponsored section", kind: "text", max: 90, def: "Sponsored picks" },
+  { key: "headBestsellers", group: "Homepage headings", label: "Bestsellers section", kind: "text", max: 90, def: "What buyers keep reordering" },
+  { key: "headGoals", group: "Homepage headings", label: "Goals section", kind: "text", max: 90, def: "Built around your routine" },
+  { key: "headLearn", group: "Homepage headings", label: "Learn section", kind: "text", max: 90, def: "New to hemp? Start here" },
+  { key: "headWhy", group: "Homepage headings", label: "Why-us section", kind: "text", max: 90, def: "How the marketplace works" },
+  { key: "headSellers", group: "Homepage headings", label: "Sellers section", kind: "text", max: 90, def: "Storefronts with their licences showing" },
+  { key: "headTestimonials", group: "Homepage headings", label: "Testimonials section", kind: "text", max: 90, def: "What buyers say" },
+  { key: "headFaq", group: "Homepage headings", label: "FAQ section", kind: "text", max: 90, def: "Common questions, straight answers" },
 
   /* ── Homepage sections ─────────────────────────────────────────── */
   {
@@ -136,11 +158,22 @@ export const SITE_FIELDS: SiteField[] = [
     def: "Labelled, reviewed placements across home, listings and product pages. Prescription-only (medical cannabis) products are never eligible — for anyone (A1).",
   },
 
+  {
+    key: "healthGoals", group: "Homepage sections", label: "Shop-by-goal tiles", kind: "rich", max: 900,
+    help: "One tile per line: Title | blurb | /link.",
+    def: "- Sleep & calm | Evening rituals built on Ashwagandha and traditional calming herbs. | /catalogue?class=AYURVEDA\n- Daily nutrition | Hemp hearts and protein — complete plant protein with omega 3 & 6. | /catalogue?class=HEMP_FOOD\n- Muscle recovery | Topical CBD balms and roll-ons used in post-workout massage routines. | /catalogue?class=CBD_WELLNESS\n- Skin & body | Cold-pressed hemp seed oil, traditionally used in skin and hair care. | /catalogue?class=HEMP_FOOD\n- Digestive care | Triphala and classical churnas from the Ayurvedic tradition. | /catalogue?class=AYURVEDA\n- Focus | Adaptogen formulations used in daily study and work routines. | /catalogue?class=AYURVEDA",
+  },
+  {
+    key: "pillars", group: "Homepage sections", label: "Why-us pillars", kind: "rich", max: 1600,
+    help: "Each pillar: a heading, then its body paragraph.",
+    def: "## Sellers publish their paperwork\n\nSellers submit their licences when they create an account, and upload batch lab reports for regulated listings. Documents are shown on the listing, so you can check before you buy.\n\n## Sellers own their listings\n\nProducts are listed and sold by independent sellers. Each seller is responsible for the genuineness, quality and compliance of what they list — their licence details are on their storefront.\n\n## A simple, honest order flow\n\nYou pay, we pass your order to the seller, the seller ships it directly to you and updates the status you track. Prescription-gated items stay gated — they are never advertised or recommended.\n\n## Your data stays in India\n\nPII and payment data live in Indian data centres. Health data is encrypted separately, and every access is logged and disclosed to you.",
+  },
+
   /* ── Voices & FAQ ──────────────────────────────────────────────── */
   {
     key: "homeFaqs", group: "Voices & FAQ", label: "Homepage FAQ", kind: "rich", max: 2200,
     help: "Each question is a heading; the paragraphs beneath it are the answer. Also feeds the FAQPage structured data (SEO).",
-    def: "## Is hemp legal to buy in India?\n\nYes. Hemp seed products (oil, protein, hearts) are FSSAI-approved foods. CBD wellness products are sold under AYUSH licensing with a batch lab report confirming THC at or below 0.3%, and are age-gated 21+.\n\n## How do I know a product is genuinely lab-tested?\n\nEvery regulated product page shows its batch-matched Certificate of Analysis from an independent accredited lab. A regulated listing cannot go live on Vedic Hemp without an approved CoA — there is no override.\n\n## Do you sell medical cannabis?\n\nMedical cannabis exists on the platform but is prescription-only. It is never advertised, searchable or recommended. It becomes visible only to a signed-in buyer whose prescription a licensed pharmacist has verified.\n\n## Is Cash on Delivery available?\n\nYes, COD is available on most orders. Age-gated categories (CBD wellness) additionally require an ID check on handover, whatever the payment method.\n\n## Where is my personal data stored?\n\nAll personal data and payment data are held in Indian data centres (ap-south-1 / ap-south-2). Health data such as prescriptions is encrypted with a separate key and every access is logged and disclosed to you.",
+    def: "## Is hemp legal to buy in India?\n\nYes. Hemp seed products (oil, protein, hearts) are FSSAI-approved foods. CBD wellness products are sold under AYUSH licensing with a batch lab report confirming THC at or below 0.3%, and are age-gated 21+.\n\n## How do I know a product is genuinely lab-tested?\n\nEvery regulated product page shows its batch-matched Certificate of Analysis from an independent accredited lab. A regulated listing cannot go live on Vedic Hemp without an approved CoA — there is no override.\n\n## Do you sell medical cannabis?\n\nMedical cannabis exists on the platform but is prescription-only. It is never advertised, searchable or recommended. It becomes visible only to a signed-in buyer whose prescription a licensed pharmacist has verified.\n\n## How do I pay?\n\nAll orders are prepaid — UPI, cards and netbanking. Cash on Delivery is not offered: your order is forwarded to the seller only after payment is captured. Age-gated categories (CBD wellness) additionally require an ID check on handover.\n\n## Where is my personal data stored?\n\nAll personal data and payment data are held in Indian data centres (ap-south-1 / ap-south-2). Health data such as prescriptions is encrypted with a separate key and every access is logged and disclosed to you.",
   },
   {
     key: "testimonials", group: "Voices & FAQ", label: "Buyer testimonials", kind: "rich", max: 1600,
@@ -280,4 +313,17 @@ export function parseMenu(md: string): { label: string; href: string }[] {
       return { label: label.replace(/\*\*/g, ""), href };
     })
     .filter((x) => x.label && x.href.startsWith("/"));
+}
+
+/** Goal tiles: "- Title | blurb | /link". */
+export function parseGoals(md: string): { title: string; blurb: string; href: string }[] {
+  return NORM(md)
+    .split("\n")
+    .map((l) => l.trim().replace(/^-\s+/, ""))
+    .filter(Boolean)
+    .map((l) => {
+      const [title = "", blurb = "", href = "/catalogue"] = l.split("|").map((x) => x.trim());
+      return { title: title.replace(/\*\*/g, ""), blurb, href: href.startsWith("/") ? href : "/catalogue" };
+    })
+    .filter((g) => g.title);
 }

@@ -17,7 +17,7 @@ import { aiProviderName } from "@/lib/ai";
 export const metadata: Metadata = { title: "AI Intelligence · Admin" };
 
 const FRAUD_SIGNALS = [
-  { id: "u1042", signal: "COD refusal velocity", detail: "4 refused COD orders in 9 days across 2 addresses", score: 86, act: "Review buyer" },
+  { id: "u1042", signal: "Payment-decline velocity", detail: "4 failed prepaid attempts across 3 cards in 9 days on one device", score: 86, act: "Review buyer" },
   { id: "u0871", signal: "Return-abuse pattern", detail: "3 'empty box' claims in 60 days, all high-value CBD items", score: 78, act: "Review returns" },
   { id: "s-004", signal: "Review velocity anomaly", detail: "Seller's new listing gained 40 five-star ratings in 48h, 70% from accounts under 30 days old", score: 91, act: "Freeze ratings" },
   { id: "u1580", signal: "Address churn", detail: "Same device, 6 delivery addresses in 3 weeks", score: 64, act: "Step-up verify" },

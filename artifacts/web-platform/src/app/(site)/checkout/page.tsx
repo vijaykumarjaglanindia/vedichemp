@@ -114,12 +114,16 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           </section>
 
           <section className="vh-card">
-            <h3 style={{ marginBottom: 14 }}>Payment</h3>
+            <h3 style={{ marginBottom: 6 }}>Payment</h3>
+            <p className="small muted" style={{ margin: "0 0 14px" }}>
+              Vedic Hemp is 100% prepaid — orders are forwarded to sellers only after payment is
+              captured. Cash on Delivery is not offered.
+            </p>
             <div style={{ display: "grid", gap: 8 }}>
               {[
                 { value: "upi", icon: Smartphone, label: "UPI", sub: "GPay, PhonePe, Paytm — pay on the next screen" },
                 { value: "card", icon: CreditCard, label: "Card", sub: "Credit or debit · processed by a PCI-DSS gateway, card data never touches Vedic Hemp" },
-                { value: "cod", icon: Banknote, label: "Cash on Delivery", sub: "Pay the courier when your order arrives" },
+                { value: "netbanking", icon: Banknote, label: "Netbanking", sub: "All major Indian banks — redirected to your bank to authorise" },
               ].map(({ value, icon: Icon, label, sub }) => (
                 <label key={value} className="vh-row" style={{ gap: 12, border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "12px 14px", cursor: "pointer", alignItems: "flex-start" }}>
                   <input type="radio" name="payment" value={value} defaultChecked={(draft.payment ?? "upi") === value} style={{ marginTop: 3, accentColor: "var(--vh-accent)" }} />

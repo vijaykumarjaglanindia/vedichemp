@@ -17,12 +17,18 @@ import Link from "next/link";
 import {
   ArrowRight,
   BadgeCheck,
+  Brain,
+  Dumbbell,
   FlaskConical,
   Lock,
   Megaphone,
+  Moon,
   ShieldCheck,
+  Soup,
+  Sparkles,
   Store,
   Timer,
+  Wheat,
 } from "lucide-react";
 import { MoneyText, Rating, SectionHead } from "@/components/ui";
 import { AdBanner, AdSlot, AdVideo, CampaignLabel } from "@/components/ui/ads";
@@ -31,13 +37,12 @@ import { publishedPosts } from "@/lib/cms";
 import { mdToHtml } from "@/lib/richtext";
 import { faqJsonLd } from "@/lib/seo";
 import { readFeatures } from "@/lib/features";
-import { parseFaqs, parseTestimonials, parseTiles, readSiteContent } from "@/lib/sitecontent";
+import { parseFaqs, parseGoals, parseHeadedBlocks, parseTestimonials, parseTiles, readSiteContent } from "@/lib/sitecontent";
 import { SELLERS } from "@/lib/sample";
 import { ComplianceClass } from "@prisma/client";
 import {
   DEALS,
   FLASH_SALE,
-  HEALTH_GOALS,
   PUBLIC_PRODUCTS,
   sellerSlug,
 } from "./_lib/data";
@@ -56,6 +61,9 @@ export async function generateMetadata(): Promise<Metadata> {
 
 const SHOPPABLE_CLASSES: ComplianceClass[] = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
 
+const GOAL_ICONS = [Moon, Wheat, Dumbbell, Sparkles, Soup, Brain];
+const PILLAR_ICONS = [FlaskConical, BadgeCheck, ShieldCheck, Lock];
+
 const PILLARS: { icon: typeof FlaskConical; title: string; body: string }[] = [
   { icon: FlaskConical, title: "Sellers publish their paperwork", body: "Sellers submit their licences when they create an account, and upload batch lab reports for regulated listings. Documents are shown on the listing, so you can check before you buy." },
   { icon: BadgeCheck, title: "Sellers own their listings", body: "Products are listed and sold by independent sellers. Each seller is responsible for the genuineness, quality and compliance of what they list — their licence details are on their storefront." },
@@ -69,6 +77,8 @@ export default async function HomePage() {
   const faqs = parseFaqs(content.homeFaqs ?? "");
   const testimonials = parseTestimonials(content.testimonials ?? "");
   const uspTilesCopy = parseTiles(content.heroUsps ?? "");
+  const goals = parseGoals(content.healthGoals ?? "");
+  const pillarsCopy = parseHeadedBlocks(content.pillars ?? "");
   // "Learn" cards come from the CMS journal — publish a post and it lands here.
   const educationPosts = (await publishedPosts()).slice(0, 3);
   const eduEmoji = ["🌾", "🧪", "🥗"];
@@ -90,7 +100,7 @@ export default async function HomePage() {
             <p style={{ marginTop: 12 }}>{content.heroSub}</p>
             <div className="vh-row" style={{ gap: 12, marginTop: "var(--sp-4)", flexWrap: "wrap" }}>
               <Link href="/catalogue" className="vh-btn vh-btn-primary vh-btn-lg">
-                Shop the catalogue
+                {content.heroCtaPrimary}
                 <ArrowRight size={16} strokeWidth={2.2} aria-hidden />
               </Link>
               <Link
@@ -98,7 +108,7 @@ export default async function HomePage() {
                 className="vh-btn vh-btn-ghost"
                 style={{ background: "var(--vh-surface)", borderColor: "var(--vh-line-strong)", color: "var(--vh-ink)" }}
               >
-                How the marketplace works
+                {content.heroCtaSecondary}
               </Link>
             </div>
             <div className="vh-row" style={{ gap: 18, marginTop: "var(--sp-4)", flexWrap: "wrap", color: "var(--vh-body)", fontSize: ".84rem", fontWeight: 700 }}>
@@ -150,7 +160,7 @@ export default async function HomePage() {
         <div className="vh-container">
           <SectionHead
             eyebrow="Shop by category"
-            title="Three ways in — hemp, Ayurveda, CBD"
+            title={content.headCategories ?? ""}
             action={<Link href="/catalogue" className="small vh-row" style={{ gap: 4, fontWeight: 700 }}>View all <ArrowRight size={14} strokeWidth={2.2} aria-hidden /></Link>}
           />
           <div className="vh-grid cols-4">
@@ -195,7 +205,7 @@ export default async function HomePage() {
 
           <SectionHead
             eyebrow="Today's deals"
-            title="Today&rsquo;s deals from sellers"
+            title={content.headDeals ?? ""}
             sub="Strike-through prices are seller MRPs — the platform computes every total server-side."
             action={<Link href="/catalogue" className="small vh-row" style={{ gap: 4, fontWeight: 700 }}>All deals <ArrowRight size={14} strokeWidth={2.2} aria-hidden /></Link>}
           />
@@ -210,7 +220,7 @@ export default async function HomePage() {
       {/* ── From our sponsors (switchable in Features; A1-guarded regardless) ── */}
       {flags.sponsoredSections && <section className="vh-section" style={{ paddingTop: 0 }}>
         <div className="vh-container">
-          <SectionHead eyebrow="From our sponsors" title="Sponsored picks" sub="Clearly labelled, never mixed into rankings — and never a prescription product." />
+          <SectionHead eyebrow="From our sponsors" title={content.headSponsored ?? ""} sub="Clearly labelled, never mixed into rankings — and never a prescription product." />
           <div className="vh-split-wide">
             <AdVideo
               cls="CBD_WELLNESS" placement="home-video" brand="Vedic Botanicals"
@@ -266,7 +276,7 @@ export default async function HomePage() {
         <div className="vh-container">
           <SectionHead
             eyebrow="Bestsellers"
-            title="What buyers keep reordering"
+            title={content.headBestsellers ?? ""}
             action={<Link href="/catalogue" className="small vh-row" style={{ gap: 4, fontWeight: 700 }}>Browse catalogue <ArrowRight size={14} strokeWidth={2.2} aria-hidden /></Link>}
           />
           <div className="vh-grid cols-4">
@@ -324,11 +334,13 @@ export default async function HomePage() {
         <div className="vh-container">
           <SectionHead
             eyebrow="Shop by goal"
-            title="Built around your routine"
+            title={content.headGoals ?? ""}
             sub="Copy on Vedic Hemp describes composition and traditional use — never a medical claim."
           />
           <div className="vh-grid cols-3">
-            {HEALTH_GOALS.map(({ icon: Icon, title, blurb, href }) => (
+            {goals.map(({ title, blurb, href }, gi) => {
+              const Icon = GOAL_ICONS[gi % GOAL_ICONS.length]!;
+              return (
               <Link key={title} href={href} className="vh-card vh-row" style={{ gap: 14, color: "inherit", alignItems: "flex-start" }}>
                 <span
                   aria-hidden
@@ -345,7 +357,8 @@ export default async function HomePage() {
                   <span className="small muted">{blurb}</span>
                 </span>
               </Link>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -353,7 +366,7 @@ export default async function HomePage() {
       {/* ── Hemp education (switchable in Features) ──────── */}
       {flags.educationSection && <section className="vh-section">
         <div className="vh-container">
-          <SectionHead eyebrow="Learn" title="New to hemp? Start here" />
+          <SectionHead eyebrow="Learn" title={content.headLearn ?? ""} />
           <div className="vh-split">
             {/* Cards are the latest published journal posts — publish in
                 Admin → CMS and the homepage picks it up on the next request. */}
@@ -392,12 +405,14 @@ export default async function HomePage() {
         <div className="vh-container">
           <SectionHead
             eyebrow="Why Vedic Hemp"
-            title="How the marketplace works"
+            title={content.headWhy ?? ""}
             sub="Sellers list and ship; we run the marketplace and move your order to the right seller. The roles, in plain language."
           />
           <div className="vh-grid cols-4">
-            {PILLARS.map(({ icon: Icon, title, body }) => (
-              <div key={title} className="vh-card">
+            {pillarsCopy.map(({ head, body }, pi) => {
+              const Icon = PILLAR_ICONS[pi % PILLAR_ICONS.length]!;
+              return (
+              <div key={head} className="vh-card">
                 <span
                   aria-hidden
                   style={{
@@ -408,10 +423,11 @@ export default async function HomePage() {
                 >
                   <Icon size={19} strokeWidth={2.2} />
                 </span>
-                <h3 style={{ fontSize: ".98rem", marginBottom: 6 }}>{title}</h3>
+                <h3 style={{ fontSize: ".98rem", marginBottom: 6 }}>{head}</h3>
                 <p className="small muted" style={{ marginBottom: 0 }}>{body}</p>
               </div>
-            ))}
+              );
+            })}
           </div>
         </div>
       </section>
@@ -419,7 +435,7 @@ export default async function HomePage() {
       {/* ── Testimonials (switchable in Features) ────────── */}
       {flags.testimonials && <section className="vh-section">
         <div className="vh-container">
-          <SectionHead eyebrow="Buyers" title="What buyers say" />
+          <SectionHead eyebrow="Buyers" title={content.headTestimonials ?? ""} />
           <div className="vh-grid cols-3">
             {testimonials.map((t) => (
               <figure key={t.name} className="vh-card" style={{ margin: 0 }}>
@@ -443,7 +459,7 @@ export default async function HomePage() {
         <div className="vh-container">
           <SectionHead
             eyebrow="Sellers"
-            title="Storefronts with their licences showing"
+            title={content.headSellers ?? ""}
             sub="Health scores reflect fulfilment, returns and compliance history — computed by the platform, not self-reported."
           />
           <div className="vh-grid cols-3">
@@ -483,7 +499,7 @@ export default async function HomePage() {
       {/* ── FAQ (switchable in Features) ─────────────────── */}
       {flags.homeFaq && <section className="vh-section">
         <div className="vh-container" style={{ maxWidth: 820 }}>
-          <SectionHead eyebrow="FAQ" title="Common questions, straight answers" />
+          <SectionHead eyebrow="FAQ" title={content.headFaq ?? ""} />
           <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-2)" }}>
             {faqs.map((f) => (
               <details key={f.q} className="vh-card" style={{ padding: "var(--sp-3)" }}>
