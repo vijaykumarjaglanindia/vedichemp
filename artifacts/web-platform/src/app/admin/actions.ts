@@ -14,7 +14,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PERIOD_CLOSE_CHECKLIST } from "./_lib/data";
-import { MAX_BODY, SAMPLE_POSTS, deletePostOverride, findPost, slugify, writePostOverride } from "@/lib/cms";
+import { MAX_BODY, SAMPLE_POSTS, deletePostOverride, findPost, listRevisions, pushRevision, slugify, writePostOverride } from "@/lib/cms";
 import { getSession } from "@/lib/auth-lite";
 import { writeAudit } from "@/lib/audit";
 import { addCommission, minEffectiveFrom, readCommissions, readOpenRecall, setOpenRecall } from "@/lib/adminstate";
@@ -189,17 +189,51 @@ export async function savePost(formData: FormData): Promise<void> {
   // "Save draft" on an already-published post keeps it live with new copy —
   // matching WordPress's "Update" semantics.
 
+  // WordPress-style revisions: the state being replaced is kept (last 10).
+  if (prior) {
+    await pushRevision(slug, { at: new Date().toISOString(), by: await actor(), title: prior.title, body: prior.body });
+  }
+
+  // Scheduled publishing: "Publish" with a future time stores the schedule;
+  // the post flips live automatically when the moment passes.
+  const publishAtRaw = String(formData.get("publishAt") ?? "").trim();
+  let publishAt: string | undefined;
+  let effectiveStatus: "DRAFT" | "PUBLISHED" = status;
+  if (intent === "publish" && publishAtRaw) {
+    const when = new Date(publishAtRaw);
+    if (!Number.isNaN(when.getTime()) && when.getTime() > Date.now()) {
+      publishAt = when.toISOString();
+      effectiveStatus = "DRAFT";
+    }
+  }
+
   const result = await writePostOverride({
     slug,
     title: postTitle,
     body,
-    status,
+    status: effectiveStatus,
+    ...(publishAt ? { publishAt } : {}),
     updatedAt: new Date().toISOString().slice(0, 10),
     sample: SAMPLE_POSTS.some((p) => p.slug === slug),
   });
   if (result === "limit") redirect(editorUrl(slug, "cms=limit"));
   await writeAudit({ actor: await actor(), action: `CMS_${intent.toUpperCase()}`, target: slug, outcome: "OK" });
-  redirect(editorUrl(slug, `cms=${intent === "publish" ? "published" : intent === "unpublish" ? "unpublished" : "saved"}`));
+  redirect(editorUrl(slug, `cms=${publishAt ? "scheduled" : intent === "publish" ? "published" : intent === "unpublish" ? "unpublished" : "saved"}`));
+}
+
+/* ── CMS: restore a revision ──────────────────────────────── */
+
+export async function restorePostRevision(formData: FormData): Promise<void> {
+  const slug = String(formData.get("slug") ?? "");
+  const index = Number(formData.get("rev"));
+  const post = await findPost(slug);
+  const rev = (await listRevisions(slug))[index];
+  if (!post || !rev) redirect(`/admin/cms/editor?slug=${encodeURIComponent(slug)}&cms=norev`);
+  // The current state becomes a revision itself — restoring never loses work.
+  await pushRevision(slug, { at: new Date().toISOString(), by: await actor(), title: post.title, body: post.body });
+  await writePostOverride({ ...post, title: rev.title, body: rev.body, updatedAt: new Date().toISOString().slice(0, 10) });
+  await writeAudit({ actor: await actor(), action: "CMS_RESTORE_REVISION", target: `${slug}@${rev.at}`, outcome: "OK" });
+  redirect(`/admin/cms/editor?slug=${encodeURIComponent(slug)}&cms=restored`);
 }
 
 /* ── CMS: site content (every public copy surface) ────────── */

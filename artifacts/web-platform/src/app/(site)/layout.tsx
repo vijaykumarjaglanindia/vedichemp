@@ -26,7 +26,7 @@ import {
 import { CLASS_META } from "@/lib/compliance";
 import { mdToHtml } from "@/lib/richtext";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
-import { readSiteContent } from "@/lib/sitecontent";
+import { parseMenu, readSiteContent } from "@/lib/sitecontent";
 import { ComplianceClass } from "@prisma/client";
 
 // Every public page renders per-request so admin edits to site content and
@@ -150,6 +150,14 @@ const SEARCH_DOCS: SearchDoc[] = PRODUCTS.filter((p) => p.cls !== "MED_CANNABIS"
 
 export default async function SiteLayout({ children }: { children: ReactNode }) {
   const content = await readSiteContent();
+  // Menus are admin-edited (Site content → Menus); defaults mirror launch nav.
+  const navLinks = parseMenu(content.navHeader ?? "");
+  const footerCols = [
+    { heading: "Shop", links: parseMenu(content.footerShop ?? "") },
+    { heading: "Trust", links: parseMenu(content.footerTrust ?? "") },
+    { heading: "Company", links: parseMenu(content.footerCompany ?? "") },
+    { heading: "Partners", links: parseMenu(content.footerPartners ?? "") },
+  ].map((c, i) => (c.links.length ? c : FOOTER_COLUMNS[i] ?? c));
   return (
     <>
       <style dangerouslySetInnerHTML={{ __html: chromeCss }} />
@@ -227,7 +235,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
               </div>
             </div>
 
-            {NAV_LINKS.map((link) => (
+            {(navLinks.length ? navLinks : NAV_LINKS).map((link) => (
               <Link key={link.href} href={link.href} className="small" style={{ fontWeight: 700, whiteSpace: "nowrap" }}>
                 {link.label}
               </Link>
@@ -285,7 +293,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
               <p className="small" style={{ maxWidth: 250 }}>{content.footerAbout}</p>
             </div>
 
-            {FOOTER_COLUMNS.map((col) => (
+            {footerCols.map((col) => (
               <nav key={col.heading} aria-label={col.heading}>
                 <div className="small" style={{ fontWeight: 800, color: "var(--vh-ink)", marginBottom: 10, textTransform: "uppercase", letterSpacing: "0.05em", fontSize: ".7rem" }}>
                   {col.heading}

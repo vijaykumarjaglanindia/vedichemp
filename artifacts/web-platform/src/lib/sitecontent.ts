@@ -33,6 +33,7 @@ export interface SiteField {
 
 export const SITE_GROUPS = [
   "Global chrome",
+  "Menus",
   "Homepage hero",
   "Homepage sections",
   "Voices & FAQ",
@@ -60,6 +61,29 @@ export const SITE_FIELDS: SiteField[] = [
   {
     key: "supportEmail", group: "Global chrome", label: "Support email", kind: "text", max: 80,
     def: "support@vedichemp.com",
+  },
+
+  /* ── Menus (WordPress-style: one link per line, "Label | /path") ── */
+  {
+    key: "navHeader", group: "Menus", label: "Header navigation", kind: "rich", max: 400,
+    help: "One link per line: Label | /path. The Shop mega-panel stays automatic.",
+    def: "- All products | /catalogue\n- How it works | /trust\n- About | /about",
+  },
+  {
+    key: "footerShop", group: "Menus", label: "Footer — Shop column", kind: "rich", max: 500,
+    def: "- All products | /catalogue\n- Hemp Nutrition & Food | /catalogue?class=HEMP_FOOD\n- Ayurveda | /catalogue?class=AYURVEDA\n- Hemp Wellness / CBD | /catalogue?class=CBD_WELLNESS\n- AI Gift Finder | /gifts\n- Verify a batch | /verify",
+  },
+  {
+    key: "footerTrust", group: "Menus", label: "Footer — Trust column", kind: "rich", max: 500,
+    def: "- How it works | /trust\n- Certificate of Analysis | /trust#coa\n- How prescriptions work | /trust#prescriptions\n- Our six prohibitions | /trust#prohibitions",
+  },
+  {
+    key: "footerCompany", group: "Menus", label: "Footer — Company column", kind: "rich", max: 500,
+    def: "- About Vedic Hemp | /about\n- Wellness journal | /blog\n- My account | /account\n- Featured stores | /store/vedic-botanicals",
+  },
+  {
+    key: "footerPartners", group: "Menus", label: "Footer — Partners column", kind: "rich", max: 500,
+    def: "- Sell on Vedic Hemp | /sell\n- Commission & fees | /sell#commission\n- Advertise with us | /sell#advertise",
   },
 
   /* ── Homepage hero ─────────────────────────────────────────────── */
@@ -243,4 +267,17 @@ export function parseTiles(md: string): { title: string; sub: string }[] {
       return { title: titleRaw.replace(/\*\*/g, ""), sub };
     })
     .filter((t) => t.title);
+}
+
+/** Menu lines: "- Label | /path" → link list (invalid lines are skipped). */
+export function parseMenu(md: string): { label: string; href: string }[] {
+  return NORM(md)
+    .split("\n")
+    .map((l) => l.trim().replace(/^-\s+/, ""))
+    .filter(Boolean)
+    .map((l) => {
+      const [label = "", href = ""] = l.split("|").map((x) => x.trim());
+      return { label: label.replace(/\*\*/g, ""), href };
+    })
+    .filter((x) => x.label && x.href.startsWith("/"));
 }

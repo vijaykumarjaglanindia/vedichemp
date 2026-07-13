@@ -43,7 +43,11 @@ export default async function AdminCmsPage({
             Announcement bar, homepage hero and sections, FAQ, testimonials, footer disclosure and
             page metadata — every public copy surface, editable and published live from one place.
           </p>
-          <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/admin/cms/site">Edit site content</Link>
+          <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
+            <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/admin/cms/site">Edit site content</Link>
+            <Link className="vh-btn vh-btn-sm vh-btn-outline" href="/admin/cms/pages">Page builder</Link>
+            <Link className="vh-btn vh-btn-sm vh-btn-outline" href="/admin/cms/media">Media library</Link>
+          </div>
         </Card>
         <Card title={<span className="vh-row" style={{ gap: 8 }}><FileText {...I} aria-hidden /> Pages</span>} pad0>
           <div style={{ overflowX: "auto" }}>

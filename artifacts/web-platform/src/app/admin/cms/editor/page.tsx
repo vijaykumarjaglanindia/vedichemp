@@ -14,13 +14,16 @@ import { ArrowLeft, Eye, Globe, Send, Trash2 } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Banner, Card, StatusPill } from "@/components/ui";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
-import { MAX_BODY, findPost } from "@/lib/cms";
-import { savePost } from "../../actions";
+import { MAX_BODY, findPost, listRevisions } from "@/lib/cms";
+import { restorePostRevision, savePost } from "../../actions";
 
 export const metadata: Metadata = { title: "Post editor · Admin" };
 
 const NOTES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {
   saved: { sev: "ok", text: "Saved. Published posts stay live with the updated copy; drafts stay private." },
+  scheduled: { sev: "ok", text: "Scheduled — the post goes live automatically at the chosen time. Until then it stays a private draft." },
+  restored: { sev: "ok", text: "Revision restored. The state you replaced was kept as a new revision — nothing is lost." },
+  norev: { sev: "danger", text: "That revision no longer exists." },
   published: { sev: "ok", text: "Published — the post is live on the public journal right now." },
   unpublished: { sev: "warn", text: "Unpublished — the post is a private draft again; the public URL now returns not-found." },
   title: { sev: "danger", text: "Title should be 6–90 characters." },
@@ -37,6 +40,7 @@ export default async function PostEditorPage({
 }) {
   const { slug, cms } = await searchParams;
   const post = slug && slug !== "new" ? await findPost(slug) : undefined;
+  const revisions = post ? await listRevisions(post.slug) : [];
 
   return (
     <Shell
@@ -85,6 +89,12 @@ export default async function PostEditorPage({
               </div>
             </Card>
 
+            <div className="vh-field" style={{ maxWidth: 320 }}>
+              <label className="vh-label" htmlFor="post-publishat">Schedule (optional)</label>
+              <input className="vh-input" id="post-publishat" name="publishAt" type="datetime-local" defaultValue={post?.publishAt?.slice(0, 16) ?? ""} />
+              <span className="vh-help">Set a future time and press Publish — it goes live on its own (WordPress-style scheduling).</span>
+            </div>
+
             <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
               <button type="submit" name="intent" value="draft" className="vh-btn vh-btn-ghost">
                 {post?.status === "PUBLISHED" ? "Update (stays live)" : "Save draft"}
@@ -131,6 +141,25 @@ export default async function PostEditorPage({
               Deleting a page above the traffic threshold requires a second admin (maker–checker) — the
               samples on this demo are all above it.
             </p>
+            {revisions.length > 0 && (
+              <div style={{ marginTop: 14, borderTop: "1px solid var(--vh-line)", paddingTop: 12 }}>
+                <div className="small" style={{ fontWeight: 800, color: "var(--vh-ink)", marginBottom: 8 }}>Revisions ({revisions.length})</div>
+                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
+                  {revisions.map((rev, i) => (
+                    <li key={rev.at} className="vh-row-between" style={{ gap: 8 }}>
+                      <span className="small muted">
+                        <span className="tabular">{rev.at.slice(0, 16).replace("T", " ")}</span> · {rev.by} · &ldquo;{rev.title.slice(0, 28)}&hellip;&rdquo;
+                      </span>
+                      <form action={restorePostRevision}>
+                        <input type="hidden" name="slug" value={post?.slug ?? ""} />
+                        <input type="hidden" name="rev" value={i} />
+                        <button className="vh-btn vh-btn-sm vh-btn-ghost" type="submit">Restore</button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
           </Card>
         </div>
       </div>

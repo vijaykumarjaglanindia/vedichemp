@@ -18,6 +18,8 @@ import "server-only";
 export interface CmsPost {
   slug: string;
   title: string;
+  /** Scheduled publishing: goes live automatically once this time passes. */
+  publishAt?: string;
   body: string;
   status: "DRAFT" | "PUBLISHED";
   updatedAt: string;
@@ -103,7 +105,7 @@ export async function allPosts(): Promise<CmsPost[]> {
   for (const [slug, p] of Object.entries(overrides)) {
     bySlug.set(slug, { ...p, sample: SAMPLE_POSTS.some((s) => s.slug === slug) });
   }
-  return [...bySlug.values()].sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
+  return [...bySlug.values()].map(withEffectiveStatus).sort((a, b) => (a.updatedAt < b.updatedAt ? 1 : -1));
 }
 
 export async function publishedPosts(): Promise<CmsPost[]> {
@@ -120,3 +122,38 @@ export function slugify(title: string): string {
 
 /** Escape-then-format markdown-lite — shared core in src/lib/richtext.ts. */
 export { mdToHtml as renderMarkdownLite } from "@/lib/richtext";
+
+/* ── Scheduled publishing ────────────────────────────────────────── */
+
+/** A scheduled DRAFT becomes PUBLISHED the moment its time passes. */
+export function withEffectiveStatus(p: CmsPost): CmsPost {
+  if (p.status === "DRAFT" && p.publishAt && p.publishAt <= new Date().toISOString()) {
+    return { ...p, status: "PUBLISHED" };
+  }
+  return p;
+}
+
+/* ── Revisions (WordPress-style, last 10 per post) ───────────────── */
+
+export interface PostRevision {
+  at: string;
+  by: string;
+  title: string;
+  body: string;
+}
+
+const r = globalThis as unknown as { __vhCmsRevisions?: Record<string, PostRevision[]> };
+function revisionStore(): Record<string, PostRevision[]> {
+  r.__vhCmsRevisions ??= {};
+  return r.__vhCmsRevisions;
+}
+
+export async function pushRevision(slug: string, rev: PostRevision): Promise<void> {
+  const list = (revisionStore()[slug] ??= []);
+  list.unshift(rev);
+  if (list.length > 10) list.length = 10;
+}
+
+export async function listRevisions(slug: string): Promise<PostRevision[]> {
+  return revisionStore()[slug] ?? [];
+}
