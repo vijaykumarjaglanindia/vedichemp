@@ -39,6 +39,7 @@ export const SITE_GROUPS = [
   "Homepage sections",
   "Voices & FAQ",
   "Trust & About",
+  "Legal & policies",
   "SEO & metadata",
 ] as const;
 
@@ -85,6 +86,10 @@ export const SITE_FIELDS: SiteField[] = [
   {
     key: "footerCompany", group: "Menus", label: "Footer — Company column", kind: "rich", max: 500,
     def: "- Help Centre | /help\n- About Vedic Hemp | /about\n- Wellness journal | /blog\n- My account | /account\n- Featured stores | /store/vedic-botanicals",
+  },
+  {
+    key: "footerPolicies", group: "Menus", label: "Footer — Policies column", kind: "rich", max: 500,
+    def: "- Terms of Service | /legal/terms\n- Privacy Policy | /legal/privacy\n- Returns & Refunds | /legal/returns\n- Shipping Policy | /legal/shipping",
   },
   {
     key: "footerPartners", group: "Menus", label: "Footer — Partners column", kind: "rich", max: 500,
@@ -193,6 +198,32 @@ export const SITE_FIELDS: SiteField[] = [
   {
     key: "aboutIntro", group: "Trust & About", label: "About page — intro", kind: "rich", max: 500,
     def: "Vedic Hemp is a regulated multi-vendor marketplace for hemp, CBD wellness, Ayurveda and medical cannabis in India — built so that compliance is a property of the platform, not a policy someone has to remember to follow.",
+  },
+
+  /* ── Legal & policies (documents, not product copy) ────────────── */
+  // Policy documents legitimately NAME the forbidden claim verbs ("no seller
+  // may claim to treat…") and use "prevent" in its legal sense, so the claims
+  // copy-check is skipped — same carve-out as the footer disclosure. These
+  // fields must never hold product copy.
+  {
+    key: "legalTerms", group: "Legal & policies", label: "Terms of Service", kind: "rich", max: 8000,
+    allowClaimVerbs: true,
+    def: "Last updated: 13 July 2026\n\n## 1. Who we are\n\nVedic Hemp is a marketplace intermediary operated by WEBMM Consultants Private Limited, Pune, Maharashtra. Products on this platform are listed and sold by independent sellers — not by us. Each seller submits its licences at onboarding and is responsible for the genuineness, quality and compliance of its listings.\n\n## 2. Eligibility\n\nYou must be 21 or older to purchase age-gated categories (CBD wellness). Prescription-gated products (medical cannabis) additionally require a prescription verified by a licensed pharmacist. Products in these categories are never advertised, recommended or promoted — to anyone.\n\n## 3. Orders & payment\n\nOrders are confirmed only after payment is captured through the payment methods shown at checkout. All prices are in Indian Rupees and computed on our servers; the total shown at checkout is authoritative. An order is a purchase from the listing seller, forwarded by us after payment.\n\n## 4. Content rules\n\nNothing published on this platform — listings, reviews, questions or journal posts — may claim to cure, treat, prevent or diagnose any disease. Copy that does is blocked at the point of submission and repeat attempts may lead to account action.\n\n## 5. Cancellation & disputes\n\nYou can cancel before dispatch from your orders page. For problems after delivery, our returns policy applies: you are refunded first and we recover from the seller afterwards. Disputes are governed by the laws of India, courts of Pune, Maharashtra.\n\n## 6. Changes to these terms\n\nWe may update these terms with notice on this page. Fee changes for sellers always carry at least 30 days' written notice and are never retroactive.",
+  },
+  {
+    key: "legalPrivacy", group: "Legal & policies", label: "Privacy Policy", kind: "rich", max: 8000,
+    allowClaimVerbs: true,
+    def: "Last updated: 13 July 2026\n\n## What we collect\n\nAccount details (name, email, phone), delivery addresses, order history, and — only if you buy prescription-gated products — the prescription you upload. Payment card details go directly to the payment provider; we never see or store a full card number.\n\n## Where your data lives\n\nAll personal data and payment data are held in Indian data centres (ap-south-1 / ap-south-2). Health data such as prescriptions is encrypted with a separate key, in a separate bucket, with object lock.\n\n## Who can see health data\n\nOnly a licensed pharmacist or compliance officer can open a prescription, only with a logged reason — and you are notified every time it happens. That access log cannot be edited or deleted, by anyone.\n\n## What we never do\n\nWe do not sell personal data. We do not use health data for advertising, recommendations or analytics. Health information never appears in emails, push notifications or marketing of any kind.\n\n## Cookies\n\nWe use strictly necessary cookies only: your session, your cart and your sign-in state. There are no third-party advertising trackers on this site.\n\n## Your rights\n\nYou can access and correct your account data from your profile, and request deletion of your account by writing to the support address in the footer. Records we are legally required to retain (dispensing registers, audit logs) are retained in anonymised-where-possible form for the statutory period.",
+  },
+  {
+    key: "legalReturns", group: "Legal & policies", label: "Returns & Refunds Policy", kind: "rich", max: 6000,
+    allowClaimVerbs: true,
+    def: "Last updated: 13 July 2026\n\n## The one rule that matters\n\nYou are refunded first; we recover from the seller afterwards. You are never collateral in a dispute between the platform and a seller.\n\n## What can be returned\n\n- Damaged, tampered or wrong items: report within 48 hours of delivery with a photo — full refund, no questions.\n- Sealed, unopened products: returnable within 7 days of delivery.\n- Opened consumables (foods, oils, tinctures): not returnable for change of mind, as required for food-grade safety — but always returnable if the product is defective or the seal arrived broken.\n- Prescription-dispensed items: returnable only for damage or dispensing error, per pharmacy rules.\n\n## How to start a return\n\nOpen the order in My account → Orders and choose \"Return or report a problem\". Refunds go back to the original payment method within 5–7 business days of pickup — or instantly to your wallet if you choose store credit.\n\n## Recalls\n\nIf a batch you bought is ever recalled, we contact you directly with return instructions and a full refund — you do not need to ask.",
+  },
+  {
+    key: "legalShipping", group: "Legal & policies", label: "Shipping Policy", kind: "rich", max: 6000,
+    allowClaimVerbs: true,
+    def: "Last updated: 13 July 2026\n\n## Who ships your order\n\nEvery order is packed and shipped by the seller who lists the product, through the seller's delivery partner. After payment is captured we forward your order to the seller; the tracking status you see is the same status the seller updates.\n\n## Costs & timelines\n\nShipping charges and any free-shipping threshold are always shown in your cart before you pay — the cart is authoritative. Most sellers dispatch within 24–48 hours; delivery estimates by PIN code appear on each product page.\n\n## Age check on delivery\n\nAge-gated categories (CBD wellness, 21+) require an ID check at handover. The courier is instructed not to complete delivery without it. Prescription-gated items are dispensed and shipped only after pharmacist verification.\n\n## Coverage\n\nSellers ship across India wherever their delivery partners reach. If your PIN code is not serviceable for an item, the product page and checkout will tell you before payment, never after.",
   },
 
   /* ── SEO & metadata ────────────────────────────────────────────── */

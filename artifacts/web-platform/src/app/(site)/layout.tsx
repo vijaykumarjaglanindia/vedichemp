@@ -176,6 +176,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
     { heading: "Trust", links: parseMenu(content.footerTrust ?? "") },
     { heading: "Company", links: parseMenu(content.footerCompany ?? "") },
     { heading: "Partners", links: parseMenu(content.footerPartners ?? "") },
+    { heading: "Policies", links: parseMenu(content.footerPolicies ?? "") },
   ].map((c, i) => (c.links.length ? c : FOOTER_COLUMNS[i] ?? c));
   return (
     <>

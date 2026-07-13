@@ -11,7 +11,10 @@ import { STORE_PROFILES } from "./(site)/_lib/data";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = "https://vedichemp.in";
   const now = new Date();
-  const statics = ["", "/catalogue", "/trust", "/about", "/sell", "/blog", "/verify", "/gifts", "/compare", "/help"].map((p) => ({
+  const statics = [
+    "", "/catalogue", "/trust", "/about", "/sell", "/blog", "/verify", "/gifts", "/compare", "/help",
+    "/legal/terms", "/legal/privacy", "/legal/returns", "/legal/shipping",
+  ].map((p) => ({
     url: `${base}${p}`,
     lastModified: now,
     changeFrequency: "weekly" as const,

@@ -10,6 +10,30 @@ const nextConfig = {
   ...(basePath ? { basePath } : {}),
   // The Replit preview is a proxied iframe on a different origin.
   allowedDevOrigins: ["*.replit.dev", "*.replit.app", "127.0.0.1", "localhost"],
+
+  async headers() {
+    return [
+      {
+        source: "/:path*",
+        headers: [
+          // frame-ancestors instead of X-Frame-Options: the Replit preview
+          // embeds the app in a cross-origin iframe, and XFO cannot allow-list
+          // origins. Everyone else is denied framing (clickjacking).
+          {
+            key: "Content-Security-Policy",
+            value: "frame-ancestors 'self' https://*.replit.dev https://*.replit.app https://*.replit.com",
+          },
+          { key: "X-Content-Type-Options", value: "nosniff" },
+          { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },
+          // The platform never asks for camera, mic, location or the Payment
+          // Request API (PSP-hosted fields handle cards).
+          { key: "Permissions-Policy", value: "camera=(), microphone=(), geolocation=(), payment=()" },
+          // Ignored over plain HTTP (dev); enforced once served over HTTPS.
+          { key: "Strict-Transport-Security", value: "max-age=63072000; includeSubDomains" },
+        ],
+      },
+    ];
+  },
 };
 
 export default nextConfig;
