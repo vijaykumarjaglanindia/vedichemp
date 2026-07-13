@@ -17,7 +17,9 @@ import {
 import { Shell } from "../Shell";
 import { Card, StatusPill, toneForStatus, MoneyText, ComplianceBadge, Banner, DataTable, type Column } from "@/components/ui";
 import { Sparkline } from "@/components/ui/charts";
+import { readStoreCopy } from "@/lib/engage";
 import { SELLERS, type SampleSeller } from "@/lib/sample";
+import { adminSaveStorefront } from "../actions";
 import { SELLER_HEALTH_SERIES, KYC_META, slaCountdown } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Sellers · Admin" };
@@ -78,10 +80,30 @@ const columns: Column<SampleSeller>[] = [
     ) },
 ];
 
-export default function AdminSellersPage() {
+export default async function AdminSellersPage({
+  searchParams,
+}: {
+  searchParams: Promise<{ store?: string }>;
+}) {
+  const { store } = await searchParams;
+  const storeCopy = await readStoreCopy();
   return (
     <Shell active="/admin/sellers" breadcrumb={["Admin", "Sellers"]} title="Seller management">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
+        {store === "saved" && (
+          <Banner severity="ok" title="Storefront copy published on the seller's behalf">
+            Live on the public storefront immediately; the edit is audited as an on-behalf-of action.
+          </Banner>
+        )}
+        {store && store !== "saved" && (
+          <Banner severity="danger" title="Storefront copy rejected">
+            {store === "claims"
+              ? "Claims language rejected (cure/treat/prevent/heal) — the attempt was logged. Storefront copy follows the same rules as everything public."
+              : store === "tagline"
+                ? "Tagline should be 10–90 characters."
+                : "Story should be 40–500 characters."}
+          </Banner>
+        )}
         <Card
           title={<span className="vh-row" style={{ gap: 8 }}><BadgeCheck {...I} aria-hidden /> KYC queue</span>}
           action={<StatusPill tone={KYC_QUEUE.length ? "warn" : "ok"}>{KYC_QUEUE.length} pending</StatusPill>}
@@ -134,6 +156,34 @@ export default function AdminSellersPage() {
         <Card title="All sellers" pad0>
           <DataTable columns={columns} rows={SELLERS} />
         </Card>
+
+        {/* ── Storefront copy on the seller's behalf ────────── */}
+        <div id="storefront-obo">
+          <Card
+            title={<span className="vh-row" style={{ gap: 8 }}><Store {...I} aria-hidden /> Storefront copy — on behalf of Vedic Botanicals</span>}
+            action={<Link className="small" href="/store/vedic-botanicals" style={{ fontWeight: 700 }}>View public storefront →</Link>}
+          >
+            <p className="small muted" style={{ marginTop: 0 }}>
+              For sellers who ask support to update their page. Same length rules and claims copy-check as
+              Seller Central; the save is audited naming the storefront it was done for.
+            </p>
+            <form action={adminSaveStorefront} className="vh-grid" style={{ gap: 12 }}>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="obo-tagline">Tagline (10–90 chars) <span className="req">*</span></label>
+                <input className="vh-input" id="obo-tagline" name="tagline" type="text" maxLength={90}
+                  defaultValue={storeCopy?.tagline ?? "AYUSH-licensed CBD wellness, batch-tested since 2021"} />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="obo-story">Store story (40–500 chars) <span className="req">*</span></label>
+                <textarea className="vh-textarea" id="obo-story" name="story" rows={3} maxLength={500}
+                  defaultValue={storeCopy?.story ?? ""} placeholder="Who they are, how they make it, what buyers can check — no health claims." />
+              </div>
+              <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>
+                Publish on seller&apos;s behalf
+              </button>
+            </form>
+          </Card>
+        </div>
 
         <div className="vh-grid cols-2">
           <Card title={<span className="vh-row" style={{ gap: 8 }}><UsersRound {...I} aria-hidden /> Approve / reject / suspend</span>}>

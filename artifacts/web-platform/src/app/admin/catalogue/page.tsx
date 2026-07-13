@@ -93,7 +93,16 @@ export default async function AdminCataloguePage({
   ];
 
   return (
-    <Shell active="/admin/catalogue" breadcrumb={["Admin", "Catalogue"]} title="Catalogue administration">
+    <Shell
+      active="/admin/catalogue"
+      breadcrumb={["Admin", "Catalogue"]}
+      title="Catalogue administration"
+      actions={
+        <Link href="/admin/catalogue/products" className="vh-btn vh-btn-sm vh-btn-primary">
+          All listings — create &amp; edit for sellers
+        </Link>
+      }
+    >
       {modMsg && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity={modMsg.severity} title={modMsg.title}>{modMsg.body}</Banner>

@@ -433,3 +433,156 @@ export async function removeCategory(formData: FormData): Promise<void> {
   await writeAudit({ actor: who, action: "CATEGORY_DELETE", target: id, outcome: "OK" });
   redirect("/admin/catalogue/categories?cat=deleted");
 }
+
+/* ── Catalogue: full admin control, incl. on behalf of sellers ── */
+
+import {
+  archiveListing as storeArchiveListing,
+  createListing as storeCreateListing,
+  deleteListing as storeDeleteListing,
+  findProduct as storeFindProduct,
+  restoreArchived as storeRestoreArchived,
+  submitCoa as storeSubmitCoa,
+  submitForReview as storeSubmitForReview,
+  unpublishListing as storeUnpublishListing,
+  updateListing as storeUpdateListing,
+} from "@/lib/catalog";
+import { ComplianceClass } from "@prisma/client";
+import { writeStoreCopy } from "@/lib/engage";
+import { SELLERS } from "@/lib/sample";
+
+const ADMIN_CREATABLE: ComplianceClass[] = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
+
+/**
+ * Create or edit ANY listing, on behalf of the seller who owns it. Same
+ * validation and claims copy-check as Seller Central — being an admin buys
+ * operational reach, never a compliance bypass: no MED_CANNABIS creation
+ * (A1), no path to LIVE except review + the CoA gate (A2). Every save is
+ * audited with the seller it was done for.
+ */
+export async function adminSaveListing(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const title = String(formData.get("title") ?? "").trim();
+  const desc = String(formData.get("desc") ?? "").trim();
+  const emoji = String(formData.get("emoji") ?? "").trim().slice(0, 4);
+  const pricePaise = parseInt(String(formData.get("pricePaise") ?? ""), 10);
+  const mrpPaise = parseInt(String(formData.get("mrpPaise") ?? ""), 10);
+  const hsn = String(formData.get("hsn") ?? "").trim();
+  const who = await actor();
+  const back = id ? `/admin/catalogue/products/${id}` : "/admin/catalogue/products";
+
+  let err: string | null = null;
+  if (title.length < 8 || title.length > 150) err = "title";
+  else if (CLAIMS_LANGUAGE.test(title) || CLAIMS_LANGUAGE.test(desc)) err = "claims";
+  else if (!Number.isInteger(pricePaise) || pricePaise <= 0) err = "price";
+  else if (!Number.isInteger(mrpPaise) || mrpPaise < pricePaise) err = "mrp";
+  else if (!/^\d{4,8}$/.test(hsn)) err = "hsn";
+  if (err === "claims") {
+    await writeAudit({ actor: who, action: id ? "LISTING_EDIT_OBO" : "LISTING_CREATE_OBO", target: title, outcome: "DENIED", note: "claims language" });
+  }
+  if (err) redirect(`${back}?err=${err}`);
+
+  if (id) {
+    const product = await storeFindProduct(id);
+    if (!product) redirect("/admin/catalogue/products");
+    const ok = await storeUpdateListing(id, { title, desc, pricePaise, mrpPaise, hsn, ...(emoji ? { emoji } : {}) });
+    if (!ok) redirect("/admin/catalogue/products");
+    await writeAudit({ actor: who, action: "LISTING_EDIT_OBO", target: `${title} (for ${product!.seller})`, outcome: "OK" });
+    redirect(`/admin/catalogue/products/${id}?saved=1`);
+  }
+
+  const seller = String(formData.get("seller") ?? "").trim();
+  const cls = String(formData.get("cls") ?? "");
+  if (!SELLERS.some((s) => s.name === seller)) redirect(`${back}?err=seller`);
+  if (!ADMIN_CREATABLE.includes(cls as ComplianceClass)) {
+    // A1: an admin cannot conjure a medical listing either — log the attempt.
+    await writeAudit({ actor: who, action: "LISTING_CREATE_OBO", target: `${title} (for ${seller})`, outcome: "DENIED", note: "A1/A2: class not creatable" });
+    redirect(`${back}?err=cls`);
+  }
+  const created = await storeCreateListing({
+    title, desc, cls: cls as ComplianceClass, pricePaise, mrpPaise, hsn,
+    emoji: emoji || "🏷️", seller, sellerEmail: `obo:${who}`,
+  });
+  if (!created) redirect(`${back}?err=cls`);
+  await writeAudit({ actor: who, action: "LISTING_CREATE_OBO", target: `${created!.title} (for ${seller})`, outcome: "OK", note: `id ${created!.id}, DRAFT` });
+  redirect(`/admin/catalogue/products/${created!.id}?created=1`);
+}
+
+/**
+ * Admin lifecycle ops on any listing — submit for review, unpublish,
+ * archive, restore, hard-delete — done on the seller's behalf and audited.
+ * Deleting is destructive, so it demands a written reason (≥ 20 chars);
+ * approve/reject/suspend/restore live in moderateListing/takedownListing
+ * (same gates for everyone — A2 is enforced in the store).
+ */
+export async function adminListingLifecycle(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const op = String(formData.get("op") ?? "");
+  const reason = String(formData.get("reason") ?? "").trim();
+  const who = await actor();
+  const product = await storeFindProduct(id);
+  if (!product) redirect("/admin/catalogue/products");
+  const obo = `(for ${product!.seller})`;
+
+  if (op === "delete") {
+    if (reason.length < 20) {
+      await writeAudit({ actor: who, action: "LISTING_DELETE_OBO", target: `${product!.title} ${obo}`, outcome: "DENIED", note: "reason under 20 chars" });
+      redirect(`/admin/catalogue/products/${id}?err=reason`);
+    }
+    const result = await storeDeleteListing(id);
+    if (!result.ok) {
+      await writeAudit({ actor: who, action: "LISTING_DELETE_OBO", target: `${product!.title} ${obo}`, outcome: "DENIED", note: result.reason === "fixture" ? "launch listings archive, never hard-delete" : "not a draft/archived listing" });
+      redirect(`/admin/catalogue/products/${id}?err=${result.reason}`);
+    }
+    await writeAudit({ actor: who, action: "LISTING_DELETE_OBO", target: `${product!.title} ${obo}`, outcome: "OK", note: reason });
+    redirect("/admin/catalogue/products?deleted=1");
+  }
+
+  const ops: Record<string, { run: (x: string) => Promise<{ ok: boolean; reason?: string }>; action: string }> = {
+    submit: { run: storeSubmitForReview, action: "LISTING_SUBMIT_OBO" },
+    unpublish: { run: storeUnpublishListing, action: "LISTING_UNPUBLISH_OBO" },
+    archive: { run: storeArchiveListing, action: "LISTING_ARCHIVE_OBO" },
+    restore: { run: storeRestoreArchived, action: "LISTING_UNARCHIVE_OBO" },
+  };
+  const entry = ops[op];
+  if (!entry) redirect("/admin/catalogue/products");
+  const result = await entry!.run(id);
+  if (!result.ok) redirect(`/admin/catalogue/products/${id}?err=${result.reason ?? "state"}`);
+  await writeAudit({ actor: who, action: entry!.action, target: `${product!.title} ${obo}`, outcome: "OK" });
+  redirect(`/admin/catalogue/products/${id}?done=${op}`);
+}
+
+/** Submit a batch CoA on the seller's behalf (e.g. emailed PDF) — still lands
+ *  in the same PENDING_REVIEW queue; submission is not approval (A2). */
+export async function adminSubmitCoa(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const batchCode = String(formData.get("batchCode") ?? "").trim().toUpperCase();
+  if (!/^[A-Z0-9-]{4,20}$/.test(batchCode)) redirect(`/admin/catalogue/products/${id}?err=batch`);
+  const product = await storeFindProduct(id);
+  if (!product) redirect("/admin/catalogue/products");
+  const result = await storeSubmitCoa(id, batchCode);
+  if (!result.ok) redirect(`/admin/catalogue/products/${id}?err=${result.reason}`);
+  await writeAudit({ actor: await actor(), action: "COA_SUBMIT_OBO", target: `${product!.title} · ${batchCode} (for ${product!.seller})`, outcome: "OK" });
+  redirect(`/admin/catalogue/products/${id}?coa=submitted`);
+}
+
+/** Edit a storefront's public copy on the seller's behalf — same length and
+ *  claims rules as Seller Central, audited with the storefront name. */
+export async function adminSaveStorefront(formData: FormData): Promise<void> {
+  const tagline = String(formData.get("tagline") ?? "").trim();
+  const story = String(formData.get("story") ?? "").trim();
+  const who = await actor();
+
+  let err: string | null = null;
+  if (tagline.length < 10 || tagline.length > 90) err = "tagline";
+  else if (story.length < 40 || story.length > 500) err = "story";
+  else if (CLAIMS_LANGUAGE.test(tagline) || CLAIMS_LANGUAGE.test(story)) err = "claims";
+  if (err === "claims") {
+    await writeAudit({ actor: who, action: "STOREFRONT_EDIT_OBO", target: "Vedic Botanicals", outcome: "DENIED", note: "claims language" });
+  }
+  if (err) redirect(`/admin/sellers?store=${err}#storefront-obo`);
+
+  await writeStoreCopy({ tagline, story });
+  await writeAudit({ actor: who, action: "STOREFRONT_EDIT_OBO", target: "Vedic Botanicals", outcome: "OK" });
+  redirect("/admin/sellers?store=saved#storefront-obo");
+}
