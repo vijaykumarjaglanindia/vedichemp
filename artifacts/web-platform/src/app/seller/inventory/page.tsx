@@ -11,26 +11,18 @@ import { Hourglass, RotateCcw, Warehouse as WarehouseIcon } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, Stat, type Column } from "@/components/ui";
 import { Donut } from "@/components/ui/charts";
-import { readStockAdds } from "@/lib/engage";
 import { WAREHOUSE_STOCK, LOW_STOCK_THRESHOLD, type WarehouseStock } from "../_lib/data";
-import { addStock } from "../actions";
 
 export const metadata: Metadata = { title: "Inventory" };
 
-export default async function InventoryPage() {
+export default function InventoryPage() {
   const isLow = (w: WarehouseStock) => w.qty - w.reserved < LOW_STOCK_THRESHOLD && w.qty - w.reserved > 0;
   const isOut = (w: WarehouseStock) => w.qty - w.reserved <= 0;
 
-  // Units added via "Add stock"/"Reorder" this session (server-written cookie;
-  // a stock-movement row with the DB attached). Sellability is untouched —
-  // adding stock never bypasses the CoA gate (A2).
-  const adds = await readStockAdds();
-  const stock = WAREHOUSE_STOCK.map((w) => ({ ...w, qty: w.qty + (adds[w.batch] ?? 0) }));
-
-  const inStock = stock.filter((w) => !isLow(w) && !isOut(w)).length;
-  const low = stock.filter(isLow).length;
-  const out = stock.filter(isOut).length;
-  const warehouses = Array.from(new Set(stock.map((w) => w.warehouse)));
+  const inStock = WAREHOUSE_STOCK.filter((w) => !isLow(w) && !isOut(w)).length;
+  const low = WAREHOUSE_STOCK.filter(isLow).length;
+  const out = WAREHOUSE_STOCK.filter(isOut).length;
+  const warehouses = Array.from(new Set(WAREHOUSE_STOCK.map((w) => w.warehouse)));
 
   // Status palette (reserved for state, never series identity): ok / warn / danger.
   const stockSegments = [
@@ -54,13 +46,9 @@ export default async function InventoryPage() {
     {
       key: "actions", header: "", align: "right", render: (w) =>
         isLow(w) || isOut(w) ? (
-          <form action={addStock} style={{ display: "inline-flex" }}>
-            <input type="hidden" name="batch" value={w.batch} />
-            <input type="hidden" name="qty" value={100} />
-            <button className="vh-btn vh-btn-sm vh-btn-ghost" type="submit" title={`Add 100 units to batch ${w.batch}`} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-              <RotateCcw size={13} strokeWidth={2.2} aria-hidden /> Reorder 100
-            </button>
-          </form>
+          <button className="vh-btn vh-btn-sm vh-btn-ghost" type="button" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <RotateCcw size={13} strokeWidth={2.2} aria-hidden /> Reorder
+          </button>
         ) : null,
     },
   ];
@@ -70,12 +58,12 @@ export default async function InventoryPage() {
       active="/seller/inventory"
       breadcrumb={["Seller Central", "Inventory"]}
       title="Inventory"
-      actions={<a className="vh-btn vh-btn-sm vh-btn-primary" href="#restock">Add stock</a>}
+      actions={<button className="vh-btn vh-btn-sm vh-btn-primary" type="button">Add stock</button>}
     >
       <div className="vh-grid cols-2" style={{ alignItems: "start", marginBottom: "var(--sp-4)" }}>
         <Card title="Stock health">
           <div className="vh-row" style={{ gap: 24, alignItems: "center" }}>
-            <Donut segments={stockSegments} size={128} centre={`${stock.length}`} />
+            <Donut segments={stockSegments} size={128} centre={`${WAREHOUSE_STOCK.length}`} />
             <div className="vh-grid" style={{ gap: 8, flex: 1 }}>
               {stockSegments.map((s) => (
                 <div key={s.label} className="vh-row-between small">
@@ -98,7 +86,7 @@ export default async function InventoryPage() {
                 <WarehouseIcon size={13} strokeWidth={2.2} aria-hidden /> {warehouses.join(", ")}
               </div>
             </Card>
-            <Card><Stat label="Batch lines" value={stock.length} /></Card>
+            <Card><Stat label="Batch lines" value={WAREHOUSE_STOCK.length} /></Card>
             <Card><Stat label="Low / out" value={low + out} delta={low + out > 0 ? { dir: "down", text: "needs reorder" } : undefined} /></Card>
           </div>
 
@@ -114,34 +102,8 @@ export default async function InventoryPage() {
       </div>
 
       <Card pad0>
-        <DataTable columns={columns} rows={stock} empty={<div className="vh-empty">No stock recorded yet.</div>} />
+        <DataTable columns={columns} rows={WAREHOUSE_STOCK} empty={<div className="vh-empty">No stock recorded yet.</div>} />
       </Card>
-
-      {/* Add stock */}
-      <div id="restock" style={{ scrollMarginTop: 90, marginTop: "var(--sp-4)" }}>
-        <Card title="Add stock">
-          <form action={addStock} className="vh-row" style={{ gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-            <div className="vh-field" style={{ minWidth: 220 }}>
-              <label className="vh-label" htmlFor="stock-batch">Batch <span className="req">*</span></label>
-              <select className="vh-select" id="stock-batch" name="batch" required defaultValue="">
-                <option value="" disabled>Choose a batch…</option>
-                {stock.map((w) => (
-                  <option key={w.batch} value={w.batch}>{w.batch} — {w.product}</option>
-                ))}
-              </select>
-            </div>
-            <div className="vh-field" style={{ width: 140 }}>
-              <label className="vh-label" htmlFor="stock-qty">Units <span className="req">*</span></label>
-              <input className="vh-input" id="stock-qty" name="qty" type="number" min={1} max={10000} required placeholder="100" />
-            </div>
-            <button type="submit" className="vh-btn vh-btn-primary">Add units</button>
-            <span className="vh-help" style={{ flexBasis: "100%" }}>
-              Adding stock never changes sellability — a batch blocked on its CoA stays blocked until the
-              report is approved (A2). A brand-new batch is added from the product page with its own CoA.
-            </span>
-          </form>
-        </Card>
-      </div>
     </Shell>
   );
 }

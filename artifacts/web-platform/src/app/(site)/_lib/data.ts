@@ -127,7 +127,7 @@ export const TESTIMONIALS: Testimonial[] = [
 export const HOME_FAQS: { q: string; a: string }[] = [
   {
     q: "Is hemp legal to buy in India?",
-    a: "Yes. Hemp seed products (oil, protein, hearts) are FSSAI-approved foods. CBD wellness products are sold under AYUSH licensing with a batch lab report confirming THC at or below 0.3%, and are age-gated 21+.",
+    a: "Yes. Hemp seed products (oil, protein, hearts) are FSSAI-approved foods. CBD wellness products are sold under AYUSH licensing with a batch lab report confirming THC at or below 0.3%, and are age-gated 18+.",
   },
   {
     q: "How do I know a product is genuinely lab-tested?",

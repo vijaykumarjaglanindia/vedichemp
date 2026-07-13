@@ -10,7 +10,6 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import { FlaskConical, FileSearch, Timer, Tags, PackageCheck } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, toneForStatus, MoneyText, ComplianceBadge, Banner, DataTable, type Column } from "@/components/ui";
@@ -89,11 +88,11 @@ export default function AdminCataloguePage() {
                       <dd style={{ margin: 0 }}>{q.ageHours}h of {q.sla} SLA</dd>
                     </dl>
                     <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                      <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/catalogue#${q.id}-report`}>
+                      <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/catalogue#${q.id}-report`}>
                         <FileSearch {...IB} aria-hidden /> View report
-                      </Link>
-                      <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/catalogue#${q.id}-approve`}>Approve this batch</Link>
-                      <Link className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/catalogue#${q.id}-reject`}>Reject</Link>
+                      </a>
+                      <a className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/catalogue#${q.id}-approve`}>Approve this batch</a>
+                      <a className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/catalogue#${q.id}-reject`}>Reject</a>
                     </div>
                     <p className="small muted" style={{ margin: 0 }}>
                       Approval requires a human reviewer note (≥20 chars) — there is no one-click or bulk approve.

@@ -7,13 +7,10 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Search, PackagePlus, Upload, Pencil, FlaskConical } from "lucide-react";
 import { Shell } from "../Shell";
-import { Banner, Card, DataTable, StatusPill, toneForStatus, ComplianceBadge, MoneyText, type Column } from "@/components/ui";
+import { Card, DataTable, StatusPill, toneForStatus, ComplianceBadge, MoneyText, type Column } from "@/components/ui";
 import { BarList } from "@/components/ui/charts";
-import { ComplianceClass } from "@prisma/client";
-import { readSubmittedProducts } from "@/lib/engage";
 import { SELLER_PRODUCTS, LISTING_QUALITY, type SellerProduct } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Products" };
@@ -30,35 +27,15 @@ function coaSummary(p: SellerProduct): { tone: "ok" | "warn" | "danger" | "neutr
 export default async function SellerProductsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ status?: string; q?: string; submitted?: string }>;
+  searchParams: Promise<{ status?: string; q?: string }>;
 }) {
-  const { status: rawStatus, q, submitted } = await searchParams;
+  const { status: rawStatus, q } = await searchParams;
   const status = STATUS_TABS.includes(rawStatus as (typeof STATUS_TABS)[number])
     ? (rawStatus as (typeof STATUS_TABS)[number])
     : "ALL";
   const query = (q ?? "").trim().toLowerCase();
 
-  // Listings created via Add product in this session (server-written cookie;
-  // db.product rows once the DB is attached). Regulated ones start with an
-  // empty batch list, so the CoA column correctly reads "No batches yet".
-  const mine: SellerProduct[] = (await readSubmittedProducts()).map((p) => ({
-    id: p.id,
-    title: p.title,
-    slug: p.id,
-    cls: p.cls as ComplianceClass,
-    pricePaise: p.pricePaise,
-    mrpPaise: p.mrpPaise,
-    seller: "Vedic Botanicals",
-    rating: 0,
-    emoji: "🆕",
-    labVerified: false,
-    state: p.listingState,
-    hsn: p.hsn,
-    listingState: p.listingState,
-    batches: [],
-  }));
-
-  const rows = [...mine, ...SELLER_PRODUCTS]
+  const rows = SELLER_PRODUCTS
     .filter((p) => (status === "ALL" ? true : p.listingState === status))
     .filter((p) => (query ? p.title.toLowerCase().includes(query) : true));
 
@@ -68,7 +45,7 @@ export default async function SellerProductsPage({
         <span className="vh-row" style={{ gap: 10 }}>
           <span aria-hidden style={{ fontSize: "1.5rem" }}>{p.emoji}</span>
           <span>
-            <div style={{ fontWeight: 600 }}><Link href={`/seller/products/${p.id}`}>{p.title}</Link></div>
+            <div style={{ fontWeight: 600 }}><a href={`/seller/products/${p.id}`}>{p.title}</a></div>
             <ComplianceBadge cls={p.cls} />
           </span>
         </span>
@@ -86,12 +63,12 @@ export default async function SellerProductsPage({
     {
       key: "actions", header: "", align: "right", render: (p) => (
         <span className="vh-row" style={{ gap: 4, justifyContent: "flex-end" }}>
-          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/seller/products/${p.id}`} aria-label={`Edit ${p.title}`}>
+          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/seller/products/${p.id}`} aria-label={`Edit ${p.title}`}>
             <Pencil size={14} strokeWidth={2.2} aria-hidden />
-          </Link>
-          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/seller/products/${p.id}#coa-upload`} aria-label={`Upload lab report for ${p.title}`}>
+          </a>
+          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/seller/products/${p.id}#coa-upload`} aria-label={`Upload lab report for ${p.title}`}>
             <FlaskConical size={14} strokeWidth={2.2} aria-hidden />
-          </Link>
+          </a>
         </span>
       ),
     },
@@ -107,25 +84,15 @@ export default async function SellerProductsPage({
           <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#bulk-upload" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <Upload size={14} strokeWidth={2.2} aria-hidden /> Bulk upload
           </a>
-          <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/products/new" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+          <a className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/products/new" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
             <PackagePlus size={14} strokeWidth={2.2} aria-hidden /> Add product
-          </Link>
+          </a>
         </span>
       }
     >
-      {submitted && (
-        <div style={{ marginBottom: "var(--sp-3)" }}>
-          <Banner severity="ok" title={submitted === "draft" ? "Draft saved" : "Submitted for review"}>
-            {submitted === "draft"
-              ? "The listing is saved as DRAFT — finish it any time from this list."
-              : "Compliance reviews new listings within a few business days. A regulated listing also needs an approved, batch-matched CoA before it can go live (A2)."}
-          </Banner>
-        </div>
-      )}
-
       {/* Toolbar */}
       <div className="vh-row-between" style={{ marginBottom: "var(--sp-3)", flexWrap: "wrap", gap: 8 }}>
-        <form method="GET" className="vh-row" style={{ gap: 8, flex: "1 1 280px", maxWidth: 420 }}>
+        <form method="GET" action="/seller/products" className="vh-row" style={{ gap: 8, flex: "1 1 280px", maxWidth: 420 }}>
           {status !== "ALL" && <input type="hidden" name="status" value={status} />}
           <div style={{ position: "relative", flex: 1 }}>
             <Search size={15} strokeWidth={2.2} aria-hidden style={{ position: "absolute", left: 12, top: "50%", transform: "translateY(-50%)", color: "var(--vh-muted)" }} />
@@ -147,9 +114,9 @@ export default async function SellerProductsPage({
               ? `/seller/products${query ? `?q=${encodeURIComponent(query)}` : ""}`
               : `/seller/products?status=${t}${query ? `&q=${encodeURIComponent(query)}` : ""}`;
             return (
-              <Link key={t} href={href} className={t === status ? "on" : undefined} aria-current={t === status ? "true" : undefined}>
+              <a key={t} href={href} className={t === status ? "on" : undefined} aria-current={t === status ? "true" : undefined}>
                 {t === "ALL" ? "All" : t.charAt(0) + t.slice(1).toLowerCase()}
-              </Link>
+              </a>
             );
           })}
         </nav>
@@ -159,7 +126,7 @@ export default async function SellerProductsPage({
         <DataTable
           columns={columns}
           rows={rows}
-          empty={<div className="vh-empty">No products match — clear the search or <Link href="/seller/products/new">add your first product</Link>.</div>}
+          empty={<div className="vh-empty">No products match — clear the search or <a href="/seller/products/new">add your first product</a>.</div>}
         />
       </Card>
       <p className="small muted" style={{ margin: "8px 0 var(--sp-4)" }}>

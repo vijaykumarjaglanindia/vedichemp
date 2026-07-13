@@ -9,7 +9,6 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Eye, Undo2, Scale, Truck, UsersRound } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, toneForStatus, MoneyText, Banner, DataTable, type Column } from "@/components/ui";
@@ -51,12 +50,12 @@ const columns: Column<SampleOrder>[] = [
       const needsChecker = o.totalPaise >= REFUND_CHECKER_THRESHOLD_PAISE;
       return (
         <div className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
-          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/orders#${o.id}`}>
+          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/orders#${o.id}`}>
             <Eye {...IB} aria-hidden /> View
-          </Link>
-          <Link className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/orders#${o.id}-refund`}>
+          </a>
+          <a className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/orders#${o.id}-refund`}>
             <Undo2 {...IB} aria-hidden /> {needsChecker ? "Refund (needs checker — A6)" : "Refund"}
-          </Link>
+          </a>
         </div>
       );
     } },
@@ -77,14 +76,14 @@ export default function AdminOrdersPage() {
         {/* Exception segment filter */}
         <div className="vh-seg" role="navigation" aria-label="Order exception filters">
           {EXCEPTION_FILTERS.map((f) => (
-            <Link
+            <a
               key={f.id}
               href={`/admin/orders#${f.id}`}
               className={f.active ? "on" : undefined}
               aria-current={f.active ? "page" : undefined}
             >
               {f.label}
-            </Link>
+            </a>
           ))}
         </div>
 
@@ -110,7 +109,7 @@ export default function AdminOrdersPage() {
                       </span>
                       <span className="vh-row" style={{ gap: 8 }}>
                         <MoneyText paise={o.totalPaise} />
-                        <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/orders#${o.id}-dispute`}>Adjudicate</Link>
+                        <a className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/orders#${o.id}-dispute`}>Adjudicate</a>
                       </span>
                     </div>
                     <p className="small muted" style={{ margin: "var(--sp-1) 0 0" }}>

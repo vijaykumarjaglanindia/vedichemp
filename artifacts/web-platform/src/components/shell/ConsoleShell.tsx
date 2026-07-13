@@ -11,7 +11,6 @@
  */
 
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { Menu, Search, Bell } from "lucide-react";
 
 export interface NavItem { href: string; label: string; icon: ReactNode }
@@ -47,10 +46,10 @@ export function ConsoleShell({
           <div key={gi}>
             {g.group && <div className="vh-rail-group">{g.group}</div>}
             {g.items.map((it) => (
-              <Link key={it.href} href={it.href} className={it.href === active ? "active" : ""} aria-current={it.href === active ? "page" : undefined}>
+              <a key={it.href} href={it.href} className={it.href === active ? "active" : ""} aria-current={it.href === active ? "page" : undefined}>
                 <span aria-hidden>{it.icon}</span>
                 {it.label}
-              </Link>
+              </a>
             ))}
           </div>
         ))}

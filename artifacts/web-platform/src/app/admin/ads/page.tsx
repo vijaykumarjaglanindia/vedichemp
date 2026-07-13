@@ -15,7 +15,6 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import { Megaphone, LayoutTemplate, Pencil, Timer, Eye, Gauge, ShieldCheck } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, Stat, StatusPill, toneForStatus, MoneyText, Banner, ComplianceBadge } from "@/components/ui";
@@ -107,9 +106,9 @@ export default function AdminAdsPage() {
                     </td>
                     <td><StatusPill tone={toneForStatus(p.status)}>{p.status}</StatusPill></td>
                     <td>
-                      <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/ads#${p.id}-edit`} aria-label={`Edit placement ${p.placement}`}>
+                      <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/ads#${p.id}-edit`} aria-label={`Edit placement ${p.placement}`}>
                         <Pencil {...IB} aria-hidden /> Edit
-                      </Link>
+                      </a>
                     </td>
                   </tr>
                 ))}
@@ -176,11 +175,11 @@ export default function AdminAdsPage() {
                       </div>
                     </span>
                     <span className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                      <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/ads#${q.id}-creative`}>
+                      <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/ads#${q.id}-creative`}>
                         <Eye {...IB} aria-hidden /> View creative
-                      </Link>
-                      <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/ads#${q.id}-approve`}>Approve (maker)</Link>
-                      <Link className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/ads#${q.id}-reject`}>Reject</Link>
+                      </a>
+                      <a className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/ads#${q.id}-approve`}>Approve (maker)</a>
+                      <a className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/ads#${q.id}-reject`}>Reject</a>
                     </span>
                   </li>
                 );

@@ -9,7 +9,6 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   Stethoscope, FlaskConical, Siren, Lock, Brush, Megaphone, HeartPulse, ScrollText,
@@ -19,7 +18,6 @@ import { Shell } from "../Shell";
 import { Card, StatusPill, Banner, ComplianceBadge } from "@/components/ui";
 import { COMPLIANCE_QUEUE, AUDIT } from "@/lib/sample";
 import { SENSITIVE_ACCESS_24H, slaCountdown } from "../_lib/data";
-import { closeRecall, initiateRecall } from "../actions";
 
 export const metadata: Metadata = { title: "Compliance · Admin" };
 
@@ -36,19 +34,7 @@ const SUB_CARDS: { id: string; icon: ReactNode; title: string; href: string; des
   { id: "logs", icon: <ScrollText {...I} aria-hidden />, title: "Compliance logs", href: "#logs", desc: "SensitiveAccessLog and AuditLog — append-only, never edited." },
 ];
 
-const RECALL_NOTES: Record<string, { sev: "ok" | "danger" | "warn"; title: string; body: string }> = {
-  initiated: { sev: "ok", title: "Recall initiated (maker)", body: "Affected batches are frozen from sale immediately; a second, different compliance officer must review before the recall can ever be closed. The record is append-only (A3)." },
-  denied: { sev: "danger", title: "Close denied — maker cannot be checker (A6)", body: "You initiated this recall, so you cannot also close it. The denied attempt has been logged. A different compliance officer must close it." },
-  none: { sev: "warn", title: "No open recall", body: "There is no recall in this session to close." },
-  reason: { sev: "warn", title: "Reason required", body: "Initiating a recall needs at least 20 characters of free-text reason — it is written into the immutable recall record." },
-};
-
-export default async function AdminCompliancePage({
-  searchParams,
-}: {
-  searchParams: Promise<{ recall?: string; ref?: string }>;
-}) {
-  const { recall, ref } = await searchParams;
+export default function AdminCompliancePage() {
   return (
     <Shell active="/admin/compliance" breadcrumb={["Admin", "Compliance"]} title="Compliance hub">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
@@ -61,11 +47,11 @@ export default async function AdminCompliancePage({
 
         <div className="vh-grid cols-4">
           {SUB_CARDS.map((c) => (
-            <Link key={c.id} href={c.href} className="vh-card" style={{ padding: "var(--sp-3)", display: "block" }}>
+            <a key={c.id} href={c.href} className="vh-card" style={{ padding: "var(--sp-3)", display: "block" }}>
               <div style={{ marginBottom: 8, color: "var(--vh-accent)" }}>{c.icon}</div>
               <div style={{ fontWeight: 600, marginBottom: 4 }}>{c.title}</div>
               <div className="small muted">{c.desc}</div>
-            </Link>
+            </a>
           ))}
         </div>
 
@@ -90,7 +76,7 @@ export default async function AdminCompliancePage({
                         </StatusPill>
                       </td>
                       <td>
-                        <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/compliance#${q.id}`}>Claim</Link>
+                        <a className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/compliance#${q.id}`}>Claim</a>
                       </td>
                     </tr>
                   );
@@ -171,26 +157,9 @@ export default async function AdminCompliancePage({
             cannot both declare and clear a safety incident. Recall records, like all safety records, cannot be
             deleted or altered once written (A3); a correction is a new row referencing the original.
           </p>
-          <div id="recall" style={{ scrollMarginTop: 90 }}>
-            {recall && RECALL_NOTES[recall] && (
-              <div style={{ marginBottom: 12 }}>
-                <Banner severity={RECALL_NOTES[recall].sev} title={ref ? `${RECALL_NOTES[recall].title} · ${ref}` : RECALL_NOTES[recall].title}>
-                  {RECALL_NOTES[recall].body}
-                </Banner>
-              </div>
-            )}
-            <form action={initiateRecall} className="vh-grid" style={{ gap: 10, marginBottom: 10 }}>
-              <div className="vh-field">
-                <label className="vh-label" htmlFor="recall-reason">Reason <span className="req">*</span></label>
-                <textarea className="vh-textarea" id="recall-reason" name="reason" rows={2} minLength={20} maxLength={500} required placeholder="Batch, defect and source of the safety signal (min 20 characters)" />
-              </div>
-              <div className="vh-row" style={{ gap: 8 }}>
-                <button type="submit" className="vh-btn vh-btn-sm vh-btn-danger">Initiate recall (maker)</button>
-              </div>
-            </form>
-            <form action={closeRecall}>
-              <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">Close recall (needs checker)</button>
-            </form>
+          <div className="vh-row" style={{ gap: 8 }}>
+            <a className="vh-btn vh-btn-sm vh-btn-danger" href="#recall-initiate">Initiate recall (maker)</a>
+            <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#recall-close">Close recall (needs checker)</a>
           </div>
         </Card>
 

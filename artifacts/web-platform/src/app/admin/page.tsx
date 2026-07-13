@@ -9,7 +9,6 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import {
   FlaskConical, Stethoscope, Megaphone, ClipboardList, Timer, Ban,
   CheckCircle2, XCircle, AlertTriangle, KeyRound, Siren, ScrollText, Gauge,
@@ -119,14 +118,14 @@ export default function AdminHomePage() {
               <Stethoscope {...I} aria-hidden />
               <div>
                 <strong>{KPIS.rxPendingSla} prescriptions</strong> pending pharmacist verification within the 4-hour SLA.{" "}
-                <Link href="/admin/compliance">Open Rx queue →</Link>
+                <a href="/admin/compliance">Open Rx queue →</a>
               </div>
             </div>
             <div className="vh-banner vh-banner-info">
               <FlaskConical {...I} aria-hidden />
               <div>
                 <strong>{KPIS.coaPendingSla} lab reports</strong> awaiting CoA verification before their batch can go sellable (A2).{" "}
-                <Link href="/admin/catalogue">Open CoA queue →</Link>
+                <a href="/admin/catalogue">Open CoA queue →</a>
               </div>
             </div>
           </div>
@@ -165,9 +164,9 @@ export default function AdminHomePage() {
                         );
                       })}
                     </ul>
-                    <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={meta?.href ?? "/admin/compliance"}>
+                    <a className="vh-btn vh-btn-sm vh-btn-ghost" href={meta?.href ?? "/admin/compliance"}>
                       Claim next →
-                    </Link>
+                    </a>
                   </div>
                 );
               })}
@@ -202,7 +201,7 @@ export default function AdminHomePage() {
                   <tr key={a.id}>
                     <td>{a.kind}</td>
                     <td>
-                      <Link href={a.href}>{a.subject}</Link>
+                      <a href={a.href}>{a.subject}</a>
                     </td>
                     <td style={{ textAlign: "right" }}>{a.amount != null ? <MoneyText paise={a.amount} /> : <span className="muted">—</span>}</td>
                     <td className="mono small">{a.maker}</td>
@@ -213,9 +212,9 @@ export default function AdminHomePage() {
                           You made this — cannot check your own (403 if attempted)
                         </span>
                       ) : (
-                        <Link className="vh-btn vh-btn-sm vh-btn-primary" href={a.href}>
+                        <a className="vh-btn vh-btn-sm vh-btn-primary" href={a.href}>
                           Review as checker
-                        </Link>
+                        </a>
                       )}
                     </td>
                   </tr>
@@ -235,7 +234,7 @@ export default function AdminHomePage() {
             </p>
             <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
               <StatusPill tone="neutral">No elevated scope active</StatusPill>
-              <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/settings">Request elevation →</Link>
+              <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/settings">Request elevation →</a>
             </div>
           </Card>
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Siren {...I} aria-hidden /> Break-glass access</span>}>
@@ -245,13 +244,13 @@ export default function AdminHomePage() {
               requester. The access is logged before the object key resolves, and the subject is notified regardless
               of urgency (A4).
             </p>
-            <Link className="vh-btn vh-btn-sm vh-btn-danger" href="/admin/compliance">Initiate break-glass →</Link>
+            <a className="vh-btn vh-btn-sm vh-btn-danger" href="/admin/compliance">Initiate break-glass →</a>
           </Card>
         </div>
 
         {/* Live activity + incidents */}
         <div className="vh-grid cols-2">
-          <Card title="Live activity" action={<Link className="small" href="/admin/settings">Full audit log →</Link>}>
+          <Card title="Live activity" action={<a className="small" href="/admin/settings">Full audit log →</a>}>
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
               {AUDIT.map((a) => {
                 const denied = a.outcome === "DENIED";
@@ -299,7 +298,7 @@ export default function AdminHomePage() {
                 <AlertTriangle {...I} aria-hidden />
                 <div>
                   Seller <strong>Ananda Foods</strong> health score dropped to 58 (AT_RISK) — 3 late shipments this
-                  week. <Link href="/admin/sellers">Review →</Link>
+                  week. <a href="/admin/sellers">Review →</a>
                 </div>
               </li>
               <li className="vh-banner vh-banner-info">

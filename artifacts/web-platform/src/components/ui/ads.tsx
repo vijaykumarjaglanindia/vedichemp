@@ -15,7 +15,6 @@
  */
 
 import type { ReactNode } from "react";
-import Link from "next/link";
 import { ComplianceClass } from "@prisma/client";
 
 export class AdRenderViolation extends Error {
@@ -93,7 +92,7 @@ export function AdBanner({
           <div style={{ fontWeight: 700, color: "var(--vh-ink)", fontSize: "1.02rem", letterSpacing: "-0.01em" }}>{headline}</div>
           {body && <div className="small muted" style={{ marginTop: 3 }}>{body}</div>}
         </div>
-        <Link href={href} className="vh-btn vh-btn-primary vh-btn-sm" style={{ flexShrink: 0 }}>{cta}</Link>
+        <a href={href} className="vh-btn vh-btn-primary vh-btn-sm" style={{ flexShrink: 0 }}>{cta}</a>
       </div>
     </div>
   );
@@ -111,7 +110,7 @@ export function AdVideo({
   assertCreativeClassRenderable(cls);
   return (
     <div className="vh-adslot" data-ad-placement={placement} style={{ padding: 0, overflow: "hidden" }}>
-      <Link href={href} style={{ display: "block", color: "inherit", textDecoration: "none" }} aria-label={`Sponsored video: ${title} by ${brand}`}>
+      <a href={href} style={{ display: "block", color: "inherit", textDecoration: "none" }} aria-label={`Sponsored video: ${title} by ${brand}`}>
         <div
           style={{
             aspectRatio: "16 / 9", position: "relative", display: "flex", alignItems: "center", justifyContent: "center",
@@ -142,7 +141,7 @@ export function AdVideo({
           </div>
           <span className="vh-btn vh-btn-ghost vh-btn-sm" style={{ flexShrink: 0 }}>Watch</span>
         </div>
-      </Link>
+      </a>
     </div>
   );
 }

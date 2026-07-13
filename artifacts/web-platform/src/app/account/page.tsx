@@ -9,7 +9,6 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   Activity, BadgePercent, BellRing, FileUp, LifeBuoy, MapPin, Package,
@@ -22,7 +21,6 @@ import { CampaignLabel, assertCreativeClassRenderable } from "@/components/ui/ad
 import { currentBuyer } from "@/lib/session";
 import { ORDERS, classProducts } from "@/lib/sample";
 import { CAMPAIGN_OFFERS, ACTIVITY, WALLET_TREND, WALLET_BALANCE_PAISE } from "./_lib/data";
-import { applyCoupon } from "../(site)/cart/actions";
 
 export const metadata: Metadata = { title: "My Account" };
 
@@ -82,14 +80,14 @@ export default function AccountHomePage() {
         {showRxExpiryBanner && (
           <Banner severity="warn" title="Your prescription expires soon">
             Renew before it lapses or your Medical Cannabis subscriptions will auto-pause.{" "}
-            <Link href="/account/medical">Manage prescription →</Link>
+            <a href="/account/medical">Manage prescription →</a>
           </Banner>
         )}
 
         {/* Quick actions — navigation chrome, not a ranked widget */}
         <nav className="vh-grid cols-4" aria-label="Quick actions">
           {QUICK_ACTIONS.map((qa) => (
-            <Link
+            <a
               key={qa.href}
               href={qa.href}
               className="vh-card vh-row"
@@ -108,7 +106,7 @@ export default function AccountHomePage() {
                 {qa.icon}
               </span>
               {qa.label}
-            </Link>
+            </a>
           ))}
         </nav>
 
@@ -124,9 +122,9 @@ export default function AccountHomePage() {
                 <p className="muted small" style={{ margin: 0 }}>
                   Profile {profileCompletePct}% complete — add your date of birth and a delivery address to reach 100%.
                 </p>
-                <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/account/profile" style={{ marginTop: 8, display: "inline-flex" }}>
+                <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/account/profile" style={{ marginTop: 8, display: "inline-flex" }}>
                   Complete profile
-                </Link>
+                </a>
               </div>
               <ProgressRing percent={profileCompletePct} />
             </div>
@@ -146,7 +144,7 @@ export default function AccountHomePage() {
                       <StatusPill tone={a.tone}>Action</StatusPill>
                       <span className="small">{a.label}</span>
                     </span>
-                    <Link className="small" href={a.href}>Resolve →</Link>
+                    <a className="small" href={a.href}>Resolve →</a>
                   </li>
                 ))}
               </ul>
@@ -157,7 +155,7 @@ export default function AccountHomePage() {
         {/* Widget rank 4: recent orders */}
         <Card
           title={<TitleIcon icon={<Package {...I} />}>Recent orders</TitleIcon>}
-          action={<Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/account/orders">View all</Link>}
+          action={<a className="vh-btn vh-btn-sm vh-btn-ghost" href="/account/orders">View all</a>}
         >
           {myOrders.length === 0 ? (
             <EmptyState icon="📦" headline="No orders yet" cta={{ label: "Start shopping", href: "/" }} />
@@ -178,13 +176,13 @@ export default function AccountHomePage() {
                   <span className="vh-row" style={{ gap: 8 }}>
                     <StatusPill tone={toneForStatus(o.status)}>{o.status.replace(/_/g, " ")}</StatusPill>
                     <MoneyText paise={o.totalPaise} />
-                    <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/account/orders/${o.id}`}>
+                    <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/account/orders/${o.id}`}>
                       {o.status === "DELIVERED" ? (
                         "Buy again"
                       ) : (
                         <span className="vh-row" style={{ gap: 6 }}><MapPin size={14} strokeWidth={2.2} aria-hidden />Track</span>
                       )}
-                    </Link>
+                    </a>
                   </span>
                 </li>
               ))}
@@ -196,7 +194,7 @@ export default function AccountHomePage() {
         <div className="vh-grid cols-3">
           <Card title={<TitleIcon icon={<RefreshCw {...I} />}>Active subscriptions</TitleIcon>}>
             <p className="small muted" style={{ marginBottom: 8 }}>2 active · next delivery in 3 days</p>
-            <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/account/subscriptions">Manage subscriptions</Link>
+            <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/account/subscriptions">Manage subscriptions</a>
           </Card>
           <Card>
             <div className="vh-stat">
@@ -207,7 +205,7 @@ export default function AccountHomePage() {
             <div style={{ marginTop: 8 }}>
               <Sparkline points={WALLET_TREND} width={200} height={40} label="Wallet balance trend, last 7 weeks" />
             </div>
-            <Link className="small" href="/account/wallet" style={{ display: "inline-block", marginTop: 8 }}>Open wallet →</Link>
+            <a className="small" href="/account/wallet" style={{ display: "inline-block", marginTop: 8 }}>Open wallet →</a>
           </Card>
           <Stat label="Reward points" value="1,240 pts" delta={{ dir: "up", text: "120 pts this month" }} />
         </div>
@@ -223,7 +221,7 @@ export default function AccountHomePage() {
         {/* Widget rank 8: recommendations — A1: MED_CANNABIS is structurally absent, never filtered client-side */}
         <Card
           title={<TitleIcon icon={<Sparkles {...I} />}>Recommended for you</TitleIcon>}
-          action={<Link className="small" href="/">Browse catalogue →</Link>}
+          action={<a className="small" href="/">Browse catalogue →</a>}
         >
           <div className="vh-grid cols-4">
             {recommended.map((p) => (
@@ -272,10 +270,7 @@ export default function AccountHomePage() {
                           Min. spend <MoneyText paise={offer.minSpendPaise} />
                         </p>
                       )}
-                      <form action={applyCoupon}>
-                        <input type="hidden" name="code" value={offer.code} />
-                        <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary">Apply to cart</button>
-                      </form>
+                      <span className="vh-btn vh-btn-sm vh-btn-primary" aria-disabled>Apply to cart</span>
                     </div>
                   );
                 })}

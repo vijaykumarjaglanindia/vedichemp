@@ -11,8 +11,7 @@
  */
 
 import { useEffect, useState } from "react";
-import Link from "next/link";
-import { Heart, ShoppingCart, UserRound } from "lucide-react";
+import { ShoppingCart, UserRound } from "lucide-react";
 
 function readCookie(name: string): string | null {
   const m = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
@@ -21,34 +20,28 @@ function readCookie(name: string): string | null {
 
 export function HeaderBits() {
   const [count, setCount] = useState(0);
-  const [wishCount, setWishCount] = useState(0);
   const [user, setUser] = useState<string | null>(null);
 
   useEffect(() => {
     setCount(parseInt(readCookie("vh-cart-n") ?? "0", 10) || 0);
-    setWishCount(parseInt(readCookie("vh-wish-n") ?? "0", 10) || 0);
     setUser(readCookie("vh-user"));
   }, []);
 
   return (
     <>
-      <Link href="/account/wishlist" className="vh-iconbtn" aria-label={`Wishlist, ${wishCount} item${wishCount === 1 ? "" : "s"}`} style={{ position: "relative" }}>
-        <Heart size={17} strokeWidth={2.2} aria-hidden />
-        {wishCount > 0 && <span className="vhx-cart-badge" aria-hidden>{wishCount > 9 ? "9+" : wishCount}</span>}
-      </Link>
-      <Link href="/cart" className="vh-iconbtn" aria-label={`Cart, ${count} item${count === 1 ? "" : "s"}`} style={{ position: "relative" }}>
+      <a href="/cart" className="vh-iconbtn" aria-label={`Cart, ${count} item${count === 1 ? "" : "s"}`} style={{ position: "relative" }}>
         <ShoppingCart size={17} strokeWidth={2.2} aria-hidden />
         {count > 0 && <span className="vhx-cart-badge" aria-hidden>{count > 9 ? "9+" : count}</span>}
-      </Link>
+      </a>
       {user ? (
-        <Link href="/account" className="vh-btn vh-btn-ghost vh-btn-sm vhx-hide-sm" style={{ gap: 7 }}>
+        <a href="/account" className="vh-btn vh-btn-ghost vh-btn-sm vhx-hide-sm" style={{ gap: 7 }}>
           <UserRound size={14} aria-hidden />
           {user.split(" ")[0]}
-        </Link>
+        </a>
       ) : (
-        <Link href="/signin" className="vh-btn vh-btn-ghost vh-btn-sm vhx-hide-sm">
+        <a href="/signin" className="vh-btn vh-btn-ghost vh-btn-sm vhx-hide-sm">
           Sign in
-        </Link>
+        </a>
       )}
     </>
   );

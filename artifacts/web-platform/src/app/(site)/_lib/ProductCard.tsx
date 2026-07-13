@@ -3,9 +3,9 @@
  *
  * One card used across home, catalogue, storefront and PDP scrollers so price,
  * rating and compliance badges read identically everywhere. Server component —
- * the heart and add-to-cart buttons post to server actions (the server decides,
- * the client renders); the wishlist lives in an httpOnly cookie and is viewed
- * from My Account → Wishlist.
+ * the wishlist / add-to-cart buttons are presentational affordances here; the
+ * real cart and wishlist live behind the authenticated buyer surface (the
+ * server decides, the client renders).
  *
  * Only ever fed products from the permitted-class universe (A1).
  */
@@ -15,7 +15,6 @@ import { Heart } from "lucide-react";
 import { ComplianceBadge, MoneyText, Rating } from "@/components/ui";
 import type { SampleProduct } from "@/lib/sample";
 import { addToCart } from "../cart/actions";
-import { toggleWishlist } from "../actions";
 import { discountPct } from "./data";
 
 export function reviewCountFor(p: SampleProduct): number {
@@ -40,18 +39,14 @@ export function ProductCard({
           {off}% off
         </span>
       )}
-      <form action={toggleWishlist} style={{ position: "absolute", top: 8, right: 8, zIndex: 1 }}>
-        <input type="hidden" name="productId" value={p.id} />
-        <button
-          type="submit"
-          className="vh-iconbtn"
-          aria-label={`Toggle ${p.title} in wishlist`}
-          title="Save to wishlist"
-          style={{ background: "var(--vh-surface)", border: "1px solid var(--vh-line)" }}
-        >
-          <Heart size={15} strokeWidth={2.2} aria-hidden />
-        </button>
-      </form>
+      <button
+        type="button"
+        className="vh-iconbtn"
+        aria-label={`Add ${p.title} to wishlist`}
+        style={{ position: "absolute", top: 8, right: 8, zIndex: 1, background: "var(--vh-surface)", border: "1px solid var(--vh-line)" }}
+      >
+        <Heart size={15} strokeWidth={2.2} aria-hidden />
+      </button>
 
       <Link href={`/products/${p.slug}`} tabIndex={-1} aria-hidden style={{ color: "inherit" }}>
         <div className="vh-product-media" style={{ fontSize: mediaSize }}>{p.emoji}</div>

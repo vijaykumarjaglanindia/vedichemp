@@ -11,10 +11,9 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { Lock, FileUp, ImagePlus, Globe, ShieldAlert, ArrowRight } from "lucide-react";
 import { Shell } from "../../Shell";
-import { Banner, Card, StatusPill, toneForStatus, ComplianceBadge, MoneyText, type Column, DataTable } from "@/components/ui";
+import { Card, StatusPill, toneForStatus, ComplianceBadge, MoneyText, type Column, DataTable } from "@/components/ui";
 import { findSellerProduct, type Batch } from "../../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
-import { publishListing } from "../../actions";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -28,15 +27,8 @@ function coaTone(status: Batch["coaStatus"]): "ok" | "warn" | "danger" {
   return "danger";
 }
 
-export default async function ProductEditorPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<{ id: string }>;
-  searchParams: Promise<{ published?: string; err?: string }>;
-}) {
+export default async function ProductEditorPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const { published, err } = await searchParams;
   const product = findSellerProduct(id);
   if (!product) notFound();
 
@@ -72,22 +64,6 @@ export default async function ProductEditorPage({
       title={product.title}
       actions={<StatusPill tone={toneForStatus(product.listingState)}>{product.listingState}</StatusPill>}
     >
-      {published && (
-        <div style={{ marginBottom: "var(--sp-3)" }}>
-          <Banner severity="ok" title="Listing is live">
-            Every batch has an approved, batch-matched CoA — the publish gate is open and buyers can see it.
-          </Banner>
-        </div>
-      )}
-      {err === "coa" && (
-        <div style={{ marginBottom: "var(--sp-3)" }}>
-          <Banner severity="danger" title="Publish blocked (A2)">
-            At least one batch lacks an APPROVED, batch-matched CoA. The denied attempt is logged.
-            Upload the report below — there is no override.
-          </Banner>
-        </div>
-      )}
-
       <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
         {/* ── Left: editor form ─────────────────────────────── */}
         <div className="vh-grid" style={{ gap: "var(--sp-3)" }}>
@@ -141,11 +117,10 @@ export default async function ProductEditorPage({
                   {product.emoji}
                 </div>
               ))}
-              <label className="vh-dropzone" aria-label="Add product image" style={{ aspectRatio: "1", padding: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, cursor: "pointer" }}>
-                <input type="file" accept="image/*" style={{ display: "none" }} />
+              <button type="button" className="vh-dropzone" aria-label="Add product image" style={{ aspectRatio: "1", padding: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, cursor: "pointer" }}>
                 <ImagePlus size={18} strokeWidth={2.2} aria-hidden />
                 <span className="small">Add</span>
-              </label>
+              </button>
             </div>
             <p className="small muted" style={{ margin: "10px 0 0" }}>Pack shots only — imagery implying medical outcomes fails the creative review.</p>
           </Card>
@@ -179,18 +154,15 @@ export default async function ProductEditorPage({
               <span className="small muted">CoA gate (A2)</span>
               <StatusPill tone={gateOpen ? "ok" : "danger"}>{gateOpen ? "Open — all batches approved" : `Closed — ${blockedBatches.length} batch(es) blocked`}</StatusPill>
             </div>
-            <form action={publishListing}>
-              <input type="hidden" name="productId" value={product.id} />
-              <button
-                className="vh-btn vh-btn-primary"
-                type="submit"
-                disabled={!gateOpen}
-                style={{ width: "100%" }}
-                title={gateOpen ? "Publish this listing" : "Blocked: at least one batch lacks an APPROVED, batch-matched CoA (A2)"}
-              >
-                Publish
-              </button>
-            </form>
+            <button
+              className="vh-btn vh-btn-primary"
+              type="button"
+              disabled={!gateOpen}
+              style={{ width: "100%" }}
+              title={gateOpen ? "Publish this listing" : "Blocked: at least one batch lacks an APPROVED, batch-matched CoA (A2)"}
+            >
+              Publish
+            </button>
             {!gateOpen && (
               <div className="vh-row" role="alert" style={{ alignItems: "flex-start", gap: 8, marginTop: 12, padding: "10px 12px", borderRadius: "var(--vh-radius-sm)", border: "1px solid var(--vh-line)", borderLeft: "3px solid var(--vh-danger)", background: "color-mix(in srgb, var(--vh-danger-bg) 45%, var(--vh-surface))" }}>
                 <ShieldAlert size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-danger)", marginTop: 2, flexShrink: 0 }} />

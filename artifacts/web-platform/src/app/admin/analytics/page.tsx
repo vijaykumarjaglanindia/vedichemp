@@ -8,7 +8,6 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import { BarChart3, TrendingUp, PieChart, Trophy, Filter, Download } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, Stat, MoneyText } from "@/components/ui";
@@ -82,7 +81,7 @@ export default function AdminAnalyticsPage() {
             </div>
             <p className="small muted" style={{ margin: "var(--sp-2) 0 0" }}>
               Three classes only, by design. MED_CANNABIS dispensing volume is reported separately under{" "}
-              <Link href="/admin/compliance">Compliance</Link> — it is a regulated dispensing register, not a merchandisable
+              <a href="/admin/compliance">Compliance</a> — it is a regulated dispensing register, not a merchandisable
               line of business, and never appears in commercial analytics (A1).
             </p>
           </Card>
@@ -106,9 +105,9 @@ export default function AdminAnalyticsPage() {
         <Card title="Exports" action={<span className="small muted">generated server-side · no PII columns</span>}>
           <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
             {EXPORTS.map((e) => (
-              <Link key={e.id} className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/analytics#${e.id}`}>
+              <a key={e.id} className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/analytics#${e.id}`}>
                 <Download {...IB} aria-hidden /> {e.name} ({e.format})
-              </Link>
+              </a>
             ))}
           </div>
         </Card>

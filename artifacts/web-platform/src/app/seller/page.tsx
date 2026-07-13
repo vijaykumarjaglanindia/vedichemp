@@ -8,7 +8,6 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
 import type { ReactNode } from "react";
 import {
   AlertTriangle, FileWarning, Hourglass, PackagePlus, FileUp, Printer, Wallet,
@@ -18,8 +17,6 @@ import { Shell } from "./Shell";
 import { Card, Stat, ProgressRing, DataTable, StatusPill, MoneyText, type Column } from "@/components/ui";
 import { Columns, BarList } from "@/components/ui/charts";
 import type { SampleOrder } from "@/lib/sample";
-import { readSellerOrderOverrides } from "@/lib/engage";
-import { sellerOrderAction } from "./actions";
 import {
   SELLER, ACCOUNT_HEALTH, TODAY_KPIS, SELLER_ORDERS, WAREHOUSE_STOCK, LOW_STOCK_THRESHOLD,
   SELLER_SETTLEMENTS, LICENCES, BLOCKED_BATCHES, PENDING_REVIEW_BATCHES, daysUntil,
@@ -60,9 +57,9 @@ function BlockerRow({
         <div style={{ fontWeight: 700, fontSize: ".88rem" }}>{title}</div>
         <div className="small muted" style={{ marginTop: 2 }}>{body}</div>
         {remediation && (
-          <Link className="small" href={remediation.href} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 6, fontWeight: 700 }}>
+          <a className="small" href={remediation.href} style={{ display: "inline-flex", alignItems: "center", gap: 4, marginTop: 6, fontWeight: 700 }}>
             {remediation.label} <ArrowRight size={13} strokeWidth={2.4} aria-hidden />
-          </Link>
+          </a>
         )}
       </div>
     </div>
@@ -77,8 +74,7 @@ export default async function SellerHomePage({
   const { period: rawPeriod } = await searchParams;
   const period = PERIODS.includes(rawPeriod as (typeof PERIODS)[number]) ? (rawPeriod as (typeof PERIODS)[number]) : "7d";
 
-  const overrides = await readSellerOrderOverrides();
-  const pendingOrders = SELLER_ORDERS.filter((o) => (overrides[o.id] ?? o.status) === "PENDING");
+  const pendingOrders = SELLER_ORDERS.filter((o) => o.status === "PENDING");
   const lowStock = WAREHOUSE_STOCK.filter((w) => w.qty - w.reserved < LOW_STOCK_THRESHOLD);
   const awaitingSettlement = SELLER_SETTLEMENTS.filter((s) => s.status === "AWAITING_CHECKER");
   const settlementDuePaise = awaitingSettlement.reduce((sum, s) => sum + s.netPaise, 0);
@@ -94,12 +90,8 @@ export default async function SellerHomePage({
     {
       key: "actions", header: "", align: "right", render: (o) => (
         <span className="vh-row" style={{ gap: 8, justifyContent: "flex-end" }}>
-          <form action={sellerOrderAction} style={{ display: "inline-flex" }}>
-            <input type="hidden" name="orderId" value={o.id} />
-            <input type="hidden" name="op" value="accept" />
-            <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">Accept</button>
-          </form>
-          <Link className="small" href={`/seller/orders/${o.id}`}>Details →</Link>
+          <button className="vh-btn vh-btn-sm vh-btn-primary" type="button">Accept</button>
+          <a className="small" href={`/seller/orders/${o.id}`}>Details →</a>
         </span>
       ),
     },
@@ -113,9 +105,9 @@ export default async function SellerHomePage({
       actions={
         <nav className="vh-seg" aria-label="Reporting period">
           {PERIODS.map((p) => (
-            <Link key={p} href={`/seller?period=${p}`} className={p === period ? "on" : undefined} aria-current={p === period ? "true" : undefined}>
+            <a key={p} href={`/seller?period=${p}`} className={p === period ? "on" : undefined} aria-current={p === period ? "true" : undefined}>
               {p}
-            </Link>
+            </a>
           ))}
         </nav>
       }
@@ -123,10 +115,10 @@ export default async function SellerHomePage({
       {/* Quick actions */}
       <div className="vh-row" style={{ gap: 8, marginBottom: "var(--sp-4)", flexWrap: "wrap" }}>
         {QUICK_ACTIONS.map((a, i) => (
-          <Link key={a.href} className={`vh-btn vh-btn-sm ${i === 0 ? "vh-btn-primary" : "vh-btn-ghost"}`} href={a.href} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
+          <a key={a.href} className={`vh-btn vh-btn-sm ${i === 0 ? "vh-btn-primary" : "vh-btn-ghost"}`} href={a.href} style={{ display: "inline-flex", alignItems: "center", gap: 8 }}>
             <span aria-hidden style={{ display: "inline-flex" }}>{a.icon}</span>
             {a.label}
-          </Link>
+          </a>
         ))}
       </div>
 
@@ -139,7 +131,7 @@ export default async function SellerHomePage({
           the genuineness, quality and compliance of every product you list. Orders arrive here
           after the buyer has paid — we forward the details to you; you pack, hand the parcel
           to your delivery partner, and{" "}
-          <Link href="/seller/orders">update the status</Link> the buyer tracks. Per your Marketplace
+          <a href="/seller/orders">update the status</a> the buyer tracks. Per your Marketplace
           Agreement, damaged / wrong / expired items are replaced or refunded at your cost.
         </div>
       </div>
@@ -229,12 +221,12 @@ export default async function SellerHomePage({
       <div style={{ height: "var(--sp-4)" }} />
 
       <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
-        <Card title="Orders to accept" action={<Link className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/orders?status=PENDING">Go to orders</Link>} pad0>
+        <Card title="Orders to accept" action={<a className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/orders?status=PENDING">Go to orders</a>} pad0>
           <DataTable columns={orderColumns} rows={pendingOrders} empty={<div className="vh-empty">No orders waiting on you.</div>} />
         </Card>
 
         <div className="vh-grid" style={{ gap: "var(--sp-3)" }}>
-          <Card title="Low-stock alerts" action={<Link className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/inventory">Review inventory</Link>}>
+          <Card title="Low-stock alerts" action={<a className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/inventory">Review inventory</a>}>
             {lowStock.length === 0 ? (
               <div className="small muted">All sellable batches are above the {LOW_STOCK_THRESHOLD}-unit threshold.</div>
             ) : (
@@ -257,12 +249,12 @@ export default async function SellerHomePage({
             <Card title="Settlements due">
               <Stat label="Awaiting posting" value={<MoneyText paise={settlementDuePaise} />} />
               <div className="small muted" style={{ marginTop: 8 }}>Posted only after maker–checker sign-off (A6). Statements are immutable once posted (A3).</div>
-              <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/finance" style={{ marginTop: 8, display: "inline-block" }}>View finance →</Link>
+              <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/finance" style={{ marginTop: 8, display: "inline-block" }}>View finance →</a>
             </Card>
             <Card title="Vedic Ads">
               <Stat label="ROAS (7d)" value={`${ADS_SUMMARY.roas7d}x`} delta={{ dir: "up", text: "0.3x vs prior" }} />
               <div className="small muted" style={{ marginTop: 8 }}>{AD_CAMPAIGNS.filter((c) => c.status === "ACTIVE").length} active campaign(s) · ACOS {ADS_SUMMARY.acos7d}%</div>
-              <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/ads" style={{ marginTop: 8, display: "inline-block" }}>View Vedic Ads →</Link>
+              <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/ads" style={{ marginTop: 8, display: "inline-block" }}>View Vedic Ads →</a>
             </Card>
           </div>
         </div>

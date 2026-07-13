@@ -17,10 +17,8 @@ import type { ReactNode } from "react";
 import { Eye, FileUp, KeyRound, Lock, ShieldCheck, Stethoscope, Timer } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, Banner, EmptyState, type Column } from "@/components/ui";
-import { cookies } from "next/headers";
 import { currentBuyer } from "@/lib/session";
 import { PRESCRIPTIONS, ACCESS_LOG, type AccessLogRow, validityElapsedPct, daysUntil } from "../_lib/data";
-import { requestRxViewLink, uploadPrescription, type RxUpload } from "./actions";
 
 export const metadata: Metadata = { title: "Medical & Prescriptions" };
 
@@ -53,22 +51,8 @@ const PROTECTIONS = [
   },
 ];
 
-const UPLOAD_ERRORS: Record<string, string> = {
-  file: "Choose a file first — PDF, JPG or PNG.",
-  type: "That format isn't accepted — upload a PDF, JPG or PNG.",
-  size: "File is over 10 MB — compress or re-scan it and try again.",
-};
-
-export default async function MedicalPage({
-  searchParams,
-}: {
-  searchParams: Promise<{ uploaded?: string; err?: string; viewlink?: string }>;
-}) {
+export default function MedicalPage() {
   const viewer = currentBuyer();
-  const { uploaded, err, viewlink } = await searchParams;
-  const jar = await cookies();
-  let uploads: RxUpload[] = [];
-  try { uploads = JSON.parse(jar.get("vh-rx")?.value ?? "[]") as RxUpload[]; } catch { uploads = []; }
   const hasExpired = PRESCRIPTIONS.some((rx) => rx.status === "EXPIRED");
 
   const logColumns: Column<AccessLogRow>[] = [
@@ -137,32 +121,9 @@ export default async function MedicalPage({
         {/* Prescriptions with validity progress */}
         <Card
           title={title(<Stethoscope {...I} />, "Your prescriptions")}
-          action={<a className="vh-btn vh-btn-sm vh-btn-primary" href="#upload">Upload prescription</a>}
+          action={<span className="vh-btn vh-btn-sm vh-btn-primary" aria-disabled>Upload prescription</span>}
         >
-          {viewlink && (
-            <div style={{ marginBottom: 12 }}>
-              <Banner severity="ok" title="Signed link issued — valid for 5 minutes" icon="🔗">
-                Opening your own prescription is also written to the access log below (actor: you,
-                reason: SELF_ACCESS) — the log is append-only, with no exceptions (A3/A4).
-              </Banner>
-            </div>
-          )}
-          {uploads.length > 0 && (
-            <div style={{ display: "grid", gap: 8, marginBottom: 8 }}>
-              {uploads.map((u) => (
-                <div key={u.id} className="vh-card" style={{ padding: 16 }}>
-                  <div className="vh-row-between" style={{ flexWrap: "wrap", gap: 8 }}>
-                    <span>
-                      <div style={{ fontWeight: 600 }}>{u.fileName}</div>
-                      <div className="small muted">Uploaded {u.uploadedAt} · pharmacist review within 4 business hours</div>
-                    </span>
-                    <StatusPill tone="warn">{u.status.replace(/_/g, " ")}</StatusPill>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {PRESCRIPTIONS.length === 0 && uploads.length === 0 ? (
+          {PRESCRIPTIONS.length === 0 ? (
             <EmptyState icon="⚕️" headline="No prescriptions on file" sub="Upload one to unlock Medical Cannabis products." />
           ) : (
             <div style={{ display: "grid", gap: 8 }}>
@@ -179,12 +140,9 @@ export default async function MedicalPage({
                       </span>
                       <span className="vh-row" style={{ gap: 8 }}>
                         <StatusPill tone={toneForStatus(rx.status)}>{rx.status}</StatusPill>
-                        <form action={requestRxViewLink} style={{ display: "inline-flex" }}>
-                          <input type="hidden" name="rxId" value={rx.id} />
-                          <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">
-                            View (signed link, 5 min)
-                          </button>
-                        </form>
+                        <span className="vh-btn vh-btn-sm vh-btn-ghost" aria-disabled>
+                          View (signed link, 5 min)
+                        </span>
                       </span>
                     </div>
                     <div
@@ -210,22 +168,8 @@ export default async function MedicalPage({
         </Card>
 
         {/* Upload flow */}
-        <div id="upload" style={{ scrollMarginTop: 90 }}>
         <Card title={title(<FileUp {...I} />, "Upload a new prescription")}>
-          {uploaded && (
-            <div style={{ marginBottom: 12 }}>
-              <Banner severity="ok" title="Prescription received — under review">
-                A licensed pharmacist verifies it within 4 business hours. It becomes active only
-                after that verification — there is no self-serve override.
-              </Banner>
-            </div>
-          )}
-          {err && UPLOAD_ERRORS[err] && (
-            <div style={{ marginBottom: 12 }}>
-              <Banner severity="danger">{UPLOAD_ERRORS[err]}</Banner>
-            </div>
-          )}
-          <form action={uploadPrescription} className="vh-dropzone">
+          <div className="vh-dropzone">
             <span aria-hidden style={{ display: "inline-flex", color: "var(--vh-accent)", marginBottom: 8 }}>
               <FileUp size={28} strokeWidth={2} />
             </span>
@@ -236,19 +180,10 @@ export default async function MedicalPage({
               Accepted formats: PDF, JPG, PNG · under 10 MB · make sure the doctor&apos;s registration
               number and the issue date are legible.
             </div>
-            <div className="vh-row" style={{ gap: 8, marginTop: 16, justifyContent: "center", flexWrap: "wrap" }}>
-              <input
-                type="file"
-                name="rx"
-                accept="application/pdf,image/jpeg,image/png"
-                required
-                aria-label="Choose prescription file"
-                className="small"
-                style={{ maxWidth: 260 }}
-              />
-              <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary">Upload for review</button>
-            </div>
-          </form>
+            <span className="vh-btn vh-btn-sm vh-btn-outline" aria-disabled style={{ marginTop: 16, display: "inline-flex" }}>
+              Browse files
+            </span>
+          </div>
           <div className="vh-row" style={{ gap: 8, marginTop: 16, alignItems: "flex-start" }}>
             <span aria-hidden style={{ display: "inline-flex", color: "var(--vh-accent)", marginTop: 2 }}>
               <ShieldCheck size={16} strokeWidth={2.2} />
@@ -260,7 +195,6 @@ export default async function MedicalPage({
             </p>
           </div>
         </Card>
-        </div>
 
         {/* Access log — the A4 receipt */}
         <Card

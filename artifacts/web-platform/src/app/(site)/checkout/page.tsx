@@ -25,7 +25,7 @@ const ERRORS: Record<string, string> = {
   city: "City and state are required.",
   pincode: "PIN code must be exactly 6 digits.",
   payment: "Choose a payment method.",
-  age: "Please confirm you are 21 or older — your cart contains an age-restricted item.",
+  age: "Please confirm you are 18 or older — your cart contains an age-restricted item.",
 };
 
 interface Draft { name?: string; mobile?: string; line1?: string; city?: string; state?: string; pincode?: string; payment?: string }
@@ -115,7 +115,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
               <label className="vh-row" style={{ gap: 10, alignItems: "flex-start", cursor: "pointer" }}>
                 <input type="checkbox" name="ageConfirm" style={{ marginTop: 3, accentColor: "var(--vh-accent)" }} />
                 <span className="small">
-                  <b style={{ color: "var(--vh-ink)" }}>I confirm I am 21 years or older.</b>{" "}
+                  <b style={{ color: "var(--vh-ink)" }}>I confirm I am 18 years or older.</b>{" "}
                   Your cart contains a CBD wellness product; age is checked again at delivery
                   handover. This confirmation is validated on the server.
                 </span>
@@ -144,12 +144,6 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
           <div className="vh-row-between small" style={{ padding: "3px 0" }}>
             <span className="muted">Subtotal</span><MoneyText paise={cart.subtotalPaise} />
           </div>
-          {cart.discountPaise > 0 && (
-            <div className="vh-row-between small" style={{ padding: "3px 0" }}>
-              <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Coupon {cart.couponCode}</span>
-              <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>− <MoneyText paise={cart.discountPaise} /></span>
-            </div>
-          )}
           <div className="vh-row-between small" style={{ padding: "3px 0" }}>
             <span className="muted">Shipping</span>
             {cart.shippingPaise === 0 ? <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Free</span> : <MoneyText paise={cart.shippingPaise} />}

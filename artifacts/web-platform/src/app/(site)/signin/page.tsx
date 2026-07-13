@@ -20,8 +20,8 @@ const ERRORS: Record<string, string> = {
   role: "Choose which console you're signing in to.",
 };
 
-export default async function SignInPage({ searchParams }: { searchParams: Promise<{ err?: string; next?: string; bye?: string }> }) {
-  const { err, next, bye } = await searchParams;
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ err?: string; next?: string }> }) {
+  const { err, next } = await searchParams;
 
   return (
     <div className="vh-container" style={{ paddingTop: "var(--sp-6)", paddingBottom: "var(--sp-8)", maxWidth: 480 }}>
@@ -35,15 +35,6 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
       {err && ERRORS[err] && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="danger">{ERRORS[err]}</Banner>
-        </div>
-      )}
-      {bye && (
-        <div style={{ marginBottom: "var(--sp-3)" }}>
-          <Banner severity="ok" title="Deletion request received">
-            Your session has ended. The account service checks the deletion gates (orders in
-            transit, open disputes, settlement or statutory holds) and emails you the outcome —
-            health records are retained for the statutory period regardless (A3).
-          </Banner>
         </div>
       )}
 

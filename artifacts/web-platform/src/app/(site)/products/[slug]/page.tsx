@@ -18,7 +18,6 @@ import {
   BadgePercent,
   Flame,
   FlaskConical,
-  Heart,
   MapPin,
   RotateCcw,
   ShieldCheck,
@@ -31,9 +30,7 @@ import { AdBanner, AdSlot } from "@/components/ui/ads";
 import { CLASS_META, isRegulated } from "@/lib/compliance";
 import { PRODUCTS, SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
-import { addBundleToCart, addToCart } from "../../cart/actions";
-import { askQuestion, submitReview, toggleWishlist } from "../../actions";
-import { readMyQuestions, readMyReviews, readOrderHistory } from "@/lib/engage";
+import { addToCart } from "../../cart/actions";
 import {
   discountPct,
   frequentlyBoughtWith,
@@ -47,35 +44,6 @@ import { ProductCard, reviewCountFor } from "../../_lib/ProductCard";
 
 type Params = { slug: string };
 
-/**
- * Serviceability by PIN — decided here, on the server, never in the client
- * (the client renders the verdict). Demo logic is deterministic; with the
- * courier API attached this becomes a serviceability lookup. Regulated
- * classes have a narrower lane network than plain hemp foods.
- */
-function checkPin(pin: string, cls: string): { ok: boolean; title: string; body: string } {
-  if (!/^[1-8]\d{5}$/.test(pin)) {
-    return { ok: false, title: "That PIN doesn't look right", body: "Enter the 6-digit PIN code of the delivery address." };
-  }
-  const regulated = cls === "CBD_WELLNESS";
-  if (regulated && /^(19|37|69)/.test(pin)) {
-    return {
-      ok: false,
-      title: `Not serviceable at ${pin} yet`,
-      body: "Sellers can't ship CBD wellness to this PIN yet — age-verified handover isn't available there. Hemp foods and Ayurveda deliver normally.",
-    };
-  }
-  const days = 2 + ((pin.split("").reduce((s, d) => s + Number(d), 0)) % 3);
-  const eta = new Date(Date.now() + days * 86400000).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
-  return {
-    ok: true,
-    title: `Delivers to ${pin} by ${eta}`,
-    body: regulated
-      ? "Shipped by the seller's delivery partner · ID checked on handover (21+)."
-      : "Shipped by the seller's delivery partner · Cash on Delivery available.",
-  };
-}
-
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { slug } = await params;
   const product = PRODUCTS.find((p) => p.slug === slug);
@@ -85,15 +53,8 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   return { title: product.title };
 }
 
-export default async function ProductDetailPage({
-  params,
-  searchParams,
-}: {
-  params: Promise<Params>;
-  searchParams: Promise<{ pin?: string; review?: string; q?: string }>;
-}) {
+export default async function ProductDetailPage({ params }: { params: Promise<Params> }) {
   const { slug } = await params;
-  const { pin, review: reviewErr, q: qErr } = await searchParams;
   const product = PRODUCTS.find((p) => p.slug === slug);
 
   // A1: absent, not blurred — a public visitor gets the identical empty state
@@ -121,10 +82,6 @@ export default async function ProductDetailPage({
   const bundlePaise = product.pricePaise + fbt.reduce((sum, x) => sum + x.pricePaise, 0);
   const similar = similarProducts(product, 6);
   const adProduct = PUBLIC_PRODUCTS.find((p) => p.cls === "CBD_WELLNESS" && p.id !== product.id);
-  const pinResult = pin !== undefined ? checkPin(pin, product.cls) : null;
-  const myReview = (await readMyReviews())[product.slug];
-  const myQuestion = (await readMyQuestions())[product.slug];
-  const bought = (await readOrderHistory()).some((o) => o.items.some((it) => it.title === product.title));
 
   const crumbs = [
     { name: "Catalogue", href: "/catalogue" },
@@ -269,51 +226,9 @@ export default async function ProductDetailPage({
                   </p>
                 </li>
               </ul>
-              <div style={{ marginTop: "var(--sp-3)", borderTop: "1px solid var(--vh-line)", paddingTop: "var(--sp-3)" }}>
-                {myReview ? (
-                  <div>
-                    <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                      <Rating value={myReview.rating} />
-                      <strong className="small" style={{ color: "var(--vh-ink)" }}>Your review</strong>
-                      <span className="vh-pill vh-pill-warn">Pending moderation</span>
-                    </div>
-                    <p className="small muted" style={{ margin: "6px 0 0" }}>&ldquo;{myReview.text}&rdquo;</p>
-                  </div>
-                ) : bought ? (
-                  <form action={submitReview} style={{ display: "grid", gap: 10 }}>
-                    <input type="hidden" name="productId" value={product.id} />
-                    {reviewErr && (
-                      <p className="small" role="alert" style={{ color: "var(--vh-danger)", margin: 0 }}>
-                        {reviewErr === "claims"
-                          ? "Reviews can't carry disease claims (cure/treat/prevent/heal) — describe your experience instead."
-                          : reviewErr === "short"
-                            ? "Reviews need 10–600 characters."
-                            : reviewErr === "rating"
-                              ? "Pick a star rating."
-                              : "Only verified purchases can review."}
-                      </p>
-                    )}
-                    <div className="vh-row" style={{ gap: 12, flexWrap: "wrap" }}>
-                      <div className="vh-field" style={{ width: 120 }}>
-                        <label className="vh-label" htmlFor="rv-rating">Rating <span className="req">*</span></label>
-                        <select className="vh-select" id="rv-rating" name="rating" required defaultValue="5">
-                          {[5, 4, 3, 2, 1].map((n) => <option key={n} value={n}>{"★".repeat(n)}</option>)}
-                        </select>
-                      </div>
-                      <div className="vh-field" style={{ flex: "1 1 240px" }}>
-                        <label className="vh-label" htmlFor="rv-text">Your review <span className="req">*</span></label>
-                        <textarea className="vh-textarea" id="rv-text" name="text" rows={2} minLength={10} maxLength={600} required placeholder="Packaging, delivery, how it fit your routine — no medical claims." />
-                      </div>
-                    </div>
-                    <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary" style={{ justifySelf: "start" }}>Submit review</button>
-                  </form>
-                ) : (
-                  <p className="small muted" style={{ margin: 0 }}>
-                    Only verified purchases can review — order this product and the review form
-                    unlocks here. Ratings are computed by the platform.
-                  </p>
-                )}
-              </div>
+              <p className="small muted" style={{ marginTop: "var(--sp-3)", marginBottom: 0 }}>
+                Only verified purchases can review — ratings are computed by the platform.
+              </p>
             </Card>
           </section>
 
@@ -327,32 +242,6 @@ export default async function ProductDetailPage({
                     <p className="small muted" style={{ marginTop: 8, marginBottom: 0 }}>{f.a}</p>
                   </details>
                 ))}
-              </div>
-              <div style={{ marginTop: "var(--sp-3)", borderTop: "1px solid var(--vh-line)", paddingTop: "var(--sp-3)" }}>
-                {myQuestion ? (
-                  <div>
-                    <div className="vh-row" style={{ gap: 8 }}>
-                      <strong className="small" style={{ color: "var(--vh-ink)" }}>Your question</strong>
-                      <span className="vh-pill vh-pill-warn">Awaiting seller answer</span>
-                    </div>
-                    <p className="small muted" style={{ margin: "6px 0 0" }}>&ldquo;{myQuestion}&rdquo;</p>
-                    <p className="small muted" style={{ margin: "6px 0 0" }}>
-                      The seller answers from Seller Central; replies pass the compliance copy-check before publishing.
-                    </p>
-                  </div>
-                ) : (
-                  <form action={askQuestion} style={{ display: "grid", gap: 10 }}>
-                    <input type="hidden" name="productId" value={product.id} />
-                    {qErr === "short" && (
-                      <p className="small" role="alert" style={{ color: "var(--vh-danger)", margin: 0 }}>Questions need 10–300 characters.</p>
-                    )}
-                    <div className="vh-field">
-                      <label className="vh-label" htmlFor="qa-text">Ask the seller a question</label>
-                      <textarea className="vh-textarea" id="qa-text" name="text" rows={2} minLength={10} maxLength={300} required placeholder="Composition, batch, format — the seller answers, and answers are copy-checked." />
-                    </div>
-                    <button type="submit" className="vh-btn vh-btn-sm vh-btn-outline" style={{ justifySelf: "start" }}>Post question</button>
-                  </form>
-                )}
               </div>
             </Card>
           </section>
@@ -427,45 +316,27 @@ export default async function ProductDetailPage({
                 </select>
               </div>
 
-              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
+              <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: "var(--sp-3)" }}>
                 <button type="submit" name="intent" value="cart" className="vh-btn vh-btn-primary vh-btn-lg">Add to cart</button>
                 <button type="submit" name="intent" value="buy" className="vh-btn vh-btn-outline">Buy now</button>
               </div>
             </form>
 
-            <form action={toggleWishlist} style={{ marginBottom: "var(--sp-3)" }}>
-              <input type="hidden" name="productId" value={product.id} />
-              <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm" style={{ width: "100%" }}>
-                <Heart size={14} aria-hidden /> Save to wishlist
-              </button>
-            </form>
-
             {/* Delivery estimate by PIN — serviceability is decided server-side */}
-            <form method="GET" className="vh-field" style={{ marginBottom: "var(--sp-3)" }} aria-label="Check delivery by PIN code">
+            <form className="vh-field" style={{ marginBottom: "var(--sp-3)" }} aria-label="Check delivery by PIN code">
               <label htmlFor="pdp-pin" className="vh-label vh-row" style={{ gap: 6 }}>
                 <MapPin size={13} aria-hidden style={{ color: "var(--vh-accent)" }} /> Deliver to
               </label>
               <div className="vh-row" style={{ gap: 8 }}>
-                <input id="pdp-pin" name="pin" defaultValue={pin ?? ""} className="vh-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="Enter 6-digit PIN code" style={{ maxWidth: 200 }} />
+                <input id="pdp-pin" className="vh-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="Enter 6-digit PIN code" style={{ maxWidth: 200 }} />
                 <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm">Check</button>
               </div>
-              {pinResult ? (
-                <span
-                  className="small"
-                  role="status"
-                  style={{ marginTop: 6, fontWeight: 600, color: pinResult.ok ? "var(--vh-ok)" : "var(--vh-danger)" }}
-                >
-                  {pinResult.title}
-                  <span className="muted" style={{ display: "block", fontWeight: 400 }}>{pinResult.body}</span>
-                </span>
-              ) : (
-                <span className="vh-help">Serviceability for regulated classes is checked per PIN on the server.</span>
-              )}
+              <span className="vh-help">Serviceability for regulated classes is checked per PIN on the server.</span>
             </form>
 
             {meta.ageGated && (
               <Banner severity="warn" title="Age verification required">
-                This is an age-gated (21+) product. Age is verified at checkout and on delivery
+                This is an age-gated (18+) product. Age is verified at checkout and on delivery
                 handover — the check happens on the server, per order.
               </Banner>
             )}
@@ -511,12 +382,9 @@ export default async function ProductDetailPage({
               <div style={{ fontSize: "1.3rem", fontWeight: 800, color: "var(--vh-ink)" }}>
                 <MoneyText paise={bundlePaise} />
               </div>
-              <form action={addBundleToCart} style={{ marginTop: 8 }}>
-                <input type="hidden" name="productIds" value={[product, ...fbt].map((p) => p.id).join(",")} />
-                <button type="submit" className="vh-btn vh-btn-primary vh-btn-sm">
-                  Add all {1 + fbt.length} to cart
-                </button>
-              </form>
+              <button type="button" className="vh-btn vh-btn-primary vh-btn-sm" style={{ marginTop: 8 }}>
+                Add all {1 + fbt.length} to cart
+              </button>
             </div>
           </div>
         </section>

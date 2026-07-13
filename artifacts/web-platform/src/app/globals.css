@@ -462,7 +462,7 @@ img, svg { max-width: 100%; }
 .vh-hero {
   background:
     radial-gradient(760px 380px at 94% -18%, color-mix(in srgb, var(--vh-green-400) 8%, transparent), transparent 64%),
-    linear-gradient(178deg, var(--vh-bg) 55%, var(--vh-green-50));
+    linear-gradient(178deg, #ffffff 55%, var(--vh-green-50));
   color: var(--vh-body); border-bottom: 1px solid var(--vh-line);
   padding: clamp(44px, 5.5vw, 84px) 0; position: relative; overflow: hidden;
 }

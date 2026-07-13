@@ -3,8 +3,6 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
-import { withBase } from "@/lib/base";
 import type { ReactNode } from "react";
 import { Coins, Package, Factory, Megaphone, ShieldCheck, Puzzle, Download } from "lucide-react";
 import { Shell } from "../Shell";
@@ -13,16 +11,6 @@ import { Donut, BarList } from "@/components/ui/charts";
 import { REPORT_TILES, SALES_BY_CLASS, TOP_PRODUCTS_30D } from "../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
 import { formatPaise } from "@/lib/money";
-
-const CSV_KEYS = new Set(["sales", "product", "inventory", "advertising", "compliance"]);
-const VIEW_HREFS: Record<string, string> = {
-  sales: "/seller/finance",
-  product: "/seller/products",
-  inventory: "/seller/inventory",
-  advertising: "/seller/ads",
-  compliance: "/seller/products",
-  custom: "/seller/assistant",
-};
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -84,18 +72,10 @@ export default function ReportsPage() {
             </div>
             <p className="small muted" style={{ marginTop: 0 }}>{r.blurb}</p>
             <div className="vh-row" style={{ gap: 8 }}>
-              {CSV_KEYS.has(r.key) ? (
-                <a className="vh-btn vh-btn-sm vh-btn-primary" href={withBase(`/api/v1/seller/reports/${r.key}`)} download style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <Download size={13} strokeWidth={2.2} aria-hidden /> Export CSV
-                </a>
-              ) : (
-                <span className="vh-btn vh-btn-sm vh-btn-ghost" title="Custom reports are built with the BI connector at go-live" aria-disabled="true">
-                  Via BI connector
-                </span>
-              )}
-              {VIEW_HREFS[r.key] && (
-                <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={VIEW_HREFS[r.key]!}>View</Link>
-              )}
+              <a className="vh-btn vh-btn-sm vh-btn-primary" href={`#${r.key}`} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+                <Download size={13} strokeWidth={2.2} aria-hidden /> Export CSV
+              </a>
+              <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`#${r.key}`}>View</a>
             </div>
           </Card>
         ))}

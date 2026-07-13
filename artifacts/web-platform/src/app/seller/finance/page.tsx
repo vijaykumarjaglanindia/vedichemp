@@ -8,7 +8,6 @@
  */
 
 import type { Metadata } from "next";
-import { withBase } from "@/lib/base";
 import { Download } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, Stat, DataTable, StatusPill, toneForStatus, MoneyText, Banner, type Column } from "@/components/ui";
@@ -36,7 +35,7 @@ export default function FinancePage() {
     {
       key: "statement", header: "", align: "right", render: (s) =>
         s.status === "POSTED" ? (
-          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={withBase(`/api/v1/seller/statements/${s.id}`)} download aria-label={`Download statement for ${s.period}`}>
+          <a className="vh-btn vh-btn-sm vh-btn-ghost" href={`#statement-${s.id}`} aria-label={`Download statement for ${s.period}`}>
             <Download size={13} strokeWidth={2.2} aria-hidden />
           </a>
         ) : null,
