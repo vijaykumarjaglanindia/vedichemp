@@ -77,6 +77,43 @@ export async function appendOrderHistory(order: StoredOrder): Promise<void> {
   await writeJson("vh-orders", list);
 }
 
+/* ── Address book (§1.3) ──────────────────────────────────── */
+
+export interface StoredAddress {
+  id: string;
+  name: string;
+  mobile: string;
+  line1: string;
+  city: string;
+  state: string;
+  pincode: string;
+  kind: string; // HOME | WORK | OTHER
+  isDefault: boolean;
+}
+
+export async function readAddresses(): Promise<StoredAddress[]> {
+  return readJson<StoredAddress[]>("vh-addr", []);
+}
+
+/** Shared address validation — used by the address book and checkout save. */
+export function validateAddressFields(f: {
+  name: string; mobile: string; line1: string; city: string; state: string; pincode: string;
+}): string | null {
+  if (f.name.length < 2 || f.name.length > 60 || /\d/.test(f.name)) return "name";
+  if (!/^[6-9]\d{9}$/.test(f.mobile)) return "mobile";
+  if (f.line1.length < 8 || f.line1.length > 120) return "line1";
+  if (!f.city || !f.state) return "city";
+  if (!/^\d{6}$/.test(f.pincode)) return "pincode";
+  return null;
+}
+
+export async function writeAddresses(list: StoredAddress[]): Promise<void> {
+  // Exactly one default whenever any address exists.
+  const capped = list.slice(0, 6);
+  if (capped.length > 0 && !capped.some((a) => a.isDefault)) capped[0]!.isDefault = true;
+  await writeJson("vh-addr", capped);
+}
+
 /* ── Support tickets ──────────────────────────────────────── */
 
 export interface StoredTicket {
@@ -131,6 +168,25 @@ export async function readMyQuestions(): Promise<Record<string, string>> {
 
 export async function writeMyQuestions(map: Record<string, string>): Promise<void> {
   await writeJson("vh-myqs", map);
+}
+
+/* ── Storefront copy (seller-published, live on the public store) ── */
+
+export interface StoreCopy {
+  tagline: string;
+  story: string;
+}
+
+// Server-side demo store: published storefront copy must be visible to every
+// visitor, not just the seller's browser. Resets on restart; DB seam in prod.
+const gStore = globalThis as unknown as { __vhStoreCopy?: StoreCopy | null };
+
+export async function readStoreCopy(): Promise<StoreCopy | null> {
+  return gStore.__vhStoreCopy ?? null;
+}
+
+export async function writeStoreCopy(copy: StoreCopy): Promise<void> {
+  gStore.__vhStoreCopy = copy;
 }
 
 /* ── Seller Central demo state ────────────────────────────── */

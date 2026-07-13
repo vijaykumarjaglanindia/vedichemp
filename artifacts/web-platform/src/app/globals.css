@@ -612,3 +612,8 @@ img, svg { max-width: 100%; }
   .vh-hero { padding: 40px 0 48px; }
   .vh-section { padding: var(--sp-6) 0; }
 }
+
+/* ── Journal prose (CMS-rendered content) ───────────────────── */
+.vh-prose p { margin: 0 0 14px; color: var(--vh-body); }
+.vh-prose h2 { font-size: 1.15rem; margin: 22px 0 8px; color: var(--vh-ink); }
+.vh-prose strong { color: var(--vh-ink); }

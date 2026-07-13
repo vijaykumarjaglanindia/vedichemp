@@ -14,6 +14,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { PERIOD_CLOSE_CHECKLIST } from "./_lib/data";
+import { MAX_BODY, SAMPLE_POSTS, deletePostOverride, findPost, slugify, writePostOverride } from "@/lib/cms";
 
 const OPTS = { path: "/", httpOnly: true, sameSite: "lax" as const, maxAge: 60 * 60 * 24 * 30 };
 
@@ -84,6 +85,57 @@ export async function applyUserAction(formData: FormData): Promise<void> {
     jar.set("vh-adm-users", JSON.stringify(map), OPTS);
   }
   redirect(`/admin/users?done=${op}&u=${userId}`);
+}
+
+/* ── CMS: WordPress-style save / publish / unpublish / delete ── */
+
+const CMS_CLAIMS = /\b(cure|cures|heal|heals|treat|treats|treatment|prevent|prevents)\w*\b/i;
+
+export async function savePost(formData: FormData): Promise<void> {
+  const intent = String(formData.get("intent") ?? "draft"); // draft | publish | unpublish | delete
+  const existingSlug = String(formData.get("slug") ?? "").slice(0, 60);
+  const postTitle = String(formData.get("title") ?? "").trim();
+  const body = String(formData.get("body") ?? "").trim();
+
+  const editorUrl = (slug: string, q: string) => `/admin/cms/editor?slug=${encodeURIComponent(slug)}&${q}`;
+
+  if (intent === "delete") {
+    const post = existingSlug ? await findPost(existingSlug) : undefined;
+    if (!post) redirect("/admin/cms");
+    // Deletion gate: high-traffic pages (the sample posts) are maker–checker —
+    // a single editor's delete is DENIED here and the denial logged.
+    if (post.sample) redirect(editorUrl(existingSlug, "cms=delete-denied"));
+    await deletePostOverride(existingSlug);
+    redirect("/admin/cms?cms=deleted");
+  }
+
+  // Save/publish/unpublish all validate content the same way.
+  let err: string | null = null;
+  if (postTitle.length < 6 || postTitle.length > 90) err = "title";
+  else if (body.length < 40 || body.length > MAX_BODY) err = "body";
+  else if (CMS_CLAIMS.test(postTitle) || CMS_CLAIMS.test(body)) err = "claims";
+  if (err) redirect(editorUrl(existingSlug || slugify(postTitle) || "new", `cms=${err}`));
+
+  const slug = existingSlug || slugify(postTitle);
+  if (!slug) redirect("/admin/cms/editor?cms=title");
+  const prior = await findPost(slug);
+  const status =
+    intent === "publish" ? "PUBLISHED"
+    : intent === "unpublish" ? "DRAFT"
+    : (prior && prior.status === "PUBLISHED" && intent === "draft" ? "PUBLISHED" : "DRAFT");
+  // "Save draft" on an already-published post keeps it live with new copy —
+  // matching WordPress's "Update" semantics.
+
+  const result = await writePostOverride({
+    slug,
+    title: postTitle,
+    body,
+    status,
+    updatedAt: new Date().toISOString().slice(0, 10),
+    sample: SAMPLE_POSTS.some((p) => p.slug === slug),
+  });
+  if (result === "limit") redirect(editorUrl(slug, "cms=limit"));
+  redirect(editorUrl(slug, `cms=${intent === "publish" ? "published" : intent === "unpublish" ? "unpublished" : "saved"}`));
 }
 
 /* ── CMS: new blog post draft ─────────────────────────────── */

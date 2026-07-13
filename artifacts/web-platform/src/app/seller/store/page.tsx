@@ -16,7 +16,8 @@ import { Card, StatusPill, toneForStatus, Banner, Rating } from "@/components/ui
 import { SELLER, LICENCES, CAPABILITY_MATRIX, STORE_PREVIEW, daysUntil } from "../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
 import { groupIndian } from "@/lib/money";
-import { addLicence, requestOwnerTransfer } from "../actions";
+import { addLicence, requestOwnerTransfer, updateStorefront } from "../actions";
+import { readStoreCopy } from "@/lib/engage";
 import { cookies } from "next/headers";
 
 export const metadata: Metadata = { title: "Store & KYC" };
@@ -24,9 +25,11 @@ export const metadata: Metadata = { title: "Store & KYC" };
 export default async function StorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ transfer?: string; err?: string; licence?: string }>;
+  searchParams: Promise<{ transfer?: string; err?: string; licence?: string; copy?: string }>;
 }) {
   const { transfer, err, licence } = await searchParams;
+  const copyParam = (await searchParams).copy;
+  const storeCopy = await readStoreCopy();
   const jar = await cookies();
   let submittedLicences: { type: string; number: string; validTo: string; status: string }[] = [];
   try { submittedLicences = JSON.parse(jar.get("vh-sell-lic")?.value ?? "[]") as typeof submittedLicences; } catch { submittedLicences = []; }
@@ -109,6 +112,41 @@ export default async function StorePage({
             </div>
           </Card>
         </div>
+      </div>
+
+      {/* Storefront copy — WordPress-style edit → copy-check → publish live */}
+      <div id="storefront-copy" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
+        <Card title="Storefront copy" action={<a className="vh-btn vh-btn-sm vh-btn-ghost" href={`/store/${STORE_PREVIEW.handle}`}>See it live</a>}>
+          {copyParam === "published" && (
+            <div style={{ marginBottom: 12 }}>
+              <Banner severity="ok" title="Published">
+                Your storefront copy is live on the public store right now.
+              </Banner>
+            </div>
+          )}
+          {err === "tagline" && <div style={{ marginBottom: 12 }}><Banner severity="danger">Tagline should be 10–90 characters.</Banner></div>}
+          {err === "story" && <div style={{ marginBottom: 12 }}><Banner severity="danger">Story should be 40–500 characters.</Banner></div>}
+          {err === "copyclaims" && (
+            <div style={{ marginBottom: 12 }}>
+              <Banner severity="danger" title="Copy-check blocked the publish">
+                Storefront copy is promotional — claims language (cure/treat/prevent/heal) cannot be published. Nothing went live.
+              </Banner>
+            </div>
+          )}
+          <form action={updateStorefront} className="vh-grid" style={{ gap: 14 }}>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="sf-tagline">Tagline <span className="req">*</span></label>
+              <input className="vh-input" id="sf-tagline" name="tagline" required minLength={10} maxLength={90} defaultValue={storeCopy?.tagline ?? STORE_PREVIEW.tagline} />
+              <span className="vh-help">Shown under your store name on the public storefront.</span>
+            </div>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="sf-story">Store story <span className="req">*</span></label>
+              <textarea className="vh-textarea" id="sf-story" name="story" rows={4} required minLength={40} maxLength={500} defaultValue={storeCopy?.story ?? "AYUSH-licensed CBD wellness maker. Every batch is lab-tested before it ships, and the report is linked on each listing."} />
+              <span className="vh-help">Composition and craft, not claims — the copy-check runs on publish, and a failure blocks the send (fail closed).</span>
+            </div>
+            <button type="submit" className="vh-btn vh-btn-primary" style={{ justifySelf: "start" }}>Publish to storefront</button>
+          </form>
+        </Card>
       </div>
 
       <div id="licences">

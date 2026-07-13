@@ -62,6 +62,7 @@ const FOOTER_COLUMNS: { heading: string; links: { href: string; label: string }[
     heading: "Company",
     links: [
       { href: "/about", label: "About Vedic Hemp" },
+      { href: "/blog", label: "Wellness journal" },
       { href: "/account", label: "My account" },
       { href: "/store/vedic-botanicals", label: "Featured stores" },
     ],

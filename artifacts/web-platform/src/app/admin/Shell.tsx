@@ -80,6 +80,7 @@ export function Shell({
       brand="🛡️ Admin Console"
       nav={ADMIN_NAV}
       active={active}
+      bellHref="/admin"
       breadcrumb={breadcrumb}
       title={title}
       actions={actions}

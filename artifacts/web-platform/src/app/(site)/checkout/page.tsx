@@ -14,6 +14,7 @@ import { redirect } from "next/navigation";
 import { Banknote, CreditCard, Lock, Smartphone } from "lucide-react";
 import { Banner, MoneyText } from "@/components/ui";
 import { priceCart } from "@/lib/cart";
+import { readAddresses } from "@/lib/engage";
 import { placeOrder } from "../cart/actions";
 
 export const metadata: Metadata = { title: "Checkout" };
@@ -39,6 +40,16 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   let draft: Draft = {};
   try { draft = JSON.parse(jar.get("vh-checkout-draft")?.value ?? "{}") as Draft; } catch { /* fresh form */ }
 
+  // §1.3 workflow: no draft in flight → prefill from the default saved address.
+  const defaultAddress = (await readAddresses()).find((a) => a.isDefault);
+  const usingSaved = !draft.name && Boolean(defaultAddress);
+  if (usingSaved && defaultAddress) {
+    draft = {
+      name: defaultAddress.name, mobile: defaultAddress.mobile, line1: defaultAddress.line1,
+      city: defaultAddress.city, state: defaultAddress.state, pincode: defaultAddress.pincode,
+    };
+  }
+
   const field = (key: keyof typeof ERRORS) => (err === key ? "vh-field invalid" : "vh-field");
 
   return (
@@ -59,6 +70,12 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
         <div style={{ display: "grid", gap: "var(--sp-3)" }}>
           <section className="vh-card">
             <h3 style={{ marginBottom: 14 }}>Delivery address</h3>
+            {usingSaved && (
+              <p className="small" style={{ margin: "0 0 12px", color: "var(--vh-accent)", fontWeight: 600 }}>
+                Prefilled from your default saved address — edit anything below, or manage it in{" "}
+                <Link href="/account/addresses" style={{ textDecoration: "underline" }}>your address book</Link>.
+              </p>
+            )}
             <div className="vh-grid cols-2" style={{ gap: 12 }}>
               <div className={field("name")}>
                 <label htmlFor="co-name" className="vh-label">Full name <span className="req">*</span></label>
@@ -88,6 +105,12 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
                 <input id="co-pin" name="pincode" className="vh-input" defaultValue={draft.pincode} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required />
               </div>
             </div>
+            {!usingSaved && (
+              <label className="vh-row small" style={{ gap: 8, cursor: "pointer", marginTop: 12 }}>
+                <input type="checkbox" name="saveAddress" style={{ accentColor: "var(--vh-accent)" }} />
+                Save this address to my address book for next time
+              </label>
+            )}
           </section>
 
           <section className="vh-card">

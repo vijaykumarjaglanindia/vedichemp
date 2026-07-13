@@ -14,7 +14,7 @@ import { randomUUID } from "node:crypto";
 import { clearCartCookies, COUPONS, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
 import { PRODUCTS } from "@/lib/sample";
 import { permittedClasses } from "@/lib/compliance";
-import { appendOrderHistory } from "@/lib/engage";
+import { appendOrderHistory, readAddresses, validateAddressFields, writeAddresses } from "@/lib/engage";
 
 const MAX_QTY = 10;
 
@@ -172,6 +172,21 @@ export async function placeOrder(formData: FormData): Promise<void> {
   void randomUUID(); // idempotency key placeholder for the DB write
   jar.set("vh-last-order", JSON.stringify(record), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 3600 });
   await appendOrderHistory(record); // powers My Account → Orders in demo mode
+
+  // "Save this address" — validated again here, deduped on line1+PIN (§1.3).
+  if (formData.get("saveAddress") === "on") {
+    const fields = { name, mobile, line1, city, state, pincode };
+    if (!validateAddressFields(fields)) {
+      const book = await readAddresses();
+      const dupe = book.some((a) => a.line1 === line1 && a.pincode === pincode);
+      if (!dupe && book.length < 6) {
+        await writeAddresses([
+          { id: `ad-${Date.now().toString(36)}`, ...fields, kind: "HOME", isDefault: book.length === 0 },
+          ...book,
+        ]);
+      }
+    }
+  }
   jar.delete("vh-checkout-draft");
   await clearCartCookies();
   await writeCoupon(null);

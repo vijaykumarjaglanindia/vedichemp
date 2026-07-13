@@ -159,9 +159,11 @@ export default async function OrderDetailPage({
             </ul>
           </Card>
 
-          <Card title={title(<Truck {...I} />, "Shipment timeline")}>
-            <Timeline nodes={nodes} />
-          </Card>
+          <div id="track" style={{ scrollMarginTop: 90 }}>
+            <Card title={title(<Truck {...I} />, "Shipment timeline")}>
+              <Timeline nodes={nodes} />
+            </Card>
+          </div>
 
           {/* Buy it again */}
           {buyAgain.length > 0 && (

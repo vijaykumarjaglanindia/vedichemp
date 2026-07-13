@@ -69,6 +69,7 @@ export function Shell({
       brand="🌿 Seller Central"
       nav={SELLER_NAV}
       active={active}
+      bellHref="/seller"
       breadcrumb={breadcrumb}
       title={title}
       actions={actions}

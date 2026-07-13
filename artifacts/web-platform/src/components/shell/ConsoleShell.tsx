@@ -24,12 +24,17 @@ function initials(brand: string): string {
 }
 
 export function ConsoleShell({
-  brand, nav, active, topbar, breadcrumb, title, actions, impersonation, children,
+  brand, nav, active, topbar, topbarExtra, bellHref, breadcrumb, title, actions, impersonation, children,
 }: {
   brand: string;
   nav: NavGroup[];
   active: string;
+  /** Replaces the whole default topbar (rarely wanted). */
   topbar?: ReactNode;
+  /** Extra chrome (e.g. the buyer Rx chip) rendered inside the default topbar. */
+  topbarExtra?: ReactNode;
+  /** Where the notification bell points; omit to hide the bell. */
+  bellHref?: string;
   breadcrumb?: string[];
   title?: string;
   actions?: ReactNode;
@@ -84,10 +89,13 @@ export function ConsoleShell({
                 <span className="vh-kbd" aria-hidden>/</span>
               </div>
               <div className="vh-spacer" />
-              <a className="vh-iconbtn" href="#" aria-label="Notifications">
-                <Bell size={17} aria-hidden />
-                <span className="vh-dot" aria-hidden />
-              </a>
+              {topbarExtra}
+              {bellHref && (
+                <Link className="vh-iconbtn" href={bellHref} aria-label="Notifications">
+                  <Bell size={17} aria-hidden />
+                  <span className="vh-dot" aria-hidden />
+                </Link>
+              )}
               <span className="vh-avatar" aria-hidden>{initials(brand)}</span>
             </>
           )}

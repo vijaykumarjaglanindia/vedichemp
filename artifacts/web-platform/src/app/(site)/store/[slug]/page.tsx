@@ -14,12 +14,14 @@ import { AdBanner } from "@/components/ui/ads";
 import { BadgeCheck, MapPin, ShieldCheck, UserCheck, UserPlus } from "lucide-react";
 import { Card, EmptyState, Rating, SectionHead } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
-import { readFollows } from "@/lib/engage";
+import { readFollows, readStoreCopy } from "@/lib/engage";
 import { breadcrumbJsonLd } from "@/lib/seo";
 import { toggleFollowStore } from "../../actions";
 import { ProductCard } from "../../_lib/ProductCard";
 import { ShareButton } from "../../_lib/ShareButton";
 import { sellerBySlug, sellerProducts, STORE_PROFILES } from "../../_lib/data";
+
+export const dynamic = "force-dynamic";
 
 type Params = { slug: string };
 
@@ -53,6 +55,10 @@ export default async function StorePage({ params }: { params: Promise<Params> })
   const publicClasses = seller.classes.filter((c) => c !== "MED_CANNABIS");
   const products = sellerProducts(seller.name);
   const following = (await readFollows()).includes(slug);
+  // Seller-published copy overrides the sample profile (their own store only).
+  const storeCopy = slug === "vedic-botanicals" ? await readStoreCopy() : null;
+  const tagline = storeCopy?.tagline ?? profile.tagline;
+  const story = storeCopy?.story ?? profile.story;
 
   const crumbs = [
     { name: "Home", href: "/" },
@@ -88,7 +94,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
             </span>
             <div style={{ flex: 1, minWidth: 260 }}>
               <h1 className="vh-display" style={{ color: "var(--vh-ink)", fontSize: "1.9rem", marginBottom: 4 }}>{seller.name}</h1>
-              <p style={{ color: "var(--vh-body)", margin: "0 0 10px", fontSize: ".95rem" }}>{profile.tagline}</p>
+              <p style={{ color: "var(--vh-body)", margin: "0 0 10px", fontSize: ".95rem" }}>{tagline}</p>
               <div className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
                 <span style={{ background: "var(--vh-surface)", border: "1px solid var(--vh-line)", borderRadius: 999, padding: "3px 10px", display: "inline-flex" }}>
                   <Rating value={profile.rating} count={profile.reviewCount} />
@@ -141,7 +147,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
 
           <div className="vh-split">
             <Card title="About this store">
-              <p className="small" style={{ marginBottom: 0 }}>{profile.story}</p>
+              <p className="small" style={{ marginBottom: 0 }}>{story}</p>
             </Card>
             <Card title="Certifications">
               <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>

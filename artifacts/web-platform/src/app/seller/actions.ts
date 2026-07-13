@@ -199,6 +199,24 @@ export async function createCoupon(formData: FormData): Promise<void> {
   redirect("/seller/marketing?created=1");
 }
 
+/* ── Store: publish storefront copy (tagline + story) ─────── */
+
+export async function updateStorefront(formData: FormData): Promise<void> {
+  const tagline = String(formData.get("tagline") ?? "").trim();
+  const story = String(formData.get("story") ?? "").trim();
+
+  let err: string | null = null;
+  if (tagline.length < 10 || tagline.length > 90) err = "tagline";
+  else if (story.length < 40 || story.length > 500) err = "story";
+  // Storefront copy is promotional copy — same fail-closed claims check.
+  else if (CLAIM_WORDS.test(tagline) || CLAIM_WORDS.test(story)) err = "copyclaims";
+  if (err) redirect(`/seller/store?err=${err}#storefront-copy`);
+
+  const { writeStoreCopy } = await import("@/lib/engage");
+  await writeStoreCopy({ tagline, story });
+  redirect("/seller/store?copy=published#storefront-copy");
+}
+
 /* ── Store: submit a licence for verification ─────────────── */
 
 const LICENCE_TYPES = ["FSSAI", "AYUSH", "GST", "TRADE"];
