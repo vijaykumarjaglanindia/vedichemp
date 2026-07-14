@@ -237,6 +237,35 @@ export async function savePost(formData: FormData): Promise<void> {
   redirect(editorUrl(slug, `cms=${publishAt ? "scheduled" : intent === "publish" ? "published" : intent === "unpublish" ? "unpublished" : "saved"}`));
 }
 
+/* ── Reviews: moderation (approve / reject) ───────────────── */
+
+export async function moderateReviewAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("reviewId") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  const who = await actor();
+  const { moderateReview, findReview } = await import("@/lib/reviews");
+
+  // Rejection is a moderator judgement the buyer may query — require a reason.
+  if (decision === "reject" && note.length < 12) {
+    await writeAudit({ actor: who, action: "REVIEW_REJECT", target: id, outcome: "DENIED", note: "reason under 12 chars" });
+    redirect("/admin/reviews?err=note");
+  }
+  const review = findReview(id);
+  const result = await moderateReview(id, decision === "approve", note || undefined);
+  if (!result.ok) redirect(`/admin/reviews?err=${result.reason}`);
+  await writeAudit({ actor: who, action: decision === "approve" ? "REVIEW_APPROVE" : "REVIEW_REJECT", target: id, outcome: "OK", ...(note ? { note } : {}) });
+
+  // Tell the seller their product has a newly published review to reply to.
+  if (decision === "approve" && review) {
+    const { notify } = await import("@/lib/notify");
+    const { findProduct } = await import("@/lib/catalog");
+    const product = await findProduct(review.productId);
+    if (product) await notify("seller", product.seller, { kind: "REVIEW_LIVE", title: "A review is now live", body: `${review.rating}★ on "${product.title}". You can reply publicly.`, href: "/seller/reviews" });
+  }
+  redirect(`/admin/reviews?done=${decision}`);
+}
+
 /* ── CMS: featured (cover) image ──────────────────────────── */
 
 const CMS_IMG_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];

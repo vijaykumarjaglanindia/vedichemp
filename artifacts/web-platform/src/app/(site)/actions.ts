@@ -12,6 +12,7 @@
 import { cookies, headers } from "next/headers";
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
 import { redirect } from "next/navigation";
+import { getSession } from "@/lib/auth-lite";
 import { readLiveProducts } from "@/lib/catalog";
 import { permittedClasses } from "@/lib/compliance";
 import {
@@ -114,10 +115,47 @@ export async function submitReview(formData: FormData): Promise<void> {
   if (text.length < 10 || text.length > 600) redirect(`/products/${product!.slug}?review=short#reviews`);
   if (CLAIM_WORDS.test(text)) redirect(`/products/${product!.slug}?review=claims#reviews`);
 
+  // Real review store: held for moderation (PENDING) and only shown publicly
+  // once an admin approves it. The verified flag reflects the purchase check.
+  const title = String(formData.get("title") ?? "").trim().slice(0, 80);
+  if (title && CLAIM_WORDS.test(title)) redirect(`/products/${product!.slug}?review=claims#reviews`);
+  const { addReview } = await import("@/lib/reviews");
+  const session = await getSession();
+  await addReview({
+    productId: product!.id,
+    productSlug: product!.slug,
+    author: session?.email ? session.email.split("@")[0]! : "Verified buyer",
+    rating, body: text, verified: true,
+    ...(title ? { title } : {}),
+  });
+
+  // Keep the buyer's own "pending" panel (their draft echoes back on the PDP).
   const map = await readMyReviews();
   map[product!.slug] = { rating, text };
   await writeMyReviews(map);
+
+  // Tell the seller a review needs a look (and admin has one to moderate).
+  const { notify } = await import("@/lib/notify");
+  await notify("seller", product!.seller, { kind: "REVIEW_NEW", title: "New review to check", body: `${rating}★ on "${product!.title}" — reply once it's approved.`, href: "/seller/reviews" });
+  await notify("admin", "admin", { kind: "REVIEW_MODERATE", title: "Review to moderate", body: `${rating}★ on "${product!.title}".`, href: "/admin/reviews" });
   redirect(back);
+}
+
+/** "Was this helpful?" — one vote per person, guarded by a cookie. */
+export async function markReviewHelpful(formData: FormData): Promise<void> {
+  const reviewId = String(formData.get("reviewId") ?? "").slice(0, 20);
+  const slug = String(formData.get("slug") ?? "").slice(0, 80);
+  const jar = await cookies();
+  let voted: string[] = [];
+  try { voted = JSON.parse(jar.get("vh-helpful")?.value ?? "[]") as string[]; } catch { voted = []; }
+  if (!voted.includes(reviewId)) {
+    const { markHelpful } = await import("@/lib/reviews");
+    if (await markHelpful(reviewId)) {
+      voted.push(reviewId);
+      jar.set("vh-helpful", JSON.stringify(voted.slice(-200)), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 60 * 60 * 24 * 365 });
+    }
+  }
+  redirect(`/products/${slug}#reviews`);
 }
 
 export async function askQuestion(formData: FormData): Promise<void> {

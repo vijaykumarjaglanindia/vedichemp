@@ -376,6 +376,26 @@ export async function respondToReview(formData: FormData): Promise<void> {
   redirect("/seller/customers?replied=1");
 }
 
+/** Seller's public reply to an approved review on their product (copy-checked). */
+export async function replySellerReview(formData: FormData): Promise<void> {
+  const reviewId = String(formData.get("reviewId") ?? "").slice(0, 20);
+  const reply = String(formData.get("reply") ?? "").trim();
+  const { findReview, replyToReview } = await import("@/lib/reviews");
+  const { findProduct } = await import("@/lib/catalog");
+  const review = findReview(reviewId);
+  if (!review) redirect("/seller/reviews");
+  // Only the store that owns the product may reply.
+  const product = await findProduct(review!.productId);
+  if (!product || product.seller !== DEMO_STORE) redirect("/seller/reviews");
+  // Fail closed: replies are public copy — same claims check, same length rule.
+  if (reply.length < 5 || reply.length > 500) redirect("/seller/reviews?err=short#r-" + reviewId);
+  if (CLAIM_WORDS.test(reply)) redirect("/seller/reviews?err=claims#r-" + reviewId);
+  const result = await replyToReview(reviewId, reply);
+  if (!result.ok) redirect(`/seller/reviews?err=${result.reason}`);
+  await writeAudit({ actor: DEMO_STORE, action: "REVIEW_REPLY", target: reviewId, outcome: "OK" });
+  redirect("/seller/reviews?replied=1#r-" + reviewId);
+}
+
 /* ── Vedic Ads: full campaign structure (A1-guarded) ──────── */
 
 const OBJECTIVE_BY_TYPE: Record<string, "SPONSORED_PRODUCTS" | "BANNER" | "VIDEO"> = {

@@ -35,8 +35,9 @@ import { mdToHtml } from "@/lib/richtext";
 import { findLiveBySlug, hasVariants, saleActive, selectVariant } from "@/lib/catalog";
 import { SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
+import { aggregate, approvedFor } from "@/lib/reviews";
 import { addBundleToCart, addToCart } from "../../cart/actions";
-import { askQuestion, submitReview, toggleWishlist } from "../../actions";
+import { askQuestion, markReviewHelpful, submitReview, toggleWishlist } from "../../actions";
 import { readMyQuestions, readMyReviews, readOrderHistory } from "@/lib/engage";
 import {
   discountPct,
@@ -131,7 +132,12 @@ export default async function ProductDetailPage({
   const regulated = isRegulated(product.cls);
   const seller = SELLERS.find((s) => s.name === product.seller);
   const specs = specsFor(product);
-  const reviewCount = reviewCountFor(product);
+  // Rating is COMPUTED from approved reviews; fall back to the seed rating only
+  // when a product has no reviews yet.
+  const agg = await aggregate(product.id);
+  const reviews = await approvedFor(product.id);
+  const reviewCount = agg.count > 0 ? agg.count : reviewCountFor(product);
+  const ratingValue = agg.count > 0 ? agg.avg : product.rating;
   // Variant selection: the chosen option drives the price, stock and the
   // add-to-cart, all server-resolved (never a client price).
   const productHasVariants = hasVariants(product);
@@ -285,31 +291,63 @@ export default async function ProductDetailPage({
           <section id="reviews" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
             <Card
               title="Reviews"
-              action={<Rating value={product.rating} count={reviewCount} />}
+              action={<Rating value={ratingValue} count={reviewCount} />}
             >
-              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
-                <li>
-                  <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                    <Rating value={5} />
-                    <strong className="small" style={{ color: "var(--vh-ink)" }}>Priya M.</strong>
-                    <span className="vh-pill vh-pill-ok">Verified purchase</span>
+              {/* Rating summary + histogram, computed from approved reviews */}
+              {agg.count > 0 && (
+                <div className="vh-row" style={{ gap: "var(--sp-4)", alignItems: "center", flexWrap: "wrap", marginBottom: "var(--sp-3)", paddingBottom: "var(--sp-3)", borderBottom: "1px solid var(--vh-line)" }}>
+                  <div style={{ textAlign: "center", minWidth: 90 }}>
+                    <div style={{ fontSize: "2.4rem", fontWeight: 800, color: "var(--vh-ink)", lineHeight: 1 }}>{agg.avg.toFixed(1)}</div>
+                    <Rating value={agg.avg} />
+                    <div className="small muted">{agg.count} review{agg.count === 1 ? "" : "s"}</div>
                   </div>
-                  <p className="small muted" style={{ margin: "6px 0 0" }}>
-                    Good packaging, arrived on time, and the batch CoA link on the invoice made me
-                    comfortable buying again.
-                  </p>
-                </li>
-                <li>
-                  <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                    <Rating value={4} />
-                    <strong className="small" style={{ color: "var(--vh-ink)" }}>Rohit K.</strong>
-                    <span className="vh-pill vh-pill-ok">Verified purchase</span>
+                  <div style={{ flex: 1, minWidth: 200, display: "grid", gap: 4 }}>
+                    {[5, 4, 3, 2, 1].map((star) => {
+                      const n = agg.histogram[star as 1 | 2 | 3 | 4 | 5];
+                      const pct = agg.count ? Math.round((n / agg.count) * 100) : 0;
+                      return (
+                        <div key={star} className="vh-row" style={{ gap: 8 }}>
+                          <span className="small muted" style={{ width: 30 }}>{star}★</span>
+                          <span style={{ flex: 1, height: 8, background: "var(--vh-green-100)", borderRadius: 999, overflow: "hidden" }}>
+                            <span style={{ display: "block", width: `${pct}%`, height: "100%", background: "var(--vh-accent)" }} />
+                          </span>
+                          <span className="small muted tabular" style={{ width: 30, textAlign: "right" }}>{n}</span>
+                        </div>
+                      );
+                    })}
                   </div>
-                  <p className="small muted" style={{ margin: "6px 0 0" }}>
-                    Solid everyday product. Would like more batches in stock at once.
-                  </p>
-                </li>
-              </ul>
+                </div>
+              )}
+
+              {reviews.length > 0 ? (
+                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
+                  {reviews.map((r) => (
+                    <li key={r.id} style={{ borderBottom: "1px solid var(--vh-line)", paddingBottom: "var(--sp-3)" }}>
+                      <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
+                        <Rating value={r.rating} />
+                        <strong className="small" style={{ color: "var(--vh-ink)" }}>{r.author}</strong>
+                        {r.verified && <span className="vh-pill vh-pill-ok">Verified purchase</span>}
+                        <span className="small muted tabular">{r.createdAt}</span>
+                      </div>
+                      {r.title && <div className="small" style={{ fontWeight: 700, color: "var(--vh-ink)", marginTop: 4 }}>{r.title}</div>}
+                      <p className="small muted" style={{ margin: "4px 0 0" }}>{r.body}</p>
+                      {r.sellerReply && (
+                        <div style={{ marginTop: 8, borderLeft: "3px solid var(--vh-accent)", background: "var(--vh-green-50)", borderRadius: "var(--vh-radius-sm)", padding: "8px 12px" }}>
+                          <div className="small" style={{ fontWeight: 700, color: "var(--vh-ink)" }}>Reply from {product.seller}</div>
+                          <p className="small muted" style={{ margin: "2px 0 0" }}>{r.sellerReply}</p>
+                        </div>
+                      )}
+                      <form action={markReviewHelpful} style={{ marginTop: 8 }}>
+                        <input type="hidden" name="reviewId" value={r.id} />
+                        <input type="hidden" name="slug" value={product.slug} />
+                        <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm">👍 Helpful{r.helpful > 0 ? ` (${r.helpful})` : ""}</button>
+                      </form>
+                    </li>
+                  ))}
+                </ul>
+              ) : (
+                <p className="small muted" style={{ margin: 0 }}>No reviews yet — be the first to review this after your purchase.</p>
+              )}
               <div style={{ marginTop: "var(--sp-3)", borderTop: "1px solid var(--vh-line)", paddingTop: "var(--sp-3)" }}>
                 {/* AI review summary — provider seam in lib/ai.ts; labelled, never a claim */}
                 <div id="ai-summary" style={{ background: "var(--vh-green-50)", border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "12px 14px", marginBottom: "var(--sp-3)" }}>
@@ -352,7 +390,9 @@ export default async function ProductDetailPage({
                         </select>
                       </div>
                       <div className="vh-field" style={{ flex: "1 1 240px" }}>
-                        <label className="vh-label" htmlFor="rv-text">Your review <span className="req">*</span></label>
+                        <label className="vh-label" htmlFor="rv-title">Headline</label>
+                        <input className="vh-input" id="rv-title" name="title" maxLength={80} placeholder="Sum it up in a few words (optional)" />
+                        <label className="vh-label" htmlFor="rv-text" style={{ marginTop: 10 }}>Your review <span className="req">*</span></label>
                         <RichTextEditor
                           compact
                           name="text"
@@ -444,7 +484,7 @@ export default async function ProductDetailPage({
             <h1 style={{ fontSize: "1.35rem", margin: product.brand ? "0 0 6px" : "10px 0 6px" }}>{product.title}</h1>
             {product.shortDesc && <p className="small muted" style={{ margin: "0 0 8px" }}>{product.shortDesc}</p>}
             <div className="vh-row" style={{ gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-              <Rating value={product.rating} count={reviewCount} />
+              <a href="#reviews" style={{ textDecoration: "none" }}><Rating value={ratingValue} count={reviewCount} /></a>
               <Link href={`/store/${sellerSlug(product.seller)}`} className="small" style={{ fontWeight: 700 }}>
                 {product.seller}
               </Link>
