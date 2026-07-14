@@ -16,10 +16,13 @@ import { Lock, FileUp, ImagePlus, ShieldAlert, Send, Archive, RotateCcw, Trash2,
 import { Shell } from "../../Shell";
 import { Banner, Card, StatusPill, toneForStatus, ComplianceBadge, MoneyText, type Column, DataTable } from "@/components/ui";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
-import { findProduct, REGULATED_CLASSES } from "@/lib/catalog";
+import { findProduct, hasVariants, REGULATED_CLASSES } from "@/lib/catalog";
 import { findSellerProduct, type Batch } from "../../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
-import { productLifecycle, submitCoaForBatch, updateProductListing } from "../../actions";
+import {
+  addProductVariant, productLifecycle, removeProductVariant, saveOptionName,
+  submitCoaForBatch, updateProductListing, updateProductVariant,
+} from "../../actions";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
@@ -57,10 +60,10 @@ export default async function ProductEditorPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string; done?: string; err?: string; coa?: string }>;
+  searchParams: Promise<{ saved?: string; done?: string; err?: string; coa?: string; vdone?: string }>;
 }) {
   const { id } = await params;
-  const { saved, done, err, coa } = await searchParams;
+  const { saved, done, err, coa, vdone } = await searchParams;
   const product = await findProduct(id);
   if (!product) notFound();
 
@@ -299,6 +302,71 @@ export default async function ProductEditorPage({
             </div>
           )}
         </div>
+      </div>
+
+      {/* ── Variants (size / pack / strength options) ─────── */}
+      <div id="variants" style={{ scrollMarginTop: 90, marginTop: "var(--sp-4)" }}>
+        <Card
+          title="Variants (size / pack / strength)"
+          action={<span className="small muted">{hasVariants(product!) ? `${product!.variants!.length} option${product!.variants!.length === 1 ? "" : "s"}` : "Optional"}</span>}
+        >
+          {vdone && <div style={{ marginBottom: 12 }}><Banner severity="ok" title="Variants updated">The product page shows the options immediately; the listing price becomes the lowest variant price.</Banner></div>}
+          {err?.startsWith("v_") && <div style={{ marginBottom: 12 }}><Banner severity="danger" title="Couldn't add that variant">{err === "v_dupe" ? "That option label already exists." : err === "v_mrp" ? "MRP must be an integer in paise, at or above the price." : err === "v_price" ? "Price must be a positive integer in paise." : "Check the variant fields."}</Banner></div>}
+          {err === "optionname" && <div style={{ marginBottom: 12 }}><Banner severity="danger" title="Option name required">Give the option group a name (e.g. Size, Pack, Strength).</Banner></div>}
+
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Add options like 250&nbsp;g / 500&nbsp;g / 1&nbsp;kg or 500&nbsp;mg / 1000&nbsp;mg. Each option has its own
+            price, MRP and stock; buyers pick one on the product page and the cart, checkout and inventory all follow it.
+          </p>
+
+          {/* Option name */}
+          <form action={saveOptionName} className="vh-row" style={{ gap: 10, alignItems: "flex-end", marginBottom: "var(--sp-3)", flexWrap: "wrap" }}>
+            <input type="hidden" name="productId" value={product!.id} />
+            <div className="vh-field" style={{ maxWidth: 220 }}>
+              <label className="vh-label" htmlFor="optName">Option name</label>
+              <input className="vh-input" id="optName" name="optionName" maxLength={30} defaultValue={product!.optionName ?? ""} placeholder="Size / Pack / Strength" />
+            </div>
+            <button className="vh-btn vh-btn-sm vh-btn-ghost" type="submit">Save name</button>
+          </form>
+
+          {/* Existing variants — edit price/stock inline */}
+          {hasVariants(product!) && (
+            <div style={{ display: "grid", gap: 8, marginBottom: "var(--sp-3)" }}>
+              {product!.variants!.map((v) => (
+                <div key={v.id} className="vh-row" style={{ gap: 8, flexWrap: "wrap", alignItems: "flex-end", borderTop: "1px solid var(--vh-line)", paddingTop: 8 }}>
+                  <div style={{ minWidth: 120 }}>
+                    <div style={{ fontWeight: 700 }}>{v.label}</div>
+                    <div className="small muted mono">{v.sku}</div>
+                  </div>
+                  <form action={updateProductVariant} className="vh-row" style={{ gap: 6, alignItems: "flex-end", flexWrap: "wrap" }}>
+                    <input type="hidden" name="productId" value={product!.id} />
+                    <input type="hidden" name="variantId" value={v.id} />
+                    <label className="small">Price<input className="vh-input" name="pricePaise" type="number" defaultValue={v.pricePaise} style={{ width: 100 }} aria-label={`Price for ${v.label}`} /></label>
+                    <label className="small">MRP<input className="vh-input" name="mrpPaise" type="number" defaultValue={v.mrpPaise} style={{ width: 100 }} aria-label={`MRP for ${v.label}`} /></label>
+                    <label className="small">Stock<input className="vh-input" name="stockQty" type="number" defaultValue={v.stockQty} style={{ width: 80 }} aria-label={`Stock for ${v.label}`} /></label>
+                    <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">Save</button>
+                  </form>
+                  <form action={removeProductVariant} style={{ display: "inline-flex" }}>
+                    <input type="hidden" name="productId" value={product!.id} />
+                    <input type="hidden" name="variantId" value={v.id} />
+                    <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit" aria-label={`Remove ${v.label}`}><Trash2 size={13} strokeWidth={2.2} aria-hidden /></button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Add a variant */}
+          <form action={addProductVariant} className="vh-row" style={{ gap: 8, alignItems: "flex-end", flexWrap: "wrap", borderTop: "1px solid var(--vh-line)", paddingTop: "var(--sp-3)" }}>
+            <input type="hidden" name="productId" value={product!.id} />
+            <label className="small">Label<input className="vh-input" name="label" maxLength={30} placeholder="500 g" style={{ width: 110 }} required aria-label="New variant label" /></label>
+            <label className="small">SKU<input className="vh-input mono" name="sku" maxLength={30} placeholder="auto" style={{ width: 110 }} aria-label="New variant SKU" /></label>
+            <label className="small">Price (paise)<input className="vh-input" name="pricePaise" type="number" min={1} placeholder="89900" style={{ width: 110 }} required aria-label="New variant price" /></label>
+            <label className="small">MRP (paise)<input className="vh-input" name="mrpPaise" type="number" min={1} placeholder="109900" style={{ width: 110 }} required aria-label="New variant MRP" /></label>
+            <label className="small">Stock<input className="vh-input" name="stockQty" type="number" min={0} placeholder="40" style={{ width: 80 }} required aria-label="New variant stock" /></label>
+            <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">Add variant</button>
+          </form>
+        </Card>
       </div>
     </Shell>
   );

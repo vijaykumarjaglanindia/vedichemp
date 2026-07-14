@@ -13,7 +13,7 @@ import { cookies } from "next/headers";
 import { readEnabledPayments } from "@/lib/payments";
 import { randomUUID } from "node:crypto";
 import { clearCartCookies, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
-import { decrementStock, readLiveProducts } from "@/lib/catalog";
+import { decrementStock, hasVariants, readLiveProducts, selectVariant } from "@/lib/catalog";
 import { readActiveCoupons } from "@/lib/commerce";
 import { permittedClasses } from "@/lib/compliance";
 import { getSession } from "@/lib/auth-lite";
@@ -22,7 +22,8 @@ import { appendOrderHistory, readAddresses, validateAddressFields, writeAddresse
 
 const MAX_QTY = 10;
 
-async function assertPurchasable(productId: string): Promise<void> {
+/** Returns the resolved variant id to store (validated), or throws via redirect. */
+async function assertPurchasable(productId: string, variantId?: string): Promise<string | undefined> {
   const permitted = permittedClasses({ hasRx: false });
   const product = (await readLiveProducts()).find((p) => p.id === productId && permitted.includes(p.cls));
   if (!product) {
@@ -31,20 +32,30 @@ async function assertPurchasable(productId: string): Promise<void> {
     // public cart even by crafted form data).
     redirect("/catalogue");
   }
-  // Out of stock cannot enter the cart — the server is the authority on stock.
+  // Variant products: a variant must be chosen, and it must have stock.
+  if (hasVariants(product!)) {
+    const v = selectVariant(product!, variantId);
+    if (!v || v.stockQty <= 0) redirect(`/products/${product!.slug}?oos=1`);
+    return v!.id;
+  }
+  // Simple product: out of stock cannot enter the cart (server is the authority).
   if (product!.stockQty <= 0) redirect(`/products/${product!.slug}?oos=1`);
+  return undefined;
 }
 
 export async function addToCart(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");
+  const rawVariant = String(formData.get("variantId") ?? "") || undefined;
   const qty = Math.min(Math.max(parseInt(String(formData.get("qty") ?? "1"), 10) || 1, 1), MAX_QTY);
   const intent = String(formData.get("intent") ?? "cart");
-  await assertPurchasable(id);
+  const variantId = await assertPurchasable(id, rawVariant);
 
   const lines = await readCartLines();
-  const existing = lines.find((l) => l.id === id);
+  // A line is unique per (product, variant): two sizes of the same product
+  // are two lines.
+  const existing = lines.find((l) => l.id === id && l.variantId === variantId);
   if (existing) existing.qty = Math.min(existing.qty + qty, MAX_QTY);
-  else lines.push({ id, qty });
+  else lines.push({ id, qty, ...(variantId ? { variantId } : {}) });
   await writeCartLines(lines);
 
   redirect(intent === "buy" ? "/checkout" : "/cart");
@@ -74,9 +85,11 @@ export async function addBundleToCart(formData: FormData): Promise<void> {
 
 export async function setQty(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");
+  const variantId = String(formData.get("variantId") ?? "") || undefined;
   const delta = String(formData.get("delta") ?? "");
   const lines = await readCartLines();
-  const line = lines.find((l) => l.id === id);
+  // Target the exact (product, variant) line — two sizes are two lines.
+  const line = lines.find((l) => l.id === id && l.variantId === variantId);
   if (line) {
     line.qty = Math.min(Math.max(line.qty + (delta === "up" ? 1 : -1), 0), MAX_QTY);
   }
@@ -86,7 +99,8 @@ export async function setQty(formData: FormData): Promise<void> {
 
 export async function removeFromCart(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");
-  const lines = (await readCartLines()).filter((l) => l.id !== id);
+  const variantId = String(formData.get("variantId") ?? "") || undefined;
+  const lines = (await readCartLines()).filter((l) => !(l.id === id && l.variantId === variantId));
   await writeCartLines(lines);
   redirect("/cart");
 }
@@ -194,10 +208,12 @@ export async function placeOrder(formData: FormData): Promise<void> {
     emoji: l.product.emoji,
     seller: l.product.seller,
     qty: l.qty,
-    unitPaise: l.product.pricePaise,
+    unitPaise: l.unitPaise,
     linePaise: l.linePaise,
+    ...(l.variantId ? { variantId: l.variantId } : {}),
+    ...(l.variantLabel ? { variantLabel: l.variantLabel } : {}),
   }));
-  for (const it of orderItems) await decrementStock(it.productId, it.qty);
+  for (const it of orderItems) await decrementStock(it.productId, it.qty, it.variantId);
   await createOrder({
     idempotencyKey,
     buyerEmail,

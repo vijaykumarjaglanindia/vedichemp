@@ -47,8 +47,8 @@ export default async function CartPage({
       <div className="vh-split">
         {/* Lines */}
         <div style={{ display: "grid", gap: 12 }}>
-          {cart.lines.map(({ product, qty, linePaise }) => (
-            <article key={product.id} className="vh-product-row">
+          {cart.lines.map(({ product, qty, linePaise, unitPaise, variantId, variantLabel }) => (
+            <article key={`${product.id}:${variantId ?? ""}`} className="vh-product-row">
               <Link href={`/products/${product.slug}`} className="vh-product-media" aria-hidden tabIndex={-1}>
                 {product.emoji}
               </Link>
@@ -56,12 +56,14 @@ export default async function CartPage({
                 <Link href={`/products/${product.slug}`} className="vh-product-title" style={{ display: "block" }}>
                   {product.title}
                 </Link>
+                {variantLabel && <div className="small" style={{ fontWeight: 700, color: "var(--vh-ink)" }}>{variantLabel}</div>}
                 <div className="small muted" style={{ margin: "2px 0 8px" }}>
                   Sold &amp; shipped by {product.seller}
                 </div>
                 <div className="vh-row" style={{ gap: 8 }}>
                   <form action={setQty} className="vh-row" style={{ gap: 0, border: "1px solid var(--vh-line-strong)", borderRadius: 8, overflow: "hidden" }}>
                     <input type="hidden" name="productId" value={product.id} />
+                    {variantId && <input type="hidden" name="variantId" value={variantId} />}
                     <button name="delta" value="down" className="vh-iconbtn" style={{ border: 0, borderRadius: 0, width: 32, height: 32 }} aria-label={`Decrease quantity of ${product.title}`}>
                       <Minus size={13} aria-hidden />
                     </button>
@@ -72,6 +74,7 @@ export default async function CartPage({
                   </form>
                   <form action={removeFromCart}>
                     <input type="hidden" name="productId" value={product.id} />
+                    {variantId && <input type="hidden" name="variantId" value={variantId} />}
                     <button className="vh-btn vh-btn-ghost vh-btn-sm" aria-label={`Remove ${product.title} from cart`}>
                       <Trash2 size={13} aria-hidden /> Remove
                     </button>
@@ -82,7 +85,7 @@ export default async function CartPage({
                 <MoneyText paise={linePaise} className="vh-product-title" />
                 {qty > 1 && (
                   <div className="small muted tabular">
-                    <MoneyText paise={product.pricePaise} /> each
+                    <MoneyText paise={unitPaise} /> each
                   </div>
                 )}
               </div>

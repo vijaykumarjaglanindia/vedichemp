@@ -653,3 +653,52 @@ export async function saveStoreAvailability(formData: FormData): Promise<void> {
   await writeStoreAvailability({ onVacation, message: message || "We're on a short break — back soon. Thanks for your patience!" });
   redirect("/seller/store?avail=saved#availability");
 }
+
+/* ── Product variants (size / pack / strength options) ────── */
+
+export async function saveOptionName(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const name = String(formData.get("optionName") ?? "").trim();
+  const { setOptionName } = await import("@/lib/catalog");
+  if (name.length < 1 || name.length > 30) redirect(`/seller/products/${id}?err=optionname#variants`);
+  await setOptionName(id, name);
+  redirect(`/seller/products/${id}?vdone=option#variants`);
+}
+
+export async function addProductVariant(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const label = String(formData.get("label") ?? "").trim();
+  const sku = String(formData.get("sku") ?? "").trim();
+  const pricePaise = parseInt(String(formData.get("pricePaise") ?? ""), 10);
+  const mrpPaise = parseInt(String(formData.get("mrpPaise") ?? ""), 10);
+  const stockQty = parseInt(String(formData.get("stockQty") ?? ""), 10);
+  const { addVariant } = await import("@/lib/catalog");
+  const result = await addVariant(id, { label, sku, pricePaise, mrpPaise, stockQty });
+  if (!result.ok) redirect(`/seller/products/${id}?err=v_${result.reason}#variants`);
+  await writeAudit({ actor: DEMO_STORE, action: "VARIANT_ADD", target: `${id} · ${label}`, outcome: "OK" });
+  redirect(`/seller/products/${id}?vdone=added#variants`);
+}
+
+export async function updateProductVariant(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const variantId = String(formData.get("variantId") ?? "");
+  const pricePaise = parseInt(String(formData.get("pricePaise") ?? ""), 10);
+  const mrpPaise = parseInt(String(formData.get("mrpPaise") ?? ""), 10);
+  const stockQty = parseInt(String(formData.get("stockQty") ?? ""), 10);
+  const { updateVariant } = await import("@/lib/catalog");
+  const patch: Record<string, number> = {};
+  if (Number.isInteger(pricePaise) && pricePaise > 0) patch.pricePaise = pricePaise;
+  if (Number.isInteger(mrpPaise) && mrpPaise >= (patch.pricePaise ?? 0)) patch.mrpPaise = mrpPaise;
+  if (Number.isInteger(stockQty) && stockQty >= 0) patch.stockQty = stockQty;
+  await updateVariant(id, variantId, patch);
+  redirect(`/seller/products/${id}?vdone=saved#variants`);
+}
+
+export async function removeProductVariant(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const variantId = String(formData.get("variantId") ?? "");
+  const { removeVariant } = await import("@/lib/catalog");
+  await removeVariant(id, variantId);
+  await writeAudit({ actor: DEMO_STORE, action: "VARIANT_REMOVE", target: `${id} · ${variantId}`, outcome: "OK" });
+  redirect(`/seller/products/${id}?vdone=removed#variants`);
+}

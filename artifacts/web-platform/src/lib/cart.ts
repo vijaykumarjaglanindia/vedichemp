@@ -16,7 +16,7 @@ import "server-only";
  */
 
 import { cookies } from "next/headers";
-import { readLiveProducts } from "@/lib/catalog";
+import { readLiveProducts, resolvePriceStock } from "@/lib/catalog";
 import { readActiveCoupons, readCommerce } from "@/lib/commerce";
 import { type SampleProduct } from "@/lib/sample";
 import { permittedClasses } from "@/lib/compliance";
@@ -29,6 +29,7 @@ const MAX_QTY = 10;
 export interface CartLine {
   id: string;
   qty: number;
+  variantId?: string; // chosen option (size/pack), when the product has variants
 }
 
 export interface PricedLine {
@@ -37,6 +38,9 @@ export interface PricedLine {
   linePaise: number;
   stockQty: number; // on-hand at pricing time; the cap the buyer can order
   capped: boolean; // true if requested qty was trimmed to available stock
+  variantId?: string;
+  variantLabel?: string; // e.g. "500 g" — shown in cart and carried into the order
+  unitPaise: number; // per-unit price used (variant price when present)
 }
 
 export interface PricedCart {
@@ -84,6 +88,7 @@ export async function readCartLines(): Promise<CartLine[]> {
     if (parsed.v !== 1 || !Array.isArray(parsed.items)) return [];
     return parsed.items
       .filter((l) => typeof l.id === "string" && Number.isInteger(l.qty) && l.qty > 0)
+      .map((l) => ({ id: l.id, qty: l.qty, ...(typeof l.variantId === "string" ? { variantId: l.variantId } : {}) }))
       .slice(0, MAX_LINES);
   } catch {
     return [];
@@ -121,12 +126,20 @@ export async function priceCart(): Promise<PricedCart> {
   for (const line of lines) {
     const product = catalogue.find((p) => p.id === line.id && permitted.includes(p.cls));
     if (!product) continue;
+    // Resolve the chosen variant's price + stock (falls back to the simple
+    // product when it has no variants). The server prices the variant, never
+    // a client-supplied amount.
+    const { pricePaise: unitPaise, stockQty: available, variant } = resolvePriceStock(product, line.variantId);
     // Out-of-stock lines drop out entirely; in-stock lines are capped at what's
     // actually on hand — the server never prices in units it cannot fulfil.
-    if (product.stockQty <= 0) continue;
+    if (available <= 0) continue;
     const requested = Math.min(line.qty, MAX_QTY);
-    const qty = Math.min(requested, product.stockQty);
-    priced.push({ product, qty, linePaise: product.pricePaise * qty, stockQty: product.stockQty, capped: qty < requested });
+    const qty = Math.min(requested, available);
+    priced.push({
+      product, qty, linePaise: unitPaise * qty, stockQty: available, capped: qty < requested,
+      unitPaise,
+      ...(variant ? { variantId: variant.id, variantLabel: variant.label } : {}),
+    });
   }
   const subtotalPaise = priced.reduce((n, l) => n + l.linePaise, 0);
   const commerce = await readCommerce();

@@ -38,6 +38,8 @@ export interface OrderItem {
   qty: number;
   unitPaise: number;
   linePaise: number;
+  variantId?: string;
+  variantLabel?: string; // e.g. "500 g" — shown on the order and invoice
 }
 
 export interface OrderEvent {
@@ -189,7 +191,7 @@ export async function cancelOrder(reference: string, by: string, reason?: string
   const order = await findOrder(reference);
   if (!order) return { ok: false, reason: "missing" };
   if (!["PLACED", "ACCEPTED", "PACKED"].includes(order.status)) return { ok: false, reason: "state" };
-  for (const it of order.items) await restock(it.productId, it.qty);
+  for (const it of order.items) await restock(it.productId, it.qty, it.variantId);
   order.status = "CANCELLED";
   order.refundedPaise = order.totalPaise;
   order.refundedAt = now();
@@ -248,7 +250,7 @@ export async function refundBuyer(reference: string, by: string): Promise<OrderR
   order.refundedAt = now();
   // Recover from the seller AFTERWARDS — a separate, non-blocking ledger.
   order.sellerRecovery = "PENDING";
-  for (const it of order.items) await restock(it.productId, it.qty);
+  for (const it of order.items) await restock(it.productId, it.qty, it.variantId);
   order.timeline.push({ at: now(), status: "REFUNDED", by, note: "buyer refunded first; seller recovery opened" });
   return { ok: true, order };
 }

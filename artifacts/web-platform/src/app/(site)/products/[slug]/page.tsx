@@ -32,7 +32,7 @@ import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { CLASS_META, isRegulated } from "@/lib/compliance";
 import { aiProviderName, summarizeReviews } from "@/lib/ai";
 import { mdToHtml } from "@/lib/richtext";
-import { findLiveBySlug } from "@/lib/catalog";
+import { findLiveBySlug, hasVariants, selectVariant } from "@/lib/catalog";
 import { SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
 import { addBundleToCart, addToCart } from "../../cart/actions";
@@ -101,10 +101,10 @@ export default async function ProductDetailPage({
   searchParams,
 }: {
   params: Promise<Params>;
-  searchParams: Promise<{ pin?: string; review?: string; q?: string }>;
+  searchParams: Promise<{ pin?: string; review?: string; q?: string; variant?: string }>;
 }) {
   const { slug } = await params;
-  const { pin, review: reviewErr, q: qErr } = await searchParams;
+  const { pin, review: reviewErr, q: qErr, variant: variantParam } = await searchParams;
   // The LIVE store only — a draft, suspended or archived listing gets the
   // identical empty state as an unknown slug.
   const product = await findLiveBySlug(slug);
@@ -129,7 +129,14 @@ export default async function ProductDetailPage({
   const seller = SELLERS.find((s) => s.name === product.seller);
   const specs = specsFor(product);
   const reviewCount = reviewCountFor(product);
-  const off = discountPct(product);
+  // Variant selection: the chosen option drives the price, stock and the
+  // add-to-cart, all server-resolved (never a client price).
+  const productHasVariants = hasVariants(product);
+  const selected = selectVariant(product, variantParam);
+  const shownPricePaise = selected ? selected.pricePaise : product.pricePaise;
+  const shownMrpPaise = selected ? selected.mrpPaise : product.mrpPaise;
+  const shownStock = selected ? selected.stockQty : product.stockQty;
+  const off = shownMrpPaise > shownPricePaise ? Math.round(((shownMrpPaise - shownPricePaise) / shownMrpPaise) * 100) : 0;
   const fbt = await frequentlyBoughtWith(product, 2);
   const bundlePaise = product.pricePaise + fbt.reduce((sum, x) => sum + x.pricePaise, 0);
   const similar = await similarProducts(product, 6);
@@ -421,13 +428,14 @@ export default async function ProductDetailPage({
             </div>
 
             <div className="vh-row" style={{ gap: 10, alignItems: "baseline", flexWrap: "wrap" }}>
+              {productHasVariants && !variantParam && <span className="small muted">from</span>}
               <span style={{ fontSize: "1.8rem", fontWeight: 800, color: "var(--vh-ink)" }}>
-                <MoneyText paise={product.pricePaise} />
+                <MoneyText paise={shownPricePaise} />
               </span>
-              {product.mrpPaise > product.pricePaise && (
+              {shownMrpPaise > shownPricePaise && (
                 <>
                   <span className="muted" style={{ textDecoration: "line-through" }}>
-                    <MoneyText paise={product.mrpPaise} />
+                    <MoneyText paise={shownMrpPaise} />
                   </span>
                   <span className="vh-pill vh-pill-ok">{off}% off</span>
                 </>
@@ -435,10 +443,38 @@ export default async function ProductDetailPage({
             </div>
             <p className="small muted" style={{ margin: "4px 0 12px" }}>Inclusive of all taxes. Final total is computed at checkout by the server.</p>
 
-            <div className="vh-row" style={{ gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
-              <span className="vh-pill vh-pill-ok">In stock</span>
-              <span className="vh-pill vh-pill-warn"><Flame size={11} aria-hidden /> Only 7 left at this price</span>
-            </div>
+            {/* Variant selector (size / pack / strength) — server-driven so it
+                works without JavaScript; selecting reloads with the variant's
+                own price and stock. */}
+            {productHasVariants && (
+              <div style={{ marginBottom: 14 }}>
+                <div className="vh-label" style={{ marginBottom: 6 }}>{product.optionName ?? "Option"}{selected ? `: ${selected.label}` : ""}</div>
+                <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  {product.variants!.map((v) => {
+                    const on = selected?.id === v.id;
+                    const soldOut = v.stockQty <= 0;
+                    return (
+                      <Link
+                        key={v.id}
+                        href={`/products/${product.slug}?variant=${v.id}`}
+                        aria-current={on ? "true" : undefined}
+                        className="small"
+                        style={{
+                          padding: "8px 14px", borderRadius: "var(--vh-radius-sm)",
+                          border: `1.5px solid ${on ? "var(--vh-accent)" : "var(--vh-line-strong)"}`,
+                          background: on ? "var(--vh-green-100)" : "var(--vh-surface)",
+                          fontWeight: 700, color: soldOut ? "var(--vh-muted)" : "var(--vh-ink)",
+                          textDecoration: soldOut ? "line-through" : "none", opacity: soldOut ? 0.6 : 1,
+                        }}
+                      >
+                        {v.label} · <MoneyText paise={v.pricePaise} />
+                      </Link>
+                    );
+                  })}
+                </div>
+                {selected && <div className="small muted" style={{ marginTop: 6 }}>SKU {selected.sku}</div>}
+              </div>
+            )}
             <div className="vh-row small muted" style={{ gap: 6, marginBottom: 12 }}>
               <Users size={13} aria-hidden />
               <span><b className="tabular" style={{ color: "var(--vh-ink)" }}>24</b> people bought this in the last 7 days · ships in 24h</span>
@@ -453,25 +489,28 @@ export default async function ProductDetailPage({
               <span className="small" style={{ paddingLeft: 22 }}>Free shipping on orders above ₹5,000 · ₹100 flat below · COD available</span>
             </div>
 
-            {/* Stock status — the server is the authority; the button follows it. */}
-            {product.stockQty <= 0 ? (
+            {/* Stock status — the server is the authority; the button follows
+                the SELECTED variant's stock (or the simple product's). */}
+            {shownStock <= 0 ? (
               <div role="status" style={{ marginBottom: 12, padding: "12px 14px", borderRadius: "var(--vh-radius-sm)", border: "1px solid var(--vh-line)", borderLeft: "3px solid var(--vh-danger)", background: "color-mix(in srgb, var(--vh-danger-bg) 40%, var(--vh-surface))" }}>
-                <div style={{ fontWeight: 700, color: "var(--vh-danger)" }}>Out of stock</div>
-                <div className="small muted">The seller has no units on hand. Add it to your wishlist and we&rsquo;ll show it again when it&rsquo;s restocked.</div>
+                <div style={{ fontWeight: 700, color: "var(--vh-danger)" }}>Out of stock{productHasVariants && selected ? ` — ${selected.label}` : ""}</div>
+                <div className="small muted">{productHasVariants ? "Pick another option above, or add it to your wishlist for when it's restocked." : "The seller has no units on hand. Add it to your wishlist and we'll show it again when it's restocked."}</div>
               </div>
             ) : (
               <>
-                {product.stockQty <= product.lowStockAt && (
-                  <div className="small" role="status" style={{ marginBottom: 8, fontWeight: 700, color: "var(--vh-warn)" }}>
-                    ● Only {product.stockQty} left — order soon
-                  </div>
-                )}
+                <div className="vh-row" style={{ gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
+                  <span className="vh-pill vh-pill-ok">In stock</span>
+                  {shownStock <= product.lowStockAt && (
+                    <span className="vh-pill vh-pill-warn"><Flame size={11} aria-hidden /> Only {shownStock} left</span>
+                  )}
+                </div>
                 <form action={addToCart}>
                   <input type="hidden" name="productId" value={product.id} />
+                  {selected && <input type="hidden" name="variantId" value={selected.id} />}
                   <div className="vh-field" style={{ marginBottom: 12, maxWidth: 120 }}>
                     <label htmlFor="pdp-qty" className="vh-label">Quantity</label>
                     <select id="pdp-qty" name="qty" className="vh-select" defaultValue="1">
-                      {[1, 2, 3, 4, 5].filter((n) => n <= product.stockQty).map((n) => (
+                      {[1, 2, 3, 4, 5].filter((n) => n <= shownStock).map((n) => (
                         <option key={n} value={n}>{n}</option>
                       ))}
                     </select>

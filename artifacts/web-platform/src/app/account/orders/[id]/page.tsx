@@ -95,7 +95,7 @@ function RealOrderDetail({
                   <span className="vh-row" style={{ gap: 12 }}>
                     <span aria-hidden style={{ fontSize: "1.6rem" }}>{it.emoji}</span>
                     <span>
-                      <div style={{ fontWeight: 600 }}>{it.title}</div>
+                      <div style={{ fontWeight: 600 }}>{it.title}{it.variantLabel ? ` — ${it.variantLabel}` : ""}</div>
                       <div className="small muted">Qty {it.qty} · sold by {it.seller}</div>
                     </span>
                   </span>
