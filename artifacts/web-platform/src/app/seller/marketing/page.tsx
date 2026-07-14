@@ -11,17 +11,24 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { TicketPercent, Boxes, Zap, SpellCheck2, Plus } from "lucide-react";
 import { Shell } from "../Shell";
-import { Banner, Card, StatusPill, toneForStatus } from "@/components/ui";
+import { Banner, Card, StatusPill, toneForStatus, MoneyText } from "@/components/ui";
 import { CampaignLabel } from "@/components/ui/ads";
-import { readCoupons } from "@/lib/engage";
+import { couponLive, readCoupons as readCommerceCoupons } from "@/lib/commerce";
 import { COUPONS, BUNDLES, FLASH_SALES } from "../_lib/data";
 import { createCoupon } from "../actions";
 
 export const metadata: Metadata = { title: "Marketing" };
+export const dynamic = "force-dynamic";
+
+const STORE = "Vedic Botanicals";
 
 const COUPON_ERRORS: Record<string, string> = {
   code: "Coupon code should be 4–12 letters/digits (e.g. VEDIC10).",
-  pct: "Discount must be between 1% and 40%.",
+  pct: "A percentage discount must be between 1% and 40%.",
+  amount: "A flat discount must be between ₹1 and ₹1,00,000.",
+  cls: "Pick a valid category (or leave it storewide).",
+  date: "The expiry date must be today or later.",
+  dupe: "That code is already in use — pick another.",
 };
 
 export default async function MarketingPage({
@@ -30,7 +37,9 @@ export default async function MarketingPage({
   searchParams: Promise<{ created?: string; err?: string }>;
 }) {
   const { created, err } = await searchParams;
-  const mine = await readCoupons();
+  const all = await readCommerceCoupons();
+  // This store's own promotions (owner-tagged) — real, cart-honoured coupons.
+  const mine = Object.entries(all).filter(([, c]) => c.owner === STORE).map(([code, c]) => ({ code, ...c }));
   return (
     <Shell
       active="/seller/marketing"
@@ -68,21 +77,33 @@ export default async function MarketingPage({
         <h3 style={{ margin: 0 }}>Coupons</h3>
       </div>
       <div className="vh-grid cols-3" style={{ marginBottom: "var(--sp-4)" }}>
-        {mine.map((c) => (
-          <Card key={c.code}>
-            <div className="vh-row-between" style={{ marginBottom: 8 }}>
-              <CampaignLabel>Coupon</CampaignLabel>
-              <StatusPill tone={toneForStatus(c.status)}>{c.status}</StatusPill>
-            </div>
-            <div className="mono" style={{ fontWeight: 800, fontSize: "1.2rem", letterSpacing: ".04em" }}>{c.code}</div>
-            <div className="small" style={{ marginTop: 4 }}>Percentage · <strong>{c.pct}% off</strong></div>
-            <div className="small muted" style={{ marginTop: 2 }}>Storewide · created this session</div>
-            <div className="vh-row-between" style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--vh-line)" }}>
-              <span className="small muted">Redemptions</span>
-              <span className="tabular" style={{ fontWeight: 700 }}>0</span>
-            </div>
-          </Card>
-        ))}
+        {mine.length === 0 && (
+          <p className="small muted" style={{ gridColumn: "1 / -1", margin: 0 }}>No coupons yet — create your first below. Coupons apply automatically at checkout when the buyer enters the code.</p>
+        )}
+        {mine.map((c) => {
+          const live = couponLive(c);
+          return (
+            <Card key={c.code}>
+              <div className="vh-row-between" style={{ marginBottom: 8 }}>
+                <CampaignLabel>Coupon</CampaignLabel>
+                <StatusPill tone={live ? "ok" : "warn"}>{!c.enabled ? "Paused" : c.validTo && new Date().toISOString().slice(0, 10) > c.validTo ? "Expired" : c.usageLimit !== undefined && (c.usedCount ?? 0) >= c.usageLimit ? "Used up" : "Active"}</StatusPill>
+              </div>
+              <div className="mono" style={{ fontWeight: 800, fontSize: "1.2rem", letterSpacing: ".04em" }}>{c.code}</div>
+              <div className="small" style={{ marginTop: 4 }}>
+                {c.fixedPaise ? <>Flat · <strong><MoneyText paise={c.fixedPaise} /> off</strong></> : <>Percentage · <strong>{c.pct}% off</strong>{c.capPaise > 0 && <> (max <MoneyText paise={c.capPaise} />)</>}</>}
+              </div>
+              <div className="small muted" style={{ marginTop: 2 }}>
+                {c.cls ? c.cls.replace("_", " ").toLowerCase() : "storewide"}
+                {c.minPaise > 0 && <> · min <MoneyText paise={c.minPaise} /></>}
+                {c.validTo && <> · till {c.validTo}</>}
+              </div>
+              <div className="vh-row-between" style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--vh-line)" }}>
+                <span className="small muted">Redemptions{c.usageLimit !== undefined ? ` / limit` : ""}</span>
+                <span className="tabular" style={{ fontWeight: 700 }}>{c.usedCount ?? 0}{c.usageLimit !== undefined ? ` / ${c.usageLimit}` : ""}</span>
+              </div>
+            </Card>
+          );
+        })}
         {COUPONS.map((c) => (
           <Card key={c.code}>
             <div className="vh-row-between" style={{ marginBottom: 8 }}>
@@ -103,19 +124,60 @@ export default async function MarketingPage({
       {/* New coupon */}
       <div id="new-coupon" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
         <Card title="Create coupon">
-          <form action={createCoupon} className="vh-row" style={{ gap: 12, flexWrap: "wrap", alignItems: "flex-end" }}>
-            <div className="vh-field" style={{ minWidth: 180 }}>
-              <label className="vh-label" htmlFor="coupon-code">Code <span className="req">*</span></label>
-              <input className="vh-input mono" id="coupon-code" name="code" required minLength={4} maxLength={12} placeholder="MONSOON15" style={{ textTransform: "uppercase" }} />
+          <form action={createCoupon} className="vh-grid" style={{ gap: 16 }}>
+            <div className="vh-grid cols-3" style={{ gap: 16 }}>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="coupon-code">Code <span className="req">*</span></label>
+                <input className="vh-input mono" id="coupon-code" name="code" required minLength={4} maxLength={12} placeholder="MONSOON15" style={{ textTransform: "uppercase" }} />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="coupon-kind">Type <span className="req">*</span></label>
+                <select className="vh-select" id="coupon-kind" name="kind" defaultValue="PERCENT">
+                  <option value="PERCENT">Percentage off</option>
+                  <option value="FIXED">Flat amount off (₹)</option>
+                </select>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="coupon-value">Amount <span className="req">*</span></label>
+                <input className="vh-input" id="coupon-value" name="value" type="number" min={1} required placeholder="15" />
+                <span className="vh-help">Percent (1–40) or rupees, matching the type.</span>
+              </div>
             </div>
-            <div className="vh-field" style={{ width: 140 }}>
-              <label className="vh-label" htmlFor="coupon-pct">Discount % <span className="req">*</span></label>
-              <input className="vh-input" id="coupon-pct" name="pct" type="number" min={1} max={40} required placeholder="15" />
+            <div className="vh-grid cols-3" style={{ gap: 16 }}>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="coupon-min">Minimum order (₹)</label>
+                <input className="vh-input" id="coupon-min" name="minRupees" type="number" min={0} placeholder="0" />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="coupon-cap">Max discount (₹, % only)</label>
+                <input className="vh-input" id="coupon-cap" name="capRupees" type="number" min={0} placeholder="0 = no cap" />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="coupon-usage">Total uses (blank = unlimited)</label>
+                <input className="vh-input" id="coupon-usage" name="usageLimit" type="number" min={1} placeholder="e.g. 100" />
+              </div>
             </div>
-            <button type="submit" className="vh-btn vh-btn-primary">Create</button>
-            <span className="vh-help" style={{ flexBasis: "100%" }}>
-              Applied server-side at checkout — a stale client price never wins. Copy in the coupon banner
-              passes the compliance copy-check before display.
+            <div className="vh-grid cols-3" style={{ gap: 16 }}>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="coupon-cls">Applies to</label>
+                <select className="vh-select" id="coupon-cls" name="cls" defaultValue="">
+                  <option value="">Storewide</option>
+                  <option value="HEMP_FOOD">Hemp Food</option>
+                  <option value="AYURVEDA">Ayurveda</option>
+                  <option value="CBD_WELLNESS">CBD Wellness</option>
+                </select>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="coupon-validto">Expires (optional)</label>
+                <input className="vh-input" id="coupon-validto" name="validTo" type="date" />
+              </div>
+              <div className="vh-field" style={{ display: "flex", alignItems: "flex-end" }}>
+                <button type="submit" className="vh-btn vh-btn-primary" style={{ width: "100%" }}>Create coupon</button>
+              </div>
+            </div>
+            <span className="vh-help">
+              Applied server-side at checkout — a stale client price never wins. Expiry and usage limits are
+              enforced by the server every time the code is used.
             </span>
           </form>
         </Card>

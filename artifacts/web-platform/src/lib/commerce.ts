@@ -25,14 +25,43 @@ export const COMMERCE_DEFAULTS: CommerceSettings = {
 };
 
 export interface CouponDef {
-  pct: number;
-  capPaise: number;
-  minPaise: number;
-  cls?: string;
+  pct: number;              // percentage discount (0 when fixed-amount or free-ship only)
+  fixedPaise?: number;      // flat discount in paise (takes precedence over pct)
+  capPaise: number;         // max discount for a % coupon (0 = no cap)
+  minPaise: number;         // minimum eligible spend
+  cls?: string;             // restrict to one compliance class
   freeShip?: boolean;
   label: string;
   /** false = admin-disabled (a launch coupon can be switched off, not deleted). */
   enabled: boolean;
+  validTo?: string;         // YYYY-MM-DD inclusive expiry
+  usageLimit?: number;      // total redemptions allowed across all buyers
+  usedCount?: number;       // redemptions so far
+  owner?: string;           // "platform" or the seller store name that created it
+}
+
+const todayStr = () => new Date().toISOString().slice(0, 10);
+
+/** A coupon is live if it's enabled, not past its expiry, and under its usage cap. */
+export function couponLive(c: CouponDef): boolean {
+  if (!c.enabled) return false;
+  if (c.validTo && todayStr() > c.validTo) return false;
+  if (c.usageLimit !== undefined && (c.usedCount ?? 0) >= c.usageLimit) return false;
+  return true;
+}
+
+export type CouponCheck =
+  | { ok: true; def: CouponDef }
+  | { ok: false; reason: "unknown" | "disabled" | "expired" | "exhausted" };
+
+/** Why a code is or isn't usable right now (drives specific buyer messaging). */
+export async function checkCoupon(code: string): Promise<CouponCheck> {
+  const def = (await readCoupons())[code];
+  if (!def) return { ok: false, reason: "unknown" };
+  if (!def.enabled) return { ok: false, reason: "disabled" };
+  if (def.validTo && todayStr() > def.validTo) return { ok: false, reason: "expired" };
+  if (def.usageLimit !== undefined && (def.usedCount ?? 0) >= def.usageLimit) return { ok: false, reason: "exhausted" };
+  return { ok: true, def };
 }
 
 export const LAUNCH_COUPONS: Record<string, CouponDef> = {
@@ -70,8 +99,20 @@ export async function readCoupons(): Promise<Record<string, CouponDef>> {
 export async function readActiveCoupons(): Promise<Record<string, CouponDef>> {
   return Object.fromEntries(Object.entries(await readCoupons()).filter(([, c]) => c.enabled));
 }
+/** Enabled AND not expired AND not exhausted — what a buyer can actually use. */
+export async function readLiveCoupons(): Promise<Record<string, CouponDef>> {
+  return Object.fromEntries(Object.entries(await readCoupons()).filter(([, c]) => couponLive(c)));
+}
 export async function writeCoupon(code: string, def: CouponDef): Promise<void> {
   globalThis.__vhCoupons = { ...(globalThis.__vhCoupons ?? {}), [code]: def };
+}
+
+/** Record one redemption (called at checkout). Copies launch coupons into the
+ *  override store so their usage is tracked too. */
+export async function redeemCoupon(code: string): Promise<void> {
+  const def = (await readCoupons())[code];
+  if (!def) return;
+  await writeCoupon(code, { ...def, usedCount: (def.usedCount ?? 0) + 1 });
 }
 
 export async function readGiftCards(): Promise<Record<string, number>> {

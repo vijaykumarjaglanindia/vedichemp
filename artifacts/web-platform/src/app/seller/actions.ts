@@ -686,18 +686,48 @@ export async function bulkUploadListings(formData: FormData): Promise<void> {
 
 /* ── Marketing: create coupon ─────────────────────────────── */
 
+const SELLER_COUPON_CLASSES = ["", "HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
+
 export async function createCoupon(formData: FormData): Promise<void> {
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
-  const pct = parseInt(String(formData.get("pct") ?? ""), 10);
+  const kind = String(formData.get("kind") ?? "PERCENT"); // PERCENT | FIXED
+  const value = parseInt(String(formData.get("value") ?? ""), 10); // % or ₹
+  const minRupees = parseInt(String(formData.get("minRupees") ?? "0"), 10);
+  const capRupees = parseInt(String(formData.get("capRupees") ?? "0"), 10);
+  const usageLimit = parseInt(String(formData.get("usageLimit") ?? ""), 10);
+  const validTo = String(formData.get("validTo") ?? "").trim();
+  const cls = String(formData.get("cls") ?? "");
 
   let err: string | null = null;
   if (!/^[A-Z0-9]{4,12}$/.test(code)) err = "code";
-  else if (!Number.isInteger(pct) || pct < 1 || pct > 40) err = "pct";
-
+  else if (kind === "PERCENT" && (!Number.isInteger(value) || value < 1 || value > 40)) err = "pct";
+  else if (kind === "FIXED" && (!Number.isInteger(value) || value < 1 || value > 100000)) err = "amount";
+  else if (!SELLER_COUPON_CLASSES.includes(cls)) err = "cls";
+  else if (validTo && (!/^\d{4}-\d{2}-\d{2}$/.test(validTo) || new Date(validTo) < new Date(new Date().toISOString().slice(0, 10)))) err = "date";
   if (err) redirect(`/seller/marketing?err=${err}#new-coupon`);
 
-  await appendCoupon({ code, pct, status: "ACTIVE" });
-  redirect("/seller/marketing?created=1");
+  // A seller coupon becomes a real, cart-honoured promotion (server-authoritative).
+  const { writeCoupon, readCoupons } = await import("@/lib/commerce");
+  if (code in (await readCoupons())) redirect("/seller/marketing?err=dupe#new-coupon");
+  const isPct = kind === "PERCENT";
+  const label = isPct
+    ? `${value}% off${cls ? ` ${cls.replace("_", " ").toLowerCase()}` : ""}${capRupees > 0 ? ` up to ₹${capRupees}` : ""}`
+    : `₹${value} off${cls ? ` ${cls.replace("_", " ").toLowerCase()}` : ""}`;
+  await writeCoupon(code, {
+    pct: isPct ? value : 0,
+    ...(isPct ? {} : { fixedPaise: value * 100 }),
+    capPaise: capRupees > 0 ? capRupees * 100 : 0,
+    minPaise: Number.isInteger(minRupees) && minRupees > 0 ? minRupees * 100 : 0,
+    ...(cls ? { cls } : {}),
+    label,
+    enabled: true,
+    ...(validTo ? { validTo } : {}),
+    ...(Number.isInteger(usageLimit) && usageLimit > 0 ? { usageLimit } : {}),
+    usedCount: 0,
+    owner: DEMO_STORE,
+  });
+  await writeAudit({ actor: DEMO_STORE, action: "COUPON_CREATE", target: code, outcome: "OK", note: label });
+  redirect("/seller/marketing?created=1#coupons");
 }
 
 /* ── Store: publish storefront copy (tagline + story) ─────── */

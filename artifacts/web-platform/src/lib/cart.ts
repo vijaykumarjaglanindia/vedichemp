@@ -17,7 +17,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { readLiveProducts, resolvePriceStock } from "@/lib/catalog";
-import { readActiveCoupons, readCommerce } from "@/lib/commerce";
+import { checkCoupon, readActiveCoupons, readCommerce } from "@/lib/commerce";
 import { type SampleProduct } from "@/lib/sample";
 import { permittedClasses } from "@/lib/compliance";
 
@@ -151,18 +151,31 @@ export async function priceCart(): Promise<PricedCart> {
   let discountPaise = 0;
   let couponNote: string | null = null;
   if (couponCode && subtotalPaise > 0) {
-    const c = (await readActiveCoupons())[couponCode]!;
-    const eligiblePaise = c.cls
-      ? priced.filter((l) => l.product.cls === c.cls).reduce((n, l) => n + l.linePaise, 0)
-      : subtotalPaise;
-    if (eligiblePaise < c.minPaise) {
-      couponNote = c.cls
-        ? `Needs ${c.label.toLowerCase()} — eligible items in your cart don't reach the minimum yet.`
-        : `Minimum spend not reached for ${couponCode}.`;
-    } else if (c.freeShip) {
-      shippingPaise = 0;
+    const check = await checkCoupon(couponCode);
+    if (!check.ok) {
+      // The code was valid when applied but has since expired / run out.
+      couponNote =
+        check.reason === "expired" ? `${couponCode} has expired.`
+        : check.reason === "exhausted" ? `${couponCode} has reached its usage limit.`
+        : `${couponCode} is no longer available.`;
     } else {
-      discountPaise = Math.min(Math.floor((eligiblePaise * c.pct) / 100), c.capPaise);
+      const c = check.def;
+      const eligiblePaise = c.cls
+        ? priced.filter((l) => l.product.cls === c.cls).reduce((n, l) => n + l.linePaise, 0)
+        : subtotalPaise;
+      if (eligiblePaise < c.minPaise) {
+        couponNote = c.cls
+          ? `Needs ${c.label.toLowerCase()} — eligible items in your cart don't reach the minimum yet.`
+          : `Minimum spend not reached for ${couponCode}.`;
+      } else if (c.freeShip) {
+        shippingPaise = 0;
+      } else if (c.fixedPaise && c.fixedPaise > 0) {
+        // Flat discount, never more than the eligible spend.
+        discountPaise = Math.min(c.fixedPaise, eligiblePaise);
+      } else {
+        const raw = Math.floor((eligiblePaise * c.pct) / 100);
+        discountPaise = c.capPaise > 0 ? Math.min(raw, c.capPaise) : raw;
+      }
     }
   }
 

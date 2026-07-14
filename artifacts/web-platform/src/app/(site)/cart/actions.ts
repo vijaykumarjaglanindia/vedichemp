@@ -15,7 +15,7 @@ import { randomUUID } from "node:crypto";
 import { clearCartCookies, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
 import { decrementStock, findProduct, hasVariants, isLowStock, readLiveProducts, selectVariant } from "@/lib/catalog";
 import { notify } from "@/lib/notify";
-import { readActiveCoupons } from "@/lib/commerce";
+import { redeemCoupon } from "@/lib/commerce";
 import { permittedClasses } from "@/lib/compliance";
 import { getSession } from "@/lib/auth-lite";
 import { createOrder, type OrderItem } from "@/lib/orders";
@@ -112,7 +112,9 @@ export async function removeFromCart(formData: FormData): Promise<void> {
  *  derives the deduction from the server-side coupon table. */
 export async function applyCoupon(formData: FormData): Promise<void> {
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
-  if (!(code in (await readActiveCoupons()))) redirect("/cart?coupon=unknown");
+  const { checkCoupon } = await import("@/lib/commerce");
+  const check = await checkCoupon(code);
+  if (!check.ok) redirect(`/cart?coupon=${check.reason}`);
   await writeCoupon(code);
   redirect("/cart");
 }
@@ -229,6 +231,9 @@ export async function placeOrder(formData: FormData): Promise<void> {
     shippingPaise: cart.shippingPaise,
     totalPaise: cart.totalPaise,
   });
+
+  // Count the coupon redemption only if it actually applied (no blocking note).
+  if (cart.couponCode && !cart.couponNote) await redeemCoupon(cart.couponCode);
 
   // Credit ad-driven sales: if the buyer clicked a promoted tile for any of
   // these products recently, the campaign gets the sale (feeds "Sales from ads").

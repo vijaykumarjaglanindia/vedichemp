@@ -266,6 +266,60 @@ export async function moderateReviewAction(formData: FormData): Promise<void> {
   redirect(`/admin/reviews?done=${decision}`);
 }
 
+/* ── Coupons & promotions (platform-wide) ─────────────────── */
+
+const COUPON_CLASSES = ["", "HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
+
+export async function adminCreateCoupon(formData: FormData): Promise<void> {
+  const code = String(formData.get("code") ?? "").trim().toUpperCase();
+  const kind = String(formData.get("kind") ?? "PERCENT");
+  const value = parseInt(String(formData.get("value") ?? ""), 10);
+  const minRupees = parseInt(String(formData.get("minRupees") ?? "0"), 10);
+  const capRupees = parseInt(String(formData.get("capRupees") ?? "0"), 10);
+  const usageLimit = parseInt(String(formData.get("usageLimit") ?? ""), 10);
+  const validTo = String(formData.get("validTo") ?? "").trim();
+  const cls = String(formData.get("cls") ?? "");
+  const who = await actor();
+  const { writeCoupon, readCoupons } = await import("@/lib/commerce");
+
+  let err: string | null = null;
+  if (!/^[A-Z0-9]{4,16}$/.test(code)) err = "code";
+  else if (kind === "PERCENT" && (!Number.isInteger(value) || value < 1 || value > 60)) err = "pct";
+  else if (kind === "FIXED" && (!Number.isInteger(value) || value < 1 || value > 500000)) err = "amount";
+  else if (!COUPON_CLASSES.includes(cls)) err = "cls";
+  else if (validTo && (!/^\d{4}-\d{2}-\d{2}$/.test(validTo) || new Date(validTo) < new Date(new Date().toISOString().slice(0, 10)))) err = "date";
+  else if (code in (await readCoupons())) err = "dupe";
+  if (err) redirect(`/admin/coupons?err=${err}#new`);
+
+  const isPct = kind === "PERCENT";
+  await writeCoupon(code, {
+    pct: isPct ? value : 0,
+    ...(isPct ? {} : { fixedPaise: value * 100 }),
+    capPaise: capRupees > 0 ? capRupees * 100 : 0,
+    minPaise: Number.isInteger(minRupees) && minRupees > 0 ? minRupees * 100 : 0,
+    ...(cls ? { cls } : {}),
+    label: isPct ? `${value}% off${capRupees > 0 ? ` up to ₹${capRupees}` : ""}` : `₹${value} off`,
+    enabled: true,
+    ...(validTo ? { validTo } : {}),
+    ...(Number.isInteger(usageLimit) && usageLimit > 0 ? { usageLimit } : {}),
+    usedCount: 0,
+    owner: "platform",
+  });
+  await writeAudit({ actor: who, action: "COUPON_CREATE", target: code, outcome: "OK", note: "platform-wide" });
+  redirect("/admin/coupons?done=created");
+}
+
+export async function toggleCoupon(formData: FormData): Promise<void> {
+  const code = String(formData.get("code") ?? "").trim().toUpperCase();
+  const who = await actor();
+  const { readCoupons, writeCoupon } = await import("@/lib/commerce");
+  const def = (await readCoupons())[code];
+  if (!def) redirect("/admin/coupons");
+  await writeCoupon(code, { ...def, enabled: !def.enabled });
+  await writeAudit({ actor: who, action: "COUPON_TOGGLE", target: code, outcome: "OK", note: def.enabled ? "disabled" : "enabled" });
+  redirect("/admin/coupons?done=toggled");
+}
+
 /* ── Q&A: hide an abusive question (moderation) ───────────── */
 
 export async function hideQuestionAction(formData: FormData): Promise<void> {

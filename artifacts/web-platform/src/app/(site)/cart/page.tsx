@@ -150,9 +150,12 @@ export default async function CartPage({
               <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm">Apply</button>
             </form>
           )}
-          {coupon === "unknown" && !cart.couponCode && (
+          {coupon && !cart.couponCode && (
             <p className="small" style={{ color: "var(--vh-danger)", margin: "0 0 4px" }}>
-              That code isn&rsquo;t valid — try VEDIC10.
+              {coupon === "expired" ? "That code has expired."
+                : coupon === "exhausted" ? "That code has reached its usage limit."
+                : coupon === "disabled" ? "That code isn't active right now."
+                : "That code isn't valid — try VEDIC10."}
             </p>
           )}
 
