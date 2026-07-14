@@ -24,7 +24,7 @@ import { ComplianceBadge, MoneyText, Rating } from "@/components/ui";
 import { AdBanner, AdSlot } from "@/components/ui/ads";
 import { runAuction } from "@/lib/ads";
 import { withBase } from "@/lib/base";
-import { liveByClasses } from "@/lib/catalog";
+import { type CatalogProduct, liveByClasses, saleActive } from "@/lib/catalog";
 import { findCategory, readCategories } from "@/lib/categories";
 import { CLASS_META, permittedClasses } from "@/lib/compliance";
 import { type SampleProduct } from "@/lib/sample";
@@ -75,21 +75,32 @@ function href(params: Params, patch: Record<string, string | null>): string {
   return `/catalogue${qs ? `?${qs}` : ""}`;
 }
 
-function ProductTile({ p, sponsored }: { p: SampleProduct; sponsored?: boolean }) {
+function ProductTile({ p, sponsored }: { p: CatalogProduct; sponsored?: boolean }) {
   const pct = discountPct(p);
+  const image = p.images?.[0];
+  const onSale = saleActive(p);
+  const price = onSale ? p.salePricePaise! : p.pricePaise;
+  const strike = onSale ? p.pricePaise : p.mrpPaise;
   return (
     <article className="vh-product" style={sponsored ? { borderColor: "color-mix(in srgb, var(--vh-ad) 35%, transparent)" } : undefined}>
-      {pct >= 25 && !sponsored && (
+      {onSale && !sponsored ? (
+        <span className="flag vh-pill vh-pill-warn" style={{ fontSize: ".66rem" }}>Sale</span>
+      ) : pct >= 25 && !sponsored ? (
         <span className="flag vh-pill vh-pill-danger" style={{ fontSize: ".66rem" }}><span aria-hidden>■</span>{pct}% off</span>
-      )}
-      <Link href={`/products/${p.slug}`} className="vh-product-media" aria-hidden tabIndex={-1}>{p.emoji}</Link>
+      ) : null}
+      <Link href={`/products/${p.slug}`} className="vh-product-media" aria-hidden tabIndex={-1} style={image ? { padding: 0, overflow: "hidden" } : undefined}>
+        {image ? (
+          // eslint-disable-next-line @next/next/no-img-element
+          <img src={image} alt={p.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+        ) : p.emoji}
+      </Link>
       <div className="vh-product-body">
         <Link href={`/products/${p.slug}`} className="vh-product-title">{p.title}</Link>
-        <div className="small muted">{p.seller}</div>
+        <div className="small muted">{p.brand || p.seller}</div>
         <Rating value={p.rating} count={Math.round(p.rating * 47)} />
         <div className="vh-row" style={{ gap: 6 }}>
-          <MoneyText paise={p.pricePaise} className="vh-product-title" />
-          <span className="small muted" style={{ textDecoration: "line-through" }}><MoneyText paise={p.mrpPaise} /></span>
+          <MoneyText paise={price} className="vh-product-title" />
+          {strike > price && <span className="small muted" style={{ textDecoration: "line-through" }}><MoneyText paise={strike} /></span>}
         </div>
         <ComplianceBadge cls={p.cls} />
         <div className="vh-row" style={{ gap: 8, marginTop: "auto", paddingTop: 8 }}>
@@ -143,8 +154,9 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
     if (minRating !== null && p.rating < minRating) return false;
     if (q) {
       // Server-side search: synonym expansion (Hinglish included) + typo
-      // tolerance. The corpus is permitted classes only (A1).
-      const hay = `${p.title} ${p.seller} ${CLASS_META[p.cls].label}`;
+      // tolerance. The corpus is permitted classes only (A1). Brand, tags and
+      // the short summary are searchable alongside the title.
+      const hay = `${p.title} ${p.seller} ${p.brand ?? ""} ${(p.tags ?? []).join(" ")} ${p.shortDesc ?? ""} ${CLASS_META[p.cls].label}`;
       if (!matchesQuery(hay, q)) return false;
     }
     return true;

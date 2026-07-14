@@ -60,6 +60,22 @@ export interface CatalogProduct extends SampleProduct {
    */
   optionName?: string; // e.g. "Size", "Pack", "Strength"
   variants?: Variant[];
+
+  /* ── Merchandising (world-class catalogue) ──────────────────
+   * All optional so every existing listing keeps working. Images are stored
+   * as data URLs (the object-storage seam); the rest are plain product data. */
+  images?: string[];        // gallery; images[0] is the main image (emoji is the fallback)
+  shortDesc?: string;       // one-line summary shown on cards and above the fold
+  brand?: string;           // maker / brand name
+  tags?: string[];          // free-text tags, also matched by search
+  salePricePaise?: number;  // an active discounted price (must be < pricePaise); overrides price when set
+  saleFrom?: string;        // YYYY-MM-DD — sale starts (optional)
+  saleTo?: string;          // YYYY-MM-DD — sale ends (optional)
+  sku?: string;             // product-level stock-keeping unit (variants carry their own)
+  weightGrams?: number;     // shipping weight
+  metaTitle?: string;       // SEO <title> override
+  metaDescription?: string; // SEO meta description
+  categoryId?: string;      // assigned merchandising category
 }
 
 export interface Variant {
@@ -181,6 +197,12 @@ export interface CreateListingInput {
   seller: string;
   sellerEmail: string;
   stockQty?: number;
+  shortDesc?: string;
+  brand?: string;
+  tags?: string[];
+  sku?: string;
+  weightGrams?: number;
+  categoryId?: string;
 }
 
 /** Create as DRAFT. Validation (claims, ranges) happens in the calling action. */
@@ -214,6 +236,12 @@ export async function createListing(input: CreateListingInput): Promise<CatalogP
     // the moment it's approved, not silently stuck at zero.
     stockQty: Number.isInteger(input.stockQty) && input.stockQty! >= 0 ? input.stockQty! : 25,
     lowStockAt: 10,
+    ...(input.shortDesc ? { shortDesc: input.shortDesc } : {}),
+    ...(input.brand ? { brand: input.brand } : {}),
+    ...(input.tags && input.tags.length ? { tags: input.tags } : {}),
+    ...(input.sku ? { sku: input.sku } : {}),
+    ...(Number.isInteger(input.weightGrams) ? { weightGrams: input.weightGrams } : {}),
+    ...(input.categoryId ? { categoryId: input.categoryId } : {}),
   };
   s.created.push(product);
   return product;
@@ -227,12 +255,100 @@ function apply(id: string, patch: Partial<CatalogProduct>): void {
 /** Edit copy/price. Compliance class is immutable after creation — no patch here. */
 export async function updateListing(
   id: string,
-  patch: Partial<Pick<CatalogProduct, "title" | "desc" | "pricePaise" | "mrpPaise" | "hsn" | "emoji">>,
+  patch: Partial<Pick<CatalogProduct,
+    | "title" | "desc" | "pricePaise" | "mrpPaise" | "hsn" | "emoji"
+    | "shortDesc" | "brand" | "tags" | "salePricePaise" | "saleFrom" | "saleTo"
+    | "sku" | "weightGrams" | "metaTitle" | "metaDescription" | "categoryId"
+  >>,
 ): Promise<boolean> {
   const p = await findProduct(id);
   if (!p) return false;
   apply(id, patch);
   return true;
+}
+
+/* ── Sale pricing (regular vs sale, date-windowed) ────────────── */
+
+/** True when a sale price is set, below the regular price, and (if dated) live today. */
+export function saleActive(p: CatalogProduct): boolean {
+  if (!p.salePricePaise || p.salePricePaise <= 0 || p.salePricePaise >= p.pricePaise) return false;
+  const now = new Date().toISOString().slice(0, 10);
+  if (p.saleFrom && now < p.saleFrom) return false;
+  if (p.saleTo && now > p.saleTo) return false;
+  return true;
+}
+
+/** The price a buyer actually pays for the simple product (sale price when live). */
+export function effectivePricePaise(p: CatalogProduct): number {
+  return saleActive(p) ? p.salePricePaise! : p.pricePaise;
+}
+
+/* ── Product images / gallery (data-URL seam) ─────────────────── */
+
+const MAX_IMAGES = 6;
+
+/** Replace the whole gallery (validated, capped). */
+export async function setImages(id: string, images: string[]): Promise<boolean> {
+  const p = await findProduct(id);
+  if (!p) return false;
+  apply(id, { images: images.filter((x) => typeof x === "string" && x.length > 0).slice(0, MAX_IMAGES) });
+  return true;
+}
+
+/** Append one image (a data URL). Returns false if full or the listing is gone. */
+export async function addImage(id: string, dataUrl: string): Promise<boolean> {
+  const p = await findProduct(id);
+  if (!p || !dataUrl) return false;
+  const current = p.images ?? [];
+  if (current.length >= MAX_IMAGES) return false;
+  apply(id, { images: [...current, dataUrl] });
+  return true;
+}
+
+export async function removeImage(id: string, index: number): Promise<boolean> {
+  const p = await findProduct(id);
+  if (!p || !p.images) return false;
+  apply(id, { images: p.images.filter((_, i) => i !== index) });
+  return true;
+}
+
+/** Make image #index the main image (moved to the front). */
+export async function makeMainImage(id: string, index: number): Promise<boolean> {
+  const p = await findProduct(id);
+  if (!p || !p.images || index <= 0 || index >= p.images.length) return false;
+  const imgs = [...p.images];
+  const [chosen] = imgs.splice(index, 1);
+  apply(id, { images: [chosen!, ...imgs] });
+  return true;
+}
+
+/* ── Duplicate / clone a listing (a common merchandising action) ── */
+
+/** Clone a listing as a fresh DRAFT owned by the same store. Copies copy,
+ *  price, images and merchandising; resets compliance state (a clone is not
+ *  approved and carries no CoA — it must earn LIVE like any new listing). */
+export async function duplicateListing(id: string): Promise<CatalogProduct | null> {
+  const src = await findProduct(id);
+  if (!src) return null;
+  const created = await createListing({
+    title: `${src.title} (copy)`.slice(0, 150),
+    desc: src.desc,
+    cls: src.cls,
+    pricePaise: src.pricePaise,
+    mrpPaise: src.mrpPaise,
+    hsn: src.hsn,
+    emoji: src.emoji,
+    seller: src.seller,
+    sellerEmail: src.sellerEmail ?? "",
+    stockQty: 0,
+    ...(src.shortDesc ? { shortDesc: src.shortDesc } : {}),
+    ...(src.brand ? { brand: src.brand } : {}),
+    ...(src.tags ? { tags: [...src.tags] } : {}),
+    ...(Number.isInteger(src.weightGrams) ? { weightGrams: src.weightGrams } : {}),
+    ...(src.categoryId ? { categoryId: src.categoryId } : {}),
+  });
+  if (created && src.images?.length) apply(created.id, { images: [...src.images] });
+  return created;
 }
 
 export type TransitionResult = { ok: true } | { ok: false; reason: string };
@@ -345,10 +461,13 @@ export function selectVariant(p: CatalogProduct, variantId?: string | null): Var
   return (variantId && vs.find((v) => v.id === variantId)) || vs.find((v) => v.stockQty > 0) || vs[0]!;
 }
 
-/** Price/stock/label a caller should use for a (product, variant) pair. */
+/** Price/stock/label a caller should use for a (product, variant) pair. For a
+ *  simple product an active sale price is what the buyer pays (mrp shows the
+ *  regular price struck through). Variants price themselves. */
 export function resolvePriceStock(p: CatalogProduct, variantId?: string | null): { pricePaise: number; mrpPaise: number; stockQty: number; variant: Variant | null } {
   const v = selectVariant(p, variantId);
   if (v) return { pricePaise: v.pricePaise, mrpPaise: v.mrpPaise, stockQty: v.stockQty, variant: v };
+  if (saleActive(p)) return { pricePaise: p.salePricePaise!, mrpPaise: p.pricePaise, stockQty: p.stockQty, variant: null };
   return { pricePaise: p.pricePaise, mrpPaise: p.mrpPaise, stockQty: p.stockQty, variant: null };
 }
 

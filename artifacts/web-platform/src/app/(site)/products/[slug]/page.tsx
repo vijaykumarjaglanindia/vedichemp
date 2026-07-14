@@ -32,7 +32,7 @@ import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { CLASS_META, isRegulated } from "@/lib/compliance";
 import { aiProviderName, summarizeReviews } from "@/lib/ai";
 import { mdToHtml } from "@/lib/richtext";
-import { findLiveBySlug, hasVariants, selectVariant } from "@/lib/catalog";
+import { findLiveBySlug, hasVariants, saleActive, selectVariant } from "@/lib/catalog";
 import { SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
 import { addBundleToCart, addToCart } from "../../cart/actions";
@@ -87,12 +87,15 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
     // A1: identical metadata for unknown and medical slugs — no partial reveal.
     return { title: "Product not available", robots: { index: false } };
   }
-  const description = `${product.title} by ${product.seller} — listed on Vedic Hemp, India's regulated hemp & wellness marketplace.${product.labVerified ? " Batch lab report linked on the listing." : ""}`;
+  const title = product.metaTitle || product.title;
+  const description = product.metaDescription
+    || product.shortDesc
+    || `${product.title} by ${product.seller} — listed on Vedic Hemp, India's regulated hemp & wellness marketplace.${product.labVerified ? " Batch lab report linked on the listing." : ""}`;
   return {
-    title: product.title,
+    title,
     description,
     alternates: { canonical: `/products/${product.slug}` },
-    openGraph: { title: product.title, description, type: "website", url: `/products/${product.slug}` },
+    openGraph: { title, description, type: "website", url: `/products/${product.slug}` },
   };
 }
 
@@ -133,10 +136,14 @@ export default async function ProductDetailPage({
   // add-to-cart, all server-resolved (never a client price).
   const productHasVariants = hasVariants(product);
   const selected = selectVariant(product, variantParam);
-  const shownPricePaise = selected ? selected.pricePaise : product.pricePaise;
-  const shownMrpPaise = selected ? selected.mrpPaise : product.mrpPaise;
+  const onSale = !productHasVariants && saleActive(product);
+  // On a simple product with a live sale, the buyer pays the sale price and the
+  // regular price is struck through (the seller's sale, distinct from MRP off).
+  const shownPricePaise = selected ? selected.pricePaise : (onSale ? product.salePricePaise! : product.pricePaise);
+  const shownMrpPaise = selected ? selected.mrpPaise : (onSale ? product.pricePaise : product.mrpPaise);
   const shownStock = selected ? selected.stockQty : product.stockQty;
   const off = shownMrpPaise > shownPricePaise ? Math.round(((shownMrpPaise - shownPricePaise) / shownMrpPaise) * 100) : 0;
+  const gallery = product.images ?? [];
   const fbt = await frequentlyBoughtWith(product, 2);
   const bundlePaise = product.pricePaise + fbt.reduce((sum, x) => sum + x.pricePaise, 0);
   const similar = await similarProducts(product, 6);
@@ -171,26 +178,32 @@ export default async function ProductDetailPage({
       <div className="vh-split-wide">
         {/* ══ LEFT: gallery, specs, anchored sections ══════ */}
         <div>
-          {/* Gallery */}
-          <div className="vh-product-media" style={{ aspectRatio: "4 / 3", fontSize: "5rem", borderRadius: "var(--vh-radius)" }} aria-hidden>
-            {product.emoji}
-          </div>
-          <div className="vh-row" style={{ gap: 8, marginTop: 8 }}>
-            {[0, 1, 2, 3].map((i) => (
-              <div
-                key={i}
-                className="vh-product-media"
-                style={{
-                  width: 68, height: 68, fontSize: "1.6rem", borderRadius: "var(--vh-radius-sm)",
-                  border: i === 0 ? "2px solid var(--vh-accent)" : "1px solid var(--vh-line)",
-                }}
-                aria-hidden
-              >
+          {/* Gallery — real seller photos when present, else a clean emoji hero */}
+          {gallery.length > 0 ? (
+            <>
+              <div style={{ aspectRatio: "4 / 3", borderRadius: "var(--vh-radius)", overflow: "hidden", border: "1px solid var(--vh-line)", background: "var(--vh-surface)" }}>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={gallery[0]} alt={product.title} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+              </div>
+              {gallery.length > 1 && (
+                <div className="vh-row" style={{ gap: 8, marginTop: 8, flexWrap: "wrap" }}>
+                  {gallery.map((src, i) => (
+                    <div key={i} style={{ width: 68, height: 68, borderRadius: "var(--vh-radius-sm)", overflow: "hidden", border: i === 0 ? "2px solid var(--vh-accent)" : "1px solid var(--vh-line)" }}>
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={src} alt={`${product.title} photo ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    </div>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <>
+              <div className="vh-product-media" style={{ aspectRatio: "4 / 3", fontSize: "5rem", borderRadius: "var(--vh-radius)" }} aria-hidden>
                 {product.emoji}
               </div>
-            ))}
-          </div>
-          <p className="small muted" style={{ marginTop: 8 }}>Illustrative product imagery.</p>
+              <p className="small muted" style={{ marginTop: 8 }}>Illustrative product imagery.</p>
+            </>
+          )}
 
           {/* Tab-look anchor nav */}
           <nav className="vh-seg" aria-label="Product sections" style={{ margin: "var(--sp-4) 0 var(--sp-3)" }}>
@@ -202,11 +215,19 @@ export default async function ProductDetailPage({
           {/* Description + specs */}
           <section id="description" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
             <Card title="Description">
+              {product.shortDesc && <p className="small" style={{ fontWeight: 600, color: "var(--vh-ink)" }}>{product.shortDesc}</p>}
               <p className="small">
-                {product.title} from {product.seller}. {meta.blurb} Copy on Vedic Hemp describes
+                {product.title} from {product.brand || product.seller}. {meta.blurb} Copy on Vedic Hemp describes
                 composition and traditional use only — no product here claims to cure, treat or
                 prevent any disease.
               </p>
+              {product.tags && product.tags.length > 0 && (
+                <div className="vh-row" style={{ gap: 6, flexWrap: "wrap", margin: "4px 0 12px" }}>
+                  {product.tags.map((t) => (
+                    <Link key={t} href={`/catalogue?q=${encodeURIComponent(t)}`} className="vh-pill vh-pill-neutral" style={{ textDecoration: "none" }}>#{t}</Link>
+                  ))}
+                </div>
+              )}
               <div style={{ overflowX: "auto" }}>
                 <table className="vh-table">
                   <thead>
@@ -419,7 +440,9 @@ export default async function ProductDetailPage({
         <div className="vh-sticky-box">
           <div className="vh-card" style={{ boxShadow: "var(--vh-shadow)" }}>
             <ComplianceBadge cls={product.cls} />
-            <h1 style={{ fontSize: "1.35rem", margin: "10px 0 6px" }}>{product.title}</h1>
+            {product.brand && <div className="small muted" style={{ margin: "10px 0 2px", fontWeight: 700, letterSpacing: ".02em", textTransform: "uppercase" }}>{product.brand}</div>}
+            <h1 style={{ fontSize: "1.35rem", margin: product.brand ? "0 0 6px" : "10px 0 6px" }}>{product.title}</h1>
+            {product.shortDesc && <p className="small muted" style={{ margin: "0 0 8px" }}>{product.shortDesc}</p>}
             <div className="vh-row" style={{ gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
               <Rating value={product.rating} count={reviewCount} />
               <Link href={`/store/${sellerSlug(product.seller)}`} className="small" style={{ fontWeight: 700 }}>
@@ -440,6 +463,7 @@ export default async function ProductDetailPage({
                   <span className="vh-pill vh-pill-ok">{off}% off</span>
                 </>
               )}
+              {onSale && <span className="vh-pill vh-pill-warn"><Flame size={11} aria-hidden /> Sale</span>}
             </div>
             <p className="small muted" style={{ margin: "4px 0 12px" }}>Inclusive of all taxes. Final total is computed at checkout by the server.</p>
 

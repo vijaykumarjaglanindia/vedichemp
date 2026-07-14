@@ -25,6 +25,12 @@ export interface Category {
   order: number;
   visible: boolean;
   custom: boolean; // launch categories can be edited/hidden but not deleted
+  parentId?: string; // set = this is a sub-category of another (one level of nesting)
+}
+
+/** A category with its sub-categories attached (for tree navigation). */
+export interface CategoryNode extends Category {
+  children: Category[];
 }
 
 /** Classes a category may target. MED_CANNABIS is absent on purpose (A1). */
@@ -66,6 +72,22 @@ export async function findCategory(slug: string): Promise<Category | null> {
   return (await readCategories({ includeHidden: true })).find((c) => c.slug === slug) ?? null;
 }
 
+export async function findCategoryById(id: string): Promise<Category | null> {
+  return (await readCategories({ includeHidden: true })).find((c) => c.id === id) ?? null;
+}
+
+/** Top-level categories, each with its visible sub-categories nested (one level). */
+export async function categoryTree(opts?: { includeHidden?: boolean }): Promise<CategoryNode[]> {
+  const all = await readCategories(opts);
+  const tops = all.filter((c) => !c.parentId);
+  return tops.map((c) => ({ ...c, children: all.filter((k) => k.parentId === c.id) }));
+}
+
+/** The sub-categories of one parent. */
+export async function subCategories(parentId: string, opts?: { includeHidden?: boolean }): Promise<Category[]> {
+  return (await readCategories(opts)).filter((c) => c.parentId === parentId);
+}
+
 function slugify(name: string): string {
   return name.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 50);
 }
@@ -73,11 +95,17 @@ function slugify(name: string): string {
 export type CategoryResult = { ok: true; category?: Category } | { ok: false; reason: string };
 
 export async function createCategory(input: {
-  name: string; blurb: string; emoji: string; cls?: string; q?: string;
+  name: string; blurb: string; emoji: string; cls?: string; q?: string; parentId?: string;
 }): Promise<CategoryResult> {
   if (input.cls && !CATEGORY_CLASSES.includes(input.cls as ComplianceClass))
     return { ok: false, reason: "class" }; // A1: no medical collection, ever
   const s = store();
+  // A sub-category must point at a real, top-level parent (one level of nesting).
+  if (input.parentId) {
+    const parent = await findCategoryById(input.parentId);
+    if (!parent) return { ok: false, reason: "parent" };
+    if (parent.parentId) return { ok: false, reason: "nesting" };
+  }
   let slug = slugify(input.name) || `collection-${s.seq}`;
   if (await findCategory(slug)) slug = `${slug}-${s.seq}`;
   const all = await readCategories({ includeHidden: true });
@@ -89,6 +117,7 @@ export async function createCategory(input: {
     emoji: input.emoji || "🌿",
     ...(input.cls ? { cls: input.cls as ComplianceClass } : {}),
     ...(input.q ? { q: input.q } : {}),
+    ...(input.parentId ? { parentId: input.parentId } : {}),
     order: (all[all.length - 1]?.order ?? 0) + 1,
     visible: true,
     custom: true,

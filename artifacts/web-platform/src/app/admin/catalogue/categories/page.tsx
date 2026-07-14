@@ -39,6 +39,10 @@ export default async function AdminCategoriesPage({
 }) {
   const { cat } = await searchParams;
   const categories = await readCategories({ includeHidden: true });
+  const topLevel = categories.filter((c) => !c.parentId);
+  const nameById = new Map(categories.map((c) => [c.id, c.name]));
+  // Group for display: each top-level category followed by its sub-categories.
+  const ordered = topLevel.flatMap((c) => [c, ...categories.filter((k) => k.parentId === c.id)]);
   const msg = cat ? MESSAGES[cat] : undefined;
 
   return (
@@ -89,18 +93,29 @@ export default async function AdminCategoriesPage({
               <input className="vh-input" id="cat-q" name="q" type="text" maxLength={60} placeholder="e.g. protein" />
               <span className="vh-help">Optional — composes with the class filter using the same synonym/typo matcher as search.</span>
             </div>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="cat-parent">Parent category</label>
+              <select className="vh-input" id="cat-parent" name="parentId" defaultValue="">
+                <option value="">— None (top-level) —</option>
+                {topLevel.map((c) => (
+                  <option key={c.id} value={c.id}>{c.emoji} {c.name}</option>
+                ))}
+              </select>
+              <span className="vh-help">Pick a parent to make this a sub-category (one level of nesting).</span>
+            </div>
             <button className="vh-btn vh-btn-primary" type="submit">Create category</button>
           </form>
         </Card>
 
         {/* ── Existing (edit inline) ────────────────────────── */}
         <div className="vh-grid" style={{ gap: "var(--sp-3)" }}>
-          {categories.map((c) => (
+          {ordered.map((c) => (
             <Card
               key={c.id}
-              title={<span className="vh-row" style={{ gap: 8 }}><Tags size={15} strokeWidth={2.2} aria-hidden /> {c.emoji} {c.name}</span>}
+              title={<span className="vh-row" style={{ gap: 8 }}>{c.parentId && <span className="muted" aria-hidden>↳</span>}<Tags size={15} strokeWidth={2.2} aria-hidden /> {c.emoji} {c.name}</span>}
               action={
                 <span className="vh-row" style={{ gap: 8 }}>
+                  {c.parentId && <StatusPill tone="info">Sub of {nameById.get(c.parentId) ?? "—"}</StatusPill>}
                   <StatusPill tone={c.visible ? "ok" : "warn"}>{c.visible ? "Visible" : "Hidden"}</StatusPill>
                   {!c.custom && <StatusPill tone="neutral">Launch</StatusPill>}
                 </span>

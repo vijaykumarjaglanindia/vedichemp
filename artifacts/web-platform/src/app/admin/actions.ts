@@ -428,6 +428,7 @@ export async function saveCategory(formData: FormData): Promise<void> {
   const emoji = String(formData.get("emoji") ?? "").trim().slice(0, 4);
   const cls = String(formData.get("cls") ?? "");
   const q = String(formData.get("q") ?? "").trim().slice(0, 60);
+  const parentId = String(formData.get("parentId") ?? "").trim();
   const who = await actor();
 
   if (name.length < 3 || name.length > 40) redirect("/admin/catalogue/categories?cat=name");
@@ -440,7 +441,7 @@ export async function saveCategory(formData: FormData): Promise<void> {
 
   const result = id
     ? await updateCategory(id, { name, blurb, emoji, cls, q })
-    : await createCategory({ name, blurb, emoji, ...(cls ? { cls } : {}), ...(q ? { q } : {}) });
+    : await createCategory({ name, blurb, emoji, ...(cls ? { cls } : {}), ...(q ? { q } : {}), ...(parentId ? { parentId } : {}) });
   if (!result.ok) {
     // "class" = attempted MED_CANNABIS collection (A1) — log the attempt.
     await writeAudit({ actor: who, action: id ? "CATEGORY_UPDATE" : "CATEGORY_CREATE", target: name, outcome: "DENIED", note: result.reason === "class" ? "A1: medical collection refused" : result.reason });

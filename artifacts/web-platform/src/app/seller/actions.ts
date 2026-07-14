@@ -122,6 +122,14 @@ export async function submitProduct(formData: FormData): Promise<void> {
 
   const openingStock = parseInt(String(formData.get("stockQty") ?? ""), 10);
   const session = await getSession();
+  // Optional merchandising fields on the create form (claims-checked short copy).
+  const shortDesc = String(formData.get("shortDesc") ?? "").trim().slice(0, 160);
+  const brand = String(formData.get("brand") ?? "").trim().slice(0, 60);
+  const tagsRaw = String(formData.get("tags") ?? "").trim();
+  const sku = String(formData.get("sku") ?? "").trim().slice(0, 40);
+  const categoryId = String(formData.get("categoryId") ?? "").trim();
+  const weight = parseInt(String(formData.get("weightGrams") ?? ""), 10);
+  if ((shortDesc && CLAIM_WORDS.test(shortDesc)) || (brand && CLAIM_WORDS.test(brand))) redirect("/seller/products/new?err=claims");
   const created = await createListing({
     ...fields,
     cls: cls as ComplianceClass,
@@ -129,6 +137,12 @@ export async function submitProduct(formData: FormData): Promise<void> {
     seller: DEMO_STORE,
     sellerEmail: session?.email ?? "seller@example.in",
     ...(Number.isInteger(openingStock) && openingStock >= 0 ? { stockQty: openingStock } : {}),
+    ...(shortDesc ? { shortDesc } : {}),
+    ...(brand ? { brand } : {}),
+    ...(tagsRaw ? { tags: [...new Set(tagsRaw.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean))].slice(0, 12) } : {}),
+    ...(sku ? { sku } : {}),
+    ...(categoryId ? { categoryId } : {}),
+    ...(Number.isInteger(weight) && weight >= 0 ? { weightGrams: weight } : {}),
   });
   if (!created) redirect("/seller/products/new?err=cls");
   if (intent !== "draft") {
@@ -142,6 +156,62 @@ export async function submitProduct(formData: FormData): Promise<void> {
     });
   }
   redirect(`/seller/products?submitted=${intent === "draft" ? "draft" : "review"}`);
+}
+
+/**
+ * Read the optional merchandising / sale / SEO fields shared by the product
+ * editor. Returns a validated patch, or an error key. Sale price must be a
+ * positive integer BELOW the regular price; tags are comma-split and cleaned;
+ * short copy and SEO fields pass the same claims check as the description.
+ */
+function readMerchFields(formData: FormData, regularPricePaise: number):
+  | { err: string }
+  | { patch: Record<string, unknown> } {
+  const patch: Record<string, unknown> = {};
+  const shortDesc = String(formData.get("shortDesc") ?? "").trim();
+  const brand = String(formData.get("brand") ?? "").trim();
+  const tagsRaw = String(formData.get("tags") ?? "").trim();
+  const sku = String(formData.get("sku") ?? "").trim();
+  const metaTitle = String(formData.get("metaTitle") ?? "").trim();
+  const metaDescription = String(formData.get("metaDescription") ?? "").trim();
+  const categoryId = String(formData.get("categoryId") ?? "").trim();
+  const weightRaw = String(formData.get("weightGrams") ?? "").trim();
+  const saleRaw = String(formData.get("salePricePaise") ?? "").trim();
+  const saleFrom = String(formData.get("saleFrom") ?? "").trim();
+  const saleTo = String(formData.get("saleTo") ?? "").trim();
+
+  // Claims copy-check on every buyer-facing text field (fail closed).
+  if ([shortDesc, brand, metaTitle, metaDescription].some((t) => t && CLAIM_WORDS.test(t))) return { err: "claims" };
+
+  if (shortDesc.length > 160) return { err: "shortdesc" };
+  patch.shortDesc = shortDesc || undefined;
+  patch.brand = brand.slice(0, 60) || undefined;
+  patch.tags = tagsRaw ? [...new Set(tagsRaw.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean))].slice(0, 12) : undefined;
+  patch.sku = sku.slice(0, 40) || undefined;
+  patch.metaTitle = metaTitle.slice(0, 70) || undefined;
+  patch.metaDescription = metaDescription.slice(0, 160) || undefined;
+  patch.categoryId = categoryId || undefined;
+  if (weightRaw) {
+    const w = parseInt(weightRaw, 10);
+    if (!Number.isInteger(w) || w < 0 || w > 100000) return { err: "weight" };
+    patch.weightGrams = w;
+  } else patch.weightGrams = undefined;
+
+  // Sale price: empty clears it; otherwise it must beat the regular price.
+  if (saleRaw) {
+    const sale = parseInt(saleRaw, 10);
+    if (!Number.isInteger(sale) || sale <= 0) return { err: "saleprice" };
+    if (sale >= regularPricePaise) return { err: "salehigh" };
+    patch.salePricePaise = sale;
+    patch.saleFrom = /^\d{4}-\d{2}-\d{2}$/.test(saleFrom) ? saleFrom : undefined;
+    patch.saleTo = /^\d{4}-\d{2}-\d{2}$/.test(saleTo) ? saleTo : undefined;
+    if (saleFrom && saleTo && saleTo < saleFrom) return { err: "saledates" };
+  } else {
+    patch.salePricePaise = undefined;
+    patch.saleFrom = undefined;
+    patch.saleTo = undefined;
+  }
+  return { patch };
 }
 
 export async function updateProductListing(formData: FormData): Promise<void> {
@@ -164,8 +234,70 @@ export async function updateProductListing(formData: FormData): Promise<void> {
     }
     redirect(`/seller/products/${id}?err=${parsed.err}`);
   }
-  const ok = await updateListing(id, (parsed as { fields: ListingFields }).fields);
+  const { fields } = parsed as { fields: ListingFields };
+  const merch = readMerchFields(formData, fields.pricePaise);
+  if ("err" in merch) {
+    if (merch.err === "claims") {
+      await setClaimsStrike(id, true);
+      await writeAudit({ actor: (await getSession())?.email ?? "seller", action: "LISTING_CLAIMS_ATTEMPT", target: id, outcome: "DENIED", note: "claims copy in merchandising field" });
+    }
+    redirect(`/seller/products/${id}?err=${merch.err}`);
+  }
+  const ok = await updateListing(id, { ...fields, ...(merch as { patch: Record<string, unknown> }).patch });
   redirect(ok ? `/seller/products/${id}?saved=1` : "/seller/products");
+}
+
+/* ── Product images (gallery) ─────────────────────────────── */
+
+const IMG_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
+
+/** Upload one gallery image (stored as a data URL — the object-storage seam). */
+export async function uploadProductImage(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const file = formData.get("image");
+  const product = await findProduct(id);
+  if (!product || product.seller !== DEMO_STORE) redirect("/seller/products");
+  if (!(file instanceof File) || file.size === 0) redirect(`/seller/products/${id}?err=imgfile#gallery`);
+  if (file.size > 1_500_000) redirect(`/seller/products/${id}?err=imgsize#gallery`);
+  if (!IMG_TYPES.includes(file.type)) redirect(`/seller/products/${id}?err=imgtype#gallery`);
+  const buf = Buffer.from(await (file as File).arrayBuffer());
+  const dataUrl = `data:${file.type};base64,${buf.toString("base64")}`;
+  const { addImage } = await import("@/lib/catalog");
+  const ok = await addImage(id, dataUrl);
+  redirect(ok ? `/seller/products/${id}?img=added#gallery` : `/seller/products/${id}?err=imgfull#gallery`);
+}
+
+export async function deleteProductImage(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const index = parseInt(String(formData.get("index") ?? ""), 10);
+  const product = await findProduct(id);
+  if (!product || product.seller !== DEMO_STORE) redirect("/seller/products");
+  const { removeImage } = await import("@/lib/catalog");
+  await removeImage(id, index);
+  redirect(`/seller/products/${id}?img=removed#gallery`);
+}
+
+export async function setMainProductImage(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const index = parseInt(String(formData.get("index") ?? ""), 10);
+  const product = await findProduct(id);
+  if (!product || product.seller !== DEMO_STORE) redirect("/seller/products");
+  const { makeMainImage } = await import("@/lib/catalog");
+  await makeMainImage(id, index);
+  redirect(`/seller/products/${id}?img=main#gallery`);
+}
+
+/* ── Duplicate a listing ──────────────────────────────────── */
+
+export async function duplicateProduct(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  const product = await findProduct(id);
+  if (!product || product.seller !== DEMO_STORE) redirect("/seller/products");
+  const { duplicateListing } = await import("@/lib/catalog");
+  const copy = await duplicateListing(id);
+  if (!copy) redirect("/seller/products");
+  await writeAudit({ actor: DEMO_STORE, action: "LISTING_DUPLICATE", target: `${product.title} → ${copy.id}`, outcome: "OK" });
+  redirect(`/seller/products/${copy.id}?duplicated=1`);
 }
 
 /**

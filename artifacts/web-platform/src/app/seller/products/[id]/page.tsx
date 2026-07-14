@@ -12,16 +12,18 @@
 
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Lock, FileUp, ImagePlus, ShieldAlert, Send, Archive, RotateCcw, Trash2, EyeOff } from "lucide-react";
+import { Lock, FileUp, ImagePlus, ShieldAlert, Send, Archive, RotateCcw, Trash2, EyeOff, Star, Copy, Tag } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Banner, Card, StatusPill, toneForStatus, ComplianceBadge, MoneyText, type Column, DataTable } from "@/components/ui";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
-import { findProduct, hasVariants, REGULATED_CLASSES } from "@/lib/catalog";
+import { findProduct, hasVariants, REGULATED_CLASSES, saleActive } from "@/lib/catalog";
+import { readCategories } from "@/lib/categories";
 import { findSellerProduct, type Batch } from "../../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
 import {
   addProductVariant, productLifecycle, removeProductVariant, saveOptionName,
   submitCoaForBatch, updateProductListing, updateProductVariant,
+  uploadProductImage, deleteProductImage, setMainProductImage, duplicateProduct,
 } from "../../actions";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -40,6 +42,15 @@ const ERRORS: Record<string, string> = {
   state: "That action isn't available in the listing's current state.",
   fixture: "Launch listings can be archived but not permanently deleted.",
   coa: "Blocked by the CoA gate (A2) — the batch needs an APPROVED, batch-matched lab report first.",
+  shortdesc: "The short summary should be 160 characters or fewer.",
+  weight: "Weight should be a whole number of grams.",
+  saleprice: "The sale price must be a positive whole number in paise.",
+  salehigh: "The sale price must be lower than the regular selling price.",
+  saledates: "The sale end date can't be before the start date.",
+  imgfile: "Choose an image file to upload.",
+  imgsize: "That image is too large — keep photos under 1.5 MB.",
+  imgtype: "Use a JPG, PNG, WEBP, GIF or SVG image.",
+  imgfull: "You can add up to 6 photos. Remove one first.",
 };
 
 const DONE: Record<string, { title: string; body: string }> = {
@@ -60,10 +71,10 @@ export default async function ProductEditorPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string; done?: string; err?: string; coa?: string; vdone?: string }>;
+  searchParams: Promise<{ saved?: string; done?: string; err?: string; coa?: string; vdone?: string; img?: string; duplicated?: string }>;
 }) {
   const { id } = await params;
-  const { saved, done, err, coa, vdone } = await searchParams;
+  const { saved, done, err, coa, vdone, img, duplicated } = await searchParams;
   const product = await findProduct(id);
   if (!product) notFound();
 
@@ -71,6 +82,9 @@ export default async function ProductEditorPage({
   const regulated = REGULATED_CLASSES.includes(product!.cls);
   const legacyBatches = findSellerProduct(id)?.batches ?? [];
   const doneMsg = done ? DONE[done] : undefined;
+  const images = product!.images ?? [];
+  const categories = (await readCategories({ includeHidden: true })).filter((c) => !c.cls || c.cls === product!.cls);
+  const onSale = saleActive(product!);
 
   const batchColumns: Column<Batch>[] = [
     { key: "code", header: "Batch", render: (b) => <span className="mono" style={{ fontWeight: 600 }}>{b.code}</span> },
@@ -118,6 +132,18 @@ export default async function ProductEditorPage({
           <Banner severity="ok" title={doneMsg.title}>{doneMsg.body}</Banner>
         </div>
       )}
+      {duplicated && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="ok" title="Copy created">This is a fresh draft copied from the original. Edit it, then submit it for review when you're ready to sell.</Banner>
+        </div>
+      )}
+      {img && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="ok" title={img === "added" ? "Photo added" : img === "removed" ? "Photo removed" : "Main photo updated"}>
+            {img === "main" ? "This is now the first photo buyers see." : "Your product photos show on the product page, in search and on your store."}
+          </Banner>
+        </div>
+      )}
       {coa === "submitted" && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="ok" title="CoA submitted for this batch">
@@ -146,7 +172,8 @@ export default async function ProductEditorPage({
       )}
 
       <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
-        {/* ── Left: the edit form (writes to the live store) ── */}
+        {/* ── Left: the edit form + gallery + duplicate ── */}
+        <div className="vh-grid" style={{ gap: "var(--sp-3)" }}>
         <form action={updateProductListing} className="vh-grid" style={{ gap: "var(--sp-3)" }}>
           <input type="hidden" name="productId" value={product!.id} />
           <Card title="Listing details">
@@ -202,27 +229,147 @@ export default async function ProductEditorPage({
                 <input className="vh-input mono" id="hsn" name="hsn" type="text" defaultValue={product!.hsn} maxLength={8} />
                 <span className="vh-help">Determines the GST rate on every invoice line.</span>
               </div>
-
-              <button className="vh-btn vh-btn-primary" type="submit">Save changes</button>
             </div>
           </Card>
 
-          <Card title="Media" action={<span className="small muted">First image is the search thumbnail</span>}>
-            <div className="vh-grid cols-4" style={{ gap: 8 }}>
-              {[0, 1, 2].map((i) => (
-                <div key={i} style={{ aspectRatio: "1", borderRadius: "var(--vh-radius-sm)", background: "var(--vh-green-100)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: "1.8rem", border: "1px solid var(--vh-line)" }} aria-hidden>
-                  {product!.emoji}
+          {/* More details — brand, tags, summary, category, SKU, weight */}
+          <Card title="More details">
+            <div className="vh-grid" style={{ gap: 16 }}>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="shortDesc">Short summary</label>
+                <input className="vh-input" id="shortDesc" name="shortDesc" maxLength={160} defaultValue={product!.shortDesc ?? ""} placeholder="One line shoppers see first, e.g. Cold-pressed, single-origin, lab-tested." />
+                <span className="vh-help">Up to 160 characters. Shows on the product card and above the description.</span>
+              </div>
+              <div className="vh-grid cols-2" style={{ gap: 16 }}>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="brand">Brand</label>
+                  <input className="vh-input" id="brand" name="brand" maxLength={60} defaultValue={product!.brand ?? ""} placeholder="e.g. Vedic Botanicals" />
                 </div>
-              ))}
-              <label className="vh-dropzone" aria-label="Add product image" style={{ aspectRatio: "1", padding: 8, display: "flex", flexDirection: "column", alignItems: "center", justifyContent: "center", gap: 4, cursor: "pointer" }}>
-                <input type="file" accept="image/*" style={{ display: "none" }} />
-                <ImagePlus size={18} strokeWidth={2.2} aria-hidden />
-                <span className="small">Add</span>
-              </label>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="categoryId">Category</label>
+                  <select className="vh-select" id="categoryId" name="categoryId" defaultValue={product!.categoryId ?? ""}>
+                    <option value="">— None —</option>
+                    {categories.map((c) => <option key={c.id} value={c.id}>{c.parentId ? "— " : ""}{c.name}</option>)}
+                  </select>
+                </div>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="tags">Tags</label>
+                <input className="vh-input" id="tags" name="tags" defaultValue={(product!.tags ?? []).join(", ")} placeholder="vegan, gluten-free, gift" />
+                <span className="vh-help">Comma-separated words shoppers might search for. Up to 12.</span>
+              </div>
+              <div className="vh-grid cols-2" style={{ gap: 16 }}>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="sku">SKU (your code)</label>
+                  <input className="vh-input mono" id="sku" name="sku" maxLength={40} defaultValue={product!.sku ?? ""} placeholder="VB-BALM-30" />
+                </div>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="weightGrams">Weight (grams)</label>
+                  <input className="vh-input" id="weightGrams" name="weightGrams" type="number" min={0} defaultValue={product!.weightGrams ?? ""} placeholder="120" />
+                  <span className="vh-help">Used to work out delivery.</span>
+                </div>
+              </div>
             </div>
+          </Card>
+
+          {/* Sale price — a temporary discount off the regular price */}
+          <Card title="Put it on sale" action={onSale ? <StatusPill tone="warn">On sale now</StatusPill> : <span className="small muted">Optional</span>}>
+            <div className="vh-grid" style={{ gap: 16 }}>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="salePricePaise">Sale price (paise)</label>
+                <input className="vh-input" id="salePricePaise" name="salePricePaise" type="number" min={0} defaultValue={product!.salePricePaise ?? ""} placeholder="lower than the selling price" />
+                <span className="vh-help">Leave blank for no sale. Must be below your selling price of <MoneyText paise={product!.pricePaise} />. Buyers see the old price struck through.</span>
+              </div>
+              <div className="vh-grid cols-2" style={{ gap: 16 }}>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="saleFrom">Starts (optional)</label>
+                  <input className="vh-input" id="saleFrom" name="saleFrom" type="date" defaultValue={product!.saleFrom ?? ""} />
+                </div>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="saleTo">Ends (optional)</label>
+                  <input className="vh-input" id="saleTo" name="saleTo" type="date" defaultValue={product!.saleTo ?? ""} />
+                </div>
+              </div>
+            </div>
+          </Card>
+
+          {/* SEO — how the listing appears on Google and shared links */}
+          <Card title="Search visibility (SEO)" action={<span className="small muted">How it shows on Google</span>}>
+            <div className="vh-grid" style={{ gap: 16 }}>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="metaTitle">Page title</label>
+                <input className="vh-input" id="metaTitle" name="metaTitle" maxLength={70} defaultValue={product!.metaTitle ?? ""} placeholder={product!.title} />
+                <span className="vh-help">Up to 70 characters. Leave blank to use the product title.</span>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="metaDescription">Page description</label>
+                <input className="vh-input" id="metaDescription" name="metaDescription" maxLength={160} defaultValue={product!.metaDescription ?? ""} placeholder="A short line that appears under the title in search results." />
+                <span className="vh-help">Up to 160 characters.</span>
+              </div>
+            </div>
+          </Card>
+
+          <button className="vh-btn vh-btn-primary" type="submit" style={{ justifySelf: "start" }}>Save changes</button>
+        </form>
+
+        {/* Photos — a real gallery (each control is its own small form) */}
+        <div id="gallery" style={{ scrollMarginTop: 90 }}>
+          <Card title="Photos" action={<span className="small muted">{images.length}/6 · first is the main photo</span>}>
+            {images.length > 0 ? (
+              <div className="vh-grid cols-4" style={{ gap: 8, marginBottom: 12 }}>
+                {images.map((src, i) => (
+                  <div key={i} style={{ position: "relative", aspectRatio: "1", borderRadius: "var(--vh-radius-sm)", overflow: "hidden", border: i === 0 ? "2px solid var(--vh-accent)" : "1px solid var(--vh-line)" }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={src} alt={`${product!.title} photo ${i + 1}`} style={{ width: "100%", height: "100%", objectFit: "cover" }} />
+                    {i === 0 && <span className="vh-pill vh-pill-ok" style={{ position: "absolute", top: 4, left: 4, fontSize: ".65rem" }}>Main</span>}
+                    <div style={{ position: "absolute", bottom: 4, right: 4, display: "flex", gap: 4 }}>
+                      {i !== 0 && (
+                        <form action={setMainProductImage}>
+                          <input type="hidden" name="productId" value={product!.id} />
+                          <input type="hidden" name="index" value={i} />
+                          <button className="vh-btn vh-btn-sm vh-btn-ghost" type="submit" title="Make main photo" aria-label={`Make photo ${i + 1} the main photo`}><Star size={12} strokeWidth={2.2} aria-hidden /></button>
+                        </form>
+                      )}
+                      <form action={deleteProductImage}>
+                        <input type="hidden" name="productId" value={product!.id} />
+                        <input type="hidden" name="index" value={i} />
+                        <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit" title="Remove photo" aria-label={`Remove photo ${i + 1}`}><Trash2 size={12} strokeWidth={2.2} aria-hidden /></button>
+                      </form>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <p className="small muted" style={{ marginTop: 0 }}>No photos yet. Add clear pack shots on a plain background — they lift clicks and sales.</p>
+            )}
+            {images.length < 6 && (
+              <form action={uploadProductImage} className="vh-row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                <input type="hidden" name="productId" value={product!.id} />
+                <label className="vh-btn vh-btn-sm vh-btn-ghost vh-row" style={{ gap: 6, cursor: "pointer" }}>
+                  <ImagePlus size={14} strokeWidth={2.2} aria-hidden /> Choose photo
+                  <input type="file" name="image" accept="image/*" required style={{ display: "none" }} />
+                </label>
+                <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">Upload</button>
+                <span className="small muted">JPG, PNG, WEBP or SVG · under 1.5&nbsp;MB</span>
+              </form>
+            )}
             <p className="small muted" style={{ margin: "10px 0 0" }}>Pack shots only — imagery implying medical outcomes fails the creative review.</p>
           </Card>
-        </form>
+        </div>
+
+        {/* Duplicate — clone as a fresh draft */}
+        <Card title="Duplicate this product">
+          <div className="vh-row-between" style={{ gap: 12, flexWrap: "wrap" }}>
+            <p className="small muted" style={{ margin: 0, maxWidth: 360 }}>
+              Make a copy to sell a similar product without starting from scratch. The copy is a new draft with no stock and no lab report yet.
+            </p>
+            <form action={duplicateProduct}>
+              <input type="hidden" name="productId" value={product!.id} />
+              <button className="vh-btn vh-btn-sm vh-btn-ghost vh-row" style={{ gap: 6 }} type="submit"><Copy size={14} strokeWidth={2.2} aria-hidden /> Make a copy</button>
+            </form>
+          </div>
+        </Card>
+        </div>
 
         {/* ── Right rail: lifecycle, CoA, batches ───────────── */}
         <div className="vh-grid" style={{ gap: "var(--sp-3)" }}>
