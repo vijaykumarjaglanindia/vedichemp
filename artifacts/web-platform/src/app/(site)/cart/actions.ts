@@ -230,6 +230,11 @@ export async function placeOrder(formData: FormData): Promise<void> {
     totalPaise: cart.totalPaise,
   });
 
+  // Credit ad-driven sales: if the buyer clicked a promoted tile for any of
+  // these products recently, the campaign gets the sale (feeds "Sales from ads").
+  const { attributeOrderSales } = await import("@/lib/ads");
+  await attributeOrderSales(buyerEmail, orderItems.map((it) => ({ productId: it.productId, linePaise: it.linePaise })));
+
   // Notify the buyer their order is in, and every seller with a line in it that
   // there's an order to pack. Low stock after the decrement pings the seller too
   // — the same step that consumed the stock raises the signal.

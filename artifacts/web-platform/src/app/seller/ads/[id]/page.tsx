@@ -16,7 +16,7 @@ import { Shell } from "../../Shell";
 import { Banner, Card, MoneyText, StatusPill, toneForStatus } from "@/components/ui";
 import { getSession } from "@/lib/auth-lite";
 import { aiProviderName } from "@/lib/ai";
-import { adEligibility, AD_LOCATIONS, BID_STRATEGIES, findCampaign, PLACEMENTS, qualityScore } from "@/lib/ads";
+import { adEligibility, AD_LOCATIONS, BID_STRATEGIES, campaignResults, findCampaign, PLACEMENTS, qualityScore } from "@/lib/ads";
 import { sellerListings } from "@/lib/catalog";
 import {
   addKeywordToGroup, aiSuggestHeadline, aiSuggestKeywords, createAdCreative, createAdGroup,
@@ -60,8 +60,11 @@ export default async function CampaignDetailPage({
   const session = await getSession();
   const listings = await sellerListings(session?.email ?? "seller@example.in", "Vedic Botanicals");
   const eligible = listings.filter((p) => adEligibility(p).ok);
-  const ctr = c!.impressions ? ((c!.clicks / c!.impressions) * 100).toFixed(1) : "0.0";
   const avgCpc = c!.clicks ? Math.round(c!.spentPaise / c!.clicks) : 0;
+  const results = campaignResults(c!);
+  const STATUS_WORDS: Record<string, string> = {
+    IN_REVIEW: "Being checked", ACTIVE: "Running", PAUSED: "Paused", ENDED: "Finished", REJECTED: "Not approved",
+  };
 
   return (
     <Shell
@@ -70,9 +73,9 @@ export default async function CampaignDetailPage({
       title={c!.name}
       actions={
         <span className="vh-row" style={{ gap: 8 }}>
-          <StatusPill tone={toneForStatus(c!.status)}>{c!.status.replace(/_/g, " ")}</StatusPill>
+          <StatusPill tone={toneForStatus(c!.status)}>{STATUS_WORDS[c!.status] ?? c!.status}</StatusPill>
           <Link href="/seller/ads" className="vh-btn vh-btn-sm vh-btn-ghost vh-row" style={{ gap: 6 }}>
-            <ArrowLeft size={14} strokeWidth={2.2} aria-hidden /> All campaigns
+            <ArrowLeft size={14} strokeWidth={2.2} aria-hidden /> All my ads
           </Link>
         </span>
       }
@@ -99,12 +102,12 @@ export default async function CampaignDetailPage({
       {state && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="ok" title={state === "paused" ? "Campaign paused" : "Campaign resumed"}>{state === "paused" ? "It stops entering auctions immediately." : "It re-enters auctions immediately."}</Banner></div>}
       {err && ERRORS[err] && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="danger" title="That didn't go through">{ERRORS[err]}</Banner></div>}
 
-      {/* Live report */}
-      <div className="vh-grid cols-4" style={{ marginBottom: "var(--sp-4)" }}>
-        <Card><span className="vh-stat-label">Impressions</span><div className="vh-stat-value tabular">{c!.impressions}</div></Card>
-        <Card><span className="vh-stat-label">Clicks · CTR</span><div className="vh-stat-value tabular">{c!.clicks} · {ctr}%</div></Card>
-        <Card><span className="vh-stat-label">Avg CPC (second price)</span><div className="vh-stat-value tabular"><MoneyText paise={avgCpc} /></div></Card>
-        <Card><span className="vh-stat-label">Spend / total budget</span><div className="vh-stat-value tabular"><MoneyText paise={c!.spentPaise} /> / <MoneyText paise={c!.totalBudgetPaise} /></div></Card>
+      {/* Results — in plain words */}
+      <div className="vh-grid cols-4" style={{ marginBottom: "var(--sp-3)" }}>
+        <Card><span className="vh-stat-label">Times shown</span><div className="vh-stat-value tabular">{c!.impressions.toLocaleString("en-IN")}</div><div className="small muted">shoppers who saw it</div></Card>
+        <Card><span className="vh-stat-label">Visits</span><div className="vh-stat-value tabular">{c!.clicks.toLocaleString("en-IN")}</div><div className="small muted">clicked to your product</div></Card>
+        <Card><span className="vh-stat-label">Sales from ads</span><div className="vh-stat-value tabular"><MoneyText paise={c!.salesPaise} /></div><div className="small muted">{results.returnPerRupee > 0 ? `₹${results.returnPerRupee.toFixed(2)} back per ₹1` : `${c!.orders} order${c!.orders === 1 ? "" : "s"}`}</div></Card>
+        <Card><span className="vh-stat-label">Money spent</span><div className="vh-stat-value tabular"><MoneyText paise={c!.spentPaise} /></div><div className="small muted">of <MoneyText paise={c!.totalBudgetPaise} /> budget · ~<MoneyText paise={avgCpc} />/visit</div></Card>
       </div>
 
       <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
@@ -132,7 +135,7 @@ export default async function CampaignDetailPage({
               </div>
               <div className="vh-grid cols-2" style={{ gap: 14 }}>
                 <div className="vh-field">
-                  <label className="vh-label" htmlFor="cs-daily">Daily budget (₹)</label>
+                  <label className="vh-label" htmlFor="cs-daily">Budget per day (₹)</label>
                   <input className="vh-input" id="cs-daily" name="dailyBudget" type="number" min={100} defaultValue={Math.round(c!.dailyBudgetPaise / 100)} />
                 </div>
                 <div className="vh-field">
@@ -148,13 +151,13 @@ export default async function CampaignDetailPage({
                   <input className="vh-input" id="cs-end" name="endDate" type="date" defaultValue={c!.endDate ?? ""} />
                 </div>
                 <div className="vh-field">
-                  <label className="vh-label" htmlFor="cs-strategy">Bid strategy</label>
+                  <label className="vh-label" htmlFor="cs-strategy">Bidding style</label>
                   <select className="vh-select" id="cs-strategy" name="bidStrategy" defaultValue={c!.bidStrategy}>
                     {BID_STRATEGIES.map((b) => <option key={b.key} value={b.key}>{b.label}</option>)}
                   </select>
                 </div>
                 <div className="vh-field">
-                  <label className="vh-label" htmlFor="cs-acos">Target ACoS %</label>
+                  <label className="vh-label" htmlFor="cs-acos">Target ad cost (share of sales %)</label>
                   <input className="vh-input" id="cs-acos" name="targetAcos" type="number" min={1} max={100} defaultValue={c!.targetAcosPct ?? ""} />
                 </div>
               </div>

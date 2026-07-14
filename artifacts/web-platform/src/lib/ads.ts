@@ -45,10 +45,10 @@ export const OBJECTIVES: { key: Objective; label: string }[] = [
 ];
 
 export const BID_STRATEGIES: { key: BidStrategy; label: string; help: string }[] = [
-  { key: "MANUAL_CPC", label: "Manual CPC", help: "You set every bid; the auction never exceeds it." },
-  { key: "ENHANCED_CPC", label: "Enhanced CPC", help: "Bids raised up to 15% on high-intent auctions." },
-  { key: "TARGET_ACOS", label: "Target ACoS", help: "Bids capped so projected ad spend stays at your target % of sales." },
-  { key: "MAX_CLICKS", label: "Maximise clicks", help: "Bids trimmed toward the floor to buy the most clicks per rupee." },
+  { key: "MANUAL_CPC", label: "I'll set the price", help: "You choose the most to pay per click." },
+  { key: "ENHANCED_CPC", label: "Help me get more sales", help: "We nudge your price up a little when a shopper looks likely to buy." },
+  { key: "TARGET_ACOS", label: "Spend to hit a cost", help: "We keep ad spend near the share of sales you pick." },
+  { key: "MAX_CLICKS", label: "Get me the most visits", help: "We aim for the most clicks for your money." },
 ];
 
 export const PLACEMENTS = [
@@ -109,6 +109,15 @@ export interface AdGroup {
   aiKeywords?: string[];
 }
 
+/** One day's tally for a campaign — the basis of the plain-language results. */
+export interface DayStat {
+  shown: number;     // times shown (impressions)
+  clicks: number;    // visits to the product
+  spentPaise: number;
+  salesPaise: number; // sales that started from an ad click that day
+  orders: number;
+}
+
 export interface Campaign {
   id: string;
   seller: string;
@@ -127,8 +136,19 @@ export interface Campaign {
   spentPaise: number;
   impressions: number;
   clicks: number;
+  salesPaise: number; // sales that started from a click on this campaign's ad
+  orders: number;     // purchases that started from an ad click
+  daily: Record<string, DayStat>; // YYYY-MM-DD → that day's tally
   note?: string;
   createdAt: string;
+}
+
+/** A recent ad click, remembered so a later purchase can be credited to the ad. */
+export interface AdClickTouch {
+  productId: string;
+  campaignId: string;
+  buyerKey: string; // buyer email, or "anon"
+  at: number; // epoch ms
 }
 
 export interface AdSettings {
@@ -140,6 +160,7 @@ interface AdsStore {
   campaigns: Campaign[];
   settings: AdSettings;
   served: Record<string, number>; // `${placement}:${adId}` → impressions (rotation state)
+  touches: AdClickTouch[]; // recent ad clicks awaiting a purchase to credit
   seq: number;
 }
 
@@ -156,12 +177,23 @@ function store(): AdsStore {
       placementsEnabled: Object.fromEntries(PLACEMENTS.map((p) => [p.key, true])),
     },
     served: {},
+    touches: [],
     seq: 1,
   };
   return globalThis.__vhAds;
 }
 
 const today = () => new Date().toISOString().slice(0, 10);
+
+/** Get (creating if needed) a campaign's tally for a given day. */
+function dayStat(c: Campaign, date: string): DayStat {
+  return (c.daily[date] ??= { shown: 0, clicks: 0, spentPaise: 0, salesPaise: 0, orders: 0 });
+}
+
+/** What a campaign has already spent TODAY (drives daily-budget pacing). */
+function spentToday(c: Campaign): number {
+  return c.daily[today()]?.spentPaise ?? 0;
+}
 
 /* ── Settings (Admin → Ads) ───────────────────────────────── */
 
@@ -248,6 +280,9 @@ export async function createAdCampaign(input: CreateCampaignInput): Promise<Camp
     spentPaise: 0,
     impressions: 0,
     clicks: 0,
+    salesPaise: 0,
+    orders: 0,
+    daily: {},
     createdAt: new Date().toISOString(),
   };
   s.campaigns.unshift(campaign);
@@ -461,7 +496,10 @@ export async function runAuction(
   for (const c of s.campaigns) {
     if (c.status !== "ACTIVE") continue;
     if (c.startDate > now || (c.endDate && c.endDate < now)) continue;
-    if (c.spentPaise >= Math.min(c.dailyBudgetPaise, c.totalBudgetPaise)) continue;
+    // Two ceilings: today's spend against the daily budget (resets each day),
+    // and lifetime spend against the total budget.
+    if (spentToday(c) >= c.dailyBudgetPaise) continue;
+    if (c.spentPaise >= c.totalBudgetPaise) continue;
     if (ctx?.location && !c.locations.includes("ALL") && !c.locations.includes(ctx.location)) continue;
     for (const g of c.adGroups) {
       if (!g.placements.includes(placement)) continue;
@@ -513,6 +551,7 @@ export async function runAuction(
   winner.ad.impressions += 1;
   winner.ad.lastChargePaise = charge;
   winner.c.impressions += 1;
+  dayStat(winner.c, now).shown += 1;
   if (winner.kw) winner.kw.impressions += 1;
 
   return {
@@ -526,8 +565,11 @@ export async function runAuction(
   };
 }
 
-/** A click charges the stored second price server-side; budgets fail closed. */
-export async function recordAdClick(campaignId: string, adId: string): Promise<CatalogProduct | null> {
+/** A click charges the stored second price server-side; budgets fail closed.
+ *  The click is also remembered (per buyer, per product) so that if the buyer
+ *  goes on to purchase, the sale can be credited back to this ad. */
+export async function recordAdClick(campaignId: string, adId: string, buyerEmail?: string): Promise<CatalogProduct | null> {
+  const s = store();
   const c = await findCampaign(campaignId);
   if (!c) return null;
   for (const g of c.adGroups) {
@@ -539,9 +581,152 @@ export async function recordAdClick(campaignId: string, adId: string): Promise<C
       ad.clicks += 1;
       c.clicks += 1;
       c.spentPaise += ad.lastChargePaise;
+      const d = dayStat(c, today());
+      d.clicks += 1;
+      d.spentPaise += ad.lastChargePaise;
+      // Remember this click so a later purchase of the same product credits it.
+      s.touches.unshift({ productId: ad.productId, campaignId: c.id, buyerKey: buyerEmail || "anon", at: Date.now() });
+      if (s.touches.length > 2000) s.touches.length = 2000;
       if (c.spentPaise >= c.totalBudgetPaise) c.status = "ENDED";
     }
     return product; // redirect target resolved server-side, never from the URL
   }
   return null;
+}
+
+/* ── Sales attribution + plain-language results ───────────────── */
+
+const ATTRIBUTION_WINDOW_MS = 14 * 24 * 60 * 60 * 1000; // a purchase within 14 days of the click counts
+
+/**
+ * Credit ad-driven sales. For each purchased line, if this buyer clicked an ad
+ * for that product recently, the campaign gets the sale (money + one order) and
+ * the click is consumed so it is never counted twice. Called after an order is
+ * created. Returns the total sales credited to ads (paise).
+ */
+export async function attributeOrderSales(
+  buyerEmail: string,
+  items: { productId: string; linePaise: number }[],
+): Promise<number> {
+  const s = store();
+  const cutoff = Date.now() - ATTRIBUTION_WINDOW_MS;
+  let credited = 0;
+  for (const it of items) {
+    const idx = s.touches.findIndex(
+      (t) => t.productId === it.productId && (t.buyerKey === buyerEmail || t.buyerKey === "anon") && t.at >= cutoff,
+    );
+    if (idx === -1) continue;
+    const touch = s.touches[idx]!;
+    const c = s.campaigns.find((x) => x.id === touch.campaignId);
+    s.touches.splice(idx, 1); // consume: one click credits at most one sale
+    if (!c) continue;
+    c.salesPaise += it.linePaise;
+    c.orders += 1;
+    const d = dayStat(c, today());
+    d.salesPaise += it.linePaise;
+    d.orders += 1;
+    credited += it.linePaise;
+  }
+  return credited;
+}
+
+/** Plain-English performance for one campaign (no jargon in the field names). */
+export interface AdResults {
+  shown: number;       // times shown
+  visits: number;      // clicks
+  spentPaise: number;  // money spent
+  salesPaise: number;  // sales from ads
+  orders: number;      // purchases from ads
+  /** For every ₹1 spent, this many ₹ came back in sales. 0 when nothing spent. */
+  returnPerRupee: number;
+  /** Sales as a share of spend, ×; the inverse plain view of "ad cost vs sales". */
+  costSharePct: number; // spend ÷ sales × 100 (0 when no sales)
+}
+
+export function campaignResults(c: Campaign): AdResults {
+  return summariseResults(c.impressions, c.clicks, c.spentPaise, c.salesPaise, c.orders);
+}
+
+export function accountResults(campaigns: Campaign[]): AdResults {
+  const t = campaigns.reduce(
+    (a, c) => ({
+      shown: a.shown + c.impressions,
+      visits: a.visits + c.clicks,
+      spent: a.spent + c.spentPaise,
+      sales: a.sales + c.salesPaise,
+      orders: a.orders + c.orders,
+    }),
+    { shown: 0, visits: 0, spent: 0, sales: 0, orders: 0 },
+  );
+  return summariseResults(t.shown, t.visits, t.spent, t.sales, t.orders);
+}
+
+function summariseResults(shown: number, visits: number, spentPaise: number, salesPaise: number, orders: number): AdResults {
+  return {
+    shown,
+    visits,
+    spentPaise,
+    salesPaise,
+    orders,
+    returnPerRupee: spentPaise > 0 ? Math.round((salesPaise / spentPaise) * 100) / 100 : 0,
+    costSharePct: salesPaise > 0 ? Math.round((spentPaise / salesPaise) * 100) : 0,
+  };
+}
+
+/** The last N days for a campaign as a simple series (oldest → newest). */
+export function last7Days(c: Campaign): { date: string; shown: number; visits: number; salesPaise: number }[] {
+  const out: { date: string; shown: number; visits: number; salesPaise: number }[] = [];
+  const base = new Date(`${today()}T00:00:00Z`).getTime();
+  for (let i = 6; i >= 0; i--) {
+    const date = new Date(base - i * 86400000).toISOString().slice(0, 10);
+    const d = c.daily[date];
+    out.push({ date, shown: d?.shown ?? 0, visits: d?.clicks ?? 0, salesPaise: d?.salesPaise ?? 0 });
+  }
+  return out;
+}
+
+/** Plain-language "ideas to improve" — rule-based, no jargon. */
+export interface AdIdea { tone: "warn" | "info" | "ok"; text: string; campaign?: string }
+
+export function adIdeas(campaigns: Campaign[]): AdIdea[] {
+  const ideas: AdIdea[] = [];
+  for (const c of campaigns) {
+    if (c.status === "IN_REVIEW") {
+      ideas.push({ tone: "info", campaign: c.name, text: `"${c.name}" is being checked by our team. It starts showing to shoppers once the ad is approved.` });
+      continue;
+    }
+    if (c.status !== "ACTIVE") continue;
+    // Spent money, no sales yet.
+    if (c.spentPaise >= 5000 && c.salesPaise === 0) {
+      ideas.push({ tone: "warn", campaign: c.name, text: `"${c.name}" has spent ${rupees(c.spentPaise)} but hasn't made a sale yet. Try a lower cost per click, or add clearer words shoppers would search for.` });
+    }
+    // Used the full daily budget → could show more.
+    if (c.dailyBudgetPaise > 0 && spentToday(c) >= c.dailyBudgetPaise) {
+      ideas.push({ tone: "info", campaign: c.name, text: `"${c.name}" used its full daily budget today. Raise the daily budget to be shown to more shoppers.` });
+    }
+    // Shown a lot but few visits.
+    if (c.impressions >= 100 && c.clicks / Math.max(1, c.impressions) < 0.01) {
+      ideas.push({ tone: "info", campaign: c.name, text: `"${c.name}" was shown often but few shoppers clicked. A clearer product photo, title or a better price usually helps.` });
+    }
+    // Doing well.
+    if (c.salesPaise > 0 && c.spentPaise > 0 && c.salesPaise >= c.spentPaise * 3) {
+      ideas.push({ tone: "ok", campaign: c.name, text: `"${c.name}" is doing well — every ₹1 spent brought back ${rupees(Math.round((c.salesPaise / c.spentPaise) * 100))} in sales. Consider giving it a bigger budget.` });
+    }
+    // Keywords shown with no clicks — suggest pruning.
+    for (const g of c.adGroups) {
+      const dead = g.keywords.filter((k) => k.impressions >= 50);
+      if (dead.length && c.clicks === 0) {
+        ideas.push({ tone: "info", campaign: c.name, text: `Some search words in "${c.name}" show your ad but bring no visits. Removing the weakest ones focuses your budget.` });
+        break;
+      }
+    }
+  }
+  if (ideas.length === 0) {
+    ideas.push({ tone: "ok", text: "Nothing needs your attention right now. Check back after your ads have run for a day or two." });
+  }
+  return ideas.slice(0, 8);
+}
+
+function rupees(paise: number): string {
+  return `₹${(paise / 100).toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
 }

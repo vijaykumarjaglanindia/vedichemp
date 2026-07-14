@@ -8,13 +8,16 @@
  */
 import { NextResponse } from "next/server";
 import { recordAdClick } from "@/lib/ads";
+import { getSession } from "@/lib/auth-lite";
 
 export async function GET(req: Request) {
   const url = new URL(req.url);
   const cid = url.searchParams.get("cid") ?? "";
   const aid = url.searchParams.get("aid") ?? "";
   const base = process.env.BASE_PATH ?? "";
-  const product = await recordAdClick(cid, aid);
+  // Remember who clicked so a later purchase can be credited to the ad.
+  const session = await getSession();
+  const product = await recordAdClick(cid, aid, session?.email);
   const to = product ? `${base}/products/${product.slug}` : `${base}/catalogue`;
   return NextResponse.redirect(new URL(to, req.url), 302);
 }
