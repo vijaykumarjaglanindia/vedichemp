@@ -13,7 +13,8 @@ import { cookies } from "next/headers";
 import { readEnabledPayments } from "@/lib/payments";
 import { randomUUID } from "node:crypto";
 import { clearCartCookies, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
-import { decrementStock, hasVariants, readLiveProducts, selectVariant } from "@/lib/catalog";
+import { decrementStock, findProduct, hasVariants, isLowStock, readLiveProducts, selectVariant } from "@/lib/catalog";
+import { notify } from "@/lib/notify";
 import { readActiveCoupons } from "@/lib/commerce";
 import { permittedClasses } from "@/lib/compliance";
 import { getSession } from "@/lib/auth-lite";
@@ -228,6 +229,37 @@ export async function placeOrder(formData: FormData): Promise<void> {
     shippingPaise: cart.shippingPaise,
     totalPaise: cart.totalPaise,
   });
+
+  // Notify the buyer their order is in, and every seller with a line in it that
+  // there's an order to pack. Low stock after the decrement pings the seller too
+  // — the same step that consumed the stock raises the signal.
+  const itemCount = orderItems.reduce((n, it) => n + it.qty, 0);
+  await notify("buyer", buyerEmail, {
+    kind: "ORDER_PLACED",
+    title: `Order ${reference} confirmed`,
+    body: `${itemCount} item${itemCount === 1 ? "" : "s"} · ₹${(cart.totalPaise / 100).toLocaleString("en-IN")} paid. We'll tell you when it ships.`,
+    href: `/account/orders/live-${reference}`,
+  });
+  for (const seller of [...new Set(orderItems.map((it) => it.seller))]) {
+    const lines = orderItems.filter((it) => it.seller === seller);
+    await notify("seller", seller, {
+      kind: "ORDER_NEW",
+      title: `New order ${reference}`,
+      body: `${lines.reduce((n, it) => n + it.qty, 0)} item${lines.length === 1 ? "" : "s"} to pack · ${lines[0]!.title}${lines.length > 1 ? ` +${lines.length - 1} more` : ""}`,
+      href: "/seller/orders#real-orders",
+    });
+  }
+  for (const it of orderItems) {
+    const p = await findProduct(it.productId);
+    if (p && isLowStock(p)) {
+      await notify("seller", it.seller, {
+        kind: "LOW_STOCK",
+        title: `Low stock — ${p.title}`,
+        body: `${p.stockQty} left (alert at ${p.lowStockAt}). Restock to keep selling.`,
+        href: "/seller/inventory",
+      });
+    }
+  }
   jar.set("vh-last-order", JSON.stringify(record), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 3600 });
   await appendOrderHistory(record); // confirmation page still reads the cookie
 

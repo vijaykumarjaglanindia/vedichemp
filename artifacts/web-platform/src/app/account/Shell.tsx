@@ -20,6 +20,8 @@ import {
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
 import { PRESCRIPTIONS, daysUntil } from "./_lib/data";
+import { getSession } from "@/lib/auth-lite";
+import { unreadCount } from "@/lib/notify";
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
 
@@ -76,6 +78,7 @@ export async function Shell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const email = (await getSession())?.email ?? "guest@vedichemp.in";
   return (
     <ConsoleShell
       brand="🌿 My Account"
@@ -86,6 +89,7 @@ export async function Shell({
       actions={actions}
       topbarExtra={await RxChip()}
       bellHref="/account/notifications"
+      bellCount={await unreadCount("buyer", email)}
     >
       {children}
     </ConsoleShell>

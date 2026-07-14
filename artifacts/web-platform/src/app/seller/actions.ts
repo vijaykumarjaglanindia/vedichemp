@@ -131,7 +131,16 @@ export async function submitProduct(formData: FormData): Promise<void> {
     ...(Number.isInteger(openingStock) && openingStock >= 0 ? { stockQty: openingStock } : {}),
   });
   if (!created) redirect("/seller/products/new?err=cls");
-  if (intent !== "draft") await submitForReview(created!.id);
+  if (intent !== "draft") {
+    await submitForReview(created!.id);
+    const { notify } = await import("@/lib/notify");
+    await notify("admin", "admin", {
+      kind: "LISTING_REVIEW",
+      title: "Listing to review",
+      body: `${DEMO_STORE} submitted "${created!.title}" for approval.`,
+      href: "/admin/catalogue#approvals",
+    });
+  }
   redirect(`/seller/products?submitted=${intent === "draft" ? "draft" : "review"}`);
 }
 
@@ -193,6 +202,15 @@ export async function submitCoaForBatch(formData: FormData): Promise<void> {
   const product = await findProduct(id);
   if (!product) redirect("/seller/products");
   const result = await submitCoa(id, batchCode);
+  if (result.ok) {
+    const { notify } = await import("@/lib/notify");
+    await notify("admin", "admin", {
+      kind: "COA_REVIEW",
+      title: "CoA to review",
+      body: `${DEMO_STORE} submitted batch ${batchCode} for "${product.title}". A human must approve it before sale.`,
+      href: "/admin/catalogue#coa-queue",
+    });
+  }
   redirect(result.ok ? `/seller/products/${id}?coa=submitted` : `/seller/products/${id}?err=${result.reason}`);
 }
 
@@ -592,6 +610,23 @@ export async function fulfilOrder(formData: FormData): Promise<void> {
   const result = await advanceOrder(reference, op, `seller:${DEMO_STORE}`);
   if (!result.ok) redirect(`/seller/orders?err=${result.reason}`);
   await writeAudit({ actor: DEMO_STORE, action: `ORDER_${op.toUpperCase()}`, target: reference, outcome: "OK" });
+  // Keep the buyer in the loop on the milestones they care about.
+  const { notify } = await import("@/lib/notify");
+  if (op === "ship") {
+    await notify("buyer", result.order.buyerEmail, {
+      kind: "ORDER_SHIPPED",
+      title: `Order ${reference} shipped`,
+      body: "Your order is on its way. Track it from your orders page.",
+      href: `/account/orders/live-${reference}`,
+    });
+  } else if (op === "deliver") {
+    await notify("buyer", result.order.buyerEmail, {
+      kind: "ORDER_DELIVERED",
+      title: `Order ${reference} delivered`,
+      body: "Delivered. You have 7 days to request a return if anything's wrong.",
+      href: `/account/orders/live-${reference}`,
+    });
+  }
   redirect(`/seller/orders?done=${op}#real-orders`);
 }
 
@@ -604,6 +639,13 @@ export async function sellerApproveReturn(formData: FormData): Promise<void> {
   const result = await approveReturn(reference, `seller:${DEMO_STORE}`);
   if (!result.ok) redirect(`/seller/orders?err=${result.reason}#real-orders`);
   await writeAudit({ actor: DEMO_STORE, action: "RETURN_APPROVE", target: reference, outcome: "OK" });
+  const { notify } = await import("@/lib/notify");
+  await notify("buyer", result.order.buyerEmail, {
+    kind: "RETURN_APPROVED",
+    title: `Return approved — ${reference}`,
+    body: "Your return is approved. Your refund is being processed to your original payment method.",
+    href: `/account/orders/live-${reference}`,
+  });
   redirect(`/seller/orders?done=return_approved#real-orders`);
 }
 
@@ -639,6 +681,13 @@ export async function submitWithdraw(formData: FormData): Promise<void> {
   const result = await requestWithdraw(DEMO_STORE, rupees * 100);
   if (!result.ok) redirect(`/seller/earnings?err=${result.reason}#withdraw`);
   await writeAudit({ actor: DEMO_STORE, action: "WITHDRAW_REQUEST", target: result.request.id, outcome: "OK", note: `₹${rupees} to ${result.request.destination}` });
+  const { notify } = await import("@/lib/notify");
+  await notify("admin", "admin", {
+    kind: "WITHDRAW_REQUEST",
+    title: `Withdrawal to approve — ₹${rupees.toLocaleString("en-IN")}`,
+    body: `${DEMO_STORE} requested a payout to ${result.request.destination}. Approve, then a second admin confirms.`,
+    href: "/admin/finance/withdrawals",
+  });
   redirect("/seller/earnings?requested=1#withdraw");
 }
 

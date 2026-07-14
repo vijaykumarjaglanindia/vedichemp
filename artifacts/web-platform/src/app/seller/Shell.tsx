@@ -9,9 +9,10 @@
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Package, Warehouse, ShoppingCart, Landmark,
-  Target, Megaphone, MessagesSquare, BarChart3, Sparkles, Store, Wallet,
+  Target, Megaphone, MessagesSquare, BarChart3, Sparkles, Store, Wallet, Bell,
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
+import { unreadCount } from "@/lib/notify";
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
 
@@ -54,12 +55,15 @@ const SELLER_NAV: NavGroup[] = [
     group: "Store",
     items: [
       { href: "/seller/store", label: "Store & KYC", icon: <Store {...I} /> },
+      { href: "/seller/notifications", label: "Notifications", icon: <Bell {...I} /> },
       { href: "/seller/help", label: "Help & guide", icon: <Sparkles {...I} /> },
     ],
   },
 ];
 
-export function Shell({
+const STORE = "Vedic Botanicals";
+
+export async function Shell({
   active, title, breadcrumb, actions, children,
 }: {
   active: string;
@@ -73,7 +77,8 @@ export function Shell({
       brand="🌿 Seller Central"
       nav={SELLER_NAV}
       active={active}
-      bellHref="/seller"
+      bellHref="/seller/notifications"
+      bellCount={await unreadCount("seller", STORE)}
       breadcrumb={breadcrumb}
       title={title}
       actions={actions}

@@ -24,7 +24,7 @@ function initials(brand: string): string {
 }
 
 export function ConsoleShell({
-  brand, nav, active, topbar, topbarExtra, bellHref, breadcrumb, title, actions, impersonation, children,
+  brand, nav, active, topbar, topbarExtra, bellHref, bellCount, breadcrumb, title, actions, impersonation, children,
 }: {
   brand: string;
   nav: NavGroup[];
@@ -35,6 +35,8 @@ export function ConsoleShell({
   topbarExtra?: ReactNode;
   /** Where the notification bell points; omit to hide the bell. */
   bellHref?: string;
+  /** Unread notification count — shows a number badge and only lights the dot when > 0. */
+  bellCount?: number;
   breadcrumb?: string[];
   title?: string;
   actions?: ReactNode;
@@ -91,9 +93,9 @@ export function ConsoleShell({
               <div className="vh-spacer" />
               {topbarExtra}
               {bellHref && (
-                <Link className="vh-iconbtn" href={bellHref} aria-label="Notifications">
+                <Link className="vh-iconbtn" href={bellHref} aria-label={bellCount ? `Notifications, ${bellCount} unread` : "Notifications"}>
                   <Bell size={17} aria-hidden />
-                  <span className="vh-dot" aria-hidden />
+                  {bellCount ? <span className="vh-notif-count" aria-hidden>{bellCount > 99 ? "99+" : bellCount}</span> : null}
                 </Link>
               )}
               <span className="vh-avatar" aria-hidden>{initials(brand)}</span>

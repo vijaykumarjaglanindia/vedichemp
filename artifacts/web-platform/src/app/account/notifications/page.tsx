@@ -11,8 +11,13 @@ import { Inbox, SlidersHorizontal } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, EmptyState } from "@/components/ui";
 import { NOTIFICATIONS, SUPPRESSION_MATRIX } from "../_lib/data";
+import { NotifFeed } from "@/components/NotifFeed";
+import { getSession } from "@/lib/auth-lite";
+import { notificationsFor } from "@/lib/notify";
+import { markNotif, markAllNotif } from "./actions";
 
 export const metadata: Metadata = { title: "Notifications" };
+export const dynamic = "force-dynamic";
 
 const FILTERS = [
   { key: "all", label: "All", categories: null },
@@ -35,9 +40,19 @@ export default async function NotificationsPage({
   );
   const unreadCount = NOTIFICATIONS.filter((n) => n.unread).length;
 
+  const email = (await getSession())?.email ?? "guest@vedichemp.in";
+  const liveItems = await notificationsFor("buyer", email);
+
   return (
     <Shell active="/account/notifications" breadcrumb={["My Account", "Notifications"]} title="Notifications">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
+        {/* Live feed — real events on this account (order, refund, return). The
+            static list below is the §0.9 illustration of categories + the
+            suppression contract, which are policy, not per-event. */}
+        {liveItems.length > 0 && (
+          <NotifFeed items={liveItems} markRead={markNotif} markAll={markAllNotif} />
+        )}
+
         {/* Filter toolbar */}
         <div className="vh-row-between" style={{ flexWrap: "wrap", gap: 8 }}>
           <nav className="vh-seg" aria-label="Filter notifications">

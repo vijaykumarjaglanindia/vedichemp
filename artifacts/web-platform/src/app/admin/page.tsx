@@ -18,6 +18,10 @@ import { Shell } from "./Shell";
 import { Card, Stat, StatusPill, MoneyText, EmptyState } from "@/components/ui";
 import { Sparkline, Columns } from "@/components/ui/charts";
 import { KPIS, COMPLIANCE_QUEUE, SETTLEMENTS, AUDIT } from "@/lib/sample";
+
+// The console chrome shows a live unread-notification badge (request-time
+// state), so the admin home must render per request, not at build time.
+export const dynamic = "force-dynamic";
 import {
   GMV_14D_PAISE, ORDERS_14D, AOV_14D_PAISE, LIVE_SELLERS_14D, DAY_LABELS_14, slaCountdown,
 } from "./_lib/data";

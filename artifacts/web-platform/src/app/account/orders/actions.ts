@@ -47,6 +47,23 @@ export async function requestReturn(formData: FormData): Promise<void> {
     const result = await storeRequestReturn(reference, email, reason);
     if (!result.ok) redirect(`/account/orders/live-${reference}?err=${result.reason}#return`);
     await writeAudit({ actor: email, action: "RETURN_REQUEST", target: reference, outcome: "OK", note: reason.slice(0, 80) });
+    // Raise the return with everyone who can act on it: each seller on the
+    // order, and the admin returns queue.
+    const { notify } = await import("@/lib/notify");
+    for (const seller of [...new Set(result.order.items.map((it) => it.seller))]) {
+      await notify("seller", seller, {
+        kind: "RETURN_REQUEST",
+        title: `Return requested — ${reference}`,
+        body: `A buyer wants to return an item: ${reason.slice(0, 120)}`,
+        href: "/seller/orders#real-orders",
+      });
+    }
+    await notify("admin", "admin", {
+      kind: "RETURN_REQUEST",
+      title: `Return to adjudicate — ${reference}`,
+      body: `Buyer requested a return: ${reason.slice(0, 120)}`,
+      href: "/admin/orders#returns",
+    });
     redirect(`/account/orders/live-${reference}?ret=ok#return`);
   }
 

@@ -303,6 +303,9 @@ export async function moderateListing(formData: FormData): Promise<void> {
   const note = String(formData.get("note") ?? "").trim();
   const who = await actor();
 
+  const { notify } = await import("@/lib/notify");
+  const listing = await storeFindProduct(id);
+
   if (decision === "approve") {
     const result = await storeApproveListing(id);
     if (!result.ok && result.reason === "coa") {
@@ -311,6 +314,14 @@ export async function moderateListing(formData: FormData): Promise<void> {
     }
     if (!result.ok) redirect(`/admin/catalogue?mod=state#approvals`);
     await writeAudit({ actor: who, action: "LISTING_APPROVE", target: id, outcome: "OK" });
+    if (listing) {
+      await notify("seller", listing.seller, {
+        kind: "LISTING_APPROVED",
+        title: "Listing approved — now live",
+        body: `"${listing.title}" passed review and is live on the marketplace.`,
+        href: `/seller/products/${id}`,
+      });
+    }
     redirect(`/admin/catalogue?mod=approved#approvals`);
   }
 
@@ -323,6 +334,14 @@ export async function moderateListing(formData: FormData): Promise<void> {
     const result = await storeRejectListing(id, note);
     if (!result.ok) redirect(`/admin/catalogue?mod=state#approvals`);
     await writeAudit({ actor: who, action: "LISTING_REJECT", target: id, outcome: "OK", note });
+    if (listing) {
+      await notify("seller", listing.seller, {
+        kind: "LISTING_REJECTED",
+        title: "Listing needs changes",
+        body: `"${listing.title}" was not approved: ${note.slice(0, 120)}`,
+        href: `/seller/products/${id}`,
+      });
+    }
     redirect(`/admin/catalogue?mod=rejected#approvals`);
   }
 
@@ -341,9 +360,19 @@ export async function takedownListing(formData: FormData): Promise<void> {
       await writeAudit({ actor: who, action: "LISTING_SUSPEND", target: id, outcome: "DENIED", note: "reason under 20 chars" });
       redirect(`/admin/catalogue?mod=note&id=${id}#live`);
     }
+    const listing = await storeFindProduct(id);
     const result = await storeSuspendListing(id, note);
     if (!result.ok) redirect(`/admin/catalogue?mod=state#live`);
     await writeAudit({ actor: who, action: "LISTING_SUSPEND", target: id, outcome: "OK", note });
+    if (listing) {
+      const { notify } = await import("@/lib/notify");
+      await notify("seller", listing.seller, {
+        kind: "LISTING_SUSPEND",
+        title: "Listing suspended",
+        body: `"${listing.title}" was taken down: ${note.slice(0, 120)}`,
+        href: `/seller/products/${id}`,
+      });
+    }
     redirect(`/admin/catalogue?mod=suspended#live`);
   }
 
@@ -377,9 +406,16 @@ export async function decideCoaReview(formData: FormData): Promise<void> {
     await writeAudit({ actor: who, action, target: id, outcome: "DENIED", note: "reviewer note under 20 chars" });
     redirect(`/admin/catalogue?coa=note&id=${id}#coa-queue`);
   }
+  const listing = await storeFindProduct(id);
   const result = await decideCoa(id, decision === "approve", note);
   if (!result.ok) redirect(`/admin/catalogue?coa=state#coa-queue`);
   await writeAudit({ actor: who, action, target: id, outcome: "OK", note });
+  if (listing) {
+    const { notify } = await import("@/lib/notify");
+    await notify("seller", listing.seller, decision === "approve"
+      ? { kind: "COA_APPROVED", title: "CoA approved", body: `Batch CoA for "${listing.title}" is approved — the batch is clear to sell.`, href: `/seller/products/${id}` }
+      : { kind: "COA_REJECT", title: "CoA rejected", body: `Batch CoA for "${listing.title}" was rejected: ${note.slice(0, 120)}`, href: `/seller/products/${id}` });
+  }
   redirect(`/admin/catalogue?coa=${decision === "approve" ? "approved" : "rejected"}#coa-queue`);
 }
 
@@ -741,6 +777,13 @@ export async function adminRefundBuyer(formData: FormData): Promise<void> {
   const result = await ordRefundBuyer(reference, who);
   if (!result.ok) redirect(`/admin/orders?err=${result.reason}#returns`);
   await writeAudit({ actor: who, action: "REFUND_BUYER", target: reference, outcome: "OK", note: "buyer refunded first; seller recovery opened" });
+  const { notify } = await import("@/lib/notify");
+  await notify("buyer", result.order.buyerEmail, {
+    kind: "REFUND",
+    title: `Refund issued — ${reference}`,
+    body: `₹${(result.order.refundedPaise / 100).toLocaleString("en-IN")} is on its way back to your original payment method.`,
+    href: `/account/orders/live-${reference}`,
+  });
   redirect("/admin/orders?refunded=1#returns");
 }
 
@@ -767,6 +810,13 @@ export async function adminRejectReturn(formData: FormData): Promise<void> {
     redirect(`/admin/orders?err=${result.reason}#returns`);
   }
   await writeAudit({ actor: who, action: "RETURN_REJECT", target: reference, outcome: "OK", note });
+  const { notify } = await import("@/lib/notify");
+  await notify("buyer", order.buyerEmail, {
+    kind: "RETURN_REJECT",
+    title: `Return not approved — ${reference}`,
+    body: `Your return request was declined: ${note.slice(0, 120)}`,
+    href: `/account/orders/live-${reference}`,
+  });
   redirect("/admin/orders?rejected=1#returns");
 }
 
@@ -817,6 +867,15 @@ export async function confirmWithdrawal(formData: FormData): Promise<void> {
     redirect(`/admin/finance/withdrawals?err=${result.reason}`);
   }
   await writeAudit({ actor: who, action: "WITHDRAW_PAY", target: id, outcome: "OK", note: `paid ₹${Math.round((w?.amountPaise ?? 0) / 100)} · checker ${who}` });
+  if (w) {
+    const { notify } = await import("@/lib/notify");
+    await notify("seller", w.seller, {
+      kind: "WITHDRAW_PAID",
+      title: `Payout sent — ₹${Math.round(w.amountPaise / 100).toLocaleString("en-IN")}`,
+      body: `Your withdrawal to ${w.destination} has been paid. It should reach you shortly.`,
+      href: "/seller/earnings#withdraw",
+    });
+  }
   redirect("/admin/finance/withdrawals?done=paid");
 }
 
@@ -824,11 +883,21 @@ export async function cancelWithdrawal(formData: FormData): Promise<void> {
   const id = String(formData.get("withdrawId") ?? "");
   const note = String(formData.get("note") ?? "").trim();
   const who = await actor();
+  const w = await ernFind(id);
   const result = await ernCancel(id, who, note);
   if (!result.ok) {
     await writeAudit({ actor: who, action: "WITHDRAW_CANCEL", target: id, outcome: "DENIED", note: result.reason === "note" ? "reason under 10 chars" : result.reason });
     redirect(`/admin/finance/withdrawals?err=${result.reason}`);
   }
   await writeAudit({ actor: who, action: "WITHDRAW_CANCEL", target: id, outcome: "OK", note });
+  if (w) {
+    const { notify } = await import("@/lib/notify");
+    await notify("seller", w.seller, {
+      kind: "WITHDRAW_CANCEL",
+      title: "Withdrawal cancelled",
+      body: `Your payout request of ₹${Math.round(w.amountPaise / 100).toLocaleString("en-IN")} was cancelled: ${note.slice(0, 100)}. The balance is back in your available earnings.`,
+      href: "/seller/earnings#withdraw",
+    });
+  }
   redirect("/admin/finance/withdrawals?done=cancelled");
 }

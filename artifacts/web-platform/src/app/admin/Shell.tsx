@@ -16,9 +16,10 @@
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, Store, Package, Receipt, Landmark, Megaphone,
-  ShieldCheck, Ban, FileText, Target, BarChart3, Settings, ScrollText,
+  ShieldCheck, Ban, FileText, Target, BarChart3, Settings, ScrollText, Bell,
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
+import { unreadCount } from "@/lib/notify";
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
 
@@ -66,12 +67,13 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/settings/commerce", label: "Commerce", icon: <Settings {...I} /> },
       { href: "/admin/features", label: "Features & tools", icon: <Settings {...I} /> },
       { href: "/admin/audit", label: "Audit trail", icon: <ScrollText {...I} /> },
+      { href: "/admin/notifications", label: "Notifications", icon: <Bell {...I} /> },
       { href: "/admin/settings", label: "Settings", icon: <Settings {...I} /> },
     ],
   },
 ];
 
-export function Shell({
+export async function Shell({
   active, title, breadcrumb, actions, children,
 }: {
   active: string;
@@ -85,7 +87,8 @@ export function Shell({
       brand="🛡️ Admin Console"
       nav={ADMIN_NAV}
       active={active}
-      bellHref="/admin"
+      bellHref="/admin/notifications"
+      bellCount={await unreadCount("admin", "admin")}
       breadcrumb={breadcrumb}
       title={title}
       actions={actions}

@@ -730,3 +730,14 @@ img, svg { max-width: 100%; }
 
 /* Grid gap slightly tighter for a denser board */
 .vh-shell .vh-grid { gap: 14px; }
+
+/* Notification count badge on the topbar bell */
+.vh-notif-count {
+  position: absolute; top: -5px; right: -5px; min-width: 17px; height: 17px;
+  padding: 0 4px; border-radius: 999px; background: var(--vh-danger); color: #fff;
+  font-size: 10px; font-weight: 800; line-height: 17px; text-align: center;
+  border: 2px solid var(--vh-surface);
+}
+.vh-notif-row { display: grid; grid-template-columns: 26px 1fr auto; gap: 12px; align-items: start; padding: 12px 14px; border-bottom: 1px solid var(--vh-line); }
+.vh-notif-row.unread { background: var(--vh-green-50); }
+.vh-notif-row:last-child { border-bottom: none; }
