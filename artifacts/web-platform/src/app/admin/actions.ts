@@ -779,3 +779,56 @@ export async function adminMarkRecovered(formData: FormData): Promise<void> {
   await writeAudit({ actor: who, action: "SELLER_RECOVERY", target: reference, outcome: "OK", note: "recovery settled" });
   redirect("/admin/orders?recovered=1#recovery");
 }
+
+/* ── Finance: vendor withdrawals (Dokan-style, A6 maker-checker) ── */
+
+import {
+  approveWithdraw as ernApprove,
+  cancelWithdraw as ernCancel,
+  confirmWithdraw as ernConfirm,
+  findWithdrawal as ernFind,
+} from "@/lib/earnings";
+
+/** Maker step: approve a pending withdrawal. Records this admin as the maker. */
+export async function approveWithdrawal(formData: FormData): Promise<void> {
+  const id = String(formData.get("withdrawId") ?? "");
+  const who = await actor();
+  const result = await ernApprove(id, who);
+  if (!result.ok) redirect(`/admin/finance/withdrawals?err=${result.reason}`);
+  await writeAudit({ actor: who, action: "WITHDRAW_APPROVE", target: id, outcome: "OK", note: "maker" });
+  redirect("/admin/finance/withdrawals?done=approved");
+}
+
+/**
+ * Checker step: confirm the payout. A6 — for a payout of ₹10,000 or more the
+ * checker must be a DIFFERENT admin from the maker; the store rejects a
+ * self-check and the denied attempt is logged.
+ */
+export async function confirmWithdrawal(formData: FormData): Promise<void> {
+  const id = String(formData.get("withdrawId") ?? "");
+  const who = await actor();
+  const w = await ernFind(id);
+  const result = await ernConfirm(id, who);
+  if (!result.ok) {
+    if (result.reason === "maker") {
+      await writeAudit({ actor: who, action: "WITHDRAW_PAY", target: id, outcome: "DENIED", note: "A6: maker cannot be checker on a payout ≥ ₹10,000" });
+      redirect("/admin/finance/withdrawals?err=maker");
+    }
+    redirect(`/admin/finance/withdrawals?err=${result.reason}`);
+  }
+  await writeAudit({ actor: who, action: "WITHDRAW_PAY", target: id, outcome: "OK", note: `paid ₹${Math.round((w?.amountPaise ?? 0) / 100)} · checker ${who}` });
+  redirect("/admin/finance/withdrawals?done=paid");
+}
+
+export async function cancelWithdrawal(formData: FormData): Promise<void> {
+  const id = String(formData.get("withdrawId") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  const who = await actor();
+  const result = await ernCancel(id, who, note);
+  if (!result.ok) {
+    await writeAudit({ actor: who, action: "WITHDRAW_CANCEL", target: id, outcome: "DENIED", note: result.reason === "note" ? "reason under 10 chars" : result.reason });
+    redirect(`/admin/finance/withdrawals?err=${result.reason}`);
+  }
+  await writeAudit({ actor: who, action: "WITHDRAW_CANCEL", target: id, outcome: "OK", note });
+  redirect("/admin/finance/withdrawals?done=cancelled");
+}

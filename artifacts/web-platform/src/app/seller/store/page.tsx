@@ -17,8 +17,8 @@ import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { SELLER, LICENCES, CAPABILITY_MATRIX, STORE_PREVIEW, daysUntil } from "../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
 import { groupIndian } from "@/lib/money";
-import { addLicence, requestOwnerTransfer, updateStorefront } from "../actions";
-import { readStoreCopy } from "@/lib/engage";
+import { addLicence, requestOwnerTransfer, saveStoreAvailability, updateStorefront } from "../actions";
+import { readStoreAvailability, readStoreCopy } from "@/lib/engage";
 import { cookies } from "next/headers";
 
 export const metadata: Metadata = { title: "Store & KYC" };
@@ -26,16 +26,46 @@ export const metadata: Metadata = { title: "Store & KYC" };
 export default async function StorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ transfer?: string; err?: string; licence?: string; copy?: string }>;
+  searchParams: Promise<{ transfer?: string; err?: string; licence?: string; copy?: string; avail?: string }>;
 }) {
-  const { transfer, err, licence } = await searchParams;
+  const { transfer, err, licence, avail } = await searchParams;
   const copyParam = (await searchParams).copy;
   const storeCopy = await readStoreCopy();
+  const availability = await readStoreAvailability();
   const jar = await cookies();
   let submittedLicences: { type: string; number: string; validTo: string; status: string }[] = [];
   try { submittedLicences = JSON.parse(jar.get("vh-sell-lic")?.value ?? "[]") as typeof submittedLicences; } catch { submittedLicences = []; }
   return (
     <Shell active="/seller/store" breadcrumb={["Seller Central", "Store & KYC"]} title="Store & KYC">
+      {avail === "saved" && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="ok" title="Store availability updated">Your storefront reflects it right away.</Banner></div>}
+      {err === "vacclaims" && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="danger" title="Message rejected">Your away message can&rsquo;t contain claims language (cure/treat/prevent).</Banner></div>}
+
+      {/* Vacation mode (Dokan-style store open/close) */}
+      <div id="availability" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
+        <Card
+          title="Store availability (vacation mode)"
+          action={<StatusPill tone={availability?.onVacation ? "warn" : "ok"}>{availability?.onVacation ? "On vacation — store closed" : "Open for orders"}</StatusPill>}
+        >
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Turn on vacation mode when you can&rsquo;t fulfil orders. Buyers see an away notice on your storefront.
+            Your listings stay visible for browsing; turn it back off to resume selling.
+          </p>
+          <form action={saveStoreAvailability} className="vh-grid" style={{ gap: 12, maxWidth: 560 }}>
+            <label className="vh-row small" style={{ gap: 8 }}>
+              <input type="checkbox" name="onVacation" value="1" defaultChecked={availability?.onVacation ?? false} />
+              Turn on vacation mode (temporarily close my store)
+            </label>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="vac-msg">Away message</label>
+              <input className="vh-input" id="vac-msg" name="vacationMessage" maxLength={160}
+                defaultValue={availability?.message ?? ""} placeholder="We're on a short break — back soon. Thanks for your patience!" />
+              <span className="vh-help">Shown to buyers on your storefront. No health claims.</span>
+            </div>
+            <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Save availability</button>
+          </form>
+        </Card>
+      </div>
+
       <div className="vh-grid cols-2" style={{ alignItems: "start", marginBottom: "var(--sp-4)" }}>
         {/* Storefront preview */}
         <Card

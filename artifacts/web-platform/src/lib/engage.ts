@@ -189,6 +189,23 @@ export async function writeStoreCopy(copy: StoreCopy): Promise<void> {
   gStore.__vhStoreCopy = copy;
 }
 
+/* ── Store availability (Dokan-style vacation mode) ───────── */
+
+export interface StoreAvailability {
+  onVacation: boolean;
+  message: string;
+}
+
+const gAvail = globalThis as unknown as { __vhStoreAvailability?: StoreAvailability | null };
+
+export async function readStoreAvailability(): Promise<StoreAvailability | null> {
+  return gAvail.__vhStoreAvailability ?? null;
+}
+
+export async function writeStoreAvailability(a: StoreAvailability): Promise<void> {
+  gAvail.__vhStoreAvailability = a;
+}
+
 /* ── Seller Central demo state ────────────────────────────── */
 
 /** Status overrides for sample orders: { [orderId]: "ACCEPTED" | "PACKED" } */

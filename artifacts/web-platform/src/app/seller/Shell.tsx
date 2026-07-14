@@ -9,7 +9,7 @@
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Package, Warehouse, ShoppingCart, Landmark,
-  Target, Megaphone, MessagesSquare, BarChart3, Sparkles, Store,
+  Target, Megaphone, MessagesSquare, BarChart3, Sparkles, Store, Wallet,
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
 
@@ -31,6 +31,7 @@ const SELLER_NAV: NavGroup[] = [
     group: "Sell",
     items: [
       { href: "/seller/orders", label: "Orders", icon: <ShoppingCart {...I} /> },
+      { href: "/seller/earnings", label: "Earnings & Withdraw", icon: <Wallet {...I} /> },
       { href: "/seller/finance", label: "Finance", icon: <Landmark {...I} /> },
     ],
   },

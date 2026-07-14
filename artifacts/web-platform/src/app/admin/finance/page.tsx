@@ -62,7 +62,12 @@ export default async function AdminFinancePage({
 }) {
   const { close } = await searchParams;
   return (
-    <Shell active="/admin/finance" breadcrumb={["Admin", "Finance"]} title="Finance">
+    <Shell
+      active="/admin/finance"
+      breadcrumb={["Admin", "Finance"]}
+      title="Finance"
+      actions={<Link href="/admin/finance/withdrawals" className="vh-btn vh-btn-sm vh-btn-primary">Vendor payouts &amp; withdrawals</Link>}
+    >
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
         <Card title={<span className="vh-row" style={{ gap: 8 }}><Landmark {...I} aria-hidden /> Marketplace revenue</span>}>
           <div className="vh-grid cols-4">

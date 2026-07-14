@@ -620,3 +620,36 @@ export async function saveStock(formData: FormData): Promise<void> {
   if (Number.isInteger(lowAt) && lowAt >= 0) await setLowStockAt(id, lowAt);
   redirect("/seller/inventory?saved=1");
 }
+
+/* ── Earnings & Withdrawals (Dokan-style money flow) ──────── */
+
+export async function saveWithdrawAccount(formData: FormData): Promise<void> {
+  const method = String(formData.get("method") ?? "");
+  const raw = String(formData.get("destination") ?? "");
+  const { savePayoutAccount } = await import("@/lib/earnings");
+  if (method !== "BANK" && method !== "UPI") redirect("/seller/earnings?err=method#account");
+  const ok = await savePayoutAccount(DEMO_STORE, method, raw);
+  redirect(ok ? "/seller/earnings?saved=account#account" : "/seller/earnings?err=destination#account");
+}
+
+export async function submitWithdraw(formData: FormData): Promise<void> {
+  const rupees = parseInt(String(formData.get("amount") ?? ""), 10);
+  const { requestWithdraw } = await import("@/lib/earnings");
+  if (!Number.isInteger(rupees) || rupees <= 0) redirect("/seller/earnings?err=amount#withdraw");
+  const result = await requestWithdraw(DEMO_STORE, rupees * 100);
+  if (!result.ok) redirect(`/seller/earnings?err=${result.reason}#withdraw`);
+  await writeAudit({ actor: DEMO_STORE, action: "WITHDRAW_REQUEST", target: result.request.id, outcome: "OK", note: `₹${rupees} to ${result.request.destination}` });
+  redirect("/seller/earnings?requested=1#withdraw");
+}
+
+/* ── Store availability (Dokan-style vacation mode) ───────── */
+
+export async function saveStoreAvailability(formData: FormData): Promise<void> {
+  const onVacation = String(formData.get("onVacation") ?? "") === "1";
+  const message = String(formData.get("vacationMessage") ?? "").trim().slice(0, 160);
+  const { CLAIMS_LANGUAGE } = await import("@/lib/claims");
+  if (message && CLAIMS_LANGUAGE.test(message)) redirect("/seller/store?err=vacclaims#availability");
+  const { writeStoreAvailability } = await import("@/lib/engage");
+  await writeStoreAvailability({ onVacation, message: message || "We're on a short break — back soon. Thanks for your patience!" });
+  redirect("/seller/store?avail=saved#availability");
+}

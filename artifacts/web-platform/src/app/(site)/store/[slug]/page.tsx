@@ -15,7 +15,7 @@ import { BadgeCheck, MapPin, ShieldCheck, UserCheck, UserPlus } from "lucide-rea
 import { Card, EmptyState, Rating, SectionHead } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
 import { mdToHtml } from "@/lib/richtext";
-import { readFollows, readStoreCopy } from "@/lib/engage";
+import { readFollows, readStoreAvailability, readStoreCopy } from "@/lib/engage";
 import { breadcrumbJsonLd } from "@/lib/seo";
 import { toggleFollowStore } from "../../actions";
 import { ProductCard } from "../../_lib/ProductCard";
@@ -60,6 +60,7 @@ export default async function StorePage({ params }: { params: Promise<Params> })
   const storeCopy = slug === "vedic-botanicals" ? await readStoreCopy() : null;
   const tagline = storeCopy?.tagline ?? profile.tagline;
   const story = storeCopy?.story ?? profile.story;
+  const availability = slug === "vedic-botanicals" ? await readStoreAvailability() : null;
 
   const crumbs = [
     { name: "Home", href: "/" },
@@ -70,6 +71,17 @@ export default async function StorePage({ params }: { params: Promise<Params> })
   return (
     <>
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(crumbs)) }} />
+
+      {/* Vacation notice (Dokan-style store open/close) */}
+      {availability?.onVacation && (
+        <div role="status" style={{ background: "color-mix(in srgb, var(--vh-warn-bg) 60%, var(--vh-surface))", borderBottom: "1px solid var(--vh-warn)" }}>
+          <div className="vh-container" style={{ padding: "10px 0", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <span aria-hidden>🏖️</span>
+            <strong style={{ color: "var(--vh-ink)" }}>This store is on vacation.</strong>
+            <span className="small" style={{ color: "var(--vh-body)" }}>{availability.message}</span>
+          </div>
+        </div>
+      )}
 
       {/* ── Store banner ─────────────────────────────────── */}
       <section
