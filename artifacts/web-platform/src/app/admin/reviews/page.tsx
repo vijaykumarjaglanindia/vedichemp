@@ -10,13 +10,15 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { Star, ShieldCheck } from "lucide-react";
+import { Star, ShieldCheck, MessageCircleQuestion, EyeOff } from "lucide-react";
+import Link2 from "next/link";
 import { Shell } from "../Shell";
 import { Banner, Card, StatusPill, EmptyState } from "@/components/ui";
 import { pendingQueue } from "@/lib/reviews";
-import { moderateReviewAction } from "../actions";
+import { recentQuestions } from "@/lib/qa";
+import { moderateReviewAction, hideQuestionAction } from "../actions";
 
-export const metadata: Metadata = { title: "Reviews · Admin" };
+export const metadata: Metadata = { title: "Reviews & Q&A · Admin" };
 export const dynamic = "force-dynamic";
 
 const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {
@@ -24,7 +26,8 @@ const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> 
   reject: { sev: "ok", text: "Review rejected — it stays hidden and the reason is recorded." },
   note: { sev: "danger", text: "A rejection needs a short reason (at least 12 characters)." },
   state: { sev: "warn", text: "That review was already moderated." },
-  missing: { sev: "warn", text: "That review no longer exists." },
+  missing: { sev: "warn", text: "That item no longer exists." },
+  qhidden: { sev: "ok", text: "Question hidden — it no longer shows on the product page. The action is logged." },
 };
 
 function Stars({ n }: { n: number }) {
@@ -35,14 +38,15 @@ function Stars({ n }: { n: number }) {
   );
 }
 
-export default async function AdminReviewsPage({ searchParams }: { searchParams: Promise<{ done?: string; err?: string }> }) {
-  const { done, err } = await searchParams;
+export default async function AdminReviewsPage({ searchParams }: { searchParams: Promise<{ done?: string; err?: string; qhidden?: string }> }) {
+  const { done, err, qhidden } = await searchParams;
   const queue = await pendingQueue();
-  const msg = (done && MESSAGES[done]) || (err && MESSAGES[err]) || undefined;
+  const questions = await recentQuestions(20);
+  const msg = (done && MESSAGES[done]) || (qhidden && MESSAGES.qhidden) || (err && MESSAGES[err]) || undefined;
 
   return (
-    <Shell active="/admin/reviews" breadcrumb={["Admin", "Trust", "Reviews"]} title="Review moderation"
-      actions={<StatusPill tone={queue.length ? "warn" : "ok"}>{queue.length} waiting</StatusPill>}
+    <Shell active="/admin/reviews" breadcrumb={["Admin", "Trust", "Reviews & Q&A"]} title="Reviews & Q&A"
+      actions={<StatusPill tone={queue.length ? "warn" : "ok"}>{queue.length} reviews waiting</StatusPill>}
     >
       {msg && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity={msg.sev}>{msg.text}</Banner></div>}
 
@@ -88,6 +92,34 @@ export default async function AdminReviewsPage({ searchParams }: { searchParams:
           </div>
         )}
       </Card>
+
+      {/* ── Product questions moderation ─────────────────────── */}
+      <div id="questions" style={{ marginTop: "var(--sp-4)", scrollMarginTop: 90 }}>
+        <Card
+          title={<span className="vh-row" style={{ gap: 8 }}><MessageCircleQuestion size={16} strokeWidth={2.2} aria-hidden /> Product questions</span>}
+          action={<span className="small muted">Questions are public on ask (copy-checked); hide abuse here</span>}
+          pad0
+        >
+          {questions.length === 0 ? (
+            <div style={{ padding: 12 }}><EmptyState icon="💬" headline="No questions yet" sub="Shopper questions across the marketplace appear here for moderation." /></div>
+          ) : (
+            <div>
+              {questions.map((q) => (
+                <div key={q.id} className="vh-row-between" style={{ gap: 12, flexWrap: "wrap", borderTop: "1px solid var(--vh-line)", padding: "12px 16px" }}>
+                  <span style={{ minWidth: 0 }}>
+                    <div style={{ fontWeight: 600 }}>&ldquo;{q.body}&rdquo;</div>
+                    <div className="small muted">{q.asker} · <Link2 href={`/products/${q.productSlug}`} style={{ fontWeight: 700 }}>{q.productSlug}</Link2> · {q.createdAt} · {q.answer ? "answered" : "unanswered"}</div>
+                  </span>
+                  <form action={hideQuestionAction}>
+                    <input type="hidden" name="questionId" value={q.id} />
+                    <button className="vh-btn vh-btn-sm vh-btn-danger vh-row" style={{ gap: 6 }} type="submit"><EyeOff size={13} aria-hidden /> Hide</button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
     </Shell>
   );
 }

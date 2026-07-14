@@ -13,25 +13,42 @@ import { Banner, Card, StatusPill, toneForStatus, Stat, Rating } from "@/compone
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { mdToHtml } from "@/lib/richtext";
 import { readSellerReplies } from "@/lib/engage";
+import { sellerListings } from "@/lib/catalog";
+import { getSession } from "@/lib/auth-lite";
+import { questionsForSlugs } from "@/lib/qa";
 import { QUESTIONS, REVIEWS, MESSAGES, RESPONSE_STATS } from "../_lib/data";
-import { replyToQuestion, respondToReview } from "../actions";
+import { answerProductQuestion, replyToQuestion, respondToReview } from "../actions";
 
 export const metadata: Metadata = { title: "Customers" };
+export const dynamic = "force-dynamic";
 
 const REPLY_ERRORS: Record<string, string> = {
   short: "Replies need 10–600 characters.",
   claims: "The copy-check blocked that reply — claims language (cure/treat/prevent/heal) can't be published. It was not sent.",
 };
 
+const STORE = "Vedic Botanicals";
+
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ replied?: string; err?: string }>;
+  searchParams: Promise<{ replied?: string; err?: string; answered?: string; qerr?: string }>;
 }) {
-  const { replied, err } = await searchParams;
+  const { replied, err, answered, qerr } = await searchParams;
   const myReplies = await readSellerReplies();
+  const session = await getSession();
+  const slugs = (await sellerListings(session?.email ?? "seller@example.in", STORE)).map((p) => p.slug);
+  const liveUnanswered = await questionsForSlugs(slugs, { answered: false });
+  const liveAnswered = await questionsForSlugs(slugs, { answered: true });
   return (
     <Shell active="/seller/customers" breadcrumb={["Seller Central", "Customers"]} title="Customers">
+      {answered && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="ok" title="Answer posted">Your answer is live on the product page for every shopper to see.</Banner>
+        </div>
+      )}
+      {qerr === "claims" && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="danger" title="Answer blocked">Answers can't carry medical claims (cure / treat / prevent). It was not published.</Banner></div>}
+      {qerr === "short" && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="danger" title="Answer too short">Write between 5 and 500 characters.</Banner></div>}
       {replied && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="ok" title="Reply queued">
@@ -39,6 +56,44 @@ export default async function CustomersPage({
           </Banner>
         </div>
       )}
+
+      {/* ── Live product questions (real Q&A store) ─────────── */}
+      <div id="product-questions" style={{ marginBottom: "var(--sp-4)", scrollMarginTop: 90 }}>
+        <Card
+          title={<span className="vh-row" style={{ gap: 8 }}><MessageCircleQuestion size={16} strokeWidth={2.2} aria-hidden /> Product questions</span>}
+          action={<StatusPill tone={liveUnanswered.length ? "warn" : "ok"}>{liveUnanswered.length} to answer</StatusPill>}
+          pad0
+        >
+          {liveUnanswered.length === 0 && liveAnswered.length === 0 ? (
+            <div style={{ padding: 12 }}><span className="vh-empty">No product questions yet. Shoppers can ask from any of your product pages.</span></div>
+          ) : (
+            <div>
+              {liveUnanswered.map((q) => (
+                <div key={q.id} style={{ borderTop: "1px solid var(--vh-line)", padding: "12px 16px" }}>
+                  <div className="vh-row-between" style={{ gap: 8, flexWrap: "wrap" }}>
+                    <span className="small muted">{q.asker} · {q.productSlug} · {q.createdAt}</span>
+                    <StatusPill tone="warn">Awaiting answer</StatusPill>
+                  </div>
+                  <div style={{ fontWeight: 600, margin: "4px 0 8px" }}>&ldquo;{q.body}&rdquo;</div>
+                  <form action={answerProductQuestion} className="vh-row" style={{ gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+                    <input type="hidden" name="questionId" value={q.id} />
+                    <input className="vh-input" name="answer" placeholder="Answer factually — composition, format, batch. No medical claims." style={{ flex: "1 1 340px" }} aria-label={`Answer ${q.asker}`} />
+                    <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">Post answer</button>
+                  </form>
+                </div>
+              ))}
+              {liveAnswered.map((q) => (
+                <div key={q.id} style={{ borderTop: "1px solid var(--vh-line)", padding: "12px 16px" }}>
+                  <div className="small muted">{q.asker} · {q.productSlug}</div>
+                  <div style={{ fontWeight: 600, margin: "2px 0 4px" }}>&ldquo;{q.body}&rdquo;</div>
+                  <div className="small muted"><span style={{ fontWeight: 700, color: "var(--vh-ink)" }}>Answered:</span> {q.answer}</div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
+
       {err && REPLY_ERRORS[err] && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="danger" title="Reply not sent">{REPLY_ERRORS[err]}</Banner>

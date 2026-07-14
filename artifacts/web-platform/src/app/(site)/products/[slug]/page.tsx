@@ -36,6 +36,7 @@ import { findLiveBySlug, hasVariants, saleActive, selectVariant } from "@/lib/ca
 import { SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
 import { aggregate, approvedFor } from "@/lib/reviews";
+import { questionsFor } from "@/lib/qa";
 import { addBundleToCart, addToCart } from "../../cart/actions";
 import { askQuestion, markReviewHelpful, submitReview, toggleWishlist } from "../../actions";
 import { readMyQuestions, readMyReviews, readOrderHistory } from "@/lib/engage";
@@ -136,6 +137,7 @@ export default async function ProductDetailPage({
   // when a product has no reviews yet.
   const agg = await aggregate(product.id);
   const reviews = await approvedFor(product.id);
+  const questions = await questionsFor(product.id);
   const reviewCount = agg.count > 0 ? agg.count : reviewCountFor(product);
   const ratingValue = agg.count > 0 ? agg.avg : product.rating;
   // Variant selection: the chosen option drives the price, stock and the
@@ -417,9 +419,29 @@ export default async function ProductDetailPage({
 
           {/* Q&A */}
           <section id="qa" style={{ scrollMarginTop: 90 }}>
-            <Card title="Questions & answers">
+            <Card title="Questions & answers" action={<span className="small muted">{questions.length} question{questions.length === 1 ? "" : "s"}</span>}>
               <div style={{ display: "flex", flexDirection: "column", gap: "var(--sp-2)" }}>
-                {PDP_QA.map((f) => (
+                {questions.length > 0 ? (
+                  questions.map((qn) => (
+                    <div key={qn.id} style={{ border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "12px 16px" }}>
+                      <div className="small" style={{ fontWeight: 700, color: "var(--vh-ink)" }}>
+                        <span aria-hidden style={{ color: "var(--vh-accent)" }}>Q. </span>{qn.body}
+                      </div>
+                      {qn.answer ? (
+                        <div className="small muted" style={{ marginTop: 8 }}>
+                          <span aria-hidden style={{ fontWeight: 700, color: "var(--vh-ink)" }}>A. </span>{qn.answer}
+                          <div className="small muted" style={{ marginTop: 4 }}>— {qn.answeredBy}{qn.helpful > 0 ? ` · ${qn.helpful} found helpful` : ""}</div>
+                        </div>
+                      ) : (
+                        <div className="small muted" style={{ marginTop: 8 }}><span className="vh-pill vh-pill-warn">Awaiting seller answer</span></div>
+                      )}
+                    </div>
+                  ))
+                ) : (
+                  <p className="small muted" style={{ margin: 0 }}>No questions yet — ask the seller anything about this product below.</p>
+                )}
+                {/* A few common questions, always shown for context */}
+                {PDP_QA.slice(0, 2).map((f) => (
                   <details key={f.q} style={{ border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "12px 16px" }}>
                     <summary className="small" style={{ cursor: "pointer", fontWeight: 700, color: "var(--vh-ink)" }}>{f.q}</summary>
                     <p className="small muted" style={{ marginTop: 8, marginBottom: 0 }}>{f.a}</p>
@@ -443,6 +465,9 @@ export default async function ProductDetailPage({
                     <input type="hidden" name="productId" value={product.id} />
                     {qErr === "short" && (
                       <p className="small" role="alert" style={{ color: "var(--vh-danger)", margin: 0 }}>Questions need 10–300 characters.</p>
+                    )}
+                    {qErr === "claims" && (
+                      <p className="small" role="alert" style={{ color: "var(--vh-danger)", margin: 0 }}>Questions can&apos;t carry disease claims (cure/treat/prevent) — ask about the product itself.</p>
                     )}
                     <div className="vh-field">
                       <label className="vh-label" htmlFor="qa-text">Ask the seller a question</label>

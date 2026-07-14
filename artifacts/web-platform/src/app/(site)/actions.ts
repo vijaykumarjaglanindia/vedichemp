@@ -164,10 +164,26 @@ export async function askQuestion(formData: FormData): Promise<void> {
   const product = (await readLiveProducts()).find((p) => p.id === id);
   if (!product) redirect("/catalogue");
   if (text.length < 10 || text.length > 300) redirect(`/products/${product!.slug}?q=short#qa`);
+  // Questions are public copy — the same claims check applies (fail closed).
+  if (CLAIM_WORDS.test(text)) redirect(`/products/${product!.slug}?q=claims#qa`);
 
+  // Real Q&A store: the question is public immediately; the owning seller answers.
+  const { askQuestion: storeAsk } = await import("@/lib/qa");
+  const session = await getSession();
+  await storeAsk({
+    productId: product!.id,
+    productSlug: product!.slug,
+    asker: session?.email ? session.email.split("@")[0]! : "Shopper",
+    body: text,
+  });
+
+  // Keep the buyer's own "your question" echo on the PDP.
   const map = await readMyQuestions();
   map[product!.slug] = text;
   await writeMyQuestions(map);
+
+  const { notify } = await import("@/lib/notify");
+  await notify("seller", product!.seller, { kind: "QA_NEW", title: "New product question", body: `“${text.slice(0, 80)}” on "${product!.title}"`, href: "/seller/customers#product-questions" });
   redirect(`/products/${product!.slug}#qa`);
 }
 

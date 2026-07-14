@@ -376,6 +376,24 @@ export async function respondToReview(formData: FormData): Promise<void> {
   redirect("/seller/customers?replied=1");
 }
 
+/** Seller answers a product question (copy-checked; only their own products). */
+export async function answerProductQuestion(formData: FormData): Promise<void> {
+  const questionId = String(formData.get("questionId") ?? "").slice(0, 20);
+  const answer = String(formData.get("answer") ?? "").trim();
+  const { findQuestion, answerQuestion } = await import("@/lib/qa");
+  const { findProduct } = await import("@/lib/catalog");
+  const q = findQuestion(questionId);
+  if (!q) redirect("/seller/customers#product-questions");
+  const product = await findProduct(q!.productId);
+  if (!product || product.seller !== DEMO_STORE) redirect("/seller/customers#product-questions");
+  if (answer.length < 5 || answer.length > 500) redirect("/seller/customers?qerr=short#product-questions");
+  if (CLAIM_WORDS.test(answer)) redirect("/seller/customers?qerr=claims#product-questions");
+  const result = await answerQuestion(questionId, answer, DEMO_STORE);
+  if (!result.ok) redirect("/seller/customers#product-questions");
+  await writeAudit({ actor: DEMO_STORE, action: "QA_ANSWER", target: questionId, outcome: "OK" });
+  redirect("/seller/customers?answered=1#product-questions");
+}
+
 /** Seller's public reply to an approved review on their product (copy-checked). */
 export async function replySellerReview(formData: FormData): Promise<void> {
   const reviewId = String(formData.get("reviewId") ?? "").slice(0, 20);

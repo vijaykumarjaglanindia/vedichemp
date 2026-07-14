@@ -266,6 +266,18 @@ export async function moderateReviewAction(formData: FormData): Promise<void> {
   redirect(`/admin/reviews?done=${decision}`);
 }
 
+/* ── Q&A: hide an abusive question (moderation) ───────────── */
+
+export async function hideQuestionAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("questionId") ?? "");
+  const who = await actor();
+  const { hideQuestion } = await import("@/lib/qa");
+  const result = await hideQuestion(id);
+  if (!result.ok) redirect(`/admin/reviews?err=${result.reason}`);
+  await writeAudit({ actor: who, action: "QA_HIDE", target: id, outcome: "OK" });
+  redirect("/admin/reviews?qhidden=1#questions");
+}
+
 /* ── CMS: featured (cover) image ──────────────────────────── */
 
 const CMS_IMG_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
