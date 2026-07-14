@@ -172,11 +172,19 @@ export async function savePost(formData: FormData): Promise<void> {
     redirect("/admin/cms?cms=deleted");
   }
 
+  // Optional rich fields (excerpt, category, author, tags, SEO).
+  const excerpt = String(formData.get("excerpt") ?? "").trim().slice(0, 220);
+  const category = String(formData.get("category") ?? "").trim().slice(0, 40);
+  const author = String(formData.get("author") ?? "").trim().slice(0, 60);
+  const tagsRaw = String(formData.get("tags") ?? "").trim();
+  const metaTitle = String(formData.get("metaTitle") ?? "").trim().slice(0, 70);
+  const metaDescription = String(formData.get("metaDescription") ?? "").trim().slice(0, 160);
+
   // Save/publish/unpublish all validate content the same way.
   let err: string | null = null;
   if (postTitle.length < 6 || postTitle.length > 90) err = "title";
   else if (body.length < 40 || body.length > MAX_BODY) err = "body";
-  else if (CMS_CLAIMS.test(postTitle) || CMS_CLAIMS.test(body)) err = "claims";
+  else if ([postTitle, body, excerpt, author, metaTitle, metaDescription].some((t) => t && CMS_CLAIMS.test(t))) err = "claims";
   if (err) redirect(editorUrl(existingSlug || slugify(postTitle) || "new", `cms=${err}`));
 
   const slug = existingSlug || slugify(postTitle);
@@ -215,10 +223,44 @@ export async function savePost(formData: FormData): Promise<void> {
     ...(publishAt ? { publishAt } : {}),
     updatedAt: new Date().toISOString().slice(0, 10),
     sample: SAMPLE_POSTS.some((p) => p.slug === slug),
+    ...(excerpt ? { excerpt } : {}),
+    ...(category ? { category } : {}),
+    ...(author ? { author } : {}),
+    ...(tagsRaw ? { tags: [...new Set(tagsRaw.split(",").map((t) => t.trim().toLowerCase()).filter(Boolean))].slice(0, 10) } : {}),
+    ...(metaTitle ? { metaTitle } : {}),
+    ...(metaDescription ? { metaDescription } : {}),
+    // Preserve a featured image already attached to this post.
+    ...(prior?.coverImage ? { coverImage: prior.coverImage } : {}),
   });
   if (result === "limit") redirect(editorUrl(slug, "cms=limit"));
   await writeAudit({ actor: await actor(), action: `CMS_${intent.toUpperCase()}`, target: slug, outcome: "OK" });
   redirect(editorUrl(slug, `cms=${publishAt ? "scheduled" : intent === "publish" ? "published" : intent === "unpublish" ? "unpublished" : "saved"}`));
+}
+
+/* ── CMS: featured (cover) image ──────────────────────────── */
+
+const CMS_IMG_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/svg+xml"];
+
+export async function uploadPostCover(formData: FormData): Promise<void> {
+  const slug = String(formData.get("slug") ?? "");
+  const file = formData.get("cover");
+  const editorUrl = (q: string) => `/admin/cms/editor?slug=${encodeURIComponent(slug)}&${q}`;
+  const { findPost, setPostCover } = await import("@/lib/cms");
+  if (!(await findPost(slug))) redirect("/admin/cms");
+  if (!(file instanceof File) || file.size === 0) redirect(editorUrl("cms=coverfile"));
+  if (file.size > 1_500_000) redirect(editorUrl("cms=coversize"));
+  if (!CMS_IMG_TYPES.includes(file.type)) redirect(editorUrl("cms=covertype"));
+  const buf = Buffer.from(await (file as File).arrayBuffer());
+  await setPostCover(slug, `data:${file.type};base64,${buf.toString("base64")}`);
+  await writeAudit({ actor: await actor(), action: "CMS_COVER_SET", target: slug, outcome: "OK" });
+  redirect(editorUrl("cms=cover"));
+}
+
+export async function removePostCover(formData: FormData): Promise<void> {
+  const slug = String(formData.get("slug") ?? "");
+  const { removePostCover: clear } = await import("@/lib/cms");
+  await clear(slug);
+  redirect(`/admin/cms/editor?slug=${encodeURIComponent(slug)}&cms=coverremoved`);
 }
 
 /* ── CMS: restore a revision ──────────────────────────────── */

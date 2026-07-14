@@ -25,7 +25,18 @@ export interface CmsPost {
   updatedAt: string;
   /** Sample posts are high-traffic: deleting them is maker–checker gated. */
   sample?: boolean;
+  /* ── Rich content (world-class CMS) ── all optional so samples still work */
+  excerpt?: string;         // short summary for the list + SEO fallback
+  coverImage?: string;      // featured image (data URL)
+  category?: string;        // one editorial category
+  tags?: string[];          // free-text tags (filterable)
+  author?: string;          // byline
+  metaTitle?: string;       // SEO <title> override
+  metaDescription?: string; // SEO meta description
 }
+
+/** Editorial post categories (WordPress-style taxonomy). */
+export const POST_CATEGORIES = ["Guides", "Lab & testing", "Recipes", "Licensing", "Wellness", "News"] as const;
 
 export const SAMPLE_POSTS: CmsPost[] = [
   {
@@ -34,6 +45,10 @@ export const SAMPLE_POSTS: CmsPost[] = [
     status: "PUBLISHED",
     updatedAt: "2026-07-01",
     sample: true,
+    category: "Lab & testing",
+    author: "Vedic Hemp Compliance",
+    tags: ["lab report", "coa", "safety"],
+    excerpt: "The three lines on a Certificate of Analysis that actually tell you whether a batch is safe to buy.",
     body:
       "Every regulated listing on Vedic Hemp links the lab report for its exact batch.\n\n" +
       "## The three lines that matter\n\n" +
@@ -48,6 +63,10 @@ export const SAMPLE_POSTS: CmsPost[] = [
     status: "PUBLISHED",
     updatedAt: "2026-06-24",
     sample: true,
+    category: "Recipes",
+    author: "Vedic Hemp Kitchen",
+    tags: ["hemp oil", "cooking", "nutrition"],
+    excerpt: "A finishing oil, not a frying oil — where cold-pressed hemp seed oil shines, and where it doesn't.",
     body:
       "Cold-pressed hemp seed oil is a finishing oil, not a frying oil.\n\n" +
       "## Where it shines\n\n" +
@@ -61,6 +80,10 @@ export const SAMPLE_POSTS: CmsPost[] = [
     status: "PUBLISHED",
     updatedAt: "2026-06-10",
     sample: true,
+    category: "Licensing",
+    author: "Vedic Hemp Compliance",
+    tags: ["ayush", "licensing", "compliance"],
+    excerpt: "A licence is not a medical claim. What AYUSH manufacturing and marketing licences actually cover — and what they don't.",
     body:
       "Sellers of Ayurvedic and CBD wellness products on Vedic Hemp hold AYUSH manufacturing or marketing licences.\n\n" +
       "## What the licence covers\n\n" +
@@ -118,6 +141,34 @@ export async function findPost(slug: string): Promise<CmsPost | undefined> {
 
 export function slugify(title: string): string {
   return title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60);
+}
+
+/** The list/SEO summary: the author's excerpt, else the first line of the body. */
+export function postExcerpt(p: CmsPost, max = 160): string {
+  const base = (p.excerpt && p.excerpt.trim()) || p.body.replace(/[#*_>`-]/g, " ").replace(/\s+/g, " ").trim();
+  return base.length > max ? `${base.slice(0, max).trimEnd()}…` : base;
+}
+
+/** Every tag used across published posts (for the public tag filter). */
+export async function allPostTags(): Promise<string[]> {
+  const set = new Set<string>();
+  for (const p of await publishedPosts()) for (const t of p.tags ?? []) set.add(t);
+  return [...set].sort();
+}
+
+/** Merge a partial change into an existing post (cover, meta) and re-save. */
+export async function patchPost(slug: string, patch: Partial<CmsPost>): Promise<boolean> {
+  const post = await findPost(slug);
+  if (!post) return false;
+  await writePostOverride({ ...post, ...patch, slug: post.slug, updatedAt: new Date().toISOString().slice(0, 10) });
+  return true;
+}
+
+export async function setPostCover(slug: string, dataUrl: string): Promise<boolean> {
+  return patchPost(slug, { coverImage: dataUrl });
+}
+export async function removePostCover(slug: string): Promise<boolean> {
+  return patchPost(slug, { coverImage: undefined });
 }
 
 /** Escape-then-format markdown-lite — shared core in src/lib/richtext.ts. */
