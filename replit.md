@@ -31,7 +31,7 @@ A compliance-first hemp/cannabis commerce foundation: six prohibitions (A1–A6)
 - `artifacts/api-server/src/lib/prohibitions.ts` — application-level guard functions (defense in depth on top of DB enforcement)
 - `artifacts/api-server/src/routes/prohibitions.ts` — `GET /api/prohibitions` reads the `prohibition_status` view
 - `artifacts/api-server/tests/`, `artifacts/api-server/scripts/fixture.ts` — ported vitest tests and fixture script (see Gotchas)
-- `artifacts/vedichemp/src/pages/prohibition-registry.tsx` — status page at `/`
+- `artifacts/web-platform/src/app/(site)/page.tsx` — marketplace homepage
 - `lib/api-spec/openapi.yaml` — API contract source of truth
 - `VEDICHEMP.md`, `CLAUDE.md`, `PUSH.md` — ported project docs describing the prohibition model
 
@@ -44,10 +44,7 @@ A compliance-first hemp/cannabis commerce foundation: six prohibitions (A1–A6)
 
 ## Product
 
-- Prohibition Registry page (`/`) showing live enforcement status of A1–A6 read from the `prohibition_status` view.
-- `GET /api/prohibitions` — enforcement status endpoint.
 - Marketplace (`artifacts/web-platform`, Next.js 15, preview path `/web-platform/`): full buyer/seller/admin marketplace built externally by the user via Claude (GitHub PR #1) and imported. Do NOT build features here — the user develops it with Claude; Replit only hosts/wires it. Routes live under `src/app` (`(site)` group: catalogue, products, sell, store, trust, about; plus `admin`, `seller`, `account`, `api`). Own Prisma schema identical to api-server's (same DB). Package name is `vedichemp` (not `@workspace/*`).
-- Mobile companion (`artifacts/vedichemp-mobile`, Expo, preview path `/vedichemp-mobile/`): single-screen Prohibition Registry mirroring the web app, using the shared `useGetProhibitionStatus` hook from `@workspace/api-client-react` (base URL wired from `EXPO_PUBLIC_DOMAIN` in `app/_layout.tsx`). Theme tokens synced from the web app into `constants/colors.ts`. iOS bundle id: `com.replit.vedichempmobile` (do not change).
 
 ## User preferences
 
