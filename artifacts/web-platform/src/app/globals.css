@@ -636,3 +636,97 @@ img, svg { max-width: 100%; }
 .vh-rte ul { margin: 0 0 10px; padding-left: 22px; }
 .vh-prose ul { margin: 0 0 14px; padding-left: 22px; color: var(--vh-body); }
 .vh-prose em { color: var(--vh-body); }
+
+/* ════════════════════════════════════════════════════════════════
+   ENTERPRISE CONSOLE LAYER  (scoped to .vh-shell only)
+
+   The buyer, seller and admin dashboards adopt a dense, neutral,
+   Google/Facebook-console feel: smaller system-sans type, tighter
+   tables and cards, restrained chrome. The public marketing store
+   (outside .vh-shell) keeps its bolder display look — untouched.
+   ════════════════════════════════════════════════════════════════ */
+
+/* Content density: a 13.5px base for console body text */
+.vh-shell .vh-content { padding: 18px 26px 44px; }
+.vh-shell .vh-content,
+.vh-shell .vh-card,
+.vh-shell p,
+.vh-shell li,
+.vh-shell label,
+.vh-shell td,
+.vh-shell .vh-body { font-size: 13.5px; line-height: 1.5; }
+.vh-shell .small { font-size: 12px; }
+.vh-shell .vh-help { font-size: 11.5px; }
+
+/* Page title — enterprise, not marketing: system sans, compact, tight */
+.vh-shell .vh-page-head { margin-bottom: 18px; }
+.vh-shell .vh-page-head h1 {
+  font-family: var(--vh-font);
+  font-size: 1.3rem;
+  font-weight: 640;
+  letter-spacing: -0.008em;
+  line-height: 1.25;
+}
+.vh-shell .vh-breadcrumb { font-size: 12px; margin-bottom: 5px; letter-spacing: 0; }
+
+/* Card titles — sans, small, medium weight (no display serif) */
+.vh-shell .vh-card > h3:first-child,
+.vh-shell .vh-card header h3,
+.vh-shell .vh-card > header .vh-row,
+.vh-shell .vh-section-head h2 {
+  font-family: var(--vh-font);
+  font-weight: 660;
+  letter-spacing: -0.004em;
+}
+.vh-shell .vh-card > h3:first-child,
+.vh-shell .vh-card header h3 { font-size: 0.92rem; }
+.vh-shell .vh-section-head { margin-bottom: var(--sp-4); }
+.vh-shell .vh-section-head h2 { font-size: 1.12rem; }
+
+/* Cards — flatter, tighter radius, restrained border; no marketing lift */
+.vh-shell .vh-card {
+  border-radius: var(--vh-radius-sm);
+  padding: 15px 16px;
+  box-shadow: var(--vh-shadow-sm);
+  border-color: var(--vh-line);
+}
+.vh-shell .vh-card:hover { box-shadow: var(--vh-shadow-sm); border-color: var(--vh-line-strong); }
+
+/* Tables — denser rows, smaller type, neutral header */
+.vh-shell .vh-table { font-size: 13px; }
+.vh-shell .vh-table thead th {
+  font-size: 10.5px; letter-spacing: .05em; padding: 9px 12px;
+  color: var(--vh-muted); font-weight: 700;
+}
+.vh-shell .vh-table tbody td { padding: 9px 12px; }
+.vh-shell .vh-table tbody tr:hover { background: var(--vh-bg-subtle); }
+
+/* Stat tiles — compact numerics */
+.vh-shell .vh-stat-value { font-size: 1.4rem; font-weight: 640; }
+.vh-shell .vh-stat-label { font-size: 10.5px; letter-spacing: .06em; }
+
+/* Nav rail — brand in sans, denser links */
+.vh-shell .vh-rail-brand { font-family: var(--vh-font); font-size: 0.95rem; letter-spacing: -0.006em; }
+.vh-shell .vh-rail a { font-size: 13px; padding: 7px 11px; }
+.vh-shell .vh-rail-group { font-size: 10px; letter-spacing: .09em; padding: 13px 11px 4px; }
+
+/* Topbar — trimmer */
+.vh-shell .vh-topbar { min-height: 50px; padding: 8px 22px; }
+.vh-shell .vh-search { font-size: 13px; padding: 6px 13px; max-width: 400px; }
+.vh-shell .vh-avatar { width: 30px; height: 30px; font-size: 0.72rem; }
+.vh-shell .vh-iconbtn { width: 34px; height: 34px; }
+
+/* Buttons in console — a touch smaller, squarer */
+.vh-shell .vh-btn { font-size: 0.82rem; padding: 8px 13px; border-radius: 7px; }
+.vh-shell .vh-btn-sm { font-size: 0.78rem; padding: 6px 10px; }
+
+/* Banners + pills — tighter in the dense console context */
+.vh-shell .vh-banner { font-size: 12.75px; padding: 11px 13px; line-height: 1.45; }
+.vh-shell .vh-pill { font-size: 0.7rem; }
+
+/* Field labels — the enterprise micro-label */
+.vh-shell .vh-label { font-size: 12px; font-weight: 600; letter-spacing: 0; }
+.vh-shell .vh-input, .vh-shell .vh-select, .vh-shell .vh-textarea { font-size: 13px; }
+
+/* Grid gap slightly tighter for a denser board */
+.vh-shell .vh-grid { gap: 14px; }
