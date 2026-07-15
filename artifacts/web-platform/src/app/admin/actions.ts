@@ -266,6 +266,31 @@ export async function moderateReviewAction(formData: FormData): Promise<void> {
   redirect(`/admin/reviews?done=${decision}`);
 }
 
+/* ── Shipping & delivery (zone rates) ─────────────────────── */
+
+export async function saveShipping(formData: FormData): Promise<void> {
+  const who = await actor();
+  const { readShipping, writeShipping } = await import("@/lib/shipping");
+  const cfg = await readShipping();
+  const rates: Record<string, { basePaise: number; perKgPaise: number }> = {};
+  for (const z of cfg.zones) {
+    const base = parseInt(String(formData.get(`base_${z.id}`) ?? ""), 10);
+    const perKg = parseInt(String(formData.get(`perkg_${z.id}`) ?? ""), 10);
+    if (Number.isInteger(base) && base >= 0 && Number.isInteger(perKg) && perKg >= 0) {
+      rates[z.id] = { basePaise: base * 100, perKgPaise: perKg * 100 };
+    }
+  }
+  const freeAt = parseInt(String(formData.get("freeAt") ?? ""), 10);
+  const defWeight = parseInt(String(formData.get("defaultWeight") ?? ""), 10);
+  await writeShipping({
+    rates,
+    ...(Number.isInteger(freeAt) && freeAt >= 0 ? { freeAtPaise: freeAt * 100 } : {}),
+    ...(Number.isInteger(defWeight) && defWeight > 0 ? { defaultWeightGrams: defWeight } : {}),
+  });
+  await writeAudit({ actor: who, action: "SHIPPING_RATES_SAVE", target: `${Object.keys(rates).length} zones`, outcome: "OK" });
+  redirect("/admin/shipping?saved=1");
+}
+
 /* ── Coupons & promotions (platform-wide) ─────────────────── */
 
 const COUPON_CLASSES = ["", "HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];

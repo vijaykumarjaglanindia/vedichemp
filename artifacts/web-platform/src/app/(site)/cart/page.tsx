@@ -160,14 +160,14 @@ export default async function CartPage({
           )}
 
           <div className="vh-row-between small" style={{ padding: "6px 0" }}>
-            <span className="muted">Shipping</span>
+            <span className="muted">Shipping{cart.shippingEstimated ? " (est.)" : ""}</span>
             {cart.shippingPaise === 0 ? <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Free</span> : <MoneyText paise={cart.shippingPaise} />}
           </div>
-          {cart.shippingPaise > 0 && (
-            <p className="small muted" style={{ margin: "2px 0 0" }}>
-              Free shipping on orders above <MoneyText paise={500000} />.
-            </p>
-          )}
+          <p className="small muted" style={{ margin: "2px 0 0" }}>
+            {cart.shippingFree
+              ? <>Free delivery · arrives in {cart.shippingEta} ({cart.shippingZone}).</>
+              : <>{cart.shippingZone} · arrives in {cart.shippingEta}. Free over <MoneyText paise={500000} />. Exact charge is set from your delivery state at checkout.</>}
+          </p>
           <hr className="vh-divider" />
           <div className="vh-row-between" style={{ marginBottom: 14 }}>
             <span style={{ fontWeight: 600 }}>Total</span>

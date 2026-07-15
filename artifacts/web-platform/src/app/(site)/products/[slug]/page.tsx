@@ -59,12 +59,14 @@ type Params = { slug: string };
  * courier API attached this becomes a serviceability lookup. Regulated
  * classes have a narrower lane network than plain hemp foods.
  */
-function checkPin(pin: string, cls: string): { ok: boolean; title: string; body: string } {
-  if (!/^[1-8]\d{5}$/.test(pin)) {
+async function checkPin(pin: string, cls: string): Promise<{ ok: boolean; title: string; body: string }> {
+  const { serviceability } = await import("@/lib/shipping");
+  const svc = await serviceability(pin, cls);
+  if (!svc.ok && svc.reason === "pin") {
     return { ok: false, title: "That PIN doesn't look right", body: "Enter the 6-digit PIN code of the delivery address." };
   }
   const regulated = cls === "CBD_WELLNESS";
-  if (regulated && /^(19|37|69)/.test(pin)) {
+  if (!svc.ok && svc.reason === "regulated") {
     return {
       ok: false,
       title: `Not serviceable at ${pin} yet`,
@@ -156,7 +158,7 @@ export default async function ProductDetailPage({
   const bundlePaise = product.pricePaise + fbt.reduce((sum, x) => sum + x.pricePaise, 0);
   const similar = await similarProducts(product, 6);
   const adProduct = (await publicProducts()).find((p) => p.cls === "CBD_WELLNESS" && p.id !== product.id);
-  const pinResult = pin !== undefined ? checkPin(pin, product.cls) : null;
+  const pinResult = pin !== undefined ? await checkPin(pin, product.cls) : null;
   const myReview = (await readMyReviews())[product.slug];
   const myQuestion = (await readMyQuestions())[product.slug];
   const bought = (await readOrderHistory()).some((o) => o.items.some((it) => it.title === product.title));

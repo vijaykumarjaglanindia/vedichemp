@@ -145,9 +145,6 @@ export interface OrderRecord {
 // payment capture. "cod" is not a member — a forged value is rejected.
 
 export async function placeOrder(formData: FormData): Promise<void> {
-  const cart = await priceCart();
-  if (cart.lines.length === 0) redirect("/cart");
-
   const name = String(formData.get("name") ?? "").trim();
   const mobile = String(formData.get("mobile") ?? "").trim();
   const line1 = String(formData.get("line1") ?? "").trim();
@@ -156,6 +153,11 @@ export async function placeOrder(formData: FormData): Promise<void> {
   const pincode = String(formData.get("pincode") ?? "").trim();
   const payment = String(formData.get("payment") ?? "");
   const ageConfirm = formData.get("ageConfirm") === "on";
+
+  // Price against the ACTUAL destination — shipping is the zone for this state,
+  // not the cart-page estimate. Server-authoritative in every case.
+  const cart = await priceCart({ destState: state });
+  if (cart.lines.length === 0) redirect("/cart");
 
   // Server-side validation (§0.6). The error code drives an inline banner and
   // the draft cookie re-fills the form — no typed input is lost.

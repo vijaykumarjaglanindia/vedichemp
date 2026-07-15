@@ -17,7 +17,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { readLiveProducts, resolvePriceStock } from "@/lib/catalog";
-import { checkCoupon, readActiveCoupons, readCommerce } from "@/lib/commerce";
+import { checkCoupon, readActiveCoupons } from "@/lib/commerce";
 import { type SampleProduct } from "@/lib/sample";
 import { permittedClasses } from "@/lib/compliance";
 
@@ -53,6 +53,12 @@ export interface PricedCart {
   shippingPaise: number;
   totalPaise: number;
   ageGated: boolean; // any CBD_WELLNESS line → age confirmation at checkout
+  // Shipping detail (server-computed; the zone is the entered state's, else an estimate)
+  shippingZone: string;
+  shippingEta: string; // "2–3 days"
+  shippingFree: boolean;
+  shippingEstimated: boolean; // true when no destination state was supplied yet
+  weightGrams: number;
 }
 
 /** Shipping thresholds come from Admin → Settings → Commerce. */
@@ -118,7 +124,7 @@ export async function clearCartCookies(): Promise<void> {
  * and a listing that was archived or suspended after being carted simply
  * drops out — an unsellable product cannot be bought.
  */
-export async function priceCart(): Promise<PricedCart> {
+export async function priceCart(opts?: { destState?: string }): Promise<PricedCart> {
   const lines = await readCartLines();
   const permitted = permittedClasses({ hasRx: false });
   const catalogue = await readLiveProducts();
@@ -142,8 +148,14 @@ export async function priceCart(): Promise<PricedCart> {
     });
   }
   const subtotalPaise = priced.reduce((n, l) => n + l.linePaise, 0);
-  const commerce = await readCommerce();
-  let shippingPaise = subtotalPaise === 0 || subtotalPaise >= commerce.freeShipAtPaise ? 0 : commerce.flatShipPaise;
+
+  // Real shipping: order weight (from the products) drives a zone-based quote.
+  const { readShipping } = await import("@/lib/shipping");
+  const { shippingQuote, etaLabel } = await import("@/lib/shipping");
+  const shipCfg = await readShipping();
+  const weightGrams = priced.reduce((n, l) => n + ((l.product as { weightGrams?: number }).weightGrams ?? shipCfg.defaultWeightGrams) * l.qty, 0);
+  const quote = await shippingQuote({ subtotalPaise, weightGrams, destState: opts?.destState });
+  let shippingPaise = quote.paise;
 
   // Coupon: the cookie stores only a CODE — every rupee of discount is
   // derived here from the coupon table and the priced lines (V-G-07).
@@ -189,5 +201,10 @@ export async function priceCart(): Promise<PricedCart> {
     shippingPaise,
     totalPaise: subtotalPaise - discountPaise + shippingPaise,
     ageGated: priced.some((l) => l.product.cls === "CBD_WELLNESS"),
+    shippingZone: quote.zoneName,
+    shippingEta: etaLabel(quote),
+    shippingFree: shippingPaise === 0 && subtotalPaise > 0,
+    shippingEstimated: !opts?.destState,
+    weightGrams,
   };
 }
