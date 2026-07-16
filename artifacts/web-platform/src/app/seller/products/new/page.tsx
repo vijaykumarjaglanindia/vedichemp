@@ -38,6 +38,8 @@ const SUBMIT_ERRORS: Record<string, string> = {
   price: "Selling price must be a positive integer in paise.",
   mrp: "MRP must be an integer in paise, and the selling price cannot exceed it.",
   hsn: "HSN code should be 4–8 digits.",
+  fssai: "An FSSAI licence number is exactly 14 digits.",
+  shelf: "Shelf life should be a whole number of months (0–120).",
 };
 
 export default async function NewProductPage({
@@ -190,6 +192,48 @@ export default async function NewProductPage({
                 <label className="vh-label" htmlFor="stockQty">Opening stock (units)</label>
                 <input className="vh-input" id="stockQty" name="stockQty" type="number" min={0} step={1} defaultValue={25} placeholder="25" />
                 <span className="vh-help">On-hand units once live. Adjust any time in Inventory; zero means out of stock.</span>
+              </div>
+            </div>
+          </Card>
+
+          <Card title="Product label & specification">
+            <p className="small muted" style={{ marginTop: 0 }}>
+              The facts a buyer expects on a regulated Indian product. These render as the specification table on the
+              listing — they are label facts, not marketing. The claims check still applies: no field may claim to
+              cure, treat or prevent anything.
+            </p>
+            <div className="vh-grid cols-2" style={{ gap: 12 }}>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="netQuantity">Net quantity</label>
+                <input className="vh-input" id="netQuantity" name="netQuantity" type="text" maxLength={60} placeholder="30 g · 250 ml · 60 capsules" />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="marketer">Marketed by</label>
+                <input className="vh-input" id="marketer" name="marketer" type="text" maxLength={120} placeholder="Brand name, city" />
+              </div>
+              <div className="vh-field" style={{ gridColumn: "1 / -1" }}>
+                <label className="vh-label" htmlFor="ingredients">Ingredients / composition</label>
+                <textarea className="vh-textarea" id="ingredients" name="ingredients" rows={2} maxLength={500} placeholder="Key actives and full ingredient list" />
+              </div>
+              <div className="vh-field" style={{ gridColumn: "1 / -1" }}>
+                <label className="vh-label" htmlFor="directions">Directions for use <span className="muted small">(Ayurveda / CBD)</span></label>
+                <textarea className="vh-textarea" id="directions" name="directions" rows={2} maxLength={300} placeholder="How to use — dosage, frequency. No disease claims." />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="storage">Storage</label>
+                <input className="vh-input" id="storage" name="storage" type="text" maxLength={160} placeholder="Store in a cool, dry place away from sunlight" />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="countryOfOrigin">Country of origin</label>
+                <input className="vh-input" id="countryOfOrigin" name="countryOfOrigin" type="text" maxLength={60} defaultValue="India" />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="shelfLifeMonths">Shelf life (months)</label>
+                <input className="vh-input" id="shelfLifeMonths" name="shelfLifeMonths" type="number" min={0} max={120} step={1} placeholder="24" />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="fssaiLicNo">FSSAI licence no. <span className="muted small">(food only)</span></label>
+                <input className="vh-input mono" id="fssaiLicNo" name="fssaiLicNo" type="text" maxLength={14} placeholder="14-digit number" />
               </div>
             </div>
           </Card>

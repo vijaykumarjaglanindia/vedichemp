@@ -224,6 +224,10 @@ export async function submitProduct(formData: FormData): Promise<void> {
   const categoryId = String(formData.get("categoryId") ?? "").trim();
   const weight = parseInt(String(formData.get("weightGrams") ?? ""), 10);
   if ((shortDesc && CLAIM_WORDS.test(shortDesc)) || (brand && CLAIM_WORDS.test(brand))) redirect("/seller/products/new?err=claims");
+  // Product-attribute spec (label facts) — same claims check applies.
+  const specParsed = readSpecFields(formData);
+  if ("err" in specParsed) redirect(`/seller/products/new?err=${specParsed.err}`);
+  const spec = (specParsed as { spec: Record<string, unknown> }).spec;
   const created = await createListing({
     ...fields,
     cls: cls as ComplianceClass,
@@ -237,6 +241,14 @@ export async function submitProduct(formData: FormData): Promise<void> {
     ...(sku ? { sku } : {}),
     ...(categoryId ? { categoryId } : {}),
     ...(Number.isInteger(weight) && weight >= 0 ? { weightGrams: weight } : {}),
+    ...(spec.netQuantity ? { netQuantity: spec.netQuantity as string } : {}),
+    ...(spec.ingredients ? { ingredients: spec.ingredients as string } : {}),
+    ...(spec.marketer ? { marketer: spec.marketer as string } : {}),
+    ...(spec.countryOfOrigin ? { countryOfOrigin: spec.countryOfOrigin as string } : {}),
+    ...(spec.storage ? { storage: spec.storage as string } : {}),
+    ...(spec.directions ? { directions: spec.directions as string } : {}),
+    ...(spec.fssaiLicNo ? { fssaiLicNo: spec.fssaiLicNo as string } : {}),
+    ...(Number.isInteger(spec.shelfLifeMonths as number) ? { shelfLifeMonths: spec.shelfLifeMonths as number } : {}),
   });
   if (!created) redirect("/seller/products/new?err=cls");
   if (intent !== "draft") {
@@ -259,6 +271,39 @@ export async function submitProduct(formData: FormData): Promise<void> {
  * positive integer BELOW the regular price; tags are comma-split and cleaned;
  * short copy and SEO fields pass the same claims check as the description.
  */
+/**
+ * Product-attribute spec (the PDP spec table & legal label). These are FACTS,
+ * not advertising copy — but ingredients/directions/marketer are buyer-facing,
+ * so they pass the same claims check (fail closed). Returns a sanitised patch
+ * or an error key. Shared by create and edit.
+ */
+function readSpecFields(formData: FormData): { err: string } | { spec: Record<string, unknown> } {
+  const spec: Record<string, unknown> = {};
+  const netQuantity = String(formData.get("netQuantity") ?? "").trim().slice(0, 60);
+  const ingredients = String(formData.get("ingredients") ?? "").trim().slice(0, 500);
+  const marketer = String(formData.get("marketer") ?? "").trim().slice(0, 120);
+  const countryOfOrigin = String(formData.get("countryOfOrigin") ?? "").trim().slice(0, 60);
+  const storage = String(formData.get("storage") ?? "").trim().slice(0, 160);
+  const directions = String(formData.get("directions") ?? "").trim().slice(0, 300);
+  const fssaiLicNo = String(formData.get("fssaiLicNo") ?? "").trim().slice(0, 30);
+  const shelfRaw = String(formData.get("shelfLifeMonths") ?? "").trim();
+  if ([ingredients, directions, marketer].some((t) => t && CLAIM_WORDS.test(t))) return { err: "claims" };
+  if (fssaiLicNo && !/^\d{14}$/.test(fssaiLicNo)) return { err: "fssai" }; // 14-digit FSSAI licence
+  spec.netQuantity = netQuantity || undefined;
+  spec.ingredients = ingredients || undefined;
+  spec.marketer = marketer || undefined;
+  spec.countryOfOrigin = countryOfOrigin || undefined;
+  spec.storage = storage || undefined;
+  spec.directions = directions || undefined;
+  spec.fssaiLicNo = fssaiLicNo || undefined;
+  if (shelfRaw) {
+    const m = parseInt(shelfRaw, 10);
+    if (!Number.isInteger(m) || m < 0 || m > 120) return { err: "shelf" };
+    spec.shelfLifeMonths = m || undefined;
+  } else spec.shelfLifeMonths = undefined;
+  return { spec };
+}
+
 function readMerchFields(formData: FormData, regularPricePaise: number):
   | { err: string }
   | { patch: Record<string, unknown> } {
@@ -370,7 +415,15 @@ export async function updateProductListing(formData: FormData): Promise<void> {
     }
     redirect(`/seller/products/${id}?err=${merch.err}`);
   }
-  const ok = await updateListing(id, { ...fields, ...(merch as { patch: Record<string, unknown> }).patch });
+  const spec = readSpecFields(formData);
+  if ("err" in spec) {
+    if (spec.err === "claims") {
+      await setClaimsStrike(id, true);
+      await writeAudit({ actor: (await getSession())?.email ?? "seller", action: "LISTING_CLAIMS_ATTEMPT", target: id, outcome: "DENIED", note: "claims copy in a spec field" });
+    }
+    redirect(`/seller/products/${id}?err=${spec.err}`);
+  }
+  const ok = await updateListing(id, { ...fields, ...(merch as { patch: Record<string, unknown> }).patch, ...(spec as { spec: Record<string, unknown> }).spec });
   redirect(ok ? `/seller/products/${id}?saved=1` : "/seller/products");
 }
 

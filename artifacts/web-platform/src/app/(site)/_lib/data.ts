@@ -243,7 +243,21 @@ export interface ProductSpecs {
   hsn: string;
   batch: string;
   lab: string;
+  marketer?: string;
+  countryOfOrigin?: string;
+  shelfLife?: string;
+  storage?: string;
+  directions?: string;
+  fssai?: string;
 }
+
+/** The live-product fields specsFor reads. A seeded SampleProduct has none of
+ *  them; a seller-created CatalogProduct fills them from the listing form. */
+type SpecSource = SampleProduct & Partial<{
+  hsn: string; batchCode: string; netQuantity: string; ingredients: string;
+  marketer: string; countryOfOrigin: string; shelfLifeMonths: number;
+  storage: string; directions: string; fssaiLicNo: string;
+}>;
 
 const SPECS: Record<string, ProductSpecs> = {
   "hemp-seed-oil-250ml": { netWeight: "250 ml", ingredients: "100% cold-pressed hemp seed oil (Cannabis sativa L. seed)", hsn: "1515", batch: "HH-2506", lab: "FSSAI-licensed facility (food class — no batch CoA gate)" },
@@ -256,16 +270,29 @@ const SPECS: Record<string, ProductSpecs> = {
   "cbd-rollon-50ml": { netWeight: "50 ml", ingredients: "Hemp extract, menthol, wintergreen oil in roll-on base", hsn: "3004", batch: "VB-2411", lab: "Aurum Analytica, Bengaluru (NABL-accredited)" },
 };
 
-export function specsFor(p: SampleProduct): ProductSpecs {
-  return (
-    SPECS[p.slug] ?? {
-      netWeight: "—",
-      ingredients: "See pack label",
-      hsn: "—",
-      batch: "—",
-      lab: p.labVerified ? "NABL-accredited independent lab" : "Licensed facility",
-    }
-  );
+const DASH = "—";
+
+/**
+ * The PDP spec table. A seller-created listing supplies its own label facts;
+ * they win. The seeded sample catalogue has no such fields, so it falls back
+ * to the curated SPECS map, then to safe generic defaults — every listing
+ * renders a complete, honest table either way.
+ */
+export function specsFor(p: SpecSource): ProductSpecs {
+  const seed = SPECS[p.slug];
+  return {
+    netWeight: p.netQuantity || seed?.netWeight || DASH,
+    ingredients: p.ingredients || seed?.ingredients || "See pack label",
+    hsn: p.hsn || seed?.hsn || DASH,
+    batch: p.batchCode || seed?.batch || DASH,
+    lab: seed?.lab || (p.labVerified ? "NABL-accredited independent lab" : "Licensed facility"),
+    marketer: p.marketer || seed?.marketer,
+    countryOfOrigin: p.countryOfOrigin || seed?.countryOfOrigin || "India",
+    shelfLife: (p.shelfLifeMonths && p.shelfLifeMonths > 0 ? `${p.shelfLifeMonths} months from manufacture` : undefined) || seed?.shelfLife,
+    storage: p.storage || seed?.storage,
+    directions: p.directions || seed?.directions,
+    fssai: p.fssaiLicNo || seed?.fssai,
+  };
 }
 
 export const PDP_QA: { q: string; a: string }[] = [

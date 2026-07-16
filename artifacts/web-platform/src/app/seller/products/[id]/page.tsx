@@ -45,6 +45,8 @@ const ERRORS: Record<string, string> = {
   coa: "Blocked by the CoA gate (A2) — the batch needs an APPROVED, batch-matched lab report first.",
   shortdesc: "The short summary should be 160 characters or fewer.",
   weight: "Weight should be a whole number of grams.",
+  fssai: "An FSSAI licence number is exactly 14 digits.",
+  shelf: "Shelf life should be a whole number of months (0–120).",
   minqty: "Minimum per order should be a whole number between 1 and 50.",
   maxqty: "Maximum per order should be a whole number between 1 and 50.",
   qtyrange: "Maximum per order can't be less than the minimum.",
@@ -286,6 +288,47 @@ export default async function ProductEditorPage({
                   <span className="vh-help">The most a buyer can order at once. Leave blank for the default (10).</span>
                 </div>
               </div>
+
+              <fieldset className="vh-field" style={{ border: 0, padding: 0, margin: "16px 0 0" }}>
+                <legend className="vh-label">Product label &amp; specification</legend>
+                <span className="vh-help" style={{ marginBottom: 8 }}>Label facts shown in the specification table. No disease claims — the claims check applies here too.</span>
+                <div className="vh-grid cols-2" style={{ gap: 16 }}>
+                  <div className="vh-field">
+                    <label className="vh-label" htmlFor="netQuantity">Net quantity</label>
+                    <input className="vh-input" id="netQuantity" name="netQuantity" maxLength={60} defaultValue={product!.netQuantity ?? ""} placeholder="30 g · 250 ml · 60 capsules" />
+                  </div>
+                  <div className="vh-field">
+                    <label className="vh-label" htmlFor="marketer">Marketed by</label>
+                    <input className="vh-input" id="marketer" name="marketer" maxLength={120} defaultValue={product!.marketer ?? ""} placeholder="Brand name, city" />
+                  </div>
+                </div>
+                <div className="vh-field" style={{ marginTop: 12 }}>
+                  <label className="vh-label" htmlFor="ingredients">Ingredients / composition</label>
+                  <textarea className="vh-textarea" id="ingredients" name="ingredients" rows={2} maxLength={500} defaultValue={product!.ingredients ?? ""} placeholder="Key actives and full ingredient list" />
+                </div>
+                <div className="vh-field" style={{ marginTop: 12 }}>
+                  <label className="vh-label" htmlFor="directions">Directions for use</label>
+                  <textarea className="vh-textarea" id="directions" name="directions" rows={2} maxLength={300} defaultValue={product!.directions ?? ""} placeholder="How to use — dosage, frequency. No disease claims." />
+                </div>
+                <div className="vh-grid cols-2" style={{ gap: 16, marginTop: 12 }}>
+                  <div className="vh-field">
+                    <label className="vh-label" htmlFor="storage">Storage</label>
+                    <input className="vh-input" id="storage" name="storage" maxLength={160} defaultValue={product!.storage ?? ""} placeholder="Store in a cool, dry place" />
+                  </div>
+                  <div className="vh-field">
+                    <label className="vh-label" htmlFor="countryOfOrigin">Country of origin</label>
+                    <input className="vh-input" id="countryOfOrigin" name="countryOfOrigin" maxLength={60} defaultValue={product!.countryOfOrigin ?? ""} placeholder="India" />
+                  </div>
+                  <div className="vh-field">
+                    <label className="vh-label" htmlFor="shelfLifeMonths">Shelf life (months)</label>
+                    <input className="vh-input" id="shelfLifeMonths" name="shelfLifeMonths" type="number" min={0} max={120} defaultValue={product!.shelfLifeMonths ?? ""} placeholder="24" />
+                  </div>
+                  <div className="vh-field">
+                    <label className="vh-label" htmlFor="fssaiLicNo">FSSAI licence no. <span className="muted small">(food only)</span></label>
+                    <input className="vh-input mono" id="fssaiLicNo" name="fssaiLicNo" maxLength={14} defaultValue={product!.fssaiLicNo ?? ""} placeholder="14-digit number" />
+                  </div>
+                </div>
+              </fieldset>
 
               <fieldset className="vh-field" style={{ border: 0, padding: 0, margin: "16px 0 0" }}>
                 <legend className="vh-label">Delivery for this product</legend>

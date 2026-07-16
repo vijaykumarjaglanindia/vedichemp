@@ -251,8 +251,18 @@ export default async function ProductDetailPage({
                     <tr><th>Specification</th><th>Detail</th></tr>
                   </thead>
                   <tbody>
-                    <tr><td>Net weight</td><td>{specs.netWeight}</td></tr>
+                    <tr><td>Net quantity</td><td>{specs.netWeight}</td></tr>
                     <tr><td>Ingredients</td><td>{specs.ingredients}</td></tr>
+                    {(product.cls === "AYURVEDA" || product.cls === "CBD_WELLNESS") && specs.directions && (
+                      <tr><td>Directions for use</td><td>{specs.directions}</td></tr>
+                    )}
+                    {specs.storage && <tr><td>Storage</td><td>{specs.storage}</td></tr>}
+                    {specs.shelfLife && <tr><td>Shelf life</td><td>{specs.shelfLife}</td></tr>}
+                    {specs.marketer && <tr><td>Marketed by</td><td>{specs.marketer}</td></tr>}
+                    <tr><td>Country of origin</td><td>{specs.countryOfOrigin}</td></tr>
+                    {product.cls === "HEMP_FOOD" && specs.fssai && (
+                      <tr><td>FSSAI licence</td><td className="mono">{specs.fssai}</td></tr>
+                    )}
                     <tr><td>HSN code</td><td className="mono">{specs.hsn}</td></tr>
                     <tr><td>Batch</td><td className="mono">{specs.batch}{specs.batch !== "\u2014" && (<> <Link href={`/verify?code=${specs.batch}`} className="small" style={{ fontWeight: 700, marginLeft: 8 }}>Verify this batch →</Link></>)}</td></tr>
                     <tr><td>Testing / facility</td><td>{specs.lab}</td></tr>

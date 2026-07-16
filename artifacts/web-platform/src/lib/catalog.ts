@@ -89,6 +89,22 @@ export interface CatalogProduct extends SampleProduct {
    *  replaces the zone charge for this item. Applied server-side in priceCart. */
   shippingMode?: "FREE" | "FLAT";
   shippingFlatPaise?: number; // the fee when shippingMode === "FLAT"
+
+  /* ── Product-attribute spec (the PDP spec table & legal label) ──────
+   * All optional so every existing listing keeps working. These are the
+   * label facts a buyer expects on a regulated Indian product: net quantity,
+   * composition, marketer, origin, shelf life and storage, plus usage
+   * directions for AYURVEDA/CBD and the FSSAI licence for food. They render
+   * as the PDP specification table; none of them is advertising copy, so the
+   * claims check still applies to desc/shortDesc, not to these facts. */
+  netQuantity?: string;     // "250 ml", "60 capsules"
+  ingredients?: string;     // composition / key actives
+  marketer?: string;        // "Marketed by …" name & city
+  countryOfOrigin?: string; // defaults to India on the PDP
+  shelfLifeMonths?: number; // months from manufacture
+  storage?: string;         // "Store in a cool, dry place, away from sunlight"
+  directions?: string;      // usage / dosage (AYURVEDA, CBD_WELLNESS)
+  fssaiLicNo?: string;      // HEMP_FOOD legal requirement on the label
 }
 
 /** The effective delivery rule for a listing (server-authoritative). */
@@ -242,6 +258,14 @@ export interface CreateListingInput {
   sku?: string;
   weightGrams?: number;
   categoryId?: string;
+  netQuantity?: string;
+  ingredients?: string;
+  marketer?: string;
+  countryOfOrigin?: string;
+  shelfLifeMonths?: number;
+  storage?: string;
+  directions?: string;
+  fssaiLicNo?: string;
 }
 
 /** Create as DRAFT. Validation (claims, ranges) happens in the calling action. */
@@ -281,6 +305,14 @@ export async function createListing(input: CreateListingInput): Promise<CatalogP
     ...(input.sku ? { sku: input.sku } : {}),
     ...(Number.isInteger(input.weightGrams) ? { weightGrams: input.weightGrams } : {}),
     ...(input.categoryId ? { categoryId: input.categoryId } : {}),
+    ...(input.netQuantity ? { netQuantity: input.netQuantity } : {}),
+    ...(input.ingredients ? { ingredients: input.ingredients } : {}),
+    ...(input.marketer ? { marketer: input.marketer } : {}),
+    ...(input.countryOfOrigin ? { countryOfOrigin: input.countryOfOrigin } : {}),
+    ...(Number.isInteger(input.shelfLifeMonths) && input.shelfLifeMonths! > 0 ? { shelfLifeMonths: input.shelfLifeMonths } : {}),
+    ...(input.storage ? { storage: input.storage } : {}),
+    ...(input.directions ? { directions: input.directions } : {}),
+    ...(input.fssaiLicNo ? { fssaiLicNo: input.fssaiLicNo } : {}),
   };
   s.created.push(product);
   return product;
@@ -299,6 +331,8 @@ export async function updateListing(
     | "shortDesc" | "brand" | "tags" | "salePricePaise" | "saleFrom" | "saleTo"
     | "sku" | "weightGrams" | "metaTitle" | "metaDescription" | "categoryId"
     | "minOrderQty" | "maxOrderQty" | "shippingMode" | "shippingFlatPaise"
+    | "netQuantity" | "ingredients" | "marketer" | "countryOfOrigin"
+    | "shelfLifeMonths" | "storage" | "directions" | "fssaiLicNo"
   >>,
 ): Promise<boolean> {
   const p = await findProduct(id);
