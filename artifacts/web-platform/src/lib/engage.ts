@@ -175,6 +175,28 @@ export async function writeMyQuestions(map: Record<string, string>): Promise<voi
 export interface StoreCopy {
   tagline: string;
   story: string;
+  // Search & social (Store SEO). All optional — the storefront falls back to
+  // the tagline/name when a field is blank.
+  metaTitle?: string;
+  metaDescription?: string;
+  website?: string; // full https URL
+  instagram?: string; // handle only (no @)
+  facebook?: string; // page handle
+  youtube?: string; // channel handle (with or without the leading @)
+}
+
+/** Canonical outbound URL for a stored social handle. Only ever builds a URL
+ *  on a known domain from a validated handle — never echoes a raw user string
+ *  into href (no javascript:/data: injection, no open redirect). */
+export function socialUrl(kind: "website" | "instagram" | "facebook" | "youtube", value: string): string | null {
+  const v = value.trim();
+  if (!v) return null;
+  if (kind === "website") return /^https:\/\/[\w.-]+\.[a-z]{2,}(\/\S*)?$/i.test(v) ? v : null;
+  const handle = v.replace(/^@/, "");
+  if (!/^[A-Za-z0-9_.-]{2,40}$/.test(handle)) return null;
+  if (kind === "instagram") return `https://instagram.com/${handle}`;
+  if (kind === "facebook") return `https://facebook.com/${handle}`;
+  return `https://youtube.com/@${handle}`;
 }
 
 // Server-side demo store: published storefront copy must be visible to every

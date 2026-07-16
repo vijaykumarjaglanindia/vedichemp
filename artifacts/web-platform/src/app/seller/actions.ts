@@ -948,16 +948,38 @@ export async function createCoupon(formData: FormData): Promise<void> {
 export async function updateStorefront(formData: FormData): Promise<void> {
   const tagline = String(formData.get("tagline") ?? "").trim();
   const story = String(formData.get("story") ?? "").trim();
+  // Search & social fields (all optional).
+  const metaTitle = String(formData.get("metaTitle") ?? "").trim().slice(0, 70);
+  const metaDescription = String(formData.get("metaDescription") ?? "").trim().slice(0, 160);
+  const website = String(formData.get("website") ?? "").trim();
+  const instagram = String(formData.get("instagram") ?? "").trim().replace(/^@/, "");
+  const facebook = String(formData.get("facebook") ?? "").trim();
+  const youtube = String(formData.get("youtube") ?? "").trim().replace(/^@/, "");
 
+  const { socialUrl } = await import("@/lib/engage");
   let err: string | null = null;
   if (tagline.length < 10 || tagline.length > 90) err = "tagline";
   else if (story.length < 40 || story.length > 500) err = "story";
-  // Storefront copy is promotional copy — same fail-closed claims check.
-  else if (CLAIM_WORDS.test(tagline) || CLAIM_WORDS.test(story)) err = "copyclaims";
+  // Storefront copy — including the meta fields shown in search and social
+  // shares — is promotional; the same fail-closed claims check applies.
+  else if ([tagline, story, metaTitle, metaDescription].some((s) => s && CLAIM_WORDS.test(s))) err = "copyclaims";
+  else if (website && !socialUrl("website", website)) err = "website";
+  else if (instagram && !socialUrl("instagram", instagram)) err = "social";
+  else if (facebook && !socialUrl("facebook", facebook)) err = "social";
+  else if (youtube && !socialUrl("youtube", youtube)) err = "social";
   if (err) redirect(`/seller/store?err=${err}#storefront-copy`);
 
   const { writeStoreCopy } = await import("@/lib/engage");
-  await writeStoreCopy({ tagline, story });
+  await writeStoreCopy({
+    tagline,
+    story,
+    ...(metaTitle ? { metaTitle } : {}),
+    ...(metaDescription ? { metaDescription } : {}),
+    ...(website ? { website } : {}),
+    ...(instagram ? { instagram } : {}),
+    ...(facebook ? { facebook } : {}),
+    ...(youtube ? { youtube } : {}),
+  });
   redirect("/seller/store?copy=published#storefront-copy");
 }
 

@@ -157,6 +157,8 @@ export default async function StorePage({
           )}
           {err === "tagline" && <div style={{ marginBottom: 12 }}><Banner severity="danger">Tagline should be 10–90 characters.</Banner></div>}
           {err === "story" && <div style={{ marginBottom: 12 }}><Banner severity="danger">Story should be 40–500 characters.</Banner></div>}
+          {err === "website" && <div style={{ marginBottom: 12 }}><Banner severity="danger">Website must be a full https:// address.</Banner></div>}
+          {err === "social" && <div style={{ marginBottom: 12 }}><Banner severity="danger">Use a plain handle for social links (letters, numbers, dots, dashes) — not a full URL.</Banner></div>}
           {err === "copyclaims" && (
             <div style={{ marginBottom: 12 }}>
               <Banner severity="danger" title="Copy-check blocked the publish">
@@ -181,6 +183,38 @@ export default async function StorePage({
                 placeholder="Your craft, your facility, your testing routine."
                 help="Composition and craft, not claims — the copy-check runs on publish, and a failure blocks the send (fail closed)."
               />
+            </div>
+            <div style={{ borderTop: "1px solid var(--vh-line)", paddingTop: 14 }}>
+              <div style={{ fontWeight: 600, fontSize: ".92rem", marginBottom: 2 }}>Search &amp; social</div>
+              <p className="small muted" style={{ margin: "0 0 12px" }}>How your store looks in Google results and when someone shares your link. Leave blank to use your tagline.</p>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="sf-metaTitle">Search title</label>
+                <input className="vh-input" id="sf-metaTitle" name="metaTitle" maxLength={70} defaultValue={storeCopy?.metaTitle ?? ""} placeholder="Vedic Botanicals — official store" />
+                <span className="vh-help">Up to 70 characters. Shown as the clickable headline in search.</span>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="sf-metaDescription">Search description</label>
+                <input className="vh-input" id="sf-metaDescription" name="metaDescription" maxLength={160} defaultValue={storeCopy?.metaDescription ?? ""} placeholder="A short line describing your store." />
+                <span className="vh-help">Up to 160 characters. The grey summary under the title.</span>
+              </div>
+              <div className="vh-grid cols-2" style={{ gap: 12 }}>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="sf-website">Website</label>
+                  <input className="vh-input" id="sf-website" name="website" defaultValue={storeCopy?.website ?? ""} placeholder="https://yourstore.in" />
+                </div>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="sf-instagram">Instagram</label>
+                  <input className="vh-input" id="sf-instagram" name="instagram" defaultValue={storeCopy?.instagram ?? ""} placeholder="handle (no @)" />
+                </div>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="sf-facebook">Facebook</label>
+                  <input className="vh-input" id="sf-facebook" name="facebook" defaultValue={storeCopy?.facebook ?? ""} placeholder="page handle" />
+                </div>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="sf-youtube">YouTube</label>
+                  <input className="vh-input" id="sf-youtube" name="youtube" defaultValue={storeCopy?.youtube ?? ""} placeholder="channel handle" />
+                </div>
+              </div>
             </div>
             <button type="submit" className="vh-btn vh-btn-primary" style={{ justifySelf: "start" }}>Publish to storefront</button>
           </form>

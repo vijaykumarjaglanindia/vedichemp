@@ -11,11 +11,11 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { AdBanner } from "@/components/ui/ads";
-import { BadgeCheck, MapPin, ShieldCheck, UserCheck, UserPlus } from "lucide-react";
+import { BadgeCheck, MapPin, ShieldCheck, UserCheck, UserPlus, Globe, ExternalLink } from "lucide-react";
 import { Card, EmptyState, Rating, SectionHead } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
 import { mdToHtml } from "@/lib/richtext";
-import { readFollows, readStoreAvailability, readStoreCopy } from "@/lib/engage";
+import { readFollows, readStoreAvailability, readStoreCopy, socialUrl } from "@/lib/engage";
 import { breadcrumbJsonLd } from "@/lib/seo";
 import { toggleFollowStore } from "../../actions";
 import { ProductCard } from "../../_lib/ProductCard";
@@ -31,7 +31,18 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const { slug } = await params;
   const seller = sellerBySlug(slug);
   if (!seller) return { title: "Store not found" };
-  return { title: `${seller.name} — official store` };
+  const profile = STORE_PROFILES[slug];
+  const copy = slug === "vedic-botanicals" ? await readStoreCopy() : null;
+  const title = copy?.metaTitle?.trim() || `${seller.name} — official store`;
+  const description = copy?.metaDescription?.trim() || copy?.tagline?.trim() || profile?.tagline || `Shop ${seller.name} on Vedic Hemp.`;
+  const url = `/store/${slug}`;
+  return {
+    title,
+    description,
+    alternates: { canonical: url },
+    openGraph: { title, description, url, type: "website", siteName: "Vedic Hemp" },
+    twitter: { card: "summary_large_image", title, description },
+  };
 }
 
 export default async function StorePage({ params }: { params: Promise<Params> }) {
@@ -62,6 +73,22 @@ export default async function StorePage({ params }: { params: Promise<Params> })
   const tagline = storeCopy?.tagline ?? profile.tagline;
   const story = storeCopy?.story ?? profile.story;
   const availability = slug === "vedic-botanicals" ? await readStoreAvailability() : null;
+
+  // Seller-published social links — each built on a known domain from a
+  // validated handle (socialUrl returns null for anything malformed).
+  const socialKinds: { key: "website" | "instagram" | "facebook" | "youtube"; label: string }[] = [
+    { key: "website", label: "Website" },
+    { key: "instagram", label: "Instagram" },
+    { key: "facebook", label: "Facebook" },
+    { key: "youtube", label: "YouTube" },
+  ];
+  const socials = socialKinds
+    .map(({ key, label }) => {
+      const raw = storeCopy?.[key];
+      const href = raw ? socialUrl(key, raw) : null;
+      return href ? { href, label } : null;
+    })
+    .filter((s): s is { href: string; label: string } => s !== null);
 
   const crumbs = [
     { name: "Home", href: "/" },
@@ -130,6 +157,26 @@ export default async function StorePage({ params }: { params: Promise<Params> })
                   <MapPin size={13} strokeWidth={2.2} aria-hidden /> {profile.location} · since {profile.founded}
                 </span>
               </div>
+              {socials.length > 0 && (
+                <div className="vh-row" style={{ gap: 8, marginTop: 10, flexWrap: "wrap" }}>
+                  {socials.map(({ href, label }) => (
+                    <a
+                      key={label}
+                      href={href}
+                      target="_blank"
+                      rel="noopener noreferrer nofollow"
+                      className="vh-pill vh-pill-neutral"
+                      aria-label={`${seller.name} on ${label}`}
+                      style={{ textDecoration: "none", gap: 5 }}
+                    >
+                      {label === "Website"
+                        ? <Globe size={12} strokeWidth={2.2} aria-hidden />
+                        : <ExternalLink size={12} strokeWidth={2.2} aria-hidden />}
+                      {label}
+                    </a>
+                  ))}
+                </div>
+              )}
             </div>
             <div className="vh-row" style={{ gap: 10 }}>
               <form action={toggleFollowStore}>
