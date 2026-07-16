@@ -1190,6 +1190,38 @@ export async function saveStoreAvailability(formData: FormData): Promise<void> {
   redirect("/seller/store?avail=saved#availability");
 }
 
+/** Post (or update) a time-boxed storefront announcement. Promotional copy —
+ *  fail closed on the claims check; an empty message clears it. */
+export async function saveStoreAnnouncement(formData: FormData): Promise<void> {
+  const message = String(formData.get("message") ?? "").trim().slice(0, 200);
+  const toneRaw = String(formData.get("tone") ?? "info");
+  const tone = (["info", "sale", "warn"] as const).includes(toneRaw as never) ? (toneRaw as "info" | "sale" | "warn") : "info";
+  const startsAt = String(formData.get("startsAt") ?? "").trim();
+  const endsAt = String(formData.get("endsAt") ?? "").trim();
+  const { writeStoreAnnouncement } = await import("@/lib/engage");
+
+  // Clearing: an empty message turns the announcement off entirely.
+  if (!message) {
+    await writeStoreAnnouncement(null);
+    redirect("/seller/store?ann=cleared#announcement");
+  }
+  if (message.length < 6) redirect("/seller/store?err=annshort#announcement");
+  if (CLAIM_WORDS.test(message)) redirect("/seller/store?err=annclaims#announcement");
+  const dateOk = (d: string) => d === "" || /^\d{4}-\d{2}-\d{2}$/.test(d);
+  if (!dateOk(startsAt) || !dateOk(endsAt)) redirect("/seller/store?err=anndate#announcement");
+  if (startsAt && endsAt && endsAt < startsAt) redirect("/seller/store?err=annrange#announcement");
+
+  await writeStoreAnnouncement({
+    message,
+    tone,
+    ...(startsAt ? { startsAt } : {}),
+    ...(endsAt ? { endsAt } : {}),
+    active: true,
+  });
+  await writeAudit({ actor: DEMO_STORE, action: "STORE_ANNOUNCEMENT_SAVE", target: DEMO_STORE, outcome: "OK" });
+  redirect("/seller/store?ann=saved#announcement");
+}
+
 /* ── Product variants (size / pack / strength options) ────── */
 
 export async function saveOptionName(formData: FormData): Promise<void> {

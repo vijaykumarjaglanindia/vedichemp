@@ -17,8 +17,8 @@ import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { SELLER, LICENCES, CAPABILITY_MATRIX, STORE_PREVIEW, daysUntil } from "../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
 import { groupIndian } from "@/lib/money";
-import { addLicence, requestOwnerTransfer, saveStoreAvailability, updateStorefront } from "../actions";
-import { readStoreAvailability, readStoreCopy } from "@/lib/engage";
+import { addLicence, requestOwnerTransfer, saveStoreAnnouncement, saveStoreAvailability, updateStorefront } from "../actions";
+import { readStoreAnnouncement, readStoreAvailability, readStoreCopy } from "@/lib/engage";
 import { cookies } from "next/headers";
 
 export const metadata: Metadata = { title: "Store & KYC" };
@@ -26,12 +26,13 @@ export const metadata: Metadata = { title: "Store & KYC" };
 export default async function StorePage({
   searchParams,
 }: {
-  searchParams: Promise<{ transfer?: string; err?: string; licence?: string; copy?: string; avail?: string }>;
+  searchParams: Promise<{ transfer?: string; err?: string; licence?: string; copy?: string; avail?: string; ann?: string }>;
 }) {
-  const { transfer, err, licence, avail } = await searchParams;
+  const { transfer, err, licence, avail, ann } = await searchParams;
   const copyParam = (await searchParams).copy;
   const storeCopy = await readStoreCopy();
   const availability = await readStoreAvailability();
+  const announcement = await readStoreAnnouncement();
   const jar = await cookies();
   let submittedLicences: { type: string; number: string; validTo: string; status: string }[] = [];
   try { submittedLicences = JSON.parse(jar.get("vh-sell-lic")?.value ?? "[]") as typeof submittedLicences; } catch { submittedLicences = []; }
@@ -62,6 +63,54 @@ export default async function StorePage({
               <span className="vh-help">Shown to buyers on your storefront. No health claims.</span>
             </div>
             <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Save availability</button>
+          </form>
+        </Card>
+      </div>
+
+      <div id="announcement" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
+        {ann === "saved" && <div style={{ marginBottom: 12 }}><Banner severity="ok" title="Announcement published">It shows at the top of your storefront while it&rsquo;s active.</Banner></div>}
+        {ann === "cleared" && <div style={{ marginBottom: 12 }}><Banner severity="ok" title="Announcement removed">Your storefront no longer shows a notice.</Banner></div>}
+        {err === "annclaims" && <div style={{ marginBottom: 12 }}><Banner severity="danger" title="Message rejected">An announcement can&rsquo;t contain claims language (cure/treat/prevent/heal). Nothing was published.</Banner></div>}
+        {err === "annshort" && <div style={{ marginBottom: 12 }}><Banner severity="danger">Your announcement should be at least 6 characters (or leave it blank to remove it).</Banner></div>}
+        {err === "anndate" && <div style={{ marginBottom: 12 }}><Banner severity="danger">Dates should be in YYYY-MM-DD format.</Banner></div>}
+        {err === "annrange" && <div style={{ marginBottom: 12 }}><Banner severity="danger">The end date can&rsquo;t be before the start date.</Banner></div>}
+        <Card
+          title="Storefront announcement"
+          action={<StatusPill tone={announcement?.active ? "ok" : "neutral"}>{announcement?.active ? "Live" : "Off"}</StatusPill>}
+        >
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Post a short notice at the top of your storefront — a sale, a dispatch delay, festival hours. Set optional
+            start and end dates and it shows only within that window. Leave the message blank and save to remove it.
+          </p>
+          <form action={saveStoreAnnouncement} className="vh-grid" style={{ gap: 12, maxWidth: 620 }}>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="ann-msg">Message</label>
+              <input className="vh-input" id="ann-msg" name="message" maxLength={200}
+                defaultValue={announcement?.message ?? ""} placeholder="Diwali sale — 10% off all balms this week!" />
+              <span className="vh-help">Shown to every visitor. No health claims.</span>
+            </div>
+            <div className="vh-grid cols-3" style={{ gap: 12 }}>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="ann-tone">Style</label>
+                <select className="vh-input" id="ann-tone" name="tone" defaultValue={announcement?.tone ?? "info"}>
+                  <option value="info">Info (neutral)</option>
+                  <option value="sale">Sale (green)</option>
+                  <option value="warn">Heads-up (amber)</option>
+                </select>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="ann-start">Show from (optional)</label>
+                <input className="vh-input mono" id="ann-start" name="startsAt" defaultValue={announcement?.startsAt ?? ""} placeholder="2026-07-20" />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="ann-end">Show until (optional)</label>
+                <input className="vh-input mono" id="ann-end" name="endsAt" defaultValue={announcement?.endsAt ?? ""} placeholder="2026-07-27" />
+              </div>
+            </div>
+            <div className="vh-row" style={{ gap: 8 }}>
+              <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit">Publish announcement</button>
+              <span className="small muted">Clear the message and save to remove it.</span>
+            </div>
           </form>
         </Card>
       </div>

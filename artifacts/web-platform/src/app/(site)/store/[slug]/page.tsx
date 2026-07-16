@@ -15,7 +15,7 @@ import { BadgeCheck, MapPin, ShieldCheck, UserCheck, UserPlus, Globe, ExternalLi
 import { Banner, Card, EmptyState, Rating, SectionHead, StatusPill } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
 import { mdToHtml } from "@/lib/richtext";
-import { readFollows, readStoreAvailability, readStoreCopy, socialUrl } from "@/lib/engage";
+import { announcementLive, readFollows, readStoreAnnouncement, readStoreAvailability, readStoreCopy, socialUrl } from "@/lib/engage";
 import { breadcrumbJsonLd } from "@/lib/seo";
 import { getSession } from "@/lib/auth-lite";
 import { approvedStoreReviews, storeAggregate } from "@/lib/store-reviews";
@@ -26,6 +26,17 @@ import { sellerBySlug, sellerProducts, STORE_PROFILES } from "../../_lib/data";
 import { kycApproved } from "@/lib/vendor";
 
 export const dynamic = "force-dynamic";
+
+// Storefront-announcement styling by tone.
+const ANN_BG: Record<"info" | "sale" | "warn", string> = {
+  info: "color-mix(in srgb, var(--vh-accent) 12%, var(--vh-surface))",
+  sale: "color-mix(in srgb, var(--vh-ok-bg, var(--vh-green-50)) 70%, var(--vh-surface))",
+  warn: "color-mix(in srgb, var(--vh-warn-bg) 60%, var(--vh-surface))",
+};
+const ANN_LINE: Record<"info" | "sale" | "warn", string> = {
+  info: "var(--vh-accent)", sale: "var(--vh-ok)", warn: "var(--vh-warn)",
+};
+const ANN_ICON: Record<"info" | "sale" | "warn", string> = { info: "📣", sale: "🎉", warn: "⚠️" };
 
 type Params = { slug: string };
 
@@ -76,6 +87,8 @@ export default async function StorePage({ params, searchParams }: { params: Prom
   const tagline = storeCopy?.tagline ?? profile.tagline;
   const story = storeCopy?.story ?? profile.story;
   const availability = slug === "vedic-botanicals" ? await readStoreAvailability() : null;
+  const announcement = slug === "vedic-botanicals" ? await readStoreAnnouncement() : null;
+  const today = new Date().toISOString().slice(0, 10);
 
   // Real store rating — computed from approved store reviews. Falls back to the
   // sample profile only when a store has no reviews yet.
@@ -118,6 +131,16 @@ export default async function StorePage({ params, searchParams }: { params: Prom
             <span aria-hidden>🏖️</span>
             <strong style={{ color: "var(--vh-ink)" }}>This store is on vacation.</strong>
             <span className="small" style={{ color: "var(--vh-body)" }}>{availability.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Time-boxed storefront announcement (seller-posted, copy-checked) */}
+      {announcementLive(announcement, today) && (
+        <div role="status" style={{ background: ANN_BG[announcement!.tone], borderBottom: `1px solid ${ANN_LINE[announcement!.tone]}` }}>
+          <div className="vh-container" style={{ padding: "10px 0", display: "flex", gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+            <span aria-hidden>{ANN_ICON[announcement!.tone]}</span>
+            <span style={{ color: "var(--vh-ink)", fontWeight: 500 }}>{announcement!.message}</span>
           </div>
         </div>
       )}

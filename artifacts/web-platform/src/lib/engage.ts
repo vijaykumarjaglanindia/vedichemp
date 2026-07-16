@@ -228,6 +228,35 @@ export async function writeStoreAvailability(a: StoreAvailability): Promise<void
   gAvail.__vhStoreAvailability = a;
 }
 
+/* ── Store announcement (time-boxed storefront notice) ────── */
+
+export interface StoreAnnouncement {
+  message: string;
+  tone: "info" | "sale" | "warn";
+  startsAt?: string; // YYYY-MM-DD — optional window start
+  endsAt?: string;   // YYYY-MM-DD — optional window end (inclusive)
+  active: boolean;   // seller's on/off switch
+}
+
+const gAnn = globalThis as unknown as { __vhStoreAnnouncement?: StoreAnnouncement | null };
+
+export async function readStoreAnnouncement(): Promise<StoreAnnouncement | null> {
+  return gAnn.__vhStoreAnnouncement ?? null;
+}
+
+export async function writeStoreAnnouncement(a: StoreAnnouncement | null): Promise<void> {
+  gAnn.__vhStoreAnnouncement = a;
+}
+
+/** Live = switched on AND within its date window (if one is set). `today` is
+ *  passed in (YYYY-MM-DD) so callers stay pure and testable. */
+export function announcementLive(a: StoreAnnouncement | null | undefined, today: string): boolean {
+  if (!a || !a.active || !a.message) return false;
+  if (a.startsAt && today < a.startsAt) return false;
+  if (a.endsAt && today > a.endsAt) return false;
+  return true;
+}
+
 /* ── Seller Central demo state ────────────────────────────── */
 
 /** Status overrides for sample orders: { [orderId]: "ACCEPTED" | "PACKED" } */
