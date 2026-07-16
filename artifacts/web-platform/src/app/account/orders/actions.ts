@@ -75,3 +75,37 @@ export async function requestReturn(formData: FormData): Promise<void> {
   await writeReturns(map);
   redirect(`/account/orders/${orderId}?ret=ok#return`);
 }
+
+/* ── Adverse event (side-effect) report — pharmacovigilance (A3) ──── */
+
+export async function reportSideEffect(formData: FormData): Promise<void> {
+  const reference = String(formData.get("reference") ?? "").slice(0, 30);
+  const email = await assertOwner(reference);
+  const severity = String(formData.get("severity") ?? "");
+  const narrative = String(formData.get("narrative") ?? "").trim().slice(0, 1000);
+  const order = await findOrder(reference);
+  const { isSeverity, reportAdverseEvent } = await import("@/lib/adverse");
+  if (!isSeverity(severity)) redirect(`/account/orders/live-${reference}?ae=severity#safety`);
+  if (narrative.length < 12) redirect(`/account/orders/live-${reference}?ae=short#safety`);
+
+  const item = order?.items[0];
+  await reportAdverseEvent({
+    ...(item?.productId ? { productId: item.productId } : {}),
+    productTitle: item?.title ?? "Order item",
+    orderRef: reference,
+    reporter: email,
+    reporterRole: "BUYER",
+    severity,
+    narrative,
+  });
+  // The narrative is health data — it is NEVER placed in the audit note.
+  await writeAudit({ actor: email, action: "ADVERSE_EVENT_REPORT", target: reference, outcome: "OK", note: severity });
+  const { notify } = await import("@/lib/notify");
+  await notify("admin", "admin", {
+    kind: "ADVERSE_EVENT",
+    title: "New adverse-event report",
+    body: `A ${severity.toLowerCase()} report was filed for review. Open the compliance console.`,
+    href: "/admin/compliance#adverse",
+  });
+  redirect(`/account/orders/live-${reference}?ae=ok#safety`);
+}

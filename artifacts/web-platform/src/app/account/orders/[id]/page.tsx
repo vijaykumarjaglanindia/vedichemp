@@ -20,7 +20,7 @@ import { readReturns } from "@/lib/engage";
 import { getSession } from "@/lib/auth-lite";
 import { findOrder, ORDER_TONE, type Order } from "@/lib/orders";
 import { addToCart } from "../../../(site)/cart/actions";
-import { cancelOwnOrder, requestReturn } from "../actions";
+import { cancelOwnOrder, reportSideEffect, requestReturn } from "../actions";
 
 export const metadata: Metadata = { title: "Order details" };
 
@@ -42,7 +42,7 @@ function RealOrderDetail({
   flags,
 }: {
   order: Order;
-  flags: { cancelled?: string; ret?: string; err?: string };
+  flags: { cancelled?: string; ret?: string; err?: string; ae?: string };
 }) {
   const canCancel = ["PLACED", "ACCEPTED", "PACKED"].includes(order.status);
   const canReturn = order.status === "DELIVERED";
@@ -204,6 +204,44 @@ function RealOrderDetail({
             </div>
           )}
 
+          {/* Report a side effect — pharmacovigilance (any real order, no time limit) */}
+          <div id="safety" style={{ scrollMarginTop: 90 }}>
+              <Card title={title(<LifeBuoy {...I} />, "Report a side effect")}>
+                {flags.ae === "ok" ? (
+                  <Banner severity="ok" title="Thank you — report received">
+                    Our safety team reviews every report. What you shared is treated as confidential health information
+                    and is only seen by our compliance pharmacists.
+                  </Banner>
+                ) : (
+                  <>
+                    {flags.ae === "short" && <p className="small" role="alert" style={{ color: "var(--vh-danger)", margin: "0 0 8px" }}>Please describe what happened (at least 12 characters).</p>}
+                    {flags.ae === "severity" && <p className="small" role="alert" style={{ color: "var(--vh-danger)", margin: "0 0 8px" }}>Please choose how serious it was.</p>}
+                    <p className="small muted" style={{ marginTop: 0 }}>
+                      If a product from this order caused an unexpected reaction, tell us. This is confidential — only our
+                      compliance pharmacists see it — and it never expires like the return window.
+                    </p>
+                    <form action={reportSideEffect} className="vh-grid" style={{ gap: 10 }}>
+                      <input type="hidden" name="reference" value={order.reference} />
+                      <div className="vh-field">
+                        <label className="vh-label" htmlFor="ae-severity">How serious was it?</label>
+                        <select className="vh-select" id="ae-severity" name="severity" defaultValue="">
+                          <option value="" disabled>Choose…</option>
+                          <option value="MILD">Mild — noticeable but manageable</option>
+                          <option value="MODERATE">Moderate — needed attention</option>
+                          <option value="SEVERE">Severe — needed medical care</option>
+                        </select>
+                      </div>
+                      <div className="vh-field">
+                        <label className="vh-label" htmlFor="ae-narrative">What happened?</label>
+                        <textarea className="vh-input" id="ae-narrative" name="narrative" rows={3} maxLength={1000} required placeholder="Describe the reaction, when it started, and which product you think caused it." />
+                      </div>
+                      <button type="submit" className="vh-btn vh-btn-sm vh-btn-outline" style={{ justifySelf: "start" }}>Submit report</button>
+                    </form>
+                  </>
+                )}
+              </Card>
+            </div>
+
           {["RETURN_REQUESTED", "RETURN_APPROVED"].includes(order.status) && (
             <Banner severity="warn" title="Return in progress" icon="↩️">
               Reason: {order.returnReason}. Your refund is issued when it&rsquo;s settled — you are never the collateral.
@@ -230,7 +268,7 @@ export default async function OrderDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ ret?: string; cancelled?: string; err?: string }>;
+  searchParams: Promise<{ ret?: string; cancelled?: string; err?: string; ae?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;

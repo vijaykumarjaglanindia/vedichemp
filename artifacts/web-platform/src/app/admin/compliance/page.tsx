@@ -22,6 +22,8 @@ import { SENSITIVE_ACCESS_24H, slaCountdown } from "../_lib/data";
 import { closeRecall, initiateRecall, decidePrescriptionAction, revealPrescriptionAction } from "../actions";
 import { pendingPrescriptions, allPrescriptions, accessLog, SENSITIVE_REASONS, reasonLabel } from "@/lib/prescriptions";
 import { openRecalls, recallEvents } from "@/lib/recalls";
+import { allEvents as allAdverse, triageFor } from "@/lib/adverse";
+import { triageAdverseEvent } from "../actions";
 
 export const metadata: Metadata = { title: "Compliance · Admin" };
 
@@ -50,11 +52,24 @@ const RECALL_NOTES: Record<string, { sev: "ok" | "danger" | "warn"; title: strin
 export default async function AdminCompliancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ recall?: string; ref?: string; rx?: string; rxerr?: string }>;
+  searchParams: Promise<{ recall?: string; ref?: string; rx?: string; rxerr?: string; ae?: string }>;
 }) {
   const { recall, ref, rx: rxDone, rxerr } = await searchParams;
   const openRecs = await openRecalls();
   const recallRegister = await recallEvents();
+  const adverse = await allAdverse();
+  const adverseTriage = Object.fromEntries(await Promise.all(adverse.map(async (e) => [e.id, await triageFor(e.id)] as const)));
+  const { ae } = await searchParams;
+  const AE_MSG: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {
+    acknowledged: { sev: "ok", text: "Report acknowledged — the reporter's concern is on the pharmacovigilance record." },
+    triaged: { sev: "ok", text: "Report triaged — clinical assessment recorded." },
+    closed: { sev: "ok", text: "Report closed. The record stays on file permanently (A3)." },
+    state: { sev: "warn", text: "That status change isn't valid from the current state." },
+    missing: { sev: "warn", text: "That report no longer exists." },
+  };
+  const aeMsg = ae ? AE_MSG[ae] : undefined;
+  const AE_TONE = { OPEN: "warn", ACKNOWLEDGED: "info", TRIAGED: "info", CLOSED: "ok" } as const;
+  const SEV_TONE = { MILD: "ok", MODERATE: "warn", SEVERE: "danger" } as const;
   const rxPending = await pendingPrescriptions();
   const rxApproved = (await allPrescriptions()).filter((r) => r.status === "APPROVED");
   const liveAccess = await accessLog();
@@ -318,6 +333,56 @@ export default async function AdminCompliancePage({
             </div>
           </div>
         </Card>
+
+        {/* ── Adverse events / pharmacovigilance (A3 append-only) ── */}
+        <div id="adverse" style={{ scrollMarginTop: 90 }}>
+          {aeMsg && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity={aeMsg.sev}>{aeMsg.text}</Banner></div>}
+          <Card
+            title={<span className="vh-row" style={{ gap: 8 }}><HeartPulse size={16} strokeWidth={2.2} aria-hidden /> Adverse events (pharmacovigilance)</span>}
+            action={<StatusPill tone={adverse.some((e) => e.status !== "CLOSED") ? "warn" : "ok"}>{adverse.filter((e) => e.status !== "CLOSED").length} open</StatusPill>}
+            pad0
+          >
+            {adverse.length === 0 ? (
+              <div style={{ padding: 12 }}><EmptyState icon="🩺" headline="No reports" sub="Buyer and seller adverse-event reports appear here. The narrative is confidential health data — shown only in this console, never in a log." /></div>
+            ) : (
+              <div>
+                {adverse.map((e) => (
+                  <div key={e.id} style={{ borderTop: "1px solid var(--vh-line)", padding: "14px 16px" }}>
+                    <div className="vh-row-between" style={{ gap: 10, flexWrap: "wrap", marginBottom: 4 }}>
+                      <span className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
+                        <span className="mono small" style={{ fontWeight: 700 }}>{e.id}</span>
+                        <StatusPill tone={SEV_TONE[e.severity]}>{e.severity}</StatusPill>
+                        <StatusPill tone={AE_TONE[e.status]}>{e.status}</StatusPill>
+                        <span className="small">{e.productTitle}</span>
+                        {e.orderRef && <span className="small muted mono">{e.orderRef}</span>}
+                      </span>
+                      <span className="small muted tabular">{e.at} · {e.reporterRole.toLowerCase()}</span>
+                    </div>
+                    <p className="small" style={{ margin: "4px 0 8px" }}>{e.narrative}</p>
+                    {e.status !== "CLOSED" && (
+                      <div className="vh-row" style={{ gap: 6, flexWrap: "wrap", alignItems: "flex-end" }}>
+                        {(["ACKNOWLEDGED", "TRIAGED", "CLOSED"] as const).map((to) => (
+                          <form key={to} action={triageAdverseEvent}>
+                            <input type="hidden" name="eventId" value={e.id} />
+                            <input type="hidden" name="to" value={to} />
+                            <button className={`vh-btn vh-btn-sm ${to === "CLOSED" ? "vh-btn-primary" : ""}`} type="submit">
+                              {to === "ACKNOWLEDGED" ? "Acknowledge" : to === "TRIAGED" ? "Mark triaged" : "Close"}
+                            </button>
+                          </form>
+                        ))}
+                      </div>
+                    )}
+                    {(adverseTriage[e.id]?.length ?? 0) > 0 && (
+                      <div className="small muted" style={{ marginTop: 6 }}>
+                        {adverseTriage[e.id]!.map((t) => `${t.status.toLowerCase()} (${t.at}, ${t.actor})`).join(" → ")}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </Card>
+        </div>
 
         <Card title="Recent compliance activity" action={<span className="small muted">Pseudonymised · denied attempts included</span>}>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>

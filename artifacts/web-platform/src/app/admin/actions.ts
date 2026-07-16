@@ -384,6 +384,21 @@ export async function revealPrescriptionAction(formData: FormData): Promise<void
   redirect("/admin/compliance?rx=revealed#rx");
 }
 
+/* ── Adverse events / pharmacovigilance (A3 append-only) ──── */
+
+export async function triageAdverseEvent(formData: FormData): Promise<void> {
+  const id = String(formData.get("eventId") ?? "").trim();
+  const to = String(formData.get("to") ?? "").trim() as "ACKNOWLEDGED" | "TRIAGED" | "CLOSED";
+  const note = String(formData.get("note") ?? "").trim().slice(0, 200);
+  const who = await actor();
+  const { triageEvent } = await import("@/lib/adverse");
+  const result = await triageEvent(id, to, who, note);
+  if (!result.ok) redirect(`/admin/compliance?ae=${result.reason}#adverse`);
+  // The narrative is health data — the audit note carries only the status.
+  await writeAudit({ actor: who, action: "ADVERSE_EVENT_TRIAGE", target: id, outcome: "OK", note: to });
+  redirect(`/admin/compliance?ae=${to.toLowerCase()}#adverse`);
+}
+
 /* ── Settlements (A6 maker–checker, A3 immutable) ─────────── */
 
 /** MAKER: create a settlement run for a seller's un-settled delivered orders.
