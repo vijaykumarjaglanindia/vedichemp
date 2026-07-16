@@ -18,6 +18,8 @@ import { readAddresses } from "@/lib/engage";
 import { placeOrder } from "../cart/actions";
 import { randomUUID } from "node:crypto";
 import { readEnabledPayments } from "@/lib/payments";
+import { getSession } from "@/lib/auth-lite";
+import { balancePaise } from "@/lib/wallet";
 
 export const metadata: Metadata = { title: "Checkout" };
 
@@ -44,6 +46,13 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   if (cart.lines.length === 0) redirect("/cart");
 
   const jar = await cookies();
+  // Wallet credit the buyer may apply. The APPLICABLE amount is capped at the
+  // order total — you can't overpay from the wallet. The server recomputes this
+  // on submit; this is display only.
+  const session = await getSession();
+  const walletBalance = session?.email ? await balancePaise(session.email) : 0;
+  const walletApplicable = Math.min(walletBalance, cart.totalPaise);
+  const netAfterWallet = cart.totalPaise - walletApplicable;
   const methods = await readEnabledPayments();
   const hasCod = methods.some((mm) => mm.kind === "cod");
   let draft: Draft = {};
@@ -192,6 +201,17 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
             <span className="muted">Shipping</span>
             {cart.shippingPaise === 0 ? <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Free</span> : <MoneyText paise={cart.shippingPaise} />}
           </div>
+          {walletApplicable > 0 && (
+            <div style={{ padding: "8px 0", borderTop: "1px dashed var(--vh-line)", marginTop: 4 }}>
+              <label className="vh-row" style={{ gap: 8, alignItems: "flex-start", cursor: "pointer" }}>
+                <input type="checkbox" name="applyWallet" style={{ marginTop: 3 }} aria-label="Apply wallet credit to this order" />
+                <span className="small">
+                  <span style={{ fontWeight: 600 }}>Use wallet credit</span> — apply <MoneyText paise={walletApplicable} /> of your <MoneyText paise={walletBalance} /> balance.
+                  <span className="muted"> You&rsquo;ll pay <MoneyText paise={netAfterWallet} /> by your chosen method; the rest comes from your wallet.</span>
+                </span>
+              </label>
+            </div>
+          )}
           <div className="vh-row-between" style={{ padding: "8px 0 14px" }}>
             <span style={{ fontWeight: 600 }}>Total</span>
             <MoneyText paise={cart.totalPaise} className="vh-stat-value" />

@@ -151,6 +151,7 @@ export interface OrderRecord {
   couponCode?: string | null;
   shippingPaise: number;
   totalPaise: number;
+  walletAppliedPaise?: number;
 }
 
 // Prepaid only: the platform forwards an order to the seller only after
@@ -251,6 +252,23 @@ export async function placeOrder(formData: FormData): Promise<void> {
     ...(l.variantLabel ? { variantLabel: l.variantLabel } : {}),
   }));
   for (const it of orderItems) await decrementStock(it.productId, it.qty, it.variantId);
+
+  // Wallet credit: a logged-in buyer may apply store credit toward this order.
+  // The amount is computed and debited SERVER-SIDE — the form only signals
+  // intent. It can never exceed the posted balance nor the order total (fail
+  // closed), and the debit lands on the append-only ledger before the order is
+  // created (so a replay, already caught above, cannot double-spend).
+  let walletAppliedPaise = 0;
+  const wantsWallet = formData.get("applyWallet") === "on";
+  if (wantsWallet && session?.email) {
+    const { spendWallet } = await import("@/lib/wallet");
+    const target = Math.min(cart.totalPaise, Number.MAX_SAFE_INTEGER);
+    const res = await spendWallet(session.email, target, reference);
+    walletAppliedPaise = res.appliedPaise;
+  }
+  if (walletAppliedPaise > 0) record.walletAppliedPaise = walletAppliedPaise;
+  const chargedPaise = cart.totalPaise - walletAppliedPaise;
+
   await createOrder({
     idempotencyKey,
     buyerEmail,
@@ -266,6 +284,7 @@ export async function placeOrder(formData: FormData): Promise<void> {
     couponCode: cart.discountPaise > 0 || cart.couponCode ? cart.couponCode : null,
     shippingPaise: cart.shippingPaise,
     totalPaise: cart.totalPaise,
+    ...(walletAppliedPaise > 0 ? { walletAppliedPaise } : {}),
   });
 
   // Count the coupon redemption only if it actually applied (no blocking note).
@@ -283,7 +302,7 @@ export async function placeOrder(formData: FormData): Promise<void> {
   await notify("buyer", buyerEmail, {
     kind: "ORDER_PLACED",
     title: `Order ${reference} confirmed`,
-    body: `${itemCount} item${itemCount === 1 ? "" : "s"} · ₹${(cart.totalPaise / 100).toLocaleString("en-IN")} paid. We'll tell you when it ships.`,
+    body: `${itemCount} item${itemCount === 1 ? "" : "s"} · ₹${(chargedPaise / 100).toLocaleString("en-IN")} paid${walletAppliedPaise > 0 ? ` (₹${(walletAppliedPaise / 100).toLocaleString("en-IN")} from wallet)` : ""}. We'll tell you when it ships.`,
     href: `/account/orders/live-${reference}`,
   });
   for (const seller of [...new Set(orderItems.map((it) => it.seller))]) {

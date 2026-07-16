@@ -70,6 +70,10 @@ export interface Order {
   shippingPaise: number;
   totalPaise: number;
   gstPaise?: number; // GST included in the total (derived, inclusive pricing)
+  /** Wallet credit applied at checkout (a store-credit DEBIT). The amount
+   *  actually charged to the gateway is totalPaise - walletAppliedPaise. A
+   *  full refund still credits totalPaise back to the wallet (buyer-first). */
+  walletAppliedPaise?: number;
   timeline: OrderEvent[];
   // Returns / refunds
   returnReason?: string;
@@ -113,6 +117,7 @@ export interface PlaceOrderInput {
   shippingPaise: number;
   totalPaise: number;
   gstPaise?: number;
+  walletAppliedPaise?: number;
 }
 
 /** The order (if any) already created under an idempotency key. Callers check
@@ -151,6 +156,7 @@ export async function createOrder(input: PlaceOrderInput): Promise<Order> {
     couponCode: input.couponCode,
     shippingPaise: input.shippingPaise,
     totalPaise: input.totalPaise,
+    ...(input.walletAppliedPaise && input.walletAppliedPaise > 0 ? { walletAppliedPaise: input.walletAppliedPaise } : {}),
     timeline: [{ at: now(), status: "PLACED", by: input.buyerEmail }],
     refundedPaise: 0,
     sellerRecovery: "NONE",

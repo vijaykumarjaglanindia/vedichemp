@@ -99,3 +99,21 @@ export async function creditWallet(email: string, input: {
   s.txns.unshift(txn);
   return txn;
 }
+
+/**
+ * Spend wallet credit against an order (a DEBIT). Server-authoritative and
+ * fail-closed: you can never spend more than the POSTED balance, so the applied
+ * amount is min(request, balance) and is always integer paise. Returns how much
+ * actually applied (0 if there was nothing to spend). The ledger is append-only
+ * — the debit row is the record, and a later full refund credits the order
+ * total back to the wallet, which makes the buyer whole.
+ */
+export async function spendWallet(email: string, requestPaise: number, orderRef: string): Promise<{ appliedPaise: number; txn?: WalletTxn }> {
+  const want = Math.max(0, Math.floor(requestPaise));
+  if (want === 0) return { appliedPaise: 0 };
+  const bal = await balancePaise(email);
+  const applied = Math.min(bal, want);
+  if (applied <= 0) return { appliedPaise: 0 };
+  const txn = await creditWallet(email, { kind: "DEBIT", amountPaise: -applied, note: `Applied to order ${orderRef}`, ref: orderRef });
+  return { appliedPaise: applied, txn };
+}
