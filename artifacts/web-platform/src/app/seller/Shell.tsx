@@ -9,10 +9,12 @@
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Package, Warehouse, ShoppingCart, Landmark,
-  Target, Megaphone, MessagesSquare, BarChart3, Sparkles, Store, Wallet, Bell, Star,
+  Target, Megaphone, MessagesSquare, BarChart3, Sparkles, Store, Wallet, Bell, Star, Users,
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
 import { unreadCount } from "@/lib/notify";
+import { currentStaff } from "@/lib/staff";
+import { ROLE_DEFS } from "@/lib/staff";
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
 
@@ -56,6 +58,7 @@ const SELLER_NAV: NavGroup[] = [
     group: "Store",
     items: [
       { href: "/seller/store", label: "Store & KYC", icon: <Store {...I} /> },
+      { href: "/seller/staff", label: "Staff & roles", icon: <Users {...I} /> },
       { href: "/seller/notifications", label: "Notifications", icon: <Bell {...I} /> },
       { href: "/seller/help", label: "Help & guide", icon: <Sparkles {...I} /> },
     ],
@@ -73,6 +76,8 @@ export async function Shell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const me = await currentStaff();
+  const roleLabel = ROLE_DEFS.find((r) => r.role === me.role)?.label ?? me.role;
   return (
     <ConsoleShell
       brand="🌿 Seller Central"
@@ -80,6 +85,9 @@ export async function Shell({
       active={active}
       bellHref="/seller/notifications"
       bellCount={await unreadCount("seller", STORE)}
+      topbarExtra={me.role !== "OWNER" ? (
+        <a href="/seller/staff" className="vh-pill vh-pill-warn" style={{ textDecoration: "none" }}>Acting as {me.name} · {roleLabel}</a>
+      ) : undefined}
       breadcrumb={breadcrumb}
       title={title}
       actions={actions}

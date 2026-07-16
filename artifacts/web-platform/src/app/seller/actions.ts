@@ -56,6 +56,86 @@ async function backPath(fallback: string): Promise<string> {
   }
 }
 
+/* ── Staff & roles (RBAC) ─────────────────────────────────── */
+
+/** Server-side permission gate: redirect (and log) if the acting staff member
+ *  lacks a permission. Every gated seller action calls this first. */
+async function requirePerm(perm: import("@/lib/staff").Permission, _back: string): Promise<void> {
+  const { actingCan, currentStaff } = await import("@/lib/staff");
+  if (!(await actingCan(perm))) {
+    const me = await currentStaff();
+    await writeAudit({ actor: `${DEMO_STORE}/${me.name}`, action: "PERMISSION_DENIED", target: perm, outcome: "DENIED", note: `role ${me.role}` });
+    // Blocked server-side — the acting member's role doesn't include this.
+    redirect(`/seller/staff?denied=${perm}`);
+  }
+}
+
+const STAFF_ROLES = ["MANAGER", "CATALOGUE", "ORDERS", "MARKETING", "FINANCE", "SUPPORT"];
+
+export async function inviteStaffMember(formData: FormData): Promise<void> {
+  await requirePerm("staff", "/seller/staff");
+  const name = String(formData.get("name") ?? "").trim().slice(0, 60);
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const role = String(formData.get("role") ?? "");
+  if (name.length < 2) redirect("/seller/staff?err=name");
+  if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) redirect("/seller/staff?err=email");
+  if (!STAFF_ROLES.includes(role)) redirect("/seller/staff?err=role");
+  const { inviteStaff } = await import("@/lib/staff");
+  const result = await inviteStaff({ name, email, role: role as import("@/lib/staff").Role });
+  if (!result.ok) redirect(`/seller/staff?err=${result.reason}`);
+  await writeAudit({ actor: DEMO_STORE, action: "STAFF_INVITE", target: `${email} (${role})`, outcome: "OK" });
+  redirect("/seller/staff?done=invited");
+}
+
+export async function changeStaffRole(formData: FormData): Promise<void> {
+  await requirePerm("staff", "/seller/staff");
+  const id = String(formData.get("staffId") ?? "");
+  const role = String(formData.get("role") ?? "");
+  if (!STAFF_ROLES.includes(role)) redirect("/seller/staff?err=role");
+  const { setStaffRole } = await import("@/lib/staff");
+  const result = await setStaffRole(id, role as import("@/lib/staff").Role);
+  if (!result.ok) redirect(`/seller/staff?err=${result.reason}`);
+  await writeAudit({ actor: DEMO_STORE, action: "STAFF_ROLE", target: `${id} → ${role}`, outcome: "OK" });
+  redirect("/seller/staff?done=role");
+}
+
+export async function setStaffMemberStatus(formData: FormData): Promise<void> {
+  await requirePerm("staff", "/seller/staff");
+  const id = String(formData.get("staffId") ?? "");
+  const status = String(formData.get("status") ?? "");
+  if (!["ACTIVE", "SUSPENDED"].includes(status)) redirect("/seller/staff");
+  const { setStaffStatus } = await import("@/lib/staff");
+  const result = await setStaffStatus(id, status as import("@/lib/staff").StaffStatus);
+  if (!result.ok) redirect(`/seller/staff?err=${result.reason}`);
+  // Suspending someone you're currently acting as drops you back to the owner.
+  if (status === "SUSPENDED") { const { actAs } = await import("@/lib/staff"); await actAs("owner"); }
+  await writeAudit({ actor: DEMO_STORE, action: "STAFF_STATUS", target: `${id} → ${status}`, outcome: "OK" });
+  redirect("/seller/staff?done=status");
+}
+
+export async function removeStaffMember(formData: FormData): Promise<void> {
+  await requirePerm("staff", "/seller/staff");
+  const id = String(formData.get("staffId") ?? "");
+  const { removeStaff, actAs } = await import("@/lib/staff");
+  const result = await removeStaff(id);
+  if (!result.ok) redirect(`/seller/staff?err=${result.reason}`);
+  await actAs("owner");
+  await writeAudit({ actor: DEMO_STORE, action: "STAFF_REMOVE", target: id, outcome: "OK" });
+  redirect("/seller/staff?done=removed");
+}
+
+/** Demo convenience: switch which staff member the console acts as, to exercise
+ *  the permission gates. Only the owner may switch (production = staff login). */
+export async function actAsStaff(formData: FormData): Promise<void> {
+  const id = String(formData.get("staffId") ?? "");
+  const { actAs } = await import("@/lib/staff");
+  // Returning to the owner is always allowed; switching INTO a staff member
+  // requires the "staff" permission (only the owner/managers have it).
+  if (id !== "owner") await requirePerm("staff", "/seller/staff");
+  await actAs(id);
+  redirect("/seller/staff?done=actas");
+}
+
 /* ── Orders: accept / pack ────────────────────────────────── */
 
 const ORDER_OPS: Record<string, { from: string[]; to: string }> = {
@@ -216,6 +296,7 @@ function readMerchFields(formData: FormData, regularPricePaise: number):
 
 export async function updateProductListing(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");
+  await requirePerm("catalogue", `/seller/products/${id}`);
   const parsed = readListingFields(formData);
   if ("err" in parsed) {
     // Attempting medical-claims copy is not a silent validation miss: the
@@ -689,6 +770,7 @@ export async function bulkUploadListings(formData: FormData): Promise<void> {
 const SELLER_COUPON_CLASSES = ["", "HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
 
 export async function createCoupon(formData: FormData): Promise<void> {
+  await requirePerm("marketing", "/seller/marketing");
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
   const kind = String(formData.get("kind") ?? "PERCENT"); // PERCENT | FIXED
   const value = parseInt(String(formData.get("value") ?? ""), 10); // % or ₹
@@ -802,6 +884,7 @@ export async function addStock(formData: FormData): Promise<void> {
 /* ── Fulfilment on real orders (order store) ──────────────── */
 
 export async function fulfilOrder(formData: FormData): Promise<void> {
+  await requirePerm("orders", "/seller/orders");
   const reference = String(formData.get("reference") ?? "").slice(0, 30);
   const op = String(formData.get("op") ?? "");
   const { advanceOrder, findOrder } = await import("@/lib/orders");
@@ -875,6 +958,7 @@ export async function saveWithdrawAccount(formData: FormData): Promise<void> {
 }
 
 export async function submitWithdraw(formData: FormData): Promise<void> {
+  await requirePerm("finance", "/seller/earnings");
   const rupees = parseInt(String(formData.get("amount") ?? ""), 10);
   const { requestWithdraw } = await import("@/lib/earnings");
   if (!Number.isInteger(rupees) || rupees <= 0) redirect("/seller/earnings?err=amount#withdraw");
