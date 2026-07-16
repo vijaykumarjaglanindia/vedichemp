@@ -17,14 +17,19 @@ import {
 } from "lucide-react";
 import { Shell } from "./Shell";
 import { Card, Stat, StatusPill, toneForStatus, MoneyText, Banner, ProgressRing, EmptyState, Timeline } from "@/components/ui";
-import { Sparkline } from "@/components/ui/charts";
 import { CampaignLabel, assertCreativeClassRenderable } from "@/components/ui/ads";
 import { currentBuyer } from "@/lib/session";
-import { ORDERS, classProducts } from "@/lib/sample";
-import { CAMPAIGN_OFFERS, ACTIVITY, WALLET_TREND, WALLET_BALANCE_PAISE } from "./_lib/data";
+import { classProducts } from "@/lib/sample";
+import { CAMPAIGN_OFFERS, daysUntil, type ActivityEvent } from "./_lib/data";
 import { applyCoupon } from "../(site)/cart/actions";
+import { getSession } from "@/lib/auth-lite";
+import { ordersForBuyer, type OrderStatus } from "@/lib/orders";
+import { balancePaise, ledger } from "@/lib/wallet";
+import { myPrescriptions } from "@/lib/prescriptions";
+import { notificationsFor } from "@/lib/notify";
 
 export const metadata: Metadata = { title: "My Account" };
+export const dynamic = "force-dynamic";
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
 
@@ -45,23 +50,38 @@ const QUICK_ACTIONS = [
   { href: "/account/support", label: "Get support", icon: <LifeBuoy size={18} strokeWidth={2.2} /> },
 ];
 
-export default function AccountHomePage() {
+export default async function AccountHomePage() {
   const viewer = currentBuyer();
+  const session = await getSession();
+  const email = session?.email ?? "buyer@example.in";
+  const firstName = (session?.name || viewer.firstName).split(" ")[0] || viewer.firstName;
 
-  // W-recent-orders: this buyer's own orders only, most recent first.
-  const myOrders = ORDERS.filter((o) => o.buyer === "Ananya S." || o.buyer === undefined).slice(0, 3);
+  // ── Real buyer-specific data (server stores, this buyer only) ──────────
+  const allOrders = await ordersForBuyer(email);
+  const myOrders = allOrders.slice(0, 3);
+  const walletBalance = await balancePaise(email);
+  const lastTxn = (await ledger(email))[0];
+  const rx = await myPrescriptions(email);
+  const notes = (await notificationsFor("buyer", email)).slice(0, 6);
 
-  // Profile completeness drives W1 (ProgressRing). Presentation-only estimate;
-  // the server computes the real percentage from which profile fields are set.
+  // Profile completeness — presentation estimate; the server owns the real %.
   const profileCompletePct = 72;
 
-  // Pending / action-needed items — synthetic for the demo viewer. In prod
-  // this comes from a server-side aggregation (unpaid orders, undelivered
-  // returns, KYC nudges, etc.), never computed in the browser.
-  const pendingActions = [
-    { id: "pa1", label: "Confirm delivery of order VH2026070233", tone: "warn" as const, href: "/account/orders/o3" },
-    { id: "pa2", label: "Add a backup mobile number for account recovery", tone: "info" as const, href: "/account/profile" },
-  ];
+  // Rx expiry (W1): computed from the buyer's real prescriptions.
+  const approvedRx = rx.find((r) => r.status === "APPROVED");
+  const rxExpiryDays = approvedRx ? daysUntil(approvedRx.validTill) : null;
+  const hasRx = !!approvedRx;
+  const showRxExpiryBanner = hasRx && rxExpiryDays !== null && rxExpiryDays <= 14;
+
+  // Pending / action-needed items — DERIVED from real state, never synthetic.
+  const IN_FLIGHT = new Set<OrderStatus>(["PLACED", "ACCEPTED", "PACKED", "SHIPPED"]);
+  const pendingActions: { id: string; label: string; tone: "warn" | "info"; href: string }[] = [];
+  for (const o of allOrders.filter((o) => o.status === "SHIPPED").slice(0, 2)) {
+    pendingActions.push({ id: `d-${o.reference}`, label: `Track order ${o.reference} — on its way`, tone: "warn", href: `/account/orders/live-${o.reference}/track` });
+  }
+  if (rx.some((r) => r.status === "PENDING_REVIEW")) {
+    pendingActions.push({ id: "rx-review", label: "A prescription is under pharmacist review", tone: "info", href: "/account/medical" });
+  }
 
   // A1: recommendations are built from classProducts(viewer.permittedClasses).
   // permittedClasses() never includes MED_CANNABIS for a buyer without a
@@ -72,11 +92,14 @@ export default function AccountHomePage() {
   // Personalisation consent gates offers vs. a generic best-sellers rail.
   const showPersonalisedOffers = viewer.consents.personalisation;
 
-  const rxExpiryDays = viewer.rxDaysToExpiry;
-  const showRxExpiryBanner = viewer.hasRx && rxExpiryDays !== null && rxExpiryDays <= 14;
+  // Recent activity from the real notification store (A4 reads surface here too).
+  const activity: ActivityEvent[] = notes.length
+    ? notes.map((n, i) => ({ label: n.title, at: n.createdAt.slice(0, 10), state: i === 0 ? "current" : "done" }))
+    : [{ label: "No recent activity yet — your orders and alerts will appear here.", at: "", state: "done" }];
+  const inFlightCount = allOrders.filter((o) => IN_FLIGHT.has(o.status)).length;
 
   return (
-    <Shell active="/account" breadcrumb={["My Account"]} title={`Welcome back, ${viewer.firstName}`}>
+    <Shell active="/account" breadcrumb={["My Account"]} title={`Welcome back, ${firstName}`}>
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
         {/* Widget rank 1: Rx expiry (only rendered when it applies — absent for this viewer, who has no active Rx) */}
         {showRxExpiryBanner && (
@@ -164,23 +187,22 @@ export default function AccountHomePage() {
           ) : (
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
               {myOrders.map((o) => (
-                <li key={o.id} className="vh-row-between" style={{ borderBottom: "1px solid var(--vh-line)", paddingBottom: 8 }}>
+                <li key={o.reference} className="vh-row-between" style={{ borderBottom: "1px solid var(--vh-line)", paddingBottom: 8 }}>
                   <span className="vh-row" style={{ gap: 12 }}>
                     <span aria-hidden style={{ fontSize: "1.4rem" }}>{o.items[0]?.emoji ?? "📦"}</span>
                     <span>
                       <div style={{ fontWeight: 600 }}>{o.reference}</div>
                       <div className="small muted">
-                        {o.items.map((it) => it.title).join(", ")} · placed {o.placedAt}
-                        {o.eta ? ` · ETA ${o.eta}` : ""}
+                        {o.items.map((it) => it.title).join(", ")} · placed {o.placedAt.slice(0, 10)}
                       </div>
                     </span>
                   </span>
                   <span className="vh-row" style={{ gap: 8 }}>
                     <StatusPill tone={toneForStatus(o.status)}>{o.status.replace(/_/g, " ")}</StatusPill>
                     <MoneyText paise={o.totalPaise} />
-                    <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/account/orders/${o.id}`}>
+                    <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/account/orders/live-${o.reference}`}>
                       {o.status === "DELIVERED" ? (
-                        "Buy again"
+                        "View"
                       ) : (
                         <span className="vh-row" style={{ gap: 6 }}><MapPin size={14} strokeWidth={2.2} aria-hidden />Track</span>
                       )}
@@ -194,22 +216,23 @@ export default function AccountHomePage() {
 
         {/* Widget rank 5/6/7: subscriptions, wallet (with trend), rewards */}
         <div className="vh-grid cols-3">
-          <Card title={<TitleIcon icon={<RefreshCw {...I} />}>Active subscriptions</TitleIcon>}>
-            <p className="small muted" style={{ marginBottom: 8 }}>2 active · next delivery in 3 days</p>
+          <Card title={<TitleIcon icon={<RefreshCw {...I} />}>Subscriptions</TitleIcon>}>
+            <p className="small muted" style={{ marginBottom: 8 }}>Set up a repeat delivery for the things you reorder.</p>
             <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/account/subscriptions">Manage subscriptions</Link>
           </Card>
           <Card>
             <div className="vh-stat">
               <span className="vh-stat-label">Wallet balance</span>
-              <span className="vh-stat-value tabular"><MoneyText paise={WALLET_BALANCE_PAISE} /></span>
-              <span className="vh-stat-delta-up">▲ ₹250 cashback added</span>
-            </div>
-            <div style={{ marginTop: 8 }}>
-              <Sparkline points={WALLET_TREND} width={200} height={40} label="Wallet balance trend, last 7 weeks" />
+              <span className="vh-stat-value tabular"><MoneyText paise={walletBalance} /></span>
+              {lastTxn && (
+                <span className={lastTxn.amountPaise >= 0 ? "vh-stat-delta-up" : "muted small"}>
+                  {lastTxn.amountPaise >= 0 ? "▲ " : ""}{lastTxn.note}
+                </span>
+              )}
             </div>
             <Link className="small" href="/account/wallet" style={{ display: "inline-block", marginTop: 8 }}>Open wallet →</Link>
           </Card>
-          <Stat label="Reward points" value="1,240 pts" delta={{ dir: "up", text: "120 pts this month" }} />
+          <Stat label="Orders in flight" value={String(inFlightCount)} delta={{ dir: "up", text: `${allOrders.length} lifetime` }} />
         </div>
 
         {/* Activity timeline — companion to the ranked widgets, placed after wallet */}
@@ -217,7 +240,7 @@ export default function AccountHomePage() {
           title={<TitleIcon icon={<Activity {...I} />}>Recent activity</TitleIcon>}
           action={<span className="small muted">Sensitive reads always appear here and notify you (A4)</span>}
         >
-          <Timeline nodes={ACTIVITY} />
+          <Timeline nodes={activity} />
         </Card>
 
         {/* Widget rank 8: recommendations — A1: MED_CANNABIS is structurally absent, never filtered client-side */}
