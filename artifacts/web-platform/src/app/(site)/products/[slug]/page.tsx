@@ -252,6 +252,19 @@ export default async function ProductDetailPage({
                   </tbody>
                 </table>
               </div>
+              {product.wholesaleTiers && product.wholesaleTiers.length > 0 && (
+                <div style={{ marginTop: "var(--sp-3)", border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "10px 12px" }}>
+                  <div className="small" style={{ fontWeight: 700, color: "var(--vh-ink)" }}>Bulk pricing for business accounts</div>
+                  <div className="vh-row" style={{ gap: 14, flexWrap: "wrap", marginTop: 6 }}>
+                    {product.wholesaleTiers.map((t) => (
+                      <span key={t.minQty} className="small"><strong>{t.minQty}+</strong> · <MoneyText paise={t.pricePaise} />/unit</span>
+                    ))}
+                  </div>
+                  <p className="small muted" style={{ margin: "6px 0 0" }}>
+                    Applies automatically at checkout for <Link href="/account/business" style={{ fontWeight: 700 }}>approved business accounts</Link> (clinics, resellers).
+                  </p>
+                </div>
+              )}
             </Card>
           </section>
 

@@ -76,6 +76,9 @@ export interface CatalogProduct extends SampleProduct {
   metaTitle?: string;       // SEO <title> override
   metaDescription?: string; // SEO meta description
   categoryId?: string;      // assigned merchandising category
+  /** Bulk price breaks for approved business (B2B) buyers: buy ≥ minQty, pay
+   *  pricePaise per unit. Applied only for an approved business account. */
+  wholesaleTiers?: { minQty: number; pricePaise: number }[];
 }
 
 export interface Variant {
@@ -281,6 +284,35 @@ export function saleActive(p: CatalogProduct): boolean {
 /** The price a buyer actually pays for the simple product (sale price when live). */
 export function effectivePricePaise(p: CatalogProduct): number {
   return saleActive(p) ? p.salePricePaise! : p.pricePaise;
+}
+
+/* ── Wholesale / B2B price breaks ─────────────────────────────── */
+
+const MAX_TIERS = 5;
+
+/** The per-unit price for `qty` units under the best matching tier, or null if
+ *  no tier applies. Tiers are sorted so a larger quantity gets the lower price. */
+export function wholesaleUnitPrice(p: CatalogProduct, qty: number): number | null {
+  const tiers = (p.wholesaleTiers ?? []).filter((t) => qty >= t.minQty).sort((a, b) => a.pricePaise - b.pricePaise);
+  return tiers.length ? tiers[0]!.pricePaise : null;
+}
+
+/** Add a tier (min quantity → per-unit price). The price must beat the regular. */
+export async function addWholesaleTier(id: string, minQty: number, pricePaise: number): Promise<{ ok: boolean; reason?: string }> {
+  const p = await findProduct(id);
+  if (!p) return { ok: false, reason: "missing" };
+  if (!Number.isInteger(minQty) || minQty < 2) return { ok: false, reason: "qty" };
+  if (!Number.isInteger(pricePaise) || pricePaise <= 0 || pricePaise >= p.pricePaise) return { ok: false, reason: "price" };
+  const tiers = [...(p.wholesaleTiers ?? []).filter((t) => t.minQty !== minQty), { minQty, pricePaise }].sort((a, b) => a.minQty - b.minQty).slice(0, MAX_TIERS);
+  apply(id, { wholesaleTiers: tiers });
+  return { ok: true };
+}
+
+export async function removeWholesaleTier(id: string, minQty: number): Promise<boolean> {
+  const p = await findProduct(id);
+  if (!p) return false;
+  apply(id, { wholesaleTiers: (p.wholesaleTiers ?? []).filter((t) => t.minQty !== minQty) });
+  return true;
 }
 
 /* ── Product images / gallery (data-URL seam) ─────────────────── */

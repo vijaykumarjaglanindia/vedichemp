@@ -368,6 +368,33 @@ export async function setMainProductImage(formData: FormData): Promise<void> {
   redirect(`/seller/products/${id}?img=main#gallery`);
 }
 
+/* ── Wholesale / B2B price breaks ─────────────────────────── */
+
+export async function addWholesaleTierAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  await requirePerm("catalogue", `/seller/products/${id}`);
+  const minQty = parseInt(String(formData.get("minQty") ?? ""), 10);
+  const pricePaise = parseInt(String(formData.get("pricePaise") ?? ""), 10);
+  const product = await findProduct(id);
+  if (!product || product.seller !== DEMO_STORE) redirect("/seller/products");
+  const { addWholesaleTier } = await import("@/lib/catalog");
+  const result = await addWholesaleTier(id, minQty, pricePaise);
+  if (!result.ok) redirect(`/seller/products/${id}?err=w_${result.reason}#wholesale`);
+  await writeAudit({ actor: DEMO_STORE, action: "WHOLESALE_TIER_ADD", target: `${id} · ${minQty}+ @ ${pricePaise}`, outcome: "OK" });
+  redirect(`/seller/products/${id}?wdone=tier#wholesale`);
+}
+
+export async function removeWholesaleTierAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("productId") ?? "");
+  await requirePerm("catalogue", `/seller/products/${id}`);
+  const minQty = parseInt(String(formData.get("minQty") ?? ""), 10);
+  const product = await findProduct(id);
+  if (!product || product.seller !== DEMO_STORE) redirect("/seller/products");
+  const { removeWholesaleTier } = await import("@/lib/catalog");
+  await removeWholesaleTier(id, minQty);
+  redirect(`/seller/products/${id}?wdone=removed#wholesale`);
+}
+
 /* ── Duplicate a listing ──────────────────────────────────── */
 
 export async function duplicateProduct(formData: FormData): Promise<void> {

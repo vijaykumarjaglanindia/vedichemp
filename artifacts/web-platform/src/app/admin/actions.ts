@@ -266,6 +266,29 @@ export async function moderateReviewAction(formData: FormData): Promise<void> {
   redirect(`/admin/reviews?done=${decision}`);
 }
 
+/* ── Business (B2B) accounts ──────────────────────────────── */
+
+export async function decideBusinessAccount(formData: FormData): Promise<void> {
+  const email = String(formData.get("email") ?? "").trim();
+  const decision = String(formData.get("decision") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  const who = await actor();
+  const { decideBusiness } = await import("@/lib/b2b");
+
+  if (decision === "reject" && note.length < 10) {
+    await writeAudit({ actor: who, action: "B2B_REJECT", target: email, outcome: "DENIED", note: "reason under 10 chars" });
+    redirect("/admin/business?err=note");
+  }
+  const result = await decideBusiness(email, decision === "approve", note || undefined);
+  if (!result.ok) redirect(`/admin/business?err=${result.reason}`);
+  await writeAudit({ actor: who, action: decision === "approve" ? "B2B_APPROVE" : "B2B_REJECT", target: email, outcome: "OK", ...(note ? { note } : {}) });
+  const { notify } = await import("@/lib/notify");
+  await notify("buyer", email, decision === "approve"
+    ? { kind: "B2B_APPROVED", title: "Business account approved", body: "Wholesale pricing now applies to your bulk orders.", href: "/account/business" }
+    : { kind: "B2B_REJECT", title: "Business account not approved", body: note.slice(0, 120), href: "/account/business" });
+  redirect(`/admin/business?done=${decision}`);
+}
+
 /* ── Support tickets (platform) ───────────────────────────── */
 
 export async function adminReplyTicket(formData: FormData): Promise<void> {

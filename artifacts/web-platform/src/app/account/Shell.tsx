@@ -16,7 +16,7 @@ import Link from "next/link";
 import { cookies } from "next/headers";
 import {
   LayoutDashboard, Package, MapPin, RefreshCw, Stethoscope, Wallet,
-  Heart, UserRound, Bell, LifeBuoy,
+  Heart, UserRound, Bell, LifeBuoy, Building2,
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
 import { PRESCRIPTIONS, daysUntil } from "./_lib/data";
@@ -34,6 +34,7 @@ const BUYER_NAV: NavGroup[] = [
       { href: "/account/subscriptions", label: "Subscriptions", icon: <RefreshCw {...I} /> },
       { href: "/account/medical", label: "Medical (Rx)", icon: <Stethoscope {...I} /> },
       { href: "/account/wallet", label: "Wallet", icon: <Wallet {...I} /> },
+      { href: "/account/business", label: "Business account", icon: <Building2 {...I} /> },
       { href: "/account/wishlist", label: "Wishlist", icon: <Heart {...I} /> },
       { href: "/account/profile", label: "Profile", icon: <UserRound {...I} /> },
       { href: "/account/notifications", label: "Notifications", icon: <Bell {...I} /> },

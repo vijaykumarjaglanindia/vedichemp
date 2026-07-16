@@ -24,6 +24,7 @@ import {
   addProductVariant, productLifecycle, removeProductVariant, saveOptionName,
   submitCoaForBatch, updateProductListing, updateProductVariant,
   uploadProductImage, deleteProductImage, setMainProductImage, duplicateProduct,
+  addWholesaleTierAction, removeWholesaleTierAction,
 } from "../../actions";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
@@ -71,10 +72,10 @@ export default async function ProductEditorPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ saved?: string; done?: string; err?: string; coa?: string; vdone?: string; img?: string; duplicated?: string }>;
+  searchParams: Promise<{ saved?: string; done?: string; err?: string; coa?: string; vdone?: string; img?: string; duplicated?: string; wdone?: string }>;
 }) {
   const { id } = await params;
-  const { saved, done, err, coa, vdone, img, duplicated } = await searchParams;
+  const { saved, done, err, coa, vdone, img, duplicated, wdone } = await searchParams;
   const product = await findProduct(id);
   if (!product) notFound();
 
@@ -512,6 +513,46 @@ export default async function ProductEditorPage({
             <label className="small">MRP (paise)<input className="vh-input" name="mrpPaise" type="number" min={1} placeholder="109900" style={{ width: 110 }} required aria-label="New variant MRP" /></label>
             <label className="small">Stock<input className="vh-input" name="stockQty" type="number" min={0} placeholder="40" style={{ width: 80 }} required aria-label="New variant stock" /></label>
             <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">Add variant</button>
+          </form>
+        </Card>
+      </div>
+
+      {/* ── Wholesale / B2B price breaks ──────────────────── */}
+      <div id="wholesale" style={{ scrollMarginTop: 90, marginTop: "var(--sp-4)" }}>
+        <Card
+          title="Wholesale (bulk) pricing"
+          action={<span className="small muted">{(product!.wholesaleTiers ?? []).length} tier{(product!.wholesaleTiers ?? []).length === 1 ? "" : "s"}</span>}
+        >
+          {wdone && <div style={{ marginBottom: 12 }}><Banner severity="ok" title="Wholesale pricing updated">Approved business buyers automatically get this price at the cart once they reach the quantity.</Banner></div>}
+          {err?.startsWith("w_") && <div style={{ marginBottom: 12 }}><Banner severity="danger" title="Couldn't add that tier">{err === "w_qty" ? "The minimum quantity must be 2 or more." : err === "w_price" ? "The wholesale price must be a positive amount below your selling price." : "Check the tier fields."}</Banner></div>}
+
+          <p className="small muted" style={{ marginTop: 0 }}>
+            Offer a lower per-unit price to <strong>approved business accounts</strong> who buy in bulk (clinics,
+            resellers, studios). Regular shoppers always pay the normal price. Applied server-side at the cart.
+          </p>
+
+          {(product!.wholesaleTiers ?? []).length > 0 && (
+            <div style={{ display: "grid", gap: 8, marginBottom: "var(--sp-3)" }}>
+              {product!.wholesaleTiers!.map((t) => (
+                <div key={t.minQty} className="vh-row" style={{ gap: 12, flexWrap: "wrap", alignItems: "center", borderTop: "1px solid var(--vh-line)", paddingTop: 8 }}>
+                  <span style={{ fontWeight: 700, minWidth: 120 }}>Buy {t.minQty}+</span>
+                  <span><MoneyText paise={t.pricePaise} /> <span className="small muted">/ unit</span></span>
+                  <span className="small muted">(vs <MoneyText paise={product!.pricePaise} />)</span>
+                  <form action={removeWholesaleTierAction} style={{ marginLeft: "auto" }}>
+                    <input type="hidden" name="productId" value={product!.id} />
+                    <input type="hidden" name="minQty" value={t.minQty} />
+                    <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit" aria-label={`Remove ${t.minQty}+ tier`}><Trash2 size={13} strokeWidth={2.2} aria-hidden /></button>
+                  </form>
+                </div>
+              ))}
+            </div>
+          )}
+
+          <form action={addWholesaleTierAction} className="vh-row" style={{ gap: 8, alignItems: "flex-end", flexWrap: "wrap", borderTop: "1px solid var(--vh-line)", paddingTop: "var(--sp-3)" }}>
+            <input type="hidden" name="productId" value={product!.id} />
+            <label className="small">Min quantity<input className="vh-input" name="minQty" type="number" min={2} placeholder="10" style={{ width: 110 }} required aria-label="Minimum quantity" /></label>
+            <label className="small">Price per unit (paise)<input className="vh-input" name="pricePaise" type="number" min={1} placeholder="lower than the selling price" style={{ width: 200 }} required aria-label="Wholesale unit price" /></label>
+            <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">Add tier</button>
           </form>
         </Card>
       </div>
