@@ -21,6 +21,7 @@ import { COMPLIANCE_QUEUE, AUDIT } from "@/lib/sample";
 import { SENSITIVE_ACCESS_24H, slaCountdown } from "../_lib/data";
 import { closeRecall, initiateRecall, decidePrescriptionAction, revealPrescriptionAction } from "../actions";
 import { pendingPrescriptions, allPrescriptions, accessLog, SENSITIVE_REASONS, reasonLabel } from "@/lib/prescriptions";
+import { openRecalls, recallEvents } from "@/lib/recalls";
 
 export const metadata: Metadata = { title: "Compliance · Admin" };
 
@@ -41,7 +42,8 @@ const RECALL_NOTES: Record<string, { sev: "ok" | "danger" | "warn"; title: strin
   initiated: { sev: "ok", title: "Recall initiated (maker)", body: "Affected batches are frozen from sale immediately; a second, different compliance officer must review before the recall can ever be closed. The record is append-only (A3)." },
   denied: { sev: "danger", title: "Close denied — maker cannot be checker (A6)", body: "You initiated this recall, so you cannot also close it. The denied attempt has been logged. A different compliance officer must close it." },
   closed: { sev: "ok", title: "Recall closed (checker)", body: "A second, different compliance officer reviewed and closed the recall. Both the initiation and the close are in the audit trail — the record itself is append-only (A3)." },
-  none: { sev: "warn", title: "No open recall", body: "There is no open recall to close." },
+  none: { sev: "warn", title: "No open recall", body: "There is no open recall with that reference to close." },
+  open: { sev: "warn", title: "Recall already open", body: "That reference already has an open recall." },
   reason: { sev: "warn", title: "Reason required", body: "Initiating a recall needs at least 20 characters of free-text reason — it is written into the immutable recall record." },
 };
 
@@ -51,6 +53,8 @@ export default async function AdminCompliancePage({
   searchParams: Promise<{ recall?: string; ref?: string; rx?: string; rxerr?: string }>;
 }) {
   const { recall, ref, rx: rxDone, rxerr } = await searchParams;
+  const openRecs = await openRecalls();
+  const recallRegister = await recallEvents();
   const rxPending = await pendingPrescriptions();
   const rxApproved = (await allPrescriptions()).filter((r) => r.status === "APPROVED");
   const liveAccess = await accessLog();
@@ -261,18 +265,57 @@ export default async function AdminCompliancePage({
                 </Banner>
               </div>
             )}
-            <form action={initiateRecall} className="vh-grid" style={{ gap: 10, marginBottom: 10 }}>
+            <form action={initiateRecall} className="vh-grid" style={{ gap: 10, marginBottom: 12 }}>
               <div className="vh-field">
                 <label className="vh-label" htmlFor="recall-reason">Reason <span className="req">*</span></label>
                 <textarea className="vh-textarea" id="recall-reason" name="reason" rows={2} minLength={20} maxLength={500} required placeholder="Batch, defect and source of the safety signal (min 20 characters)" />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="recall-batches">Affected batches (comma-separated)</label>
+                <input className="vh-input mono" id="recall-batches" name="batches" placeholder="VB-2405, VB-2406" />
+                <span className="vh-help">These batch codes are frozen from sale while the recall is open.</span>
               </div>
               <div className="vh-row" style={{ gap: 8 }}>
                 <button type="submit" className="vh-btn vh-btn-sm vh-btn-danger">Initiate recall (maker)</button>
               </div>
             </form>
-            <form action={closeRecall}>
-              <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">Close recall (needs checker)</button>
-            </form>
+
+            {/* Open recalls — each closed by a DIFFERENT admin (A6) */}
+            {openRecs.length > 0 && (
+              <div className="vh-grid" style={{ gap: 8, marginBottom: 12 }}>
+                {openRecs.map((r) => (
+                  <div key={r.ref} className="vh-row-between" style={{ gap: 10, flexWrap: "wrap", border: "1px solid var(--vh-warn)", borderRadius: "var(--vh-radius-sm)", padding: "10px 12px", background: "color-mix(in srgb, var(--vh-warn-bg) 40%, var(--vh-surface))" }}>
+                    <span style={{ minWidth: 0 }}>
+                      <span className="mono" style={{ fontWeight: 700 }}>{r.ref}</span> · initiated {r.at} by <span className="mono">{r.initiator}</span>
+                      <div className="small muted">{r.reason}{r.batches.length ? ` · frozen: ${r.batches.join(", ")}` : ""}</div>
+                    </span>
+                    <form action={closeRecall}>
+                      <input type="hidden" name="ref" value={r.ref} />
+                      <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">Close recall (needs a different admin)</button>
+                    </form>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* The immutable register — every INITIATE and CLOSE, append-only */}
+            <div style={{ borderTop: "1px solid var(--vh-line)", paddingTop: 10 }}>
+              <div className="small muted" style={{ marginBottom: 6 }}>Recall register (append-only · A3) — {recallRegister.length} events</div>
+              {recallRegister.length === 0 ? (
+                <p className="small muted" style={{ margin: 0 }}>No recalls on record.</p>
+              ) : (
+                <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 4 }}>
+                  {recallRegister.map((e) => (
+                    <li key={e.seq} className="small vh-row" style={{ gap: 8 }}>
+                      <StatusPill tone={e.kind === "INITIATE" ? "danger" : "ok"}>{e.kind}</StatusPill>
+                      <span className="mono">{e.ref}</span>
+                      <span className="muted">{e.at} · {e.actor}</span>
+                      {e.batches.length > 0 && <span className="muted mono">[{e.batches.join(", ")}]</span>}
+                    </li>
+                  ))}
+                </ul>
+              )}
+            </div>
           </div>
         </Card>
 

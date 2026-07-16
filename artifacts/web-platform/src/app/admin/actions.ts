@@ -17,7 +17,7 @@ import { PERIOD_CLOSE_CHECKLIST } from "./_lib/data";
 import { MAX_BODY, SAMPLE_POSTS, deletePostOverride, findPost, listRevisions, pushRevision, slugify, writePostOverride } from "@/lib/cms";
 import { getSession } from "@/lib/auth-lite";
 import { writeAudit } from "@/lib/audit";
-import { addCommission, minEffectiveFrom, readCommissions, readOpenRecall, setOpenRecall } from "@/lib/adminstate";
+import { addCommission, minEffectiveFrom, readCommissions } from "@/lib/adminstate";
 import { LAUNCH_COMMISSION_PCT } from "@/lib/commissions";
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
 import { SITE_FIELDS, writeSiteContent } from "@/lib/sitecontent";
@@ -48,30 +48,36 @@ export async function initiatePeriodClose(formData: FormData): Promise<void> {
 
 export async function initiateRecall(formData: FormData): Promise<void> {
   const reason = String(formData.get("reason") ?? "").trim();
+  const batches = String(formData.get("batches") ?? "").split(",").map((b) => b.trim()).filter(Boolean);
   if (reason.length < 20) redirect("/admin/compliance?recall=reason#recall");
 
   const who = await actor();
   const ref = `RC${Date.now().toString(36).toUpperCase().slice(-5)}`;
-  // Shared server-side record — a DIFFERENT admin must be able to see and
-  // close it (A6), so it cannot live in the maker's cookies.
-  await setOpenRecall({ ref, at: new Date().toISOString().slice(0, 10), initiator: who, reason });
-  await writeAudit({ actor: who, action: "RECALL_INITIATE", target: ref, outcome: "OK", note: reason });
+  // Append to the immutable recall register (A3) — a DIFFERENT admin must be
+  // able to see and close it (A6), so it lives server-side, never in a cookie.
+  const { initiateRecall: openRecall } = await import("@/lib/recalls");
+  const result = await openRecall({ ref, actor: who, reason, batches });
+  if (!result.ok) redirect(`/admin/compliance?recall=${result.reason}#recall`);
+  await writeAudit({ actor: who, action: "RECALL_INITIATE", target: ref, outcome: "OK", note: reason.slice(0, 80) });
   redirect(`/admin/compliance?recall=initiated&ref=${ref}#recall`);
 }
 
-export async function closeRecall(): Promise<void> {
-  const open = await readOpenRecall();
-  if (!open) redirect("/admin/compliance?recall=none#recall");
+export async function closeRecall(formData: FormData): Promise<void> {
+  const ref = String(formData.get("ref") ?? "").trim();
   const who = await actor();
-  // A6: the admin who initiated the recall cannot also close it. A different
-  // admin signing in CAN. Either way, the attempt is an audit event.
-  if (open.initiator === who) {
-    await writeAudit({ actor: who, action: "RECALL_CLOSE", target: open.ref, outcome: "DENIED", note: "A6: maker cannot be checker" });
-    redirect("/admin/compliance?recall=denied#recall");
+  const { closeRecall: closeIt } = await import("@/lib/recalls");
+  const result = await closeIt(ref, who);
+  if (!result.ok) {
+    // A6: the initiator cannot close their own recall. Log the denied attempt.
+    if (result.reason === "maker") {
+      await writeAudit({ actor: who, action: "RECALL_CLOSE", target: ref, outcome: "DENIED", note: "A6: maker cannot be checker" });
+      redirect("/admin/compliance?recall=denied#recall");
+    }
+    redirect(`/admin/compliance?recall=${result.reason}#recall`);
   }
-  await setOpenRecall(null);
-  await writeAudit({ actor: who, action: "RECALL_CLOSE", target: open.ref, outcome: "OK", note: `initiated by ${open.initiator}` });
-  redirect(`/admin/compliance?recall=closed&ref=${open.ref}#recall`);
+  // Closing APPENDS a CLOSE event — the INITIATE row is never removed (A3).
+  await writeAudit({ actor: who, action: "RECALL_CLOSE", target: ref, outcome: "OK", note: "closed after review" });
+  redirect(`/admin/compliance?recall=closed&ref=${ref}#recall`);
 }
 
 /* ── Finance: commission schedules (A5 — 30-day notice, never retroactive) ── */
