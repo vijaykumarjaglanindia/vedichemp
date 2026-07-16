@@ -12,12 +12,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { AdBanner } from "@/components/ui/ads";
 import { BadgeCheck, MapPin, ShieldCheck, UserCheck, UserPlus, Globe, ExternalLink } from "lucide-react";
-import { Card, EmptyState, Rating, SectionHead } from "@/components/ui";
+import { Banner, Card, EmptyState, Rating, SectionHead, StatusPill } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
 import { mdToHtml } from "@/lib/richtext";
 import { readFollows, readStoreAvailability, readStoreCopy, socialUrl } from "@/lib/engage";
 import { breadcrumbJsonLd } from "@/lib/seo";
-import { toggleFollowStore } from "../../actions";
+import { getSession } from "@/lib/auth-lite";
+import { approvedStoreReviews, storeAggregate } from "@/lib/store-reviews";
+import { toggleFollowStore, submitStoreReview } from "../../actions";
 import { ProductCard } from "../../_lib/ProductCard";
 import { ShareButton } from "../../_lib/ShareButton";
 import { sellerBySlug, sellerProducts, STORE_PROFILES } from "../../_lib/data";
@@ -45,8 +47,9 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   };
 }
 
-export default async function StorePage({ params }: { params: Promise<Params> }) {
+export default async function StorePage({ params, searchParams }: { params: Promise<Params>; searchParams: Promise<{ rvw?: string }> }) {
   const { slug } = await params;
+  const { rvw } = await searchParams;
   const seller = sellerBySlug(slug);
   const profile = STORE_PROFILES[slug];
 
@@ -73,6 +76,14 @@ export default async function StorePage({ params }: { params: Promise<Params> })
   const tagline = storeCopy?.tagline ?? profile.tagline;
   const story = storeCopy?.story ?? profile.story;
   const availability = slug === "vedic-botanicals" ? await readStoreAvailability() : null;
+
+  // Real store rating — computed from approved store reviews. Falls back to the
+  // sample profile only when a store has no reviews yet.
+  const storeAgg = await storeAggregate(slug);
+  const storeReviews = await approvedStoreReviews(slug);
+  const headlineRating = storeAgg.count ? storeAgg.avg : profile.rating;
+  const headlineCount = storeAgg.count ? storeAgg.count : profile.reviewCount;
+  const session = await getSession();
 
   // Seller-published social links — each built on a known domain from a
   // validated handle (socialUrl returns null for anything malformed).
@@ -137,9 +148,9 @@ export default async function StorePage({ params }: { params: Promise<Params> })
               <h1 className="vh-display" style={{ color: "var(--vh-ink)", fontSize: "1.9rem", marginBottom: 4 }}>{seller.name}</h1>
               <p style={{ color: "var(--vh-body)", margin: "0 0 10px", fontSize: ".95rem" }}>{tagline}</p>
               <div className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
-                <span style={{ background: "var(--vh-surface)", border: "1px solid var(--vh-line)", borderRadius: 999, padding: "3px 10px", display: "inline-flex" }}>
-                  <Rating value={profile.rating} count={profile.reviewCount} />
-                </span>
+                <a href="#reviews" style={{ background: "var(--vh-surface)", border: "1px solid var(--vh-line)", borderRadius: 999, padding: "3px 10px", display: "inline-flex", textDecoration: "none" }}>
+                  <Rating value={headlineRating} count={headlineCount} />
+                </a>
                 {kycApproved(seller.name) && (
                   <span className="vh-pill vh-pill-ok">
                     <BadgeCheck size={12} strokeWidth={2.2} aria-hidden /> Verified seller
@@ -263,24 +274,96 @@ export default async function StorePage({ params }: { params: Promise<Params> })
           )}
         </section>
 
-        {/* ── Reviews summary ────────────────────────────── */}
-        <section className="vh-section" style={{ paddingBottom: 0 }}>
-          <Card title="Buyer feedback">
-            <div className="vh-row" style={{ gap: "var(--sp-5)", flexWrap: "wrap" }}>
-              <div>
+        {/* ── Store reviews ──────────────────────────────── */}
+        <section id="reviews" className="vh-section" style={{ paddingBottom: 0, scrollMarginTop: 80 }}>
+          <Card title="Store reviews">
+            {rvw === "ok" && <div style={{ marginBottom: 12 }}><Banner severity="ok" title="Thanks for your review">It&rsquo;s with our team for a quick check and will appear here once approved.</Banner></div>}
+            {rvw === "claims" && <div style={{ marginBottom: 12 }}><Banner severity="danger">Reviews can&rsquo;t include medical claims (cure/treat/prevent/heal). Nothing was posted — please reword and try again.</Banner></div>}
+            {rvw === "length" && <div style={{ marginBottom: 12 }}><Banner severity="danger">Your review should be between 12 and 600 characters.</Banner></div>}
+            {rvw === "rating" && <div style={{ marginBottom: 12 }}><Banner severity="danger">Please choose a star rating.</Banner></div>}
+
+            <div className="vh-row" style={{ gap: "var(--sp-5)", flexWrap: "wrap", alignItems: "flex-start" }}>
+              <div style={{ minWidth: 150 }}>
                 <div className="tabular" style={{ fontSize: "2.4rem", fontWeight: 800, color: "var(--vh-ink)", lineHeight: 1 }}>
-                  {profile.rating.toFixed(1)}
+                  {headlineRating.toFixed(1)}
                 </div>
-                <Rating value={profile.rating} count={profile.reviewCount} />
-                <div className="small muted" style={{ marginTop: 4 }}>Verified purchases only</div>
+                <Rating value={headlineRating} count={headlineCount} />
+                <div className="small muted" style={{ marginTop: 4 }}>{storeAgg.count > 0 ? "From buyers of this store" : "No store reviews yet"}</div>
               </div>
-              <div style={{ flex: 1, minWidth: 240 }}>
-                <ul className="small muted" style={{ margin: 0, paddingLeft: 18, display: "flex", flexDirection: "column", gap: 6 }}>
-                  <li>{profile.followerCount.toLocaleString("en-IN")} buyers follow this store.</li>
-                  <li>Ratings are computed by the platform from verified purchases — a seller cannot edit or remove a review.</li>
-                  <li>Disputes are adjudicated buyer-first: refunds are issued to the buyer before recovery from the seller.</li>
-                </ul>
-              </div>
+              {storeAgg.count > 0 && (
+                <div style={{ flex: 1, minWidth: 220 }}>
+                  {([5, 4, 3, 2, 1] as const).map((star) => {
+                    const n = storeAgg.histogram[star];
+                    const pct = storeAgg.count ? Math.round((n / storeAgg.count) * 100) : 0;
+                    return (
+                      <div key={star} className="vh-row" style={{ gap: 8, marginBottom: 4 }}>
+                        <span className="small muted tabular" style={{ width: 34 }}>{star}★</span>
+                        <span style={{ flex: 1, height: 8, background: "var(--vh-line)", borderRadius: 999, overflow: "hidden" }}>
+                          <span style={{ display: "block", width: `${pct}%`, height: "100%", background: "var(--vh-accent)" }} />
+                        </span>
+                        <span className="small muted tabular" style={{ width: 34, textAlign: "right" }}>{n}</span>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+
+            <p className="small muted" style={{ margin: "12px 0 0" }}>
+              Ratings are computed by the platform — a seller can reply but cannot edit or remove a review.
+            </p>
+
+            {/* Approved reviews */}
+            <div className="vh-grid" style={{ gap: 0, marginTop: 12 }}>
+              {storeReviews.length === 0 ? (
+                <p className="small muted" style={{ margin: 0 }}>Be the first to review this store.</p>
+              ) : storeReviews.map((r) => (
+                <div key={r.id} style={{ padding: "12px 0", borderTop: "1px solid var(--vh-line)" }}>
+                  <div className="vh-row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <Rating value={r.rating} />
+                    <span style={{ fontWeight: 600, fontSize: ".9rem" }}>{r.author}</span>
+                    {r.verified && <StatusPill tone="ok">Verified buyer</StatusPill>}
+                    <span className="small muted tabular">{r.createdAt}</span>
+                  </div>
+                  <p style={{ margin: "6px 0 0", fontSize: ".92rem", color: "var(--vh-body)" }}>{r.body}</p>
+                  {r.sellerReply && (
+                    <div style={{ marginTop: 8, marginLeft: 12, paddingLeft: 12, borderLeft: "2px solid var(--vh-line)" }}>
+                      <div className="small" style={{ fontWeight: 600 }}>{seller.name} replied</div>
+                      <p className="small muted" style={{ margin: "2px 0 0" }}>{r.sellerReply}</p>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            {/* Write a review */}
+            <div id="write-review" style={{ marginTop: 16, paddingTop: 16, borderTop: "1px solid var(--vh-line)", scrollMarginTop: 80 }}>
+              <div style={{ fontWeight: 600, fontSize: ".92rem", marginBottom: 8 }}>Write a store review</div>
+              {session?.email ? (
+                <form action={submitStoreReview} className="vh-grid" style={{ gap: 12, maxWidth: 560 }}>
+                  <input type="hidden" name="slug" value={slug} />
+                  <div className="vh-field">
+                    <label className="vh-label" htmlFor="rvw-rating">Your rating</label>
+                    <select className="vh-input" id="rvw-rating" name="rating" defaultValue="5" style={{ maxWidth: 200 }}>
+                      <option value="5">★★★★★ — Excellent</option>
+                      <option value="4">★★★★ — Good</option>
+                      <option value="3">★★★ — Okay</option>
+                      <option value="2">★★ — Poor</option>
+                      <option value="1">★ — Bad</option>
+                    </select>
+                  </div>
+                  <div className="vh-field">
+                    <label className="vh-label" htmlFor="rvw-body">Your review</label>
+                    <textarea className="vh-input" id="rvw-body" name="body" rows={3} minLength={12} maxLength={600} required placeholder="How was the packaging, dispatch and service?" />
+                    <span className="vh-help">Composition and service, not health claims — the copy-check runs on submit.</span>
+                  </div>
+                  <button type="submit" className="vh-btn vh-btn-primary" style={{ justifySelf: "start" }}>Submit review</button>
+                </form>
+              ) : (
+                <p className="small muted" style={{ margin: 0 }}>
+                  <Link href={`/signin?next=${encodeURIComponent(`/store/${slug}`)}`}>Sign in</Link> to review this store.
+                </p>
+              )}
             </div>
           </Card>
         </section>

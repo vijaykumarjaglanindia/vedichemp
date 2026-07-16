@@ -15,8 +15,9 @@ import Link2 from "next/link";
 import { Shell } from "../Shell";
 import { Banner, Card, StatusPill, EmptyState } from "@/components/ui";
 import { pendingQueue } from "@/lib/reviews";
+import { pendingStoreQueue } from "@/lib/store-reviews";
 import { recentQuestions } from "@/lib/qa";
-import { moderateReviewAction, hideQuestionAction } from "../actions";
+import { moderateReviewAction, hideQuestionAction, moderateStoreReviewAction } from "../actions";
 
 export const metadata: Metadata = { title: "Reviews & Q&A · Admin" };
 export const dynamic = "force-dynamic";
@@ -30,6 +31,13 @@ const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> 
   qhidden: { sev: "ok", text: "Question hidden — it no longer shows on the product page. The action is logged." },
 };
 
+const STORE_MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {
+  approve: { sev: "ok", text: "Store review approved — it's live on the storefront and the store rating has been recomputed." },
+  reject: { sev: "ok", text: "Store review rejected — it stays hidden and the action is recorded." },
+  note: { sev: "danger", text: "A rejection needs a short reason (at least 12 characters)." },
+  state: { sev: "warn", text: "That store review was already moderated." },
+};
+
 function Stars({ n }: { n: number }) {
   return (
     <span aria-label={`${n} out of 5`} style={{ color: "var(--vh-accent)", whiteSpace: "nowrap" }}>
@@ -38,15 +46,17 @@ function Stars({ n }: { n: number }) {
   );
 }
 
-export default async function AdminReviewsPage({ searchParams }: { searchParams: Promise<{ done?: string; err?: string; qhidden?: string }> }) {
-  const { done, err, qhidden } = await searchParams;
+export default async function AdminReviewsPage({ searchParams }: { searchParams: Promise<{ done?: string; err?: string; qhidden?: string; sdone?: string; serr?: string }> }) {
+  const { done, err, qhidden, sdone, serr } = await searchParams;
   const queue = await pendingQueue();
+  const storeQueue = await pendingStoreQueue();
   const questions = await recentQuestions(20);
   const msg = (done && MESSAGES[done]) || (qhidden && MESSAGES.qhidden) || (err && MESSAGES[err]) || undefined;
+  const storeMsg = (sdone && STORE_MESSAGES[sdone]) || (serr && STORE_MESSAGES[serr]) || undefined;
 
   return (
     <Shell active="/admin/reviews" breadcrumb={["Admin", "Trust", "Reviews & Q&A"]} title="Reviews & Q&A"
-      actions={<StatusPill tone={queue.length ? "warn" : "ok"}>{queue.length} reviews waiting</StatusPill>}
+      actions={<StatusPill tone={queue.length + storeQueue.length ? "warn" : "ok"}>{queue.length + storeQueue.length} reviews waiting</StatusPill>}
     >
       {msg && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity={msg.sev}>{msg.text}</Banner></div>}
 
@@ -92,6 +102,50 @@ export default async function AdminReviewsPage({ searchParams }: { searchParams:
           </div>
         )}
       </Card>
+
+      {/* ── Store reviews moderation ─────────────────────────── */}
+      <div id="store-reviews" style={{ marginTop: "var(--sp-4)", scrollMarginTop: 90 }}>
+        {storeMsg && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity={storeMsg.sev}>{storeMsg.text}</Banner></div>}
+        <Card
+          title={<span className="vh-row" style={{ gap: 8 }}><Star size={16} strokeWidth={2.2} aria-hidden /> Store reviews waiting</span>}
+          action={<span className="small muted">Approving publishes it &amp; recomputes the store rating</span>}
+          pad0
+        >
+          {storeQueue.length === 0 ? (
+            <div style={{ padding: 12 }}><EmptyState icon="🏪" headline="No store reviews to moderate" sub="Buyer reviews of a store's service appear here before they go live." /></div>
+          ) : (
+            <div>
+              {storeQueue.map((r) => (
+                <div key={r.id} style={{ borderTop: "1px solid var(--vh-line)", padding: "14px 16px" }}>
+                  <div className="vh-row-between" style={{ gap: 12, flexWrap: "wrap", marginBottom: 6 }}>
+                    <span className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
+                      <Stars n={r.rating} />
+                      <strong style={{ color: "var(--vh-ink)" }}>{r.author}</strong>
+                      {r.verified && <StatusPill tone="ok">Verified buyer</StatusPill>}
+                      <Link className="small" href={`/store/${r.slug}`} style={{ fontWeight: 700 }}>{r.store}</Link>
+                    </span>
+                    <span className="small muted tabular">{r.createdAt}</span>
+                  </div>
+                  <p className="small" style={{ margin: "4px 0 10px" }}>{r.body}</p>
+                  <div className="vh-row" style={{ gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+                    <form action={moderateStoreReviewAction} style={{ display: "inline-flex" }}>
+                      <input type="hidden" name="reviewId" value={r.id} />
+                      <input type="hidden" name="decision" value="approve" />
+                      <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit"><Star size={13} aria-hidden /> Approve &amp; publish</button>
+                    </form>
+                    <form action={moderateStoreReviewAction} className="vh-row" style={{ gap: 6, alignItems: "flex-end", flexWrap: "wrap" }}>
+                      <input type="hidden" name="reviewId" value={r.id} />
+                      <input type="hidden" name="decision" value="reject" />
+                      <input className="vh-input vh-input-sm" name="note" placeholder="Reason (≥12 chars)" style={{ width: 220 }} aria-label="Store review rejection reason" />
+                      <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit">Reject</button>
+                    </form>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
 
       {/* ── Product questions moderation ─────────────────────── */}
       <div id="questions" style={{ marginTop: "var(--sp-4)", scrollMarginTop: 90 }}>

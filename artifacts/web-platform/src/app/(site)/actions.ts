@@ -197,3 +197,50 @@ export async function toggleFollowStore(formData: FormData): Promise<void> {
   await writeFollows(follows.includes(slug) ? follows.filter((s) => s !== slug) : [slug, ...follows]);
   redirect(back);
 }
+
+/* ── Review a storefront ──────────────────────────────────── */
+
+/**
+ * A buyer reviews a STORE (service, packaging, dispatch) — not a product. The
+ * server is the only writer: it derives verified-purchase from the buyer's own
+ * order history, runs the fail-closed claims check, and files the review as
+ * PENDING for moderation. A signed-out visitor is sent to sign in first.
+ */
+export async function submitStoreReview(formData: FormData): Promise<void> {
+  const slug = String(formData.get("slug") ?? "").slice(0, 60);
+  if (!/^[a-z0-9-]+$/.test(slug)) redirect("/catalogue");
+  const back = `/store/${slug}`;
+  const session = await getSession();
+  if (!session?.email) redirect(`/signin?next=${encodeURIComponent(back)}`);
+
+  const { sellerBySlug } = await import("./_lib/data");
+  const seller = sellerBySlug(slug);
+  if (!seller) redirect(back);
+
+  const rating = Math.min(5, Math.max(1, parseInt(String(formData.get("rating") ?? ""), 10) || 0));
+  const body = String(formData.get("body") ?? "").trim();
+  if (rating < 1) redirect(`${back}?rvw=rating#write-review`);
+  if (body.length < 12 || body.length > 600) redirect(`${back}?rvw=length#write-review`);
+  // Fail closed on a copy-check failure (CLAUDE.md §2) — a claim blocks the send.
+  if (CLAIMS_LANGUAGE.test(body)) redirect(`${back}?rvw=claims#write-review`);
+
+  // Verified-purchase is derived here from the buyer's own order history —
+  // a line sold by this store. Unverified reviews are still accepted (labelled).
+  const verified = (await readOrderHistory()).some((o) => o.items.some((it) => it.seller === seller!.name));
+
+  const { addStoreReview } = await import("@/lib/store-reviews");
+  await addStoreReview({
+    slug,
+    store: seller!.name,
+    author: session!.email.split("@")[0]!,
+    authorEmail: session!.email,
+    rating,
+    body,
+    verified,
+  });
+
+  const { notify } = await import("@/lib/notify");
+  await notify("seller", seller!.name, { kind: "STORE_REVIEW_NEW", title: "New store review", body: `${rating}★ — “${body.slice(0, 70)}”. Live once our team checks it.`, href: "/seller/reviews#store-reviews" });
+  await notify("admin", "admin", { kind: "STORE_REVIEW_MOD", title: "Store review to moderate", body: `${rating}★ for ${seller!.name}.`, href: "/admin/reviews#store-reviews" });
+  redirect(`${back}?rvw=ok#reviews`);
+}

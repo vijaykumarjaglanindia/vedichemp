@@ -487,6 +487,24 @@ export async function replyToQuestion(formData: FormData): Promise<void> {
   redirect("/seller/customers?replied=1");
 }
 
+/* ── Store reviews: public seller reply ───────────────────── */
+
+export async function replyStoreReviewAction(formData: FormData): Promise<void> {
+  const reviewId = String(formData.get("reviewId") ?? "").slice(0, 20);
+  const reply = String(formData.get("reply") ?? "").trim();
+  const { findStoreReview, replyStoreReview } = await import("@/lib/store-reviews");
+  const review = findStoreReview(reviewId);
+  // Only the store the review is about may reply.
+  if (!review || review.store !== DEMO_STORE) redirect("/seller/reviews#store-reviews");
+  // Fail closed: replies are public copy — same claims check, same length rule.
+  if (reply.length < 5 || reply.length > 500) redirect("/seller/reviews?serr=short#sr-" + reviewId);
+  if (CLAIM_WORDS.test(reply)) redirect("/seller/reviews?serr=claims#sr-" + reviewId);
+  const result = await replyStoreReview(reviewId, reply);
+  if (!result) redirect("/seller/reviews?serr=state#store-reviews");
+  await writeAudit({ actor: DEMO_STORE, action: "STORE_REVIEW_REPLY", target: reviewId, outcome: "OK" });
+  redirect("/seller/reviews?sreplied=1#sr-" + reviewId);
+}
+
 /* ── Vendor verification (KYC) ────────────────────────────── */
 
 /** Seller submits (or re-submits) their store's KYC for review. Validation is

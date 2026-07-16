@@ -289,6 +289,31 @@ export async function decideBusinessAccount(formData: FormData): Promise<void> {
   redirect(`/admin/business?done=${decision}`);
 }
 
+/* ── Store reviews: moderation ────────────────────────────── */
+
+export async function moderateStoreReviewAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("reviewId") ?? "");
+  const decision = String(formData.get("decision") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  const who = await actor();
+  const { moderateStoreReview, findStoreReview } = await import("@/lib/store-reviews");
+
+  if (decision === "reject" && note.length < 12) {
+    await writeAudit({ actor: who, action: "STORE_REVIEW_REJECT", target: id, outcome: "DENIED", note: "reason under 12 chars" });
+    redirect("/admin/reviews?serr=note#store-reviews");
+  }
+  const review = findStoreReview(id);
+  const result = await moderateStoreReview(id, decision === "approve");
+  if (!result) redirect("/admin/reviews?serr=state#store-reviews");
+  await writeAudit({ actor: who, action: decision === "approve" ? "STORE_REVIEW_APPROVE" : "STORE_REVIEW_REJECT", target: id, outcome: "OK", ...(note ? { note } : {}) });
+
+  if (decision === "approve" && review) {
+    const { notify } = await import("@/lib/notify");
+    await notify("seller", review.store, { kind: "STORE_REVIEW_LIVE", title: "A store review is now live", body: `${review.rating}★ for your store. You can reply publicly.`, href: "/seller/reviews#store-reviews" });
+  }
+  redirect(`/admin/reviews?sdone=${decision}#store-reviews`);
+}
+
 /* ── Vendor verification (KYC) ────────────────────────────── */
 
 /** Admin reviews a submitted store verification: approve / ask for more / reject.
