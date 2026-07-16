@@ -14,7 +14,9 @@ import { Banner, Card, DataTable, StatusPill, toneForStatus, MoneyText, type Col
 import { readCommerce } from "@/lib/commerce";
 import { readGiftCredit, redeemGiftCard } from "./actions";
 import { Sparkline, Donut } from "@/components/ui/charts";
-import { LEDGER, type LedgerRow, WALLET_SPLIT, WALLET_BALANCE_PAISE, WALLET_TREND } from "../_lib/data";
+import { type LedgerRow, WALLET_TREND } from "../_lib/data";
+import { getSession } from "@/lib/auth-lite";
+import { balancePaise, ledger, creditBreakdown } from "@/lib/wallet";
 
 export const metadata: Metadata = { title: "Wallet" };
 
@@ -29,10 +31,10 @@ function title(icon: ReactNode, text: string) {
   );
 }
 
-const SPLIT_SEGMENTS = [
-  { label: "Cashback", value: WALLET_SPLIT.cashbackPaise, color: "var(--vh-accent)" },
-  { label: "Promo credit", value: WALLET_SPLIT.promoPaise, color: "var(--vh-saffron)" },
-  { label: "Refunds", value: WALLET_SPLIT.refundsPaise, color: "var(--vh-info)" },
+const splitSegments = (b: { cashbackPaise: number; promoPaise: number; refundsPaise: number }) => [
+  { label: "Cashback", value: b.cashbackPaise, color: "var(--vh-accent)" },
+  { label: "Promo credit", value: b.promoPaise, color: "var(--vh-saffron)" },
+  { label: "Refunds", value: b.refundsPaise, color: "var(--vh-info)" },
 ];
 
 export default async function WalletPage({
@@ -41,6 +43,10 @@ export default async function WalletPage({
   searchParams: Promise<{ gift?: string }>;
 }) {
   const { gift } = await searchParams;
+  const email = (await getSession())?.email ?? "buyer@example.in";
+  const balance = await balancePaise(email);
+  const rows = await ledger(email);
+  const segments = splitSegments(await creditBreakdown(email));
   const giftCredit = await readGiftCredit();
   const commerce = await readCommerce();
   const columns: Column<LedgerRow>[] = [
@@ -64,7 +70,7 @@ export default async function WalletPage({
           <Card title={title(<TrendingUp {...I} />, "Balance")}>
             <div className="vh-stat" style={{ marginBottom: 8 }}>
               <span className="vh-stat-label">Total balance</span>
-              <span className="vh-stat-value tabular"><MoneyText paise={WALLET_BALANCE_PAISE} /></span>
+              <span className="vh-stat-value tabular"><MoneyText paise={balance} /></span>
               <span className="vh-stat-delta-up">▲ ₹35.38 cashback this week</span>
             </div>
             <Sparkline points={WALLET_TREND} width={220} height={48} label="Wallet balance trend, last 7 weeks" />
@@ -73,9 +79,9 @@ export default async function WalletPage({
           {/* Split donut */}
           <Card title={title(<PieChart {...I} />, "Where your balance comes from")}>
             <div className="vh-row" style={{ gap: 16, alignItems: "center" }}>
-              <Donut segments={SPLIT_SEGMENTS} size={116} />
+              <Donut segments={segments} size={116} />
               <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8, flex: 1 }}>
-                {SPLIT_SEGMENTS.map((s) => (
+                {segments.map((s) => (
                   <li key={s.label} className="vh-row-between small">
                     <span className="vh-row" style={{ gap: 8 }}>
                       <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: s.color, flexShrink: 0 }} />
@@ -111,7 +117,7 @@ export default async function WalletPage({
           action={<span className="small muted">Append-only ledger — entries are never edited or deleted</span>}
           pad0
         >
-          <DataTable columns={columns} rows={LEDGER} />
+          <DataTable columns={columns} rows={rows} />
         </Card>
 
         <div id="giftcard" style={{ scrollMarginTop: 90 }}>

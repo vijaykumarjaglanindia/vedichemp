@@ -196,6 +196,8 @@ export async function cancelOrder(reference: string, by: string, reason?: string
   order.refundedPaise = order.totalPaise;
   order.refundedAt = now();
   order.timeline.push({ at: now(), status: "CANCELLED", by, ...(reason ? { note: reason } : {}) });
+  // Buyer-first: the refund lands in the buyer's wallet immediately.
+  await creditRefundToWallet(order);
   return { ok: true, order };
 }
 
@@ -252,7 +254,23 @@ export async function refundBuyer(reference: string, by: string): Promise<OrderR
   order.sellerRecovery = "PENDING";
   for (const it of order.items) await restock(it.productId, it.qty, it.variantId);
   order.timeline.push({ at: now(), status: "REFUNDED", by, note: "buyer refunded first; seller recovery opened" });
+  // Buyer-first: the refund lands in the buyer's wallet immediately.
+  await creditRefundToWallet(order);
   return { ok: true, order };
+}
+
+/** Credit an order's refund to the buyer's wallet as instant store credit.
+ *  Idempotent per order — a re-run won't double-credit the same reference. */
+async function creditRefundToWallet(order: Order): Promise<void> {
+  const { ledger, creditWallet } = await import("@/lib/wallet");
+  const already = (await ledger(order.buyerEmail)).some((t) => t.kind === "REFUND" && t.ref === order.reference);
+  if (already) return;
+  await creditWallet(order.buyerEmail, {
+    kind: "REFUND",
+    amountPaise: order.refundedPaise,
+    note: `Refund · order ${order.reference}`,
+    ref: order.reference,
+  });
 }
 
 /** Mark the seller-recovery ledger settled (admin finance, after the fact). */
