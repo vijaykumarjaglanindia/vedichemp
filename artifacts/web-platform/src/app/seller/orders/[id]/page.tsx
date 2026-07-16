@@ -14,9 +14,14 @@ import { Download, Printer, Undo2 } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Card, StatusPill, toneForStatus, MoneyText, Timeline } from "@/components/ui";
 import { findSellerOrder } from "../../_lib/data";
+import { findOrder, ORDER_TONE } from "@/lib/orders";
+import { fulfilOrder, sellerApproveReturn } from "../../actions";
+
+const DEMO_STORE = "Vedic Botanicals";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
+  if (id.startsWith("live-")) return { title: `Order ${id.slice("live-".length)}` };
   const order = findSellerOrder(id);
   return { title: order ? `Order ${order.reference}` : "Order" };
 }
@@ -35,8 +40,132 @@ function maskAddress(buyer: string | undefined): string {
   return `${initial}••••••• , Flat •••, •••• Layout, Bengaluru — 5600••`;
 }
 
+/** Real-order detail (order store): the seller sees only their own lines, a
+ *  real fulfilment timeline, and a packing slip whose ship-to address is
+ *  revealed only once the order is PACKED (label-generation time). */
+async function RealSellerOrderDetail(reference: string) {
+  const order = await findOrder(reference);
+  if (!order) notFound();
+  const myItems = order!.items.filter((it) => it.seller === DEMO_STORE);
+  if (myItems.length === 0) notFound(); // not this store's order — absent, not 403
+  const myTotal = myItems.reduce((n, it) => n + it.linePaise, 0);
+  const revealed = ["PACKED", "SHIPPED", "DELIVERED"].includes(order!.status);
+  const nextOp = order!.status === "PLACED" ? "accept" : order!.status === "ACCEPTED" ? "pack" : order!.status === "PACKED" ? "ship" : order!.status === "SHIPPED" ? "deliver" : null;
+  const nextLabel = nextOp === "accept" ? "Accept" : nextOp === "pack" ? "Pack" : nextOp === "ship" ? "Mark shipped" : nextOp === "deliver" ? "Mark delivered" : null;
+  const nodes = order!.timeline.map((e, i) => ({
+    label: e.status.replace(/_/g, " "),
+    state: (i === order!.timeline.length - 1 ? "current" : "done") as "done" | "current" | "pending" | "failed",
+    at: e.at.slice(0, 10),
+  }));
+  const shipTo = revealed
+    ? `${order!.city}${order!.state ? ", " + order!.state : ""} — ${order!.pincode}`
+    : `${order!.city} — ${order!.pincode.slice(0, 3)}•••`;
+
+  return (
+    <Shell
+      active="/seller/orders"
+      breadcrumb={["Seller Central", "Orders", order!.reference]}
+      title={`Order ${order!.reference}`}
+      actions={
+        <span className="vh-row" style={{ gap: 8 }}>
+          <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#slip" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
+            <Printer size={14} strokeWidth={2.2} aria-hidden /> Packing slip
+          </a>
+          {nextOp && nextLabel && (
+            <form action={fulfilOrder} style={{ display: "inline-flex" }}>
+              <input type="hidden" name="reference" value={order!.reference} />
+              <input type="hidden" name="op" value={nextOp} />
+              <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">{nextLabel}</button>
+            </form>
+          )}
+        </span>
+      }
+    >
+      <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
+        <div className="vh-grid" style={{ gap: "var(--sp-3)" }}>
+          <Card title="Your items in this order">
+            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 12 }}>
+              {myItems.map((it, i) => (
+                <li key={i} className="vh-row-between">
+                  <span className="vh-row" style={{ gap: 10 }}>
+                    <span aria-hidden style={{ fontSize: "1.6rem" }}>{it.emoji}</span>
+                    <span>
+                      <div style={{ fontWeight: 600 }}>{it.title}{it.variantLabel ? ` · ${it.variantLabel}` : ""}</div>
+                      <div className="small muted">Qty {it.qty} · <MoneyText paise={it.unitPaise} /> each</div>
+                    </span>
+                  </span>
+                  <MoneyText paise={it.linePaise} />
+                </li>
+              ))}
+            </ul>
+            <div className="vh-row-between" style={{ borderTop: "1px solid var(--vh-line)", paddingTop: 8, marginTop: 8, fontWeight: 700 }}>
+              <span>Your lines (GST-inclusive)</span>
+              <MoneyText paise={myTotal} />
+            </div>
+          </Card>
+
+          <Card title="Fulfilment timeline">
+            <Timeline nodes={nodes} />
+          </Card>
+
+          {/* Packing slip — printable; ship-to revealed only once PACKED */}
+          <div id="slip" style={{ scrollMarginTop: 90 }}>
+            <Card title="Packing slip">
+              <div className="small" style={{ display: "grid", gap: 4 }}>
+                <div><strong>Order</strong> {order!.reference}</div>
+                <div><strong>Placed</strong> {order!.placedAt.slice(0, 10)}</div>
+                <div><strong>Ship to</strong> {shipTo}</div>
+                {!revealed && <div className="muted">The full ship-to address is released when you mark the order packed — that&rsquo;s label-generation time.</div>}
+              </div>
+              <ul style={{ listStyle: "none", margin: "10px 0 0", padding: 0, display: "grid", gap: 6 }}>
+                {myItems.map((it, i) => (
+                  <li key={i} className="small vh-row-between">
+                    <span>{it.emoji} {it.title}{it.variantLabel ? ` · ${it.variantLabel}` : ""}</span>
+                    <span className="tabular">× {it.qty}</span>
+                  </li>
+                ))}
+              </ul>
+              <p className="small muted" style={{ margin: "10px 0 0" }}>Use your browser&rsquo;s print to produce the slip.</p>
+            </Card>
+          </div>
+        </div>
+
+        <div className="vh-grid" style={{ gap: "var(--sp-3)" }}>
+          <Card>
+            <div className="vh-row-between" style={{ marginBottom: 8 }}>
+              <span className="small muted">Status</span>
+              <StatusPill tone={ORDER_TONE[order!.status]}>{order!.status.replace(/_/g, " ")}</StatusPill>
+            </div>
+            <div className="vh-row-between">
+              <span className="small muted">Buyer</span>
+              <span className="small mono">{order!.buyerEmail.replace(/^(..).*(@.*)$/, "$1•••$2")}</span>
+            </div>
+          </Card>
+
+          {order!.status === "RETURN_REQUESTED" && (
+            <Card title="Return requested">
+              <p className="small" style={{ marginTop: 0 }}>Reason: {order!.returnReason ?? "—"}</p>
+              <form action={sellerApproveReturn}>
+                <input type="hidden" name="reference" value={order!.reference} />
+                <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit">Approve return</button>
+              </form>
+              <p className="small muted" style={{ margin: "8px 0 0" }}>
+                The buyer is refunded first, on return receipt — the marketplace recovers from this store&rsquo;s next
+                settlement afterwards. Buyers are never collateral.
+              </p>
+            </Card>
+          )}
+        </div>
+      </div>
+    </Shell>
+  );
+}
+
 export default async function SellerOrderDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
+  // Real order from the order store (routed live-<reference>).
+  if (id.startsWith("live-")) return RealSellerOrderDetail(id.slice("live-".length));
+
   const order = findSellerOrder(id);
   if (!order) notFound();
 

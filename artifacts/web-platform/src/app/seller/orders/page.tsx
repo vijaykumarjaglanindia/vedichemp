@@ -143,6 +143,7 @@ export default async function SellerOrdersPage({
                           <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit" title={`Return reason: ${o.returnReason}`}>Approve return</button>
                         </form>
                       )}
+                      <Link className="small" href={`/seller/orders/live-${o.reference}`}>Details →</Link>
                     </span>
                   </div>
                 );
