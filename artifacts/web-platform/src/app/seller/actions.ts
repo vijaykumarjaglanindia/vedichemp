@@ -475,6 +475,51 @@ export async function answerProductQuestion(formData: FormData): Promise<void> {
   redirect("/seller/customers?answered=1#product-questions");
 }
 
+/* ── Support tickets (RBAC: "support") ────────────────────── */
+
+export async function sellerReplyTicket(formData: FormData): Promise<void> {
+  await requirePerm("support", "/seller/support");
+  const id = String(formData.get("ticketId") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+  const { findTicket, addMessage } = await import("@/lib/support");
+  const t = findTicket(id);
+  if (!t || t.sellerStore !== DEMO_STORE) redirect("/seller/support");
+  if (body.length < 2 || body.length > 1000) redirect(`/seller/support?err=reply#${id}`);
+  if (CLAIM_WORDS.test(body)) redirect(`/seller/support?err=claims#${id}`);
+  const result = await addMessage(id, "seller", DEMO_STORE, body);
+  if (!result.ok) redirect(`/seller/support?err=${result.reason}#${id}`);
+  await writeAudit({ actor: DEMO_STORE, action: "SUPPORT_REPLY", target: id, outcome: "OK" });
+  const { notify } = await import("@/lib/notify");
+  await notify("buyer", t.buyerEmail, { kind: "SUPPORT_REPLY", title: "Seller replied to your ticket", body: t.subject, href: "/account/support" });
+  redirect(`/seller/support?replied=1#${id}`);
+}
+
+export async function sellerSetTicketStatus(formData: FormData): Promise<void> {
+  await requirePerm("support", "/seller/support");
+  const id = String(formData.get("ticketId") ?? "");
+  const status = String(formData.get("status") ?? "");
+  if (!["OPEN", "PENDING", "RESOLVED"].includes(status)) redirect("/seller/support");
+  const { findTicket, setStatus } = await import("@/lib/support");
+  const t = findTicket(id);
+  if (!t || t.sellerStore !== DEMO_STORE) redirect("/seller/support");
+  await setStatus(id, status as import("@/lib/support").TicketStatus);
+  await writeAudit({ actor: DEMO_STORE, action: "SUPPORT_STATUS", target: `${id} → ${status}`, outcome: "OK" });
+  redirect(`/seller/support?done=status#${id}`);
+}
+
+export async function sellerEscalateTicket(formData: FormData): Promise<void> {
+  await requirePerm("support", "/seller/support");
+  const id = String(formData.get("ticketId") ?? "");
+  const { findTicket, escalate } = await import("@/lib/support");
+  const t = findTicket(id);
+  if (!t || t.sellerStore !== DEMO_STORE) redirect("/seller/support");
+  await escalate(id);
+  await writeAudit({ actor: DEMO_STORE, action: "SUPPORT_ESCALATE", target: id, outcome: "OK" });
+  const { notify } = await import("@/lib/notify");
+  await notify("admin", "admin", { kind: "SUPPORT_ESCALATE", title: "Ticket escalated to platform", body: t.subject, href: "/admin/support" });
+  redirect(`/seller/support?done=escalated#${id}`);
+}
+
 /** Seller's public reply to an approved review on their product (copy-checked). */
 export async function replySellerReview(formData: FormData): Promise<void> {
   const reviewId = String(formData.get("reviewId") ?? "").slice(0, 20);

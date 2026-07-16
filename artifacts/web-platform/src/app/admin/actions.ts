@@ -266,6 +266,37 @@ export async function moderateReviewAction(formData: FormData): Promise<void> {
   redirect(`/admin/reviews?done=${decision}`);
 }
 
+/* ── Support tickets (platform) ───────────────────────────── */
+
+export async function adminReplyTicket(formData: FormData): Promise<void> {
+  const id = String(formData.get("ticketId") ?? "");
+  const body = String(formData.get("body") ?? "").trim();
+  const who = await actor();
+  const { findTicket, addMessage } = await import("@/lib/support");
+  const t = findTicket(id);
+  if (!t) redirect("/admin/support");
+  if (body.length < 2 || body.length > 1000) redirect(`/admin/support?err=reply#${id}`);
+  if (CLAIMS_LANGUAGE.test(body)) redirect(`/admin/support?err=claims#${id}`);
+  const result = await addMessage(id, "admin", who, body);
+  if (!result.ok) redirect(`/admin/support?err=${result.reason}#${id}`);
+  await writeAudit({ actor: who, action: "SUPPORT_REPLY", target: id, outcome: "OK" });
+  const { notify } = await import("@/lib/notify");
+  await notify("buyer", t.buyerEmail, { kind: "SUPPORT_REPLY", title: "Vedic Hemp replied to your ticket", body: t.subject, href: "/account/support" });
+  redirect(`/admin/support?replied=1#${id}`);
+}
+
+export async function adminSetTicketStatus(formData: FormData): Promise<void> {
+  const id = String(formData.get("ticketId") ?? "");
+  const status = String(formData.get("status") ?? "");
+  const who = await actor();
+  if (!["OPEN", "PENDING", "RESOLVED", "CLOSED"].includes(status)) redirect("/admin/support");
+  const { setStatus } = await import("@/lib/support");
+  const result = await setStatus(id, status as import("@/lib/support").TicketStatus);
+  if (!result.ok) redirect(`/admin/support?err=${result.reason}`);
+  await writeAudit({ actor: who, action: "SUPPORT_STATUS", target: `${id} → ${status}`, outcome: "OK" });
+  redirect(`/admin/support?done=status#${id}`);
+}
+
 /* ── Shipping & delivery (zone rates) ─────────────────────── */
 
 export async function saveShipping(formData: FormData): Promise<void> {

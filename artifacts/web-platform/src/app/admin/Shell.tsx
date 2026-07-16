@@ -16,7 +16,7 @@
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, Store, Package, Receipt, Landmark, Megaphone,
-  ShieldCheck, Ban, FileText, Target, BarChart3, Settings, ScrollText, Bell, Star, TicketPercent, Truck,
+  ShieldCheck, Ban, FileText, Target, BarChart3, Settings, ScrollText, Bell, Star, TicketPercent, Truck, LifeBuoy,
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
 import { unreadCount } from "@/lib/notify";
@@ -57,6 +57,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/compliance", label: "Compliance", icon: <ShieldCheck {...I} /> },
       { href: "/admin/reviews", label: "Reviews", icon: <Star {...I} /> },
+      { href: "/admin/support", label: "Support", icon: <LifeBuoy {...I} /> },
       { href: "/admin/prohibitions", label: "Prohibitions", icon: <Ban {...I} /> },
     ],
   },
