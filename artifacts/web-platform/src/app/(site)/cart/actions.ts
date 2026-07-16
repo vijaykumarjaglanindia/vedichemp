@@ -166,6 +166,16 @@ export async function placeOrder(formData: FormData): Promise<void> {
   const payment = String(formData.get("payment") ?? "");
   const ageConfirm = formData.get("ageConfirm") === "on";
 
+  // Idempotency FIRST — before pricing, before stock. A replayed submit
+  // (double-click, network retry, back-button resubmit) is a read: it lands on
+  // the confirmation for the order that already exists.
+  const idempotencyKey = (() => {
+    const k = String(formData.get("idempotencyKey") ?? "");
+    return /^[0-9a-f-]{16,}$/i.test(k) ? k : randomUUID();
+  })();
+  const { orderByKey } = await import("@/lib/orders");
+  if (await orderByKey(idempotencyKey)) redirect("/checkout/confirmed");
+
   // Price against the ACTUAL destination — shipping is the zone for this state,
   // not the cart-page estimate. Server-authoritative in every case.
   const cart = await priceCart({ destState: state });
@@ -184,6 +194,20 @@ export async function placeOrder(formData: FormData): Promise<void> {
   // of anything the client rendered.
   else if (!(await readEnabledPayments()).some((m) => m.key === payment)) err = "payment";
   else if (cart.ageGated && !ageConfirm) err = "age";
+
+  // A regulated (CBD) line must be deliverable to THIS pin — the same
+  // serviceability rule the PDP shows, re-run here where it counts. Fail
+  // closed before any money or stock moves, and log the denied attempt.
+  if (!err && cart.ageGated && /^\d{6}$/.test(pincode)) {
+    const { serviceability } = await import("@/lib/shipping");
+    const svc = await serviceability(pincode, "CBD_WELLNESS");
+    if (!svc.ok && svc.reason === "regulated") {
+      const { writeAudit } = await import("@/lib/audit");
+      const session0 = await getSession();
+      await writeAudit({ actor: session0?.email ?? "guest", action: "CHECKOUT_SERVICEABILITY", target: pincode, outcome: "DENIED", note: "CBD line to a restricted PIN blocked at checkout" });
+      err = "serviceable";
+    }
+  }
 
   const jar = await cookies();
   if (err) {
@@ -213,10 +237,6 @@ export async function placeOrder(formData: FormData): Promise<void> {
   // Real order: decrement stock atomically per line, then create the order.
   // An Idempotency-Key (form-supplied UUIDv4, else generated) makes a replay
   // return the same order rather than double-charging or double-decrementing.
-  const idempotencyKey = (() => {
-    const k = String(formData.get("idempotencyKey") ?? "");
-    return /^[0-9a-f-]{16,}$/i.test(k) ? k : randomUUID();
-  })();
   const session = await getSession();
   const buyerEmail = session?.email ?? "guest@vedichemp.in";
   const orderItems: OrderItem[] = cart.lines.map((l) => ({
@@ -236,8 +256,10 @@ export async function placeOrder(formData: FormData): Promise<void> {
     buyerEmail,
     reference,
     city,
+    state,
     pincode,
     payment,
+    gstPaise: cart.gstIncludedPaise,
     items: orderItems,
     subtotalPaise: cart.subtotalPaise,
     discountPaise: cart.discountPaise,

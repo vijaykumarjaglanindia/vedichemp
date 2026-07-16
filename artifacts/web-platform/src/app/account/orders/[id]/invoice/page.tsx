@@ -14,6 +14,11 @@ import { ArrowLeft, Printer } from "lucide-react";
 import { MoneyText } from "@/components/ui";
 import { ORDERS, PRODUCTS } from "@/lib/sample";
 import { readOrderHistory } from "@/lib/engage";
+import { findOrder } from "@/lib/orders";
+import { findProduct } from "@/lib/catalog";
+import { getSession } from "@/lib/auth-lite";
+import { kycFor } from "@/lib/vendor";
+import { gstRateBps, splitInclusiveGst, isInterState, type GstBreakdown } from "@/lib/tax";
 
 export const metadata: Metadata = { title: "Tax invoice" };
 
@@ -30,7 +35,9 @@ interface InvoiceModel {
   seller: string;
   buyerName: string;
   buyerCity: string;
-  items: { title: string; qty: number; unitPaise: number | null; linePaise: number | null }[];
+  items: { title: string; qty: number; unitPaise: number | null; linePaise: number | null; hsn?: string; rateBps?: number }[];
+  gst?: GstBreakdown; // real GST included in the total (live orders)
+  sellerGstin?: string;
   subtotalPaise: number;
   discountPaise: number;
   couponCode: string | null;
@@ -43,25 +50,42 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
 
   let model: InvoiceModel | null = null;
   if (id.startsWith("live-")) {
-    const stored = (await readOrderHistory()).find((o) => `live-${o.reference}` === id);
-    if (stored) {
-      const items = stored.items.map((it) => {
-        const product = PRODUCTS.find((p) => p.title === it.title);
-        const unitPaise = product?.pricePaise ?? null;
-        return { title: it.title, qty: it.qty, unitPaise, linePaise: unitPaise !== null ? unitPaise * it.qty : null };
-      });
+    // Authoritative order store — never the truncated history cookie — and
+    // gated to the buyer who placed it.
+    const order = await findOrder(id.slice("live-".length));
+    const session = await getSession();
+    if (order && session?.email && order.buyerEmail.toLowerCase() === session.email.toLowerCase()) {
+      const sellerKyc = kycFor(order.items[0]?.seller ?? "");
+      const interState = isInterState(sellerKyc?.state, order.state);
+      let taxable = 0, gstTotal = 0, anyRate = 1800;
+      const items = await Promise.all(order.items.map(async (it) => {
+        const product = await findProduct(it.productId);
+        const rateBps = gstRateBps(product?.hsn, (product?.cls as string) ?? "CBD_WELLNESS");
+        const part = splitInclusiveGst(it.linePaise, rateBps, interState);
+        taxable += part.taxablePaise; gstTotal += part.gstPaise; anyRate = rateBps;
+        return { title: it.title, qty: it.qty, unitPaise: it.unitPaise, linePaise: it.linePaise, hsn: product?.hsn, rateBps };
+      }));
+      // Split the item-level GST total by place of supply (deterministic halves).
+      const half = Math.floor(gstTotal / 2);
+      const gst: GstBreakdown = {
+        rateBps: anyRate, taxablePaise: taxable, gstPaise: gstTotal,
+        cgstPaise: interState ? 0 : gstTotal - half, sgstPaise: interState ? 0 : half,
+        igstPaise: interState ? gstTotal : 0, interState,
+      };
       model = {
-        reference: stored.reference,
-        placedAt: stored.placedAt.slice(0, 10),
-        seller: stored.items[0]?.seller ?? "Marketplace seller",
+        reference: order.reference,
+        placedAt: order.placedAt.slice(0, 10),
+        seller: order.items[0]?.seller ?? "Marketplace seller",
         buyerName: "As on the order",
-        buyerCity: `${stored.city} ${stored.pincode}`,
+        buyerCity: `${order.city}${order.state ? ", " + order.state : ""} ${order.pincode}`,
         items,
-        subtotalPaise: stored.subtotalPaise,
-        discountPaise: 0,
-        couponCode: null,
-        shippingPaise: stored.shippingPaise,
-        totalPaise: stored.totalPaise,
+        subtotalPaise: order.subtotalPaise,
+        discountPaise: order.discountPaise,
+        couponCode: order.couponCode,
+        shippingPaise: order.shippingPaise,
+        totalPaise: order.totalPaise,
+        gst,
+        ...(sellerKyc ? { sellerGstin: sellerKyc.gstin } : {}),
       };
     }
   } else {
@@ -114,7 +138,9 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
           <div>
             <div className="small muted" style={{ textTransform: "uppercase", letterSpacing: ".06em", fontSize: ".68rem", marginBottom: 4 }}>Sold by</div>
             <div style={{ fontWeight: 700 }}>{model.seller}</div>
-            <div className="small muted">Licence details on the seller&rsquo;s storefront</div>
+            {model.sellerGstin
+              ? <div className="small muted mono">GSTIN {model.sellerGstin}</div>
+              : <div className="small muted">Licence details on the seller&rsquo;s storefront</div>}
           </div>
           <div>
             <div className="small muted" style={{ textTransform: "uppercase", letterSpacing: ".06em", fontSize: ".68rem", marginBottom: 4 }}>Billed to</div>
@@ -126,12 +152,14 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         <div style={{ overflowX: "auto" }}>
           <table className="vh-table">
             <thead>
-              <tr><th>Item</th><th style={{ textAlign: "right" }}>Qty</th><th style={{ textAlign: "right" }}>Unit</th><th style={{ textAlign: "right" }}>Amount</th></tr>
+              <tr><th>Item</th><th>HSN</th><th style={{ textAlign: "right" }}>GST</th><th style={{ textAlign: "right" }}>Qty</th><th style={{ textAlign: "right" }}>Unit</th><th style={{ textAlign: "right" }}>Amount</th></tr>
             </thead>
             <tbody>
               {model.items.map((it, i) => (
                 <tr key={i}>
                   <td>{it.title}</td>
+                  <td className="mono small">{it.hsn ?? "—"}</td>
+                  <td className="tabular small" style={{ textAlign: "right" }}>{it.rateBps !== undefined ? `${it.rateBps / 100}%` : "—"}</td>
                   <td className="tabular" style={{ textAlign: "right" }}>{it.qty}</td>
                   <td className="tabular" style={{ textAlign: "right" }}>{it.unitPaise !== null ? <MoneyText paise={it.unitPaise} /> : "—"}</td>
                   <td className="tabular" style={{ textAlign: "right" }}>{it.linePaise !== null ? <MoneyText paise={it.linePaise} /> : "—"}</td>
@@ -152,6 +180,19 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             <span className="muted">{id.startsWith("live-") ? "Shipping" : "Tax (GST)"}</span>
             <MoneyText paise={model.shippingPaise} />
           </div>
+          {model.gst && (
+            <>
+              <div className="vh-row-between small"><span className="muted">Taxable value</span><MoneyText paise={model.gst.taxablePaise} /></div>
+              {model.gst.interState ? (
+                <div className="vh-row-between small"><span className="muted">IGST</span><MoneyText paise={model.gst.igstPaise} /></div>
+              ) : (
+                <>
+                  <div className="vh-row-between small"><span className="muted">CGST</span><MoneyText paise={model.gst.cgstPaise} /></div>
+                  <div className="vh-row-between small"><span className="muted">SGST</span><MoneyText paise={model.gst.sgstPaise} /></div>
+                </>
+              )}
+            </>
+          )}
           <hr className="vh-divider" />
           <div className="vh-row-between" style={{ fontWeight: 800 }}>
             <span>Total</span><MoneyText paise={model.totalPaise} />

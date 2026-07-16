@@ -29,6 +29,11 @@ const ORDER_MSG: Record<string, { severity: "ok" | "danger" | "warn"; title: str
   err: { severity: "danger", title: "That action isn't available", body: "The order isn't in a state where that applies, or the note was too short." },
 };
 
+/** Reason-specific error copy (overrides the generic `err` banner). */
+const ERR_MSG: Record<string, { severity: "ok" | "danger" | "warn"; title: string; body: string }> = {
+  maker_checker: { severity: "danger", title: "Blocked — maker cannot be checker (A6)", body: "You initiated this return, so you cannot also issue its refund. A different admin must refund. The denied attempt has been logged." },
+};
+
 const I = { size: 16, strokeWidth: 2.2 } as const;
 const IB = { size: 14, strokeWidth: 2.2 } as const;
 
@@ -75,7 +80,7 @@ const columns: Column<SampleOrder>[] = [
 export default async function AdminOrdersPage({ searchParams }: { searchParams: Promise<Record<string, string>> }) {
   const sp = await searchParams;
   const flag = Object.keys(ORDER_MSG).find((k) => sp[k] !== undefined);
-  const msg = flag ? ORDER_MSG[flag] : undefined;
+  const msg = (sp.err && ERR_MSG[sp.err]) || (flag ? ORDER_MSG[flag] : undefined);
   const disputed = ORDERS.filter((o) => o.status === "RETURNED");
 
   // Real orders from the order store.

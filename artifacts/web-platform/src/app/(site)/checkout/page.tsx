@@ -16,6 +16,7 @@ import { Banner, MoneyText } from "@/components/ui";
 import { priceCart } from "@/lib/cart";
 import { readAddresses } from "@/lib/engage";
 import { placeOrder } from "../cart/actions";
+import { randomUUID } from "node:crypto";
 import { readEnabledPayments } from "@/lib/payments";
 
 export const metadata: Metadata = { title: "Checkout" };
@@ -28,6 +29,7 @@ const ERRORS: Record<string, string> = {
   pincode: "PIN code must be exactly 6 digits.",
   payment: "Choose a payment method.",
   age: "Please confirm you are 21 or older — your cart contains an age-restricted item.",
+  serviceable: "A CBD wellness item in your cart can't be delivered to that PIN code yet. Remove it, or ship to a different address.",
 };
 
 const PAY_ICONS: Record<string, typeof Banknote> = {
@@ -73,6 +75,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
       )}
 
       <form action={placeOrder} className="vh-split">
+        {/* Per-render idempotency key: a double-submit replays as a read. */}
+        <input type="hidden" name="idempotencyKey" value={randomUUID()} />
         {/* Address + payment */}
         <div style={{ display: "grid", gap: "var(--sp-3)" }}>
           <section className="vh-card">
@@ -192,6 +196,12 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
             <span style={{ fontWeight: 600 }}>Total</span>
             <MoneyText paise={cart.totalPaise} className="vh-stat-value" />
           </div>
+          {cart.gstIncludedPaise > 0 && (
+            <div className="vh-row-between small" style={{ padding: "0 0 12px", marginTop: -10 }}>
+              <span className="muted">Includes GST</span>
+              <span className="muted tabular"><MoneyText paise={cart.gstIncludedPaise} /></span>
+            </div>
+          )}
           <button type="submit" className="vh-btn vh-btn-primary vh-btn-lg" style={{ width: "100%" }}>
             <Lock size={15} aria-hidden /> Place order · <MoneyText paise={cart.totalPaise} />
           </button>

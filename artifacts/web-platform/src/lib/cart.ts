@@ -17,6 +17,7 @@ import "server-only";
 
 import { cookies } from "next/headers";
 import { readLiveProducts, resolvePriceStock, wholesaleUnitPrice, orderBounds, listingShipping } from "@/lib/catalog";
+import { gstIncludedInLines } from "@/lib/tax";
 import { checkCoupon, readActiveCoupons } from "@/lib/commerce";
 import { type SampleProduct } from "@/lib/sample";
 import { permittedClasses } from "@/lib/compliance";
@@ -60,6 +61,9 @@ export interface PricedCart {
   shippingFree: boolean;
   shippingEstimated: boolean; // true when no destination state was supplied yet
   weightGrams: number;
+  /** GST already included in the item prices (Indian B2C pricing) — derived,
+   *  never added on top. Explains the total; does not change it. */
+  gstIncludedPaise: number;
 }
 
 /** Shipping thresholds come from Admin → Settings → Commerce. */
@@ -240,5 +244,8 @@ export async function priceCart(opts?: { destState?: string }): Promise<PricedCa
     shippingFree: shippingPaise === 0 && subtotalPaise > 0,
     shippingEstimated: !opts?.destState,
     weightGrams,
+    gstIncludedPaise: gstIncludedInLines(
+      priced.map((l) => ({ linePaise: l.linePaise, hsn: (l.product as { hsn?: string }).hsn, cls: l.product.cls })),
+    ),
   };
 }

@@ -57,13 +57,19 @@ export interface Order {
   status: OrderStatus;
   items: OrderItem[];
   city: string;
+  state?: string; // buyer's state — drives GST place-of-supply on the invoice
   pincode: string;
   payment: string;
+  /** 100% prepaid platform: capture precedes order-forwarding, so a stored
+   *  order is always CAPTURED — the gateway reference proves it. */
+  paymentStatus: "CAPTURED";
+  gatewayRef?: string;
   subtotalPaise: number;
   discountPaise: number;
   couponCode: string | null;
   shippingPaise: number;
   totalPaise: number;
+  gstPaise?: number; // GST included in the total (derived, inclusive pricing)
   timeline: OrderEvent[];
   // Returns / refunds
   returnReason?: string;
@@ -97,6 +103,7 @@ export interface PlaceOrderInput {
   buyerEmail: string;
   reference: string;
   city: string;
+  state?: string;
   pincode: string;
   payment: string;
   items: OrderItem[];
@@ -105,6 +112,15 @@ export interface PlaceOrderInput {
   couponCode: string | null;
   shippingPaise: number;
   totalPaise: number;
+  gstPaise?: number;
+}
+
+/** The order (if any) already created under an idempotency key. Callers check
+ *  this BEFORE mutating stock — a replayed submit must be a read, not a write. */
+export async function orderByKey(key: string): Promise<Order | null> {
+  const s = store();
+  const ref = s.byKey[key];
+  return ref ? s.orders.find((o) => o.reference === ref) ?? null : null;
 }
 
 /** Idempotent create. A repeated key returns the existing order untouched. */
@@ -123,9 +139,14 @@ export async function createOrder(input: PlaceOrderInput): Promise<Order> {
     status: "PLACED",
     items: input.items,
     city: input.city,
+    ...(input.state ? { state: input.state } : {}),
     pincode: input.pincode,
     payment: input.payment,
+    // Prepaid: capture happens at payment, before the order is forwarded.
+    paymentStatus: "CAPTURED",
+    gatewayRef: `gw_${input.idempotencyKey.slice(0, 8)}`,
     subtotalPaise: input.subtotalPaise,
+    ...(typeof input.gstPaise === "number" ? { gstPaise: input.gstPaise } : {}),
     discountPaise: input.discountPaise,
     couponCode: input.couponCode,
     shippingPaise: input.shippingPaise,
@@ -246,6 +267,11 @@ export async function refundBuyer(reference: string, by: string): Promise<OrderR
   const order = await findOrder(reference);
   if (!order) return { ok: false, reason: "missing" };
   if (!["RETURN_REQUESTED", "RETURN_APPROVED"].includes(order.status)) return { ok: false, reason: "state" };
+  // A6: no single actor both initiates and settles a money movement. The
+  // refund checker must differ from whoever moved the order into the return
+  // state (the maker) — a self-approved refund is rejected, not just logged.
+  const makerEvent = [...order.timeline].reverse().find((e) => e.status === "RETURN_REQUESTED" || e.status === "RETURN_APPROVED");
+  if (makerEvent && makerEvent.by === by) return { ok: false, reason: "maker_checker" };
   // Buyer first: their money moves now.
   order.status = "REFUNDED";
   order.refundedPaise = order.totalPaise;

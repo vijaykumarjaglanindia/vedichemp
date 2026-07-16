@@ -1171,7 +1171,14 @@ export async function adminRefundBuyer(formData: FormData): Promise<void> {
   const reference = String(formData.get("reference") ?? "").slice(0, 30);
   const who = await actor();
   const result = await ordRefundBuyer(reference, who);
-  if (!result.ok) redirect(`/admin/orders?err=${result.reason}#returns`);
+  if (!result.ok) {
+    // Denied actions are logged too — a self-approved refund attempt (A6)
+    // is exactly the kind of thing the audit trail must show.
+    if (result.reason === "maker_checker") {
+      await writeAudit({ actor: who, action: "REFUND_BUYER", target: reference, outcome: "DENIED", note: "A6: refund checker cannot be the return's maker" });
+    }
+    redirect(`/admin/orders?err=${result.reason}#returns`);
+  }
   await writeAudit({ actor: who, action: "REFUND_BUYER", target: reference, outcome: "OK", note: "buyer refunded first; seller recovery opened" });
   const { notify } = await import("@/lib/notify");
   await notify("buyer", result.order.buyerEmail, {

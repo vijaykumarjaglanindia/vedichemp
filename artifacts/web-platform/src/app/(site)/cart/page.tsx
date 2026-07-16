@@ -169,10 +169,16 @@ export default async function CartPage({
               : <>{cart.shippingZone} · arrives in {cart.shippingEta}. Free over <MoneyText paise={500000} />. Exact charge is set from your delivery state at checkout.</>}
           </p>
           <hr className="vh-divider" />
-          <div className="vh-row-between" style={{ marginBottom: 14 }}>
+          <div className="vh-row-between" style={{ marginBottom: 4 }}>
             <span style={{ fontWeight: 600 }}>Total</span>
             <MoneyText paise={cart.totalPaise} className="vh-stat-value" />
           </div>
+          {cart.gstIncludedPaise > 0 && (
+            <div className="vh-row-between small" style={{ marginBottom: 14 }}>
+              <span className="muted">Includes GST</span>
+              <span className="muted tabular"><MoneyText paise={cart.gstIncludedPaise} /></span>
+            </div>
+          )}
           <Link href="/checkout" className="vh-btn vh-btn-primary vh-btn-lg" style={{ width: "100%" }}>
             Proceed to checkout <ArrowRight size={15} aria-hidden />
           </Link>
