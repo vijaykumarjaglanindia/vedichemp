@@ -17,12 +17,10 @@ import type { ReactNode } from "react";
 import { Eye, FileUp, KeyRound, Lock, ShieldCheck, Stethoscope, Timer } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, Banner, EmptyState, type Column } from "@/components/ui";
-import { cookies } from "next/headers";
-import { currentBuyer } from "@/lib/session";
 import { getSession } from "@/lib/auth-lite";
-import { accessLogForBuyer, reasonLabel } from "@/lib/prescriptions";
-import { PRESCRIPTIONS, ACCESS_LOG, type AccessLogRow, validityElapsedPct, daysUntil } from "../_lib/data";
-import { requestRxViewLink, uploadPrescription, type RxUpload } from "./actions";
+import { accessLogForBuyer, myPrescriptions, reasonLabel } from "@/lib/prescriptions";
+import { type AccessLogRow, validityElapsedPct, daysUntil } from "../_lib/data";
+import { requestRxViewLink, uploadPrescription } from "./actions";
 
 export const metadata: Metadata = { title: "Medical & Prescriptions" };
 
@@ -59,6 +57,10 @@ const UPLOAD_ERRORS: Record<string, string> = {
   file: "Choose a file first — PDF, JPG or PNG.",
   type: "That format isn't accepted — upload a PDF, JPG or PNG.",
   size: "File is over 10 MB — compress or re-scan it and try again.",
+  meta: "Add the doctor's name and registration number so a pharmacist can verify them.",
+  dates: "Enter both the issue date and the valid-till date.",
+  window: "The valid-till date must be after the issue date.",
+  view: "That prescription isn't yours to open.",
 };
 
 export default async function MedicalPage({
@@ -66,29 +68,38 @@ export default async function MedicalPage({
 }: {
   searchParams: Promise<{ uploaded?: string; err?: string; viewlink?: string }>;
 }) {
-  const viewer = currentBuyer();
   const email = (await getSession())?.email ?? "buyer@example.in";
-  // The A4 receipt — every GRANTED read of THIS buyer's prescription, from the
-  // append-only sensitive-access log. Falls back to the demo rows only when the
-  // buyer has never had a real read recorded.
-  const liveReads = (await accessLogForBuyer(email))
+  // The buyer's OWN prescriptions, from the live store (the same rows the
+  // pharmacist queue verifies) — never static demo data.
+  const mine = await myPrescriptions(email);
+  // The A4 receipt — every read of THIS buyer's prescription, from the
+  // append-only sensitive-access log. A self-access read (actor: you) sits in
+  // the same log as any pharmacist read — the log has no exceptions.
+  const accessRows: AccessLogRow[] = (await accessLogForBuyer(email))
     .filter((e) => e.outcome === "GRANTED")
-    .map<AccessLogRow>((e) => ({ id: e.id, at: e.at, actor: e.viewer, role: reasonLabel(e.viewerRole.replace(/^ADMIN_/, "")), reasonCode: e.reasonCode, notified: e.buyerNotified }));
-  const accessRows: AccessLogRow[] = liveReads.length ? liveReads : ACCESS_LOG;
+    .map<AccessLogRow>((e) => {
+      const isSelf = e.viewerRole === "BUYER_SELF";
+      return {
+        id: e.id, at: e.at,
+        actor: isSelf ? "You" : e.viewer,
+        role: isSelf ? "Self access" : reasonLabel(e.viewerRole.replace(/^ADMIN_/, "")),
+        reasonCode: e.reasonCode,
+        notified: isSelf ? true : e.buyerNotified,
+      };
+    });
   const { uploaded, err, viewlink } = await searchParams;
-  const jar = await cookies();
-  let uploads: RxUpload[] = [];
-  try { uploads = JSON.parse(jar.get("vh-rx")?.value ?? "[]") as RxUpload[]; } catch { uploads = []; }
-  const hasExpired = PRESCRIPTIONS.some((rx) => rx.status === "EXPIRED");
+  const hasExpired = mine.some((rx) => rx.status === "EXPIRED");
+  const hasRx = mine.some((rx) => rx.status === "APPROVED");
+  const expiredRx = mine.find((rx) => rx.status === "EXPIRED");
 
   const logColumns: Column<AccessLogRow>[] = [
     { key: "at", header: "When", render: (r) => <span className="small tabular">{r.at}</span> },
     { key: "actor", header: "Who", render: (r) => <span className="small mono">{r.actor}</span> },
-    { key: "role", header: "Role", render: (r) => <StatusPill tone="info">{r.role}</StatusPill> },
+    { key: "role", header: "Role", render: (r) => <StatusPill tone={r.role === "Self access" ? "ok" : "info"}>{r.role}</StatusPill> },
     { key: "reason", header: "Logged reason", render: (r) => <span className="small mono">{r.reasonCode}</span> },
     {
       key: "notified", header: "Notice", render: (r) => (
-        <StatusPill tone={r.notified ? "ok" : "warn"}>{r.notified ? "You were notified" : "Notification pending"}</StatusPill>
+        <StatusPill tone={r.notified ? "ok" : "warn"}>{r.role === "Self access" ? "You opened it" : r.notified ? "You were notified" : "Notification pending"}</StatusPill>
       ),
     },
   ];
@@ -99,7 +110,7 @@ export default async function MedicalPage({
         {hasExpired && (
           <Banner severity="warn" title="Your prescription has expired" icon="⏳">
             Any Medical Cannabis order or subscription requires a verified, unexpired prescription. Your
-            current prescription expired on {PRESCRIPTIONS[0]?.validTill}. Upload a renewed prescription to
+            current prescription expired on {expiredRx?.validTill}. Upload a renewed prescription to
             resume MED_CANNABIS purchases — a pharmacist must re-verify it before it becomes active.
           </Banner>
         )}
@@ -157,29 +168,15 @@ export default async function MedicalPage({
               </Banner>
             </div>
           )}
-          {uploads.length > 0 && (
-            <div style={{ display: "grid", gap: 8, marginBottom: 8 }}>
-              {uploads.map((u) => (
-                <div key={u.id} className="vh-card" style={{ padding: 16 }}>
-                  <div className="vh-row-between" style={{ flexWrap: "wrap", gap: 8 }}>
-                    <span>
-                      <div style={{ fontWeight: 600 }}>{u.fileName}</div>
-                      <div className="small muted">Uploaded {u.uploadedAt} · pharmacist review within 4 business hours</div>
-                    </span>
-                    <StatusPill tone="warn">{u.status.replace(/_/g, " ")}</StatusPill>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-          {PRESCRIPTIONS.length === 0 && uploads.length === 0 ? (
+          {mine.length === 0 ? (
             <EmptyState icon="⚕️" headline="No prescriptions on file" sub="Upload one to unlock Medical Cannabis products." />
           ) : (
             <div style={{ display: "grid", gap: 8 }}>
-              {PRESCRIPTIONS.map((rx) => {
+              {mine.map((rx) => {
                 const elapsedPct = validityElapsedPct(rx.issuedAt, rx.validTill);
                 const days = daysUntil(rx.validTill);
                 const expired = rx.status === "EXPIRED" || days < 0;
+                const viewable = rx.status === "APPROVED" || rx.status === "EXPIRED";
                 return (
                   <div key={rx.id} className="vh-card" style={{ padding: 16 }}>
                     <div className="vh-row-between" style={{ flexWrap: "wrap", gap: 8, marginBottom: 8 }}>
@@ -188,13 +185,17 @@ export default async function MedicalPage({
                         <div className="small muted">Reg. no. {rx.regNo} · issued {rx.issuedAt} · valid till {rx.validTill}</div>
                       </span>
                       <span className="vh-row" style={{ gap: 8 }}>
-                        <StatusPill tone={toneForStatus(rx.status)}>{rx.status}</StatusPill>
-                        <form action={requestRxViewLink} style={{ display: "inline-flex" }}>
-                          <input type="hidden" name="rxId" value={rx.id} />
-                          <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">
-                            View (signed link, 5 min)
-                          </button>
-                        </form>
+                        <StatusPill tone={toneForStatus(rx.status)}>{rx.status.replace(/_/g, " ")}</StatusPill>
+                        {viewable ? (
+                          <form action={requestRxViewLink} style={{ display: "inline-flex" }}>
+                            <input type="hidden" name="rxId" value={rx.id} />
+                            <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">
+                              View (signed link, 5 min)
+                            </button>
+                          </form>
+                        ) : (
+                          <span className="small muted">Awaiting pharmacist review</span>
+                        )}
                       </span>
                     </div>
                     <div
@@ -256,6 +257,28 @@ export default async function MedicalPage({
                 className="small"
                 style={{ maxWidth: 260 }}
               />
+            </div>
+            {/* Metadata the pharmacist verifies against the image. Server-validated
+                (no client min-length), so a tampered submit still fails closed. */}
+            <div className="vh-grid cols-2" style={{ gap: 10, marginTop: 16, textAlign: "left", maxWidth: 560, marginInline: "auto" }}>
+              <label className="vh-label" style={{ display: "grid", gap: 4 }}>
+                <span className="small">Prescribing doctor</span>
+                <input name="doctor" className="vh-input" placeholder="Dr. Kavita Rao, MD" />
+              </label>
+              <label className="vh-label" style={{ display: "grid", gap: 4 }}>
+                <span className="small">Medical registration no.</span>
+                <input name="regNo" className="vh-input" placeholder="MCI-88213" />
+              </label>
+              <label className="vh-label" style={{ display: "grid", gap: 4 }}>
+                <span className="small">Issue date</span>
+                <input type="date" name="issuedAt" className="vh-input" />
+              </label>
+              <label className="vh-label" style={{ display: "grid", gap: 4 }}>
+                <span className="small">Valid till</span>
+                <input type="date" name="validTill" className="vh-input" />
+              </label>
+            </div>
+            <div className="vh-row" style={{ gap: 8, marginTop: 16, justifyContent: "center" }}>
               <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary">Upload for review</button>
             </div>
           </form>
@@ -287,7 +310,7 @@ export default async function MedicalPage({
 
         <Card title={title(<ShieldCheck {...I} />, "Medical Cannabis eligibility")}>
           <p className="small muted" style={{ margin: 0 }}>
-            {viewer.hasRx
+            {hasRx
               ? "You have a verified, unexpired prescription. Medical Cannabis products are visible in your catalogue."
               : "You have no verified, unexpired prescription. Medical Cannabis products are not shown to you anywhere on the platform — not blurred, not locked, simply absent — until a pharmacist verifies a valid upload."}
           </p>

@@ -220,6 +220,52 @@ export async function revealPrescription(args: {
   return { ok: true, url, ttlSeconds, entry };
 }
 
+/**
+ * A4 SELF-ACCESS. A buyer viewing their OWN prescription is a RIGHT, not a
+ * staff reveal — §2 fail-open: "a registry outage must not block a patient
+ * from viewing their own prescription." So this path:
+ *   - requires no reasonCode and no 20-char justification (that gate is for
+ *     someone looking at data that isn't theirs),
+ *   - does NOT notify the buyer (they are the viewer; a self-notice is noise),
+ *   - but is STILL logged, append-only, because the log is the product (A4/A3),
+ *   - and enforces OWNERSHIP server-side: a buyer can only reach their own
+ *     record. A foreign id is DENIED and the denial is logged (against the
+ *     attempting account, so it never pollutes the owner's transparency view).
+ */
+export async function selfAccessPrescription(args: {
+  prescriptionId: string; buyerEmail: string;
+}): Promise<RevealResult> {
+  const s = store();
+  const rx = findRx(args.prescriptionId);
+  const email = args.buyerEmail.toLowerCase();
+  const owns = !!rx && rx.buyerEmail.toLowerCase() === email;
+
+  const failure = !rx ? "missing" : !owns ? "forbidden" : null;
+  const entry: AccessLogEntry = {
+    id: `sx-${s.logSeq++}`,
+    prescriptionId: args.prescriptionId,
+    // On a forbidden attempt, attribute the row to the attempting account —
+    // never to the record's true owner (that would leak the attacker's email
+    // into the owner's log).
+    buyerEmail: owns ? rx!.buyerEmail : args.buyerEmail,
+    viewer: args.buyerEmail,
+    viewerRole: "BUYER_SELF",
+    reasonCode: "SELF_ACCESS",
+    reasonText: "Buyer opened their own prescription",
+    at: nowIso(),
+    outcome: failure ? "DENIED" : "GRANTED",
+    buyerNotified: false, // the viewer is the buyer — no separate notice
+  };
+  s.log.unshift(entry);
+
+  if (failure) return { ok: false, reason: failure, entry };
+
+  const ttlSeconds = 300;
+  const exp = new Date(Date.now() + ttlSeconds * 1000).toISOString();
+  const url = `sensitive://prescription/${rx!.id}?exp=${encodeURIComponent(exp)}&sig=self-${entry.id}`;
+  return { ok: true, url, ttlSeconds, entry };
+}
+
 /** The full sensitive-access log (append-only), newest first — admin surface. */
 export async function accessLog(limit = 50): Promise<AccessLogEntry[]> {
   return store().log.slice(0, limit);
