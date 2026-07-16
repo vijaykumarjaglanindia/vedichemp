@@ -378,6 +378,43 @@ export async function revealPrescriptionAction(formData: FormData): Promise<void
   redirect("/admin/compliance?rx=revealed#rx");
 }
 
+/* ── Settlements (A6 maker–checker, A3 immutable) ─────────── */
+
+/** MAKER: create a settlement run for a seller's un-settled delivered orders.
+ *  Amounts are derived from the earnings lines — never typed in. */
+export async function createSettlementRun(formData: FormData): Promise<void> {
+  const seller = String(formData.get("seller") ?? "").trim();
+  const who = await actor();
+  const { createRun } = await import("@/lib/settlements");
+  const result = await createRun(seller, who);
+  if (!result.ok) redirect(`/admin/finance?st=${result.reason}#settlements`);
+  await writeAudit({ actor: who, action: "SETTLEMENT_CREATE", target: result.run.id, outcome: "OK", note: `maker · ${seller} · net ₹${Math.round(result.run.netPaise / 100)}` });
+  redirect("/admin/finance?st=created#settlements");
+}
+
+/** CHECKER: post an awaiting run. The checker can never be the maker (A6);
+ *  once posted, the statement is immutable (A3). */
+export async function postSettlementRun(formData: FormData): Promise<void> {
+  const id = String(formData.get("runId") ?? "").trim();
+  const who = await actor();
+  const { postRun, findRun } = await import("@/lib/settlements");
+  const result = await postRun(id, who);
+  if (!result.ok) {
+    if (result.reason === "maker") {
+      await writeAudit({ actor: who, action: "SETTLEMENT_POST", target: id, outcome: "DENIED", note: "A6: settlement checker cannot be its maker" });
+      redirect("/admin/finance?st=makerdenied#settlements");
+    }
+    redirect(`/admin/finance?st=${result.reason}#settlements`);
+  }
+  await writeAudit({ actor: who, action: "SETTLEMENT_POST", target: id, outcome: "OK", note: `checker · ${result.run.seller} · net ₹${Math.round(result.run.netPaise / 100)}` });
+  const run = findRun(id);
+  if (run) {
+    const { notify } = await import("@/lib/notify");
+    await notify("seller", run.seller, { kind: "SETTLEMENT_POSTED", title: "Settlement posted", body: `₹${Math.round(run.netPaise / 100).toLocaleString("en-IN")} net for ${run.period} is on its way. The statement is final.`, href: "/seller/finance" });
+  }
+  redirect("/admin/finance?st=posted#settlements");
+}
+
 /* ── Listing reports (buyer trust & safety) ───────────────── */
 
 /**
@@ -1266,6 +1303,10 @@ export async function confirmWithdrawal(formData: FormData): Promise<void> {
     if (result.reason === "maker") {
       await writeAudit({ actor: who, action: "WITHDRAW_PAY", target: id, outcome: "DENIED", note: "A6: maker cannot be checker on a payout ≥ ₹10,000" });
       redirect("/admin/finance/withdrawals?err=maker");
+    }
+    if (result.reason === "split") {
+      await writeAudit({ actor: who, action: "WITHDRAW_PAY", target: id, outcome: "DENIED", note: "A6: cumulative payouts reached the threshold — a different checker is required (anti-splitting)" });
+      redirect("/admin/finance/withdrawals?err=split");
     }
     redirect(`/admin/finance/withdrawals?err=${result.reason}`);
   }

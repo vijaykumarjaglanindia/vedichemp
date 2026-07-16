@@ -22,6 +22,7 @@ const MSG: Record<string, { severity: "ok" | "danger" | "warn"; title: string; b
   paid: { severity: "ok", title: "Payout confirmed (checker)", body: "Marked PAID. The vendor's balance reflects it immediately." },
   cancelled: { severity: "ok", title: "Withdrawal cancelled", body: "The amount returns to the vendor's available balance." },
   maker: { severity: "danger", title: "Blocked — maker cannot be checker (A6)", body: "A payout of ₹10,000 or more must be confirmed by a different admin. The attempt was logged." },
+  split: { severity: "danger", title: "Blocked — cumulative threshold reached (A6 anti-splitting)", body: "This seller's payouts add up to ₹10,000 or more — several small payouts are still one large money movement, so a different admin must confirm this one. The attempt was logged." },
   state: { severity: "warn", title: "Nothing to do", body: "That request is no longer in a state where the action applies." },
   note: { severity: "danger", title: "A reason is required to cancel", body: "Give at least 10 characters — the vendor sees it." },
 };

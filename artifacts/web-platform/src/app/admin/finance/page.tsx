@@ -14,7 +14,9 @@ import { Ban, Landmark, Wallet, ReceiptText, CheckCircle2, Circle, CalendarCheck
 import { Shell } from "../Shell";
 import { Card, Stat, StatusPill, toneForStatus, MoneyText, Banner, DataTable, type Column } from "@/components/ui";
 import { Columns, Donut } from "@/components/ui/charts";
-import { SETTLEMENTS, KPIS, type SettlementRow } from "@/lib/sample";
+import { KPIS } from "@/lib/sample";
+import { allRuns, type SettlementRun } from "@/lib/settlements";
+import { createSettlementRun, postSettlementRun } from "../actions";
 import { REVENUE_6M, TAX_POSITION, PERIOD_CLOSE_CHECKLIST } from "../_lib/data";
 import { initiatePeriodClose } from "../actions";
 
@@ -22,30 +24,24 @@ export const metadata: Metadata = { title: "Finance · Admin" };
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
 
-const CURRENT_ADMIN = "finance.rao"; // signed-in admin, for the self-approval demo
-
-const columns: Column<SettlementRow>[] = [
+const columns: Column<SettlementRun>[] = [
   { key: "seller", header: "Seller", render: (s) => s.seller },
   { key: "period", header: "Period", render: (s) => s.period },
   { key: "net", header: "Net payable", align: "right", render: (s) => <MoneyText paise={s.netPaise} /> },
   { key: "status", header: "Status", render: (s) => <StatusPill tone={toneForStatus(s.status)}>{s.status.replace(/_/g, " ")}</StatusPill> },
   { key: "maker", header: "Maker", render: (s) => <span className="mono small">{s.maker}</span> },
   { key: "checker", header: "Checker", render: (s) => s.checker ? <span className="mono small">{s.checker}</span> : <span className="muted small">—</span> },
-  { key: "action", header: "Approve", render: (s) => {
+  { key: "action", header: "Post", render: (s) => {
       if (s.status === "POSTED") return <span className="small muted">Posted — immutable</span>;
-      const selfApprove = s.maker === CURRENT_ADMIN;
-      return selfApprove ? (
-        <span className="small vh-row" style={{ gap: 6, color: "var(--vh-danger)" }}>
-          <Ban size={14} strokeWidth={2.2} aria-hidden /> You are the maker — cannot check (403)
-        </span>
-      ) : (
-        <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/finance#${s.id}-approve`}>Approve as checker</Link>
+      // The server decides maker≠checker at post time; this button is decoration.
+      return (
+        <form action={postSettlementRun} style={{ display: "inline-flex" }}>
+          <input type="hidden" name="runId" value={s.id} />
+          <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">Post as checker</button>
+        </form>
       );
     } },
 ];
-
-const totalPending = SETTLEMENTS.filter((s) => s.status === "AWAITING_CHECKER").reduce((sum, s) => sum + s.netPaise, 0);
-const totalPosted = SETTLEMENTS.filter((s) => s.status === "POSTED").reduce((sum, s) => sum + s.netPaise, 0);
 const taxTotal = TAX_POSITION.gstPaise + TAX_POSITION.tcsPaise + TAX_POSITION.tdsPaise;
 const closeDone = PERIOD_CLOSE_CHECKLIST.filter((c) => c.done).length;
 
@@ -55,12 +51,25 @@ const CLOSE_NOTES: Record<string, { sev: "ok" | "danger" | "warn"; title: string
   reason: { sev: "warn", title: "Reason required", body: "Period close is high-impact — it needs at least 20 characters of free-text reason." },
 };
 
+const ST_MSG: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {
+  created: { sev: "ok", text: "Settlement run created (you are its maker). A DIFFERENT admin must post it — you cannot." },
+  posted: { sev: "ok", text: "Settlement posted by a second admin. The statement is now immutable (A3) and the seller is notified." },
+  makerdenied: { sev: "danger", text: "Blocked — you created this run, so you cannot also post it (A6 maker ≠ checker). The denied attempt is logged." },
+  pending: { sev: "warn", text: "That seller already has a run awaiting its checker." },
+  empty: { sev: "warn", text: "Nothing to settle — no un-settled delivered orders for that seller." },
+  state: { sev: "warn", text: "That run was already posted." },
+};
+
 export default async function AdminFinancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ close?: string }>;
+  searchParams: Promise<{ close?: string; st?: string }>;
 }) {
-  const { close } = await searchParams;
+  const { close, st } = await searchParams;
+  const runs = await allRuns();
+  const totalPending = runs.filter((s) => s.status === "AWAITING_CHECKER").reduce((sum, s) => sum + s.netPaise, 0);
+  const totalPosted = runs.filter((s) => s.status === "POSTED").reduce((sum, s) => sum + s.netPaise, 0);
+  const stMsg = st ? ST_MSG[st] : undefined;
   return (
     <Shell
       active="/admin/finance"
@@ -72,7 +81,7 @@ export default async function AdminFinancePage({
         <Card title={<span className="vh-row" style={{ gap: 8 }}><Landmark {...I} aria-hidden /> Marketplace revenue</span>}>
           <div className="vh-grid cols-4">
             <Stat label="GMV today" value={<MoneyText paise={KPIS.gmvTodayPaise} />} />
-            <Stat label="Settlements awaiting checker" value={<MoneyText paise={totalPending} />} delta={{ dir: "up", text: `${SETTLEMENTS.filter((s) => s.status === "AWAITING_CHECKER").length} runs` }} />
+            <Stat label="Settlements awaiting checker" value={<MoneyText paise={totalPending} />} delta={{ dir: "up", text: `${runs.filter((s) => s.status === "AWAITING_CHECKER").length} runs` }} />
             <Stat label="Posted this period" value={<MoneyText paise={totalPosted} />} />
             <Stat label="Take rate" value="7.4%" />
           </div>
@@ -85,9 +94,26 @@ export default async function AdminFinancePage({
           </div>
         </Card>
 
-        <Card title="Seller settlements" action={<span className="small muted">Maker ≠ checker · both human · service accounts barred (A6)</span>} pad0>
-          <DataTable columns={columns} rows={SETTLEMENTS} />
-        </Card>
+        <div id="settlements" style={{ scrollMarginTop: 90 }}>
+          {stMsg && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity={stMsg.sev}>{stMsg.text}</Banner></div>}
+          <Card title="Seller settlements" action={<span className="small muted">Maker ≠ checker · both human · service accounts barred (A6)</span>} pad0>
+            <DataTable columns={columns} rows={runs} />
+            <div style={{ padding: "12px 16px", borderTop: "1px solid var(--vh-line)" }}>
+              <form action={createSettlementRun} className="vh-row" style={{ gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+                <div className="vh-field" style={{ minWidth: 220 }}>
+                  <label className="vh-label" htmlFor="st-seller">Create a run (you become its maker)</label>
+                  <select className="vh-input" id="st-seller" name="seller" defaultValue="Vedic Botanicals">
+                    <option value="Vedic Botanicals">Vedic Botanicals</option>
+                    <option value="Himalayan Hemp Co.">Himalayan Hemp Co.</option>
+                    <option value="Ananda Foods">Ananda Foods</option>
+                  </select>
+                </div>
+                <button className="vh-btn vh-btn-sm" type="submit">Create settlement run</button>
+                <span className="small muted">Amounts derive from delivered orders — not typed in.</span>
+              </form>
+            </div>
+          </Card>
+        </div>
 
         <Banner severity="ok" title="Immutable once posted (A3)">
           A posted settlement statement cannot be edited or deleted — the database role backing this table has

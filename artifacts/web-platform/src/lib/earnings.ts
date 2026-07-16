@@ -187,6 +187,16 @@ export async function confirmWithdraw(id: string, checkerId: string): Promise<Wi
   if (w.amountPaise >= WITHDRAW_CHECKER_THRESHOLD_PAISE && w.makerId === checkerId) {
     return { ok: false, reason: "maker" };
   }
+  // A6 anti-splitting: three ₹4,000 payouts are still one ₹12,000 movement.
+  // The CUMULATIVE amount this seller has moved through APPROVED/PAID rows —
+  // including this one — is what the threshold applies to, so a single admin
+  // cannot self-approve past it in slices.
+  const cumulativePaise = store()
+    .withdrawals.filter((x) => x.seller === w.seller && (x.status === "PAID" || x.status === "APPROVED"))
+    .reduce((n, x) => n + x.amountPaise, 0);
+  if (cumulativePaise >= WITHDRAW_CHECKER_THRESHOLD_PAISE && w.makerId === checkerId) {
+    return { ok: false, reason: "split" };
+  }
   w.status = "PAID";
   w.checkerId = checkerId;
   return { ok: true, request: w };

@@ -14,9 +14,10 @@ import { Shell } from "../Shell";
 import { Card, Stat, DataTable, StatusPill, toneForStatus, MoneyText, Banner, type Column } from "@/components/ui";
 import { Sparkline, Donut } from "@/components/ui/charts";
 import {
-  SELLER_SETTLEMENTS, WALLET, PAYOUT_HISTORY, COMMISSION_BREAKDOWN, NEXT_FEE_CHANGE,
+  WALLET, PAYOUT_HISTORY, COMMISSION_BREAKDOWN, NEXT_FEE_CHANGE,
   FEE_BREAKDOWN_SEGMENTS, REVENUE_SPARK, daysUntil,
 } from "../_lib/data";
+import { runsForSeller } from "@/lib/settlements";
 
 export const metadata: Metadata = { title: "Finance" };
 
@@ -26,7 +27,11 @@ interface PayoutRow { id: string; date: string; amountPaise: number; status: str
 /** Fixed categorical order — hue follows the fee line, never its rank. */
 const FEE_COLORS = ["var(--vh-accent)", "var(--vh-saffron)", "var(--vh-info)", "var(--vh-clay-600)"] as const;
 
-export default function FinancePage() {
+export default async function FinancePage() {
+  // Live settlement runs for this store (posted by admin under maker–checker).
+  const myRuns = (await runsForSeller("Vedic Botanicals")).map((r) => ({
+    id: r.id, seller: r.seller, period: r.period, netPaise: r.netPaise, status: r.status, maker: r.maker, checker: r.checker,
+  }));
   const settlementColumns: Column<SettlementRowLocal>[] = [
     { key: "period", header: "Period", render: (s) => s.period },
     { key: "net", header: "Net payable", align: "right", render: (s) => <MoneyText paise={s.netPaise} /> },
@@ -50,7 +55,7 @@ export default function FinancePage() {
     { key: "utr", header: "UTR", render: (p) => <span className="mono small">{p.utr}</span> },
   ];
 
-  const totalNetPosted = SELLER_SETTLEMENTS.filter((s) => s.status === "POSTED").reduce((sum, s) => sum + s.netPaise, 0);
+  const totalNetPosted = myRuns.filter((s) => s.status === "POSTED").reduce((sum, s) => sum + s.netPaise, 0);
   const feeNoticeDays = daysUntil(NEXT_FEE_CHANGE.effectiveFrom) - daysUntil(NEXT_FEE_CHANGE.noticeSentAt);
   const feeSegments = FEE_BREAKDOWN_SEGMENTS.map((f, i) => ({
     value: f.paise,
@@ -73,8 +78,8 @@ export default function FinancePage() {
         <Card><Stat label="Next payout" value={<span className="tabular">{WALLET.nextPayoutDate}</span>} /></Card>
       </div>
 
-      <Card title="Settlement reports" pad0>
-        <DataTable columns={settlementColumns} rows={SELLER_SETTLEMENTS} empty={<div className="vh-empty">No settlements yet.</div>} />
+      <Card title="Settlement reports" action={<a className="vh-btn vh-btn-sm vh-btn-ghost" href={withBase("/seller/finance/statement")} download><Download size={13} strokeWidth={2.2} aria-hidden /> Statement CSV</a>} pad0>
+        <DataTable columns={settlementColumns} rows={myRuns} empty={<div className="vh-empty">No settlements yet.</div>} />
       </Card>
       <p className="small muted" style={{ margin: "8px 0 var(--sp-4)" }}>
         Settlements are posted by the marketplace under maker–checker (A6) — no single admin moves money. Once posted,
