@@ -19,6 +19,8 @@ import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, Banner, EmptyState, type Column } from "@/components/ui";
 import { cookies } from "next/headers";
 import { currentBuyer } from "@/lib/session";
+import { getSession } from "@/lib/auth-lite";
+import { accessLogForBuyer, reasonLabel } from "@/lib/prescriptions";
 import { PRESCRIPTIONS, ACCESS_LOG, type AccessLogRow, validityElapsedPct, daysUntil } from "../_lib/data";
 import { requestRxViewLink, uploadPrescription, type RxUpload } from "./actions";
 
@@ -65,6 +67,14 @@ export default async function MedicalPage({
   searchParams: Promise<{ uploaded?: string; err?: string; viewlink?: string }>;
 }) {
   const viewer = currentBuyer();
+  const email = (await getSession())?.email ?? "buyer@example.in";
+  // The A4 receipt — every GRANTED read of THIS buyer's prescription, from the
+  // append-only sensitive-access log. Falls back to the demo rows only when the
+  // buyer has never had a real read recorded.
+  const liveReads = (await accessLogForBuyer(email))
+    .filter((e) => e.outcome === "GRANTED")
+    .map<AccessLogRow>((e) => ({ id: e.id, at: e.at, actor: e.viewer, role: reasonLabel(e.viewerRole.replace(/^ADMIN_/, "")), reasonCode: e.reasonCode, notified: e.buyerNotified }));
+  const accessRows: AccessLogRow[] = liveReads.length ? liveReads : ACCESS_LOG;
   const { uploaded, err, viewlink } = await searchParams;
   const jar = await cookies();
   let uploads: RxUpload[] = [];
@@ -270,7 +280,7 @@ export default async function MedicalPage({
         >
           <DataTable
             columns={logColumns}
-            rows={ACCESS_LOG}
+            rows={accessRows}
             empty={<EmptyState icon="👁️" headline="No one has viewed your prescription" />}
           />
         </Card>

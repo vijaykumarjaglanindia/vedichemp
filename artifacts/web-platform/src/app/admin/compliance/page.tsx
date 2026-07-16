@@ -16,10 +16,11 @@ import {
   Timer, CheckCircle2, XCircle, Eye,
 } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, StatusPill, Banner, ComplianceBadge } from "@/components/ui";
+import { Card, StatusPill, Banner, ComplianceBadge, EmptyState } from "@/components/ui";
 import { COMPLIANCE_QUEUE, AUDIT } from "@/lib/sample";
 import { SENSITIVE_ACCESS_24H, slaCountdown } from "../_lib/data";
-import { closeRecall, initiateRecall } from "../actions";
+import { closeRecall, initiateRecall, decidePrescriptionAction, revealPrescriptionAction } from "../actions";
+import { pendingPrescriptions, allPrescriptions, accessLog, SENSITIVE_REASONS, reasonLabel } from "@/lib/prescriptions";
 
 export const metadata: Metadata = { title: "Compliance · Admin" };
 
@@ -47,9 +48,27 @@ const RECALL_NOTES: Record<string, { sev: "ok" | "danger" | "warn"; title: strin
 export default async function AdminCompliancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ recall?: string; ref?: string }>;
+  searchParams: Promise<{ recall?: string; ref?: string; rx?: string; rxerr?: string }>;
 }) {
-  const { recall, ref } = await searchParams;
+  const { recall, ref, rx: rxDone, rxerr } = await searchParams;
+  const rxPending = await pendingPrescriptions();
+  const rxApproved = (await allPrescriptions()).filter((r) => r.status === "APPROVED");
+  const liveAccess = await accessLog();
+  const accessRows = liveAccess.length
+    ? liveAccess.map((e) => ({ id: e.id, at: e.at, actor: e.viewer, role: e.viewerRole, reason: e.reasonCode, subject: e.prescriptionId, buyerNotified: e.buyerNotified, outcome: e.outcome }))
+    : SENSITIVE_ACCESS_24H;
+  const RX_MSG: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {
+    approve: { sev: "ok", text: "Prescription verified — the buyer can order eligible items, and they've been notified." },
+    reject: { sev: "ok", text: "Prescription rejected — the buyer is asked to re-upload." },
+    revealed: { sev: "ok", text: "Access logged and the buyer notified. A 5-minute, watermarked link was issued." },
+    note: { sev: "danger", text: "A rejection needs a short reason (at least 10 characters)." },
+    reasoncode: { sev: "danger", text: "Choose a reason from the controlled list — the access was denied and logged." },
+    reasontext: { sev: "danger", text: "State why this must be viewed now (at least 20 characters) — the denied attempt was logged." },
+    scope: { sev: "danger", text: "Only Pharmacist/Compliance may view health data — the attempt was denied and logged." },
+    missing: { sev: "warn", text: "That prescription no longer exists." },
+    state: { sev: "warn", text: "That prescription was already reviewed." },
+  };
+  const rxMsg = (rxDone && RX_MSG[rxDone]) || (rxerr && RX_MSG[rxerr]) || undefined;
   return (
     <Shell active="/admin/compliance" breadcrumb={["Admin", "Compliance"]} title="Compliance hub">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
@@ -101,21 +120,82 @@ export default async function AdminCompliancePage({
           </div>
         </Card>
 
-        <Card title={<span className="vh-row" style={{ gap: 8 }}><Stethoscope size={16} strokeWidth={2.2} aria-hidden /> Prescription (Rx) viewer flow</span>}>
-          <p className="small muted" style={{ marginTop: 0 }}>
-            Opening a prescription is never a direct link. The flow is: (1) pick a controlled reason code —{" "}
-            <code>PRESCRIPTION_VERIFICATION</code>, <code>ADVERSE_EVENT_TRIAGE</code>, <code>REGULATORY_REQUEST</code>,{" "}
-            <code>DISPUTE_EVIDENCE</code>; (2) write ≥20 characters explaining why now; (3) the signed URL that comes
-            back has a 5-minute TTL and is watermarked; (4) the buyer receives a notification that their prescription
-            was viewed, by whom (role, not always name) and why. Curiosity is not on the reason list.
-          </p>
-          <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
-            <StatusPill tone="info">Reason code required</StatusPill>
-            <StatusPill tone="info">≥20 char justification</StatusPill>
-            <StatusPill tone="ok">Buyer notified</StatusPill>
-            <StatusPill tone="warn">5-min signed URL TTL</StatusPill>
-          </div>
-        </Card>
+        <div id="rx" style={{ scrollMarginTop: 90 }}>
+          {rxMsg && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity={rxMsg.sev}>{rxMsg.text}</Banner></div>}
+          <Card
+            title={<span className="vh-row" style={{ gap: 8 }}><Stethoscope size={16} strokeWidth={2.2} aria-hidden /> Prescription verification (A4)</span>}
+            action={<StatusPill tone={rxPending.length ? "warn" : "ok"}>{rxPending.length} to verify</StatusPill>}
+          >
+            <p className="small muted" style={{ marginTop: 0 }}>
+              A pharmacist verifies each prescription — a model may read fields, but only a human approves. Opening a
+              prescription image is never a direct link: it needs a controlled reason code and ≥20 characters of
+              justification, the access is logged before any link is issued, and the buyer is notified every time.
+            </p>
+
+            {/* Pending verification queue */}
+            {rxPending.length === 0 ? (
+              <div className="small muted" style={{ marginBottom: 12 }}>No prescriptions awaiting verification.</div>
+            ) : (
+              <div className="vh-grid" style={{ gap: 0, marginBottom: 12 }}>
+                {rxPending.map((r) => (
+                  <div key={r.id} style={{ borderTop: "1px solid var(--vh-line)", padding: "12px 0" }}>
+                    <div className="vh-row-between" style={{ gap: 12, flexWrap: "wrap" }}>
+                      <span>
+                        <span className="mono small" style={{ fontWeight: 700 }}>{r.id}</span> · {r.buyerName}
+                        <div className="small muted">{r.doctor} · {r.regNo} · valid till {r.validTill}</div>
+                      </span>
+                      <span className="vh-row" style={{ gap: 6, alignItems: "flex-end", flexWrap: "wrap" }}>
+                        <form action={decidePrescriptionAction}>
+                          <input type="hidden" name="rxId" value={r.id} />
+                          <input type="hidden" name="decision" value="approve" />
+                          <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit"><CheckCircle2 size={13} aria-hidden /> Verify</button>
+                        </form>
+                        <form action={decidePrescriptionAction} className="vh-row" style={{ gap: 6, alignItems: "flex-end" }}>
+                          <input type="hidden" name="rxId" value={r.id} />
+                          <input type="hidden" name="decision" value="reject" />
+                          <input className="vh-input vh-input-sm" name="note" placeholder="Reason (≥10)" style={{ width: 150 }} aria-label={`Reject reason for ${r.id}`} />
+                          <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit">Reject</button>
+                        </form>
+                      </span>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {/* Reveal flow — logged reason, buyer notified */}
+            <div style={{ borderTop: "1px solid var(--vh-line)", paddingTop: 12 }}>
+              <div style={{ fontWeight: 600, fontSize: ".9rem", marginBottom: 6 }}>Open a prescription image</div>
+              {rxApproved.length === 0 ? (
+                <div className="small muted">No verified prescriptions on file to open.</div>
+              ) : (
+                <form action={revealPrescriptionAction} className="vh-grid" style={{ gap: 10, maxWidth: 620 }}>
+                  <div className="vh-field">
+                    <label className="vh-label" htmlFor="rx-id">Prescription</label>
+                    <select className="vh-input" id="rx-id" name="rxId" defaultValue={rxApproved[0]!.id}>
+                      {rxApproved.map((r) => <option key={r.id} value={r.id}>{r.id} · {r.buyerName}</option>)}
+                    </select>
+                  </div>
+                  <div className="vh-field">
+                    <label className="vh-label" htmlFor="rx-reason">Reason code (controlled list)</label>
+                    <select className="vh-input" id="rx-reason" name="reasonCode" defaultValue="">
+                      <option value="" disabled>Choose a reason…</option>
+                      {SENSITIVE_REASONS.map((c) => <option key={c} value={c}>{reasonLabel(c)}</option>)}
+                    </select>
+                  </div>
+                  <div className="vh-field">
+                    <label className="vh-label" htmlFor="rx-text">Why must this be viewed now? (≥20 characters)</label>
+                    <textarea className="vh-input" id="rx-text" name="reasonText" rows={2} maxLength={300} required placeholder="Justification — not health data. The buyer sees that it was viewed and why." />
+                  </div>
+                  <div className="vh-row" style={{ gap: 8, alignItems: "center", flexWrap: "wrap" }}>
+                    <button className="vh-btn vh-btn-sm vh-btn-outline" type="submit"><Eye size={13} aria-hidden /> Open (logs access, notifies buyer)</button>
+                    <span className="vh-pill vh-pill-warn">Link is watermarked · 5-min TTL</span>
+                  </div>
+                </form>
+              )}
+            </div>
+          </Card>
+        </div>
 
         <Card
           title={<span className="vh-row" style={{ gap: 8 }}><Eye size={16} strokeWidth={2.2} aria-hidden /> Sensitive access — last 24h</span>}
@@ -128,7 +208,7 @@ export default async function AdminCompliancePage({
                 <tr><th>At</th><th>Actor</th><th>Reason code</th><th>Subject</th><th>Buyer notified</th><th>Outcome</th></tr>
               </thead>
               <tbody>
-                {SENSITIVE_ACCESS_24H.map((r) => {
+                {accessRows.map((r) => {
                   const denied = r.outcome === "DENIED";
                   return (
                     <tr key={r.id} style={denied ? { background: "color-mix(in srgb, var(--vh-danger) 8%, transparent)" } : undefined}>
@@ -141,8 +221,9 @@ export default async function AdminCompliancePage({
                       <td className="mono small">{r.subject}</td>
                       <td>
                         <span className="vh-row small" style={{ gap: 6 }}>
-                          <CheckCircle2 size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)" }} />
-                          notified
+                          {r.buyerNotified
+                            ? <><CheckCircle2 size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)" }} /> notified</>
+                            : <span className="muted">— not viewed</span>}
                         </span>
                       </td>
                       <td>

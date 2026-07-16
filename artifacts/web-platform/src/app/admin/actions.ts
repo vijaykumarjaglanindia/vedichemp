@@ -314,6 +314,70 @@ export async function moderateStoreReviewAction(formData: FormData): Promise<voi
   redirect(`/admin/reviews?sdone=${decision}#store-reviews`);
 }
 
+/* ── Prescriptions & sensitive access (A4) ────────────────── */
+
+/** A pharmacist verifies (approves) or rejects a pending prescription. The
+ *  buyer is notified with metadata only — never any health detail. */
+export async function decidePrescriptionAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("rxId") ?? "").trim();
+  const decision = String(formData.get("decision") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  const who = await actor();
+  const { decidePrescription, findRx } = await import("@/lib/prescriptions");
+
+  if (decision === "reject" && note.length < 10) {
+    await writeAudit({ actor: who, action: "RX_REJECT", target: id, outcome: "DENIED", note: "reason under 10 chars" });
+    redirect("/admin/compliance?rxerr=note#rx");
+  }
+  const result = await decidePrescription(id, decision === "approve", note || undefined);
+  if (!result.ok) redirect(`/admin/compliance?rxerr=${result.reason}#rx`);
+  await writeAudit({ actor: who, action: decision === "approve" ? "RX_VERIFY" : "RX_REJECT", target: id, outcome: "OK" });
+  const rx = findRx(id);
+  if (rx) {
+    const { notify } = await import("@/lib/notify");
+    await notify("buyer", rx.buyerEmail, decision === "approve"
+      ? { kind: "RX_VERIFIED", title: "Prescription verified", body: "Your prescription has been verified. You can now order eligible items.", href: "/account/medical" }
+      : { kind: "RX_REJECTED", title: "Prescription needs attention", body: "Your prescription couldn't be verified. Please review and re-upload.", href: "/account/medical" });
+  }
+  redirect(`/admin/compliance?rx=${decision}#rx`);
+}
+
+/**
+ * A4 reveal. The reason code + text are mandatory and enforced in the store;
+ * the access is logged (GRANTED or DENIED) before any URL is issued, and on
+ * success the buyer is notified. This console operator acts as ADMIN_COMPLIANCE
+ * — the role is set server-side, not taken from the client. No health data is
+ * placed in the audit note (only the controlled reason code).
+ */
+export async function revealPrescriptionAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("rxId") ?? "").trim();
+  const reasonCode = String(formData.get("reasonCode") ?? "").trim();
+  const reasonText = String(formData.get("reasonText") ?? "").trim();
+  const who = await actor();
+  const { revealPrescription, findRx } = await import("@/lib/prescriptions");
+
+  const result = await revealPrescription({ prescriptionId: id, viewer: who, viewerRole: "ADMIN_COMPLIANCE", reasonCode, reasonText });
+  await writeAudit({
+    actor: who,
+    action: result.ok ? "SENSITIVE_READ" : "SENSITIVE_READ_DENIED",
+    target: id,
+    outcome: result.ok ? "OK" : "DENIED",
+    note: reasonCode || "no-reason",
+  });
+  if (!result.ok) redirect(`/admin/compliance?rxerr=${result.reason}#rx`);
+  const rx = findRx(id);
+  if (rx) {
+    const { notify } = await import("@/lib/notify");
+    await notify("buyer", rx.buyerEmail, {
+      kind: "RX_ACCESSED",
+      title: "Your prescription was viewed",
+      body: `A compliance reviewer opened your prescription (${reasonCode.replace(/_/g, " ").toLowerCase()}). If this seems wrong, contact support.`,
+      href: "/account/medical",
+    });
+  }
+  redirect("/admin/compliance?rx=revealed#rx");
+}
+
 /* ── Listing reports (buyer trust & safety) ───────────────── */
 
 /**
