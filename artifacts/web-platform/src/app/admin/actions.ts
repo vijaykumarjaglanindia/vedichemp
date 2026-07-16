@@ -120,37 +120,88 @@ export async function saveCommissionSchedule(formData: FormData): Promise<void> 
 
 /* ── Users: restrict / suspend / reinstate / impersonate ──── */
 
-const USER_OPS: Record<string, string | null> = {
-  restrict: "RESTRICTED",
-  suspend: "SUSPENDED",
-  reinstate: "ACTIVE",
-  impersonate: null, // no status change — read-only session, logged
-};
+const USER_OPS = new Set(["restrict", "unrestrict", "suspend", "reinstate", "impersonate"]);
 
 export async function applyUserAction(formData: FormData): Promise<void> {
   const userId = String(formData.get("userId") ?? "").slice(0, 8);
   const op = String(formData.get("op") ?? "");
   const reason = String(formData.get("reason") ?? "").trim();
+  const who = await actor();
 
-  if (!(op in USER_OPS) || !/^u\d+$/.test(userId)) redirect("/admin/users");
-  // Every mutating admin action — impersonation included — carries a reason
-  // of at least 20 characters; without it the action is rejected AND the
-  // rejection is logged (CLAUDE.md §2).
+  if (!USER_OPS.has(op) || !/^u\d+$/.test(userId)) redirect("/admin/users");
+  // Every mutating admin action — impersonation included — carries a reason of
+  // at least 20 characters; without it the action is rejected AND the rejection
+  // is logged (CLAUDE.md §2). Denied actions are logged too.
   if (reason.length < 20) {
-    await writeAudit({ actor: await actor(), action: `USER_${op.toUpperCase()}`, target: userId, outcome: "DENIED", note: "reason under 20 chars" });
+    await writeAudit({ actor: who, action: `USER_${op.toUpperCase()}`, target: userId, outcome: "DENIED", note: "reason under 20 chars" });
     redirect(`/admin/users?act=${op}&u=${userId}&err=reason#act-form`);
   }
 
-  const newStatus = USER_OPS[op];
-  if (newStatus) {
-    const jar = await cookies();
-    let map: Record<string, string> = {};
-    try { map = JSON.parse(jar.get("vh-adm-users")?.value ?? "{}") as Record<string, string>; } catch { map = {}; }
-    map[userId] = newStatus;
-    jar.set("vh-adm-users", JSON.stringify(map), OPTS);
+  const { restrictAccount, unrestrictAccount, requestStatusChange, logImpersonation } = await import("@/lib/users");
+  const { notify } = await import("@/lib/notify");
+
+  // Restrict / lift are single-admin and take effect immediately.
+  if (op === "restrict" || op === "unrestrict") {
+    const res = op === "restrict"
+      ? await restrictAccount(userId, who, reason)
+      : await unrestrictAccount(userId, who, reason);
+    if (!res.ok) {
+      await writeAudit({ actor: who, action: `USER_${op.toUpperCase()}`, target: userId, outcome: "DENIED", note: res.reason });
+      redirect(`/admin/users?err=state&u=${userId}`);
+    }
+    await writeAudit({ actor: who, action: `USER_${op.toUpperCase()}`, target: userId, outcome: "OK", note: reason });
+    redirect(`/admin/users?done=${op}&u=${userId}`);
   }
-  await writeAudit({ actor: await actor(), action: `USER_${op.toUpperCase()}`, target: userId, outcome: "OK", note: reason });
-  redirect(`/admin/users?done=${op}&u=${userId}`);
+
+  // Suspend / reinstate are MAKER–CHECKER: this raises a request only. A second
+  // admin must approve it (A6). Nothing changes on the account here.
+  if (op === "suspend" || op === "reinstate") {
+    const res = await requestStatusChange(userId, op === "suspend" ? "SUSPEND" : "REINSTATE", who, reason);
+    if (!res.ok) {
+      await writeAudit({ actor: who, action: `USER_${op.toUpperCase()}_REQUEST`, target: userId, outcome: "DENIED", note: res.reason });
+      redirect(`/admin/users?err=${res.reason}&u=${userId}`);
+    }
+    await writeAudit({ actor: who, action: `USER_${op.toUpperCase()}_REQUEST`, target: userId, outcome: "OK", note: reason });
+    redirect(`/admin/users?done=${op}-requested&u=${userId}`);
+  }
+
+  // Impersonate: read-only session, logged, and the buyer is notified (A4).
+  const imp = await logImpersonation(userId, who, reason);
+  if (!imp.ok || !imp.account) {
+    await writeAudit({ actor: who, action: "USER_IMPERSONATE", target: userId, outcome: "DENIED", note: "missing" });
+    redirect(`/admin/users?err=state&u=${userId}`);
+  }
+  await writeAudit({ actor: who, action: "USER_IMPERSONATE", target: userId, outcome: "OK", note: reason });
+  // The buyer is told — never the reason text (it is staff justification, but we
+  // keep the notice generic and health-data-free either way).
+  await notify("buyer", imp.account!.email, {
+    kind: "IMPERSONATION_STARTED",
+    title: "A support agent opened a read-only session",
+    body: "A Vedic Hemp support agent started a read-only session on your account. They cannot place orders or change your data. Every action is logged.",
+    href: "/account",
+  });
+  redirect(`/admin/users?done=impersonate&u=${userId}`);
+}
+
+/** CHECKER step for a maker–checker user request (A6). Approve or reject. */
+export async function decidePendingUserAction(formData: FormData): Promise<void> {
+  const pendingId = String(formData.get("pendingId") ?? "").slice(0, 12);
+  const decision = String(formData.get("decision") ?? ""); // approve | reject
+  const who = await actor();
+  if (!/^pa-\d+$/.test(pendingId) || !["approve", "reject"].includes(decision)) redirect("/admin/users");
+
+  const { decidePending } = await import("@/lib/users");
+  const res = await decidePending(pendingId, who, decision === "approve");
+  if (!res.ok) {
+    // A6: a maker approving their own request is refused AND logged.
+    const note = res.reason === "maker" ? "A6: maker cannot be checker" : res.reason;
+    await writeAudit({ actor: who, action: "USER_REQUEST_DECIDE", target: pendingId, outcome: "DENIED", note });
+    redirect(`/admin/users?err=${res.reason}#inbox`);
+  }
+
+  const verb = res.pending.kind === "SUSPEND" ? "suspend" : "reinstate";
+  await writeAudit({ actor: who, action: `USER_${verb.toUpperCase()}_${res.approved ? "APPROVE" : "REJECT"}`, target: res.pending.userId, outcome: "OK", note: `${res.pending.kind} raised by ${res.pending.maker}` });
+  redirect(`/admin/users?done=${res.approved ? verb + "d" : "rejected"}#inbox`);
 }
 
 /* ── CMS: WordPress-style save / publish / unpublish / delete ── */
