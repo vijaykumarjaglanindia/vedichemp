@@ -27,6 +27,7 @@ import { ordersForBuyer, type OrderStatus } from "@/lib/orders";
 import { balancePaise, ledger } from "@/lib/wallet";
 import { myPrescriptions } from "@/lib/prescriptions";
 import { notificationsFor } from "@/lib/notify";
+import { subscriptionCount } from "@/lib/subscriptions";
 
 export const metadata: Metadata = { title: "My Account" };
 export const dynamic = "force-dynamic";
@@ -63,6 +64,7 @@ export default async function AccountHomePage() {
   const lastTxn = (await ledger(email))[0];
   const rx = await myPrescriptions(email);
   const notes = (await notificationsFor("buyer", email)).slice(0, 6);
+  const subCount = await subscriptionCount(email);
 
   // Profile completeness — presentation estimate; the server owns the real %.
   const profileCompletePct = 72;
@@ -217,7 +219,11 @@ export default async function AccountHomePage() {
         {/* Widget rank 5/6/7: subscriptions, wallet (with trend), rewards */}
         <div className="vh-grid cols-3">
           <Card title={<TitleIcon icon={<RefreshCw {...I} />}>Subscriptions</TitleIcon>}>
-            <p className="small muted" style={{ marginBottom: 8 }}>Set up a repeat delivery for the things you reorder.</p>
+            <p className="small muted" style={{ marginBottom: 8 }}>
+              {subCount.active > 0
+                ? `${subCount.active} active subscription${subCount.active === 1 ? "" : "s"}.`
+                : "Set up a repeat delivery for the things you reorder."}
+            </p>
             <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/account/subscriptions">Manage subscriptions</Link>
           </Card>
           <Card>

@@ -1,63 +1,110 @@
 /**
  * VEDIC HEMP — SUBSCRIPTIONS (§1.8)
  *
- * Skip is idempotent (repeated taps never double-skip) with a 2-hour undo
- * window; a regulated subscription whose Rx lapses auto-PAUSES server-side —
- * never cancelled, never silently shipped. This page renders those states.
+ * Real per-buyer subscriptions from src/lib/subscriptions.ts. Skip is
+ * idempotent (repeated taps never double-skip) with an undo; a regulated
+ * subscription whose prescription requirement isn't met is shown PAUSED —
+ * computed here from the buyer's live prescriptions, never silently shipped.
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarClock, Pause, SkipForward, XCircle } from "lucide-react";
+import { CalendarClock, Pause, SkipForward, XCircle, PlusCircle } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, toneForStatus, MoneyText, Banner, EmptyState } from "@/components/ui";
-import { currentBuyer } from "@/lib/session";
-import { SUBSCRIPTIONS, daysUntil } from "../_lib/data";
-import { readSubOverrides, subscriptionAction } from "./actions";
+import { getSession } from "@/lib/auth-lite";
+import { daysUntil } from "../_lib/data";
+import { mySubscriptions, cadenceLabel, CADENCES } from "@/lib/subscriptions";
+import { myPrescriptions } from "@/lib/prescriptions";
+import { readLiveProducts } from "@/lib/catalog";
+import { permittedClasses } from "@/lib/compliance";
+import { subscriptionAction, createSubscriptionAction } from "./actions";
 
 export const metadata: Metadata = { title: "Subscriptions" };
+export const dynamic = "force-dynamic";
 
 const DONE_NOTES: Record<string, string> = {
-  skip: "Next delivery skipped — undoable for 2 hours (repeated taps never double-skip).",
+  create: "Subscription created — your first delivery is scheduled. Skip or pause any time.",
+  skip: "Next delivery skipped — undoable any time before it ships (repeated taps never double-skip).",
   unskip: "Skip undone — the next delivery ships as scheduled.",
   pause: "Subscription paused — resume any time; nothing ships while paused.",
   resume: "Subscription resumed.",
   cancel: "Subscription cancelled — past orders and invoices stay in your history.",
 };
 
+const ERR_NOTES: Record<string, string> = {
+  product: "Pick a product that's currently available to subscribe.",
+  cadence: "Choose a delivery frequency.",
+  duplicate: "You already have an active subscription for that product.",
+  terminal: "That subscription is cancelled and can't be changed.",
+  state: "That action doesn't apply to the subscription's current state.",
+};
+
 export default async function SubscriptionsPage({
   searchParams,
 }: {
-  searchParams: Promise<{ done?: string }>;
+  searchParams: Promise<{ done?: string; err?: string }>;
 }) {
-  const viewer = currentBuyer();
-  const { done } = await searchParams;
-  const overrides = await readSubOverrides();
+  const { done, err } = await searchParams;
+  const email = (await getSession())?.email ?? "buyer@example.in";
+  const subs = await mySubscriptions(email);
+  const hasRx = (await myPrescriptions(email)).some((r) => r.status === "APPROVED");
+
+  // Products the buyer can subscribe to that they aren't already subscribed to.
+  const permitted = permittedClasses({ hasRx: false });
+  const subscribedIds = new Set(subs.filter((s) => s.status !== "CANCELLED").map((s) => s.productId));
+  const subscribable = (await readLiveProducts())
+    .filter((p) => permitted.includes(p.cls) && !subscribedIds.has(p.slug))
+    .slice(0, 40);
 
   return (
     <Shell active="/account/subscriptions" breadcrumb={["My Account", "Subscriptions"]} title="Subscriptions">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
         {done && DONE_NOTES[done] && <Banner severity="ok">{DONE_NOTES[done]}</Banner>}
+        {err && ERR_NOTES[err] && <Banner severity="danger" title="Not applied">{ERR_NOTES[err]}</Banner>}
         <Banner severity="info" title="Skip and pause are safe to undo" icon="🔁">
-          Skipping a delivery is idempotent (repeated taps never double-skip) and can be undone for 2 hours
-          from your notification. If a subscription's Medical Cannabis prescription expires, the
-          subscription is automatically <strong>paused</strong> — never cancelled or silently shipped —
-          until you renew.
+          Skipping a delivery is idempotent (repeated taps never double-skip) and can be undone before it
+          ships. If a subscription's prescription requirement lapses, the subscription is automatically
+          <strong> paused</strong> — never cancelled or silently shipped — until you renew.
         </Banner>
 
-        {SUBSCRIPTIONS.length === 0 ? (
-          <EmptyState icon="🔁" headline="No active subscriptions" cta={{ label: "Browse subscribe & save", href: "/" }} />
+        {/* Create a subscription */}
+        <Card title={<span className="vh-row" style={{ gap: 8 }}><PlusCircle size={16} strokeWidth={2.2} aria-hidden /> Subscribe &amp; save</span>}>
+          {subscribable.length === 0 ? (
+            <p className="small muted" style={{ margin: 0 }}>You&rsquo;re subscribed to everything currently available. Browse the <Link href="/catalogue">catalogue</Link> for more.</p>
+          ) : (
+            <form action={createSubscriptionAction} className="vh-row" style={{ gap: 8, flexWrap: "wrap", alignItems: "flex-end" }}>
+              <label className="vh-field" style={{ flex: "2 1 240px" }}>
+                <span className="vh-label">Product</span>
+                <select className="vh-select" name="productSlug" required defaultValue="">
+                  <option value="" disabled>Choose a product…</option>
+                  {subscribable.map((p) => (
+                    <option key={p.slug} value={p.slug}>{p.emoji} {p.title} — ₹{(p.pricePaise / 100).toLocaleString("en-IN")}</option>
+                  ))}
+                </select>
+              </label>
+              <label className="vh-field" style={{ flex: "1 1 160px" }}>
+                <span className="vh-label">Delivery every</span>
+                <select className="vh-select" name="cadenceDays" defaultValue="28">
+                  {CADENCES.map((d) => <option key={d} value={d}>{cadenceLabel(d)}</option>)}
+                </select>
+              </label>
+              <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary">Start subscription</button>
+            </form>
+          )}
+        </Card>
+
+        {subs.length === 0 ? (
+          <EmptyState icon="🔁" headline="No subscriptions yet" sub="Set one up above to get your regulars delivered on a schedule." />
         ) : (
           <div className="vh-grid cols-2">
-            {SUBSCRIPTIONS.map((s) => {
-              const o = overrides[s.id] ?? {};
-              const baseStatus = o.status ?? s.status;
-              const autoPaused = s.regulated && !viewer.hasRx && baseStatus !== "CANCELLED";
-              const displayStatus = baseStatus === "CANCELLED" ? "CANCELLED" : autoPaused ? "PAUSED" : baseStatus;
-              const skipped = o.skipped === true;
+            {subs.map((s) => {
+              const autoPaused = s.regulated && !hasRx && s.status !== "CANCELLED";
+              const displayStatus = s.status === "CANCELLED" ? "CANCELLED" : autoPaused ? "PAUSED" : s.status;
+              const skipped = s.skippedNext;
               const cancelled = displayStatus === "CANCELLED";
               const paused = displayStatus === "PAUSED";
-              const days = daysUntil(s.nextDelivery);
+              const days = daysUntil(s.nextDeliveryAt);
               return (
                 <Card
                   key={s.id}
@@ -72,11 +119,11 @@ export default async function SubscriptionsPage({
                   )}
                   <div className="vh-row-between" style={{ marginBottom: 8 }}>
                     <span className="small muted">Cadence</span>
-                    <span className="small">{s.cadence}</span>
+                    <span className="small">{cadenceLabel(s.cadenceDays)}</span>
                   </div>
                   <div className="vh-row-between" style={{ marginBottom: 8 }}>
                     <span className="small muted">Next delivery</span>
-                    <span className="small">{autoPaused ? "Paused — awaiting valid Rx" : s.nextDelivery}</span>
+                    <span className="small">{autoPaused ? "Paused — awaiting valid Rx" : cancelled ? "—" : s.nextDeliveryAt}</span>
                   </div>
                   <div className="vh-row-between" style={{ marginBottom: 8 }}>
                     <span className="small muted">Price per delivery</span>
@@ -123,7 +170,7 @@ export default async function SubscriptionsPage({
                     </div>
                   )}
                   <p className="small muted" style={{ margin: "8px 0 0" }}>
-                    Skip is idempotent and undoable for 2 hours after you're notified.
+                    Skip is idempotent and undoable before the delivery ships.
                   </p>
                 </Card>
               );

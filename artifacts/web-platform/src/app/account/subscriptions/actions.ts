@@ -3,49 +3,58 @@
 /**
  * VEDIC HEMP — SUBSCRIPTION ACTIONS
  *
- * Skip / pause / resume / cancel, validated against a server-side state
- * machine. Skip is idempotent — repeating it never double-skips — and
- * undoable. A regulated subscription auto-paused for a lapsed Rx cannot be
- * resumed from here; only a verified prescription lifts that pause.
+ * Create / skip / pause / resume / cancel against a server-side state machine
+ * (src/lib/subscriptions.ts). Skip is idempotent — repeating it never
+ * double-skips. A regulated subscription auto-paused for a lapsed Rx cannot be
+ * resumed from here; only a verified prescription lifts that pause (enforced by
+ * the page, which computes the pause from live prescriptions).
  */
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { SUBSCRIPTIONS } from "../_lib/data";
-
-const OPTS = { path: "/", httpOnly: true, sameSite: "lax" as const, maxAge: 60 * 60 * 24 * 90 };
-
-export interface SubOverride {
-  status?: string; // PAUSED | CANCELLED | ACTIVE
-  skipped?: boolean;
-}
-
-export async function readSubOverrides(): Promise<Record<string, SubOverride>> {
-  const jar = await cookies();
-  try { return JSON.parse(jar.get("vh-subs")?.value ?? "{}") as Record<string, SubOverride>; } catch { return {}; }
-}
+import { getSession } from "@/lib/auth-lite";
+import { applySubOp, createSubscription, findSub, CADENCES } from "@/lib/subscriptions";
+import { findLiveBySlug } from "@/lib/catalog";
+import { permittedClasses } from "@/lib/compliance";
 
 export async function subscriptionAction(formData: FormData): Promise<void> {
   const id = String(formData.get("subId") ?? "").slice(0, 12);
   const op = String(formData.get("op") ?? "");
-  const sub = SUBSCRIPTIONS.find((s) => s.id === id);
-  if (!sub || !["skip", "unskip", "pause", "resume", "cancel"].includes(op)) {
+  const session = await getSession();
+  const email = session?.email ?? "buyer@example.in";
+
+  const sub = findSub(id);
+  if (!sub || sub.buyerEmail.toLowerCase() !== email.toLowerCase() || !["skip", "unskip", "pause", "resume", "cancel"].includes(op)) {
     redirect("/account/subscriptions");
   }
+  const res = await applySubOp(id, op as "skip" | "unskip" | "pause" | "resume" | "cancel");
+  redirect(res.ok ? `/account/subscriptions?done=${op}` : `/account/subscriptions?err=${res.reason}`);
+}
 
-  const overrides = await readSubOverrides();
-  const cur: SubOverride = overrides[id] ?? {};
-  const status = cur.status ?? sub!.status;
+export async function createSubscriptionAction(formData: FormData): Promise<void> {
+  const session = await getSession();
+  const email = session?.email;
+  if (!email) redirect("/signin?next=/account/subscriptions");
 
-  // Server-side state machine — the buttons are decoration.
-  if (status === "CANCELLED") redirect("/account/subscriptions");
-  if (op === "skip") cur.skipped = true; // idempotent by construction
-  else if (op === "unskip") cur.skipped = false;
-  else if (op === "pause") cur.status = "PAUSED";
-  else if (op === "resume") cur.status = "ACTIVE";
-  else if (op === "cancel") cur.status = "CANCELLED";
+  const slug = String(formData.get("productSlug") ?? "").trim();
+  const cadenceDays = parseInt(String(formData.get("cadenceDays") ?? ""), 10);
+  if (!slug) redirect("/account/subscriptions?err=product");
+  if (!(CADENCES as readonly number[]).includes(cadenceDays)) redirect("/account/subscriptions?err=cadence");
 
-  overrides[id] = cur;
-  (await cookies()).set("vh-subs", JSON.stringify(overrides), OPTS);
-  redirect(`/account/subscriptions?done=${op}`);
+  // The product must be a LIVE listing the viewer may see (A1). A regulated
+  // MED_CANNABIS item can never reach here — it isn't in the permitted set and
+  // has no public listing anyway.
+  const product = await findLiveBySlug(slug);
+  if (!product || !permittedClasses({ hasRx: false }).includes(product.cls)) {
+    redirect("/account/subscriptions?err=product");
+  }
+  const res = await createSubscription({
+    buyerEmail: email!,
+    productId: product!.slug,
+    product: product!.title,
+    emoji: product!.emoji,
+    cls: product!.cls,
+    pricePaise: product!.pricePaise,
+    cadenceDays,
+  });
+  redirect(res.ok ? "/account/subscriptions?done=create" : `/account/subscriptions?err=${res.reason}`);
 }
