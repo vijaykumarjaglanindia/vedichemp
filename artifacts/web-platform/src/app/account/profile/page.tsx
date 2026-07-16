@@ -70,6 +70,7 @@ const SEC_NOTES: Record<string, { title: string; body: string }> = {
   "2fa": { title: "Two-factor preference updated", body: "Sensitive changes (contact details, payout info) always re-prompt regardless of this setting." },
   revoked: { title: "Session signed out", body: "That device's session token is revoked server-side — it takes effect on its next request." },
   confirm: { title: "Deletion not confirmed", body: "Type DELETE exactly to confirm — nothing was changed." },
+  deleteblocked: { title: "Deletion on hold", body: "You have an order still in flight (or a return being settled). We can't erase your account until it completes — your refund rights come first. Try again once it's delivered or resolved." },
 };
 
 export default async function ProfilePage({
@@ -84,8 +85,11 @@ export default async function ProfilePage({
   const smsOtpOff = jar.get("vh-2fa-sms")?.value === "off";
   let revoked: string[] = [];
   try { revoked = JSON.parse(jar.get("vh-revoked")?.value ?? "[]") as string[]; } catch { revoked = []; }
-  let consentOverrides: Record<string, boolean> = {};
-  try { consentOverrides = JSON.parse(jar.get("vh-consent")?.value ?? "{}") as Record<string, boolean>; } catch { consentOverrides = {}; }
+  // Consent is read from the append-only ledger (server-side), not a cookie.
+  const { getSession } = await import("@/lib/auth-lite");
+  const { currentConsent } = await import("@/lib/consent");
+  const consentEmail = (await getSession())?.email ?? "buyer@example.in";
+  const consentOverrides: Record<string, boolean> = await currentConsent(consentEmail);
   const sessions = SESSIONS.filter((x) => !revoked.includes(x.id) && x.id !== sid);
 
   return (

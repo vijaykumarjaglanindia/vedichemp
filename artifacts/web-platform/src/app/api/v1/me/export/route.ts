@@ -1,15 +1,15 @@
 /**
  * VEDIC HEMP — DATA EXPORT (DPDP access request)
  *
- * Returns everything the platform holds about this browser session as a
- * downloadable JSON file. Requires a signed session. Deliberately excludes
- * anything health-related beyond counts: prescription content is served only
- * through the SensitiveViewer reason flow, never a bulk export (A4), and the
- * consent history notes it is an append-only ledger server-side.
+ * Everything the platform holds about the signed-in buyer, read from the
+ * AUTHORITATIVE server stores keyed on their email — not a browser's cookies,
+ * which are a partial, per-device copy. Health data is deliberately excluded
+ * beyond metadata: prescription images are served only through the signed-link
+ * SensitiveViewer flow with access logging (A4), never a bulk export. The
+ * consent history is the append-only ledger, not a current flag.
  */
 
 import { NextResponse } from "next/server";
-import { cookies } from "next/headers";
 import { getSession } from "@/lib/auth-lite";
 
 export async function GET(): Promise<NextResponse> {
@@ -20,27 +20,38 @@ export async function GET(): Promise<NextResponse> {
       { status: 401 },
     );
   }
+  const email = session.email;
 
-  const jar = await cookies();
-  const read = (name: string): unknown => {
-    try { return JSON.parse(jar.get(name)?.value ?? "null"); } catch { return null; }
-  };
+  const { ordersForBuyer } = await import("@/lib/orders");
+  const { ticketsForBuyer } = await import("@/lib/support");
+  const { notificationsFor } = await import("@/lib/notify");
+  const { consentHistory } = await import("@/lib/consent");
+  const { myPrescriptions } = await import("@/lib/prescriptions");
+  const { ledger: walletLedger } = await import("@/lib/wallet");
 
-  const rxUploads = (read("vh-rx") as unknown[] | null) ?? [];
+  const orders = await ordersForBuyer(email).catch(() => []);
+  const tickets = await ticketsForBuyer(email).catch(() => []);
+  const notifications = await notificationsFor("buyer", email).catch(() => []);
+  const consents = await consentHistory(email).catch(() => []);
+  const prescriptions = await myPrescriptions(email).catch(() => []);
+  const wallet = await walletLedger(email).catch(() => []);
+
   const payload = {
     exportedAt: new Date().toISOString(),
-    account: { email: session.email, role: session.role },
-    cart: read("vh-cart"),
-    coupon: jar.get("vh-coupon")?.value ?? null,
-    wishlist: read("vh-wish"),
-    followedStores: read("vh-follow"),
-    orders: read("vh-orders"),
-    supportTickets: read("vh-tickets"),
-    consents: read("vh-consent") ?? "defaults (no changes recorded)",
-    newsletter: jar.get("vh-news")?.value === "1",
+    account: { email, role: session.role },
+    orders: orders.map((o) => ({
+      reference: o.reference, placedAt: o.placedAt, status: o.status,
+      totalPaise: o.totalPaise, refundedPaise: o.refundedPaise,
+      items: o.items.map((it) => ({ title: it.title, qty: it.qty, linePaise: it.linePaise })),
+    })),
+    wallet: wallet.map((t) => ({ at: t.at, kind: t.kind, amountPaise: t.amountPaise, status: t.status, note: t.note })),
+    supportTickets: tickets.map((t) => ({ id: t.id, subject: t.subject, status: t.status })),
+    notifications: notifications.map((n) => ({ at: n.createdAt, kind: n.kind, title: n.title })),
+    // The append-only consent ledger — every grant/withdrawal, in order.
+    consentHistory: consents.map((c) => ({ at: c.at, purpose: c.purpose, granted: c.granted, source: c.source })),
     prescriptions: {
       note: "Prescription images are not included in bulk exports — they are viewable only through the signed-link flow with access logging (A4).",
-      uploadedCount: Array.isArray(rxUploads) ? rxUploads.length : 0,
+      records: prescriptions.map((p) => ({ id: p.id, status: p.status, doctor: p.doctor, validTill: p.validTill })),
     },
   };
 

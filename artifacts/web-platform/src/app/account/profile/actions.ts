@@ -13,7 +13,7 @@
 import { cookies } from "next/headers";
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
-import { destroySession } from "@/lib/auth-lite";
+import { destroySession, getSession } from "@/lib/auth-lite";
 
 const OPTS = { path: "/", httpOnly: true, sameSite: "lax" as const, maxAge: 60 * 60 * 24 * 365 };
 
@@ -50,15 +50,15 @@ export async function revokeSession(formData: FormData): Promise<void> {
 
 export async function toggleConsent(formData: FormData): Promise<void> {
   const key = String(formData.get("key") ?? "");
+  const { isPurpose, currentConsent, appendConsent } = await import("@/lib/consent");
   // Essential consent is locked — a crafted submit for it dies here.
-  if (!["analytics", "personalisation", "marketing"].includes(key)) redirect("/account/profile#privacy");
-  const jar = await cookies();
-  const overrides = JSON.parse(jar.get("vh-consent")?.value ?? "{}") as Record<string, boolean>;
-  const defaults: Record<string, boolean> = { analytics: true, personalisation: true, marketing: false };
-  overrides[key] = !(overrides[key] ?? defaults[key]);
-  // Append-only ledger semantics: production writes a consent EVENT row; the
-  // cookie stores only the current resolution.
-  jar.set("vh-consent", JSON.stringify(overrides), OPTS);
+  if (!isPurpose(key)) redirect("/account/profile#privacy");
+  const email = (await getSession())?.email ?? "buyer@example.in";
+  // The ledger is the source of truth: read the current resolution, then APPEND
+  // the flipped value as a new immutable event (never edit a prior row).
+  const current = await currentConsent(email);
+  await appendConsent(email, key, !current[key], email, "profile");
+  revalidatePath("/account/profile");
   redirect("/account/profile#privacy");
 }
 
@@ -66,9 +66,24 @@ export async function deleteAccount(formData: FormData): Promise<void> {
   const confirm = String(formData.get("confirm") ?? "");
   if (confirm !== "DELETE") redirect("/account/profile?sec=confirm#delete");
 
-  // Server-side deletion gates (in-transit orders, open disputes, settlement
-  // holds, statutory retention on health data per A3) run in the account
-  // service; here we end the session and clear the demo state.
+  const email = (await getSession())?.email ?? "buyer@example.in";
+  // Server-side deletion gate: an account with an order still in flight (or a
+  // return being settled) can't be erased — fulfilment and buyer-first refunds
+  // must complete first. The denied attempt is audited.
+  const { ordersForBuyer } = await import("@/lib/orders");
+  const IN_FLIGHT = ["PLACED", "ACCEPTED", "PACKED", "SHIPPED", "OUT_FOR_DELIVERY", "RETURN_REQUESTED", "RETURN_APPROVED"];
+  const inFlight = (await ordersForBuyer(email)).filter((o) => IN_FLIGHT.includes(o.status));
+  if (inFlight.length > 0) {
+    const { writeAudit } = await import("@/lib/audit");
+    await writeAudit({ actor: email, action: "ACCOUNT_DELETE", target: email, outcome: "DENIED", note: `${inFlight.length} order(s) in flight` });
+    redirect("/account/profile?sec=deleteblocked#delete");
+  }
+
+  // Statutory retention on safety/health records (A3) means we anonymise the
+  // account rather than shred those rows; here we record the erasure request
+  // and end the session.
+  const { writeAudit } = await import("@/lib/audit");
+  await writeAudit({ actor: email, action: "ACCOUNT_DELETE", target: email, outcome: "OK", note: "erasure requested; safety records retained per A3" });
   const jar = await cookies();
   for (const c of jar.getAll()) {
     if (c.name.startsWith("vh-")) jar.delete(c.name);
