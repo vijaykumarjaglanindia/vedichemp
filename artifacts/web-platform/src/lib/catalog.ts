@@ -84,6 +84,18 @@ export interface CatalogProduct extends SampleProduct {
    *  and the PDP selector — never only in the UI. */
   minOrderQty?: number;
   maxOrderQty?: number;
+  /** Per-listing delivery override. Absent = the zone/weight default. FREE =
+   *  this item always ships free; FLAT = a fixed per-line delivery fee that
+   *  replaces the zone charge for this item. Applied server-side in priceCart. */
+  shippingMode?: "FREE" | "FLAT";
+  shippingFlatPaise?: number; // the fee when shippingMode === "FLAT"
+}
+
+/** The effective delivery rule for a listing (server-authoritative). */
+export function listingShipping(p: { shippingMode?: "FREE" | "FLAT"; shippingFlatPaise?: number }): { mode: "DEFAULT" | "FREE" | "FLAT"; flatPaise: number } {
+  if (p.shippingMode === "FREE") return { mode: "FREE", flatPaise: 0 };
+  if (p.shippingMode === "FLAT" && p.shippingFlatPaise && p.shippingFlatPaise > 0) return { mode: "FLAT", flatPaise: p.shippingFlatPaise };
+  return { mode: "DEFAULT", flatPaise: 0 };
 }
 
 /** Absolute per-order ceiling — a seller's maxOrderQty can never exceed it. */
@@ -286,7 +298,7 @@ export async function updateListing(
     | "title" | "desc" | "pricePaise" | "mrpPaise" | "hsn" | "emoji"
     | "shortDesc" | "brand" | "tags" | "salePricePaise" | "saleFrom" | "saleTo"
     | "sku" | "weightGrams" | "metaTitle" | "metaDescription" | "categoryId"
-    | "minOrderQty" | "maxOrderQty"
+    | "minOrderQty" | "maxOrderQty" | "shippingMode" | "shippingFlatPaise"
   >>,
 ): Promise<boolean> {
   const p = await findProduct(id);

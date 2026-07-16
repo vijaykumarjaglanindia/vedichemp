@@ -307,6 +307,22 @@ function readMerchFields(formData: FormData, regularPricePaise: number):
   patch.minOrderQty = minQ > 1 ? minQ : undefined;
   patch.maxOrderQty = maxQ;
 
+  // Per-listing delivery override: default zone rates, always-free, or a flat
+  // per-line fee. Server-authoritative — a FLAT fee must be a sane amount.
+  const shipMode = String(formData.get("shippingMode") ?? "").trim();
+  if (shipMode === "FREE") {
+    patch.shippingMode = "FREE";
+    patch.shippingFlatPaise = undefined;
+  } else if (shipMode === "FLAT") {
+    const f = parseInt(String(formData.get("shippingFlatPaise") ?? "").trim(), 10);
+    if (!Number.isInteger(f) || f <= 0 || f > 100000) return { err: "shipflat" };
+    patch.shippingMode = "FLAT";
+    patch.shippingFlatPaise = f;
+  } else {
+    patch.shippingMode = undefined;
+    patch.shippingFlatPaise = undefined;
+  }
+
   // Sale price: empty clears it; otherwise it must beat the regular price.
   if (saleRaw) {
     const sale = parseInt(saleRaw, 10);

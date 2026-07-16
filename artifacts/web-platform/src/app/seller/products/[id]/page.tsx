@@ -48,6 +48,7 @@ const ERRORS: Record<string, string> = {
   minqty: "Minimum per order should be a whole number between 1 and 50.",
   maxqty: "Maximum per order should be a whole number between 1 and 50.",
   qtyrange: "Maximum per order can't be less than the minimum.",
+  shipflat: "The flat delivery fee should be a whole number of paise (1–100000).",
   saleprice: "The sale price must be a positive whole number in paise.",
   salehigh: "The sale price must be lower than the regular selling price.",
   saledates: "The sale end date can't be before the start date.",
@@ -285,6 +286,27 @@ export default async function ProductEditorPage({
                   <span className="vh-help">The most a buyer can order at once. Leave blank for the default (10).</span>
                 </div>
               </div>
+
+              <fieldset className="vh-field" style={{ border: 0, padding: 0, margin: "16px 0 0" }}>
+                <legend className="vh-label">Delivery for this product</legend>
+                <div className="vh-grid" style={{ gap: 6, marginTop: 4 }}>
+                  <label className="vh-row" style={{ gap: 8, fontSize: ".9rem" }}>
+                    <input type="radio" name="shippingMode" value="" defaultChecked={!product!.shippingMode} />
+                    Use the standard delivery rates (by weight &amp; area)
+                  </label>
+                  <label className="vh-row" style={{ gap: 8, fontSize: ".9rem" }}>
+                    <input type="radio" name="shippingMode" value="FREE" defaultChecked={product!.shippingMode === "FREE"} />
+                    Free delivery on this product
+                  </label>
+                  <label className="vh-row" style={{ gap: 8, fontSize: ".9rem", alignItems: "center", flexWrap: "wrap" }}>
+                    <input type="radio" name="shippingMode" value="FLAT" defaultChecked={product!.shippingMode === "FLAT"} />
+                    Flat delivery fee of
+                    <input className="vh-input mono" name="shippingFlatPaise" type="number" min={1} max={100000} defaultValue={product!.shippingFlatPaise ?? ""} placeholder="4900" style={{ width: 120 }} aria-label="Flat delivery fee in paise" />
+                    <span className="small muted">paise (e.g. 4900 = ₹49)</span>
+                  </label>
+                </div>
+                <span className="vh-help">A flat fee replaces the standard delivery charge for this item. Orders over the free-delivery threshold still ship free.</span>
+              </fieldset>
             </div>
           </Card>
 

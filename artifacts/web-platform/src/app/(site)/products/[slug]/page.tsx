@@ -24,6 +24,7 @@ import {
   ShieldCheck,
   ShoppingCart,
   Store,
+  Truck,
   Users,
 } from "lucide-react";
 import { Banner, Card, ComplianceBadge, EmptyState, MoneyText, Rating } from "@/components/ui";
@@ -32,7 +33,7 @@ import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { CLASS_META, isRegulated } from "@/lib/compliance";
 import { aiProviderName, summarizeReviews } from "@/lib/ai";
 import { mdToHtml } from "@/lib/richtext";
-import { findLiveBySlug, hasVariants, orderBounds, saleActive, selectVariant } from "@/lib/catalog";
+import { findLiveBySlug, hasVariants, listingShipping, orderBounds, saleActive, selectVariant } from "@/lib/catalog";
 import { SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
 import { aggregate, approvedFor } from "@/lib/reviews";
@@ -615,6 +616,12 @@ export default async function ProductDetailPage({
                   <span className="vh-pill vh-pill-ok">In stock</span>
                   {shownStock <= product.lowStockAt && (
                     <span className="vh-pill vh-pill-warn"><Flame size={11} aria-hidden /> Only {shownStock} left</span>
+                  )}
+                  {listingShipping(product).mode === "FREE" && (
+                    <span className="vh-pill vh-pill-ok"><Truck size={11} aria-hidden /> Free delivery</span>
+                  )}
+                  {listingShipping(product).mode === "FLAT" && (
+                    <span className="vh-pill vh-pill-info vh-row" style={{ gap: 4 }}><Truck size={11} aria-hidden /> Delivery <MoneyText paise={listingShipping(product).flatPaise} /></span>
                   )}
                 </div>
                 <form action={addToCart}>

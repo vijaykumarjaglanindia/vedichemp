@@ -16,7 +16,7 @@ import "server-only";
  */
 
 import { cookies } from "next/headers";
-import { readLiveProducts, resolvePriceStock, wholesaleUnitPrice, orderBounds } from "@/lib/catalog";
+import { readLiveProducts, resolvePriceStock, wholesaleUnitPrice, orderBounds, listingShipping } from "@/lib/catalog";
 import { checkCoupon, readActiveCoupons } from "@/lib/commerce";
 import { type SampleProduct } from "@/lib/sample";
 import { permittedClasses } from "@/lib/compliance";
@@ -168,13 +168,28 @@ export async function priceCart(opts?: { destState?: string }): Promise<PricedCa
   }
   const subtotalPaise = priced.reduce((n, l) => n + l.linePaise, 0);
 
-  // Real shipping: order weight (from the products) drives a zone-based quote.
+  // Real shipping: order weight drives a zone-based quote, but a listing may
+  // override its own delivery — FREE (ships free) or FLAT (a fixed per-line fee
+  // that replaces the zone charge for that item). Both are applied server-side.
   const { readShipping } = await import("@/lib/shipping");
   const { shippingQuote, etaLabel } = await import("@/lib/shipping");
   const shipCfg = await readShipping();
-  const weightGrams = priced.reduce((n, l) => n + ((l.product as { weightGrams?: number }).weightGrams ?? shipCfg.defaultWeightGrams) * l.qty, 0);
-  const quote = await shippingQuote({ subtotalPaise, weightGrams, destState: opts?.destState });
-  let shippingPaise = quote.paise;
+  const totalWeight = priced.reduce((n, l) => n + ((l.product as { weightGrams?: number }).weightGrams ?? shipCfg.defaultWeightGrams) * l.qty, 0);
+  // Split lines by delivery rule. Only DEFAULT lines feed the zone quote; FREE
+  // lines add nothing; FLAT lines add their fixed fee once per line.
+  const shipOf = (l: PricedLine) => listingShipping(l.product as { shippingMode?: "FREE" | "FLAT"; shippingFlatPaise?: number });
+  const defaultLines = priced.filter((l) => shipOf(l).mode === "DEFAULT");
+  const flatPaise = priced.reduce((n, l) => n + shipOf(l).flatPaise, 0);
+  const defaultWeight = defaultLines.reduce((n, l) => n + ((l.product as { weightGrams?: number }).weightGrams ?? shipCfg.defaultWeightGrams) * l.qty, 0);
+  const weightGrams = totalWeight;
+  // The zone quote uses the whole subtotal (for the order-level free threshold)
+  // but only the DEFAULT items' weight.
+  const quote = await shippingQuote({ subtotalPaise, weightGrams: defaultWeight, destState: opts?.destState });
+  // Zone charge applies only when there is at least one zone-priced item; the
+  // order-level free-shipping threshold (quote.freeApplied) waives everything.
+  let shippingPaise = quote.freeApplied
+    ? 0
+    : (defaultLines.length > 0 ? quote.paise : 0) + flatPaise;
 
   // Coupon: the cookie stores only a CODE — every rupee of discount is
   // derived here from the coupon table and the priced lines (V-G-07).
