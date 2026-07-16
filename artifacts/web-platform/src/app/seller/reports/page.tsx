@@ -1,109 +1,74 @@
 /**
- * VEDIC HEMP — REPORTS (§2.4/2.5/2.6/2.8 rollup)
+ * VEDIC HEMP — REPORTS (seller)
+ *
+ * Real numbers, computed live from this store's orders, ads, reviews and
+ * tickets — not a static seed. A plain-language summary sits on top so the
+ * seller doesn't have to read charts to know how the week went, and the whole
+ * thing exports to CSV.
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { withBase } from "@/lib/base";
-import type { ReactNode } from "react";
-import { Coins, Package, Factory, Megaphone, ShieldCheck, Puzzle, Download } from "lucide-react";
+import { Download, Coins, Package, Star, Megaphone, TrendingUp } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, MoneyText } from "@/components/ui";
-import { Donut, BarList } from "@/components/ui/charts";
-import { REPORT_TILES, SALES_BY_CLASS, TOP_PRODUCTS_30D } from "../_lib/data";
-import { CLASS_META } from "@/lib/compliance";
+import { Card, MoneyText, StatusPill } from "@/components/ui";
+import { Columns, BarList } from "@/components/ui/charts";
+import { sellerReport } from "@/lib/analytics";
 import { formatPaise } from "@/lib/money";
 
-const CSV_KEYS = new Set(["sales", "product", "inventory", "advertising", "compliance"]);
-const VIEW_HREFS: Record<string, string> = {
-  sales: "/seller/finance",
-  product: "/seller/products",
-  inventory: "/seller/inventory",
-  advertising: "/seller/ads",
-  compliance: "/seller/products",
-  custom: "/seller/assistant",
-};
-
 export const metadata: Metadata = { title: "Reports" };
+export const dynamic = "force-dynamic";
 
-const TILE_ICONS: Record<string, ReactNode> = {
-  sales: <Coins size={18} strokeWidth={2.2} aria-hidden />,
-  product: <Package size={18} strokeWidth={2.2} aria-hidden />,
-  inventory: <Factory size={18} strokeWidth={2.2} aria-hidden />,
-  advertising: <Megaphone size={18} strokeWidth={2.2} aria-hidden />,
-  compliance: <ShieldCheck size={18} strokeWidth={2.2} aria-hidden />,
-  custom: <Puzzle size={18} strokeWidth={2.2} aria-hidden />,
-};
+const STORE = "Vedic Botanicals";
 
-/** Fixed categorical order — colour follows the class, never its rank. */
-const CLASS_COLORS: Record<string, string> = {
-  CBD_WELLNESS: "var(--vh-accent)",
-  AYURVEDA: "var(--vh-saffron)",
-  HEMP_FOOD: "var(--vh-info)",
-};
+export default async function SellerReportsPage() {
+  const r = await sellerReport(STORE, 14);
+  const last7 = r.series.slice(-7).reduce((n, d) => n + d.paise, 0);
+  const prev7 = r.series.slice(0, 7).reduce((n, d) => n + d.paise, 0);
+  const wow = prev7 > 0 ? Math.round(((last7 - prev7) / prev7) * 100) : (last7 > 0 ? 100 : 0);
+  const adReturn = r.adSpentPaise > 0 ? Math.round((r.adSalesPaise / r.adSpentPaise) * 100) / 100 : 0;
 
-export default function ReportsPage() {
-  const totalPaise = SALES_BY_CLASS.reduce((s, x) => s + x.paise, 0);
-  const classSegments = SALES_BY_CLASS.map((s) => ({
-    value: s.paise,
-    color: CLASS_COLORS[s.cls] ?? "var(--vh-accent)",
-    label: CLASS_META[s.cls].short,
-  }));
+  const summary =
+    r.orders === 0
+      ? "No orders yet in this window. Once buyers start purchasing, your sales, top products and ad results show up here."
+      : `You took ${r.orders} order${r.orders === 1 ? "" : "s"} (${r.units} item${r.units === 1 ? "" : "s"}) worth ${formatPaise(r.grossPaise)}. `
+        + `Sales in the last 7 days were ${wow >= 0 ? "up" : "down"} ${Math.abs(wow)}% versus the previous 7. `
+        + (r.topProducts[0] ? `Your best seller is “${r.topProducts[0].name}”. ` : "")
+        + (r.adSpentPaise > 0 ? `Ads brought back ₹${adReturn.toFixed(2)} in sales for every ₹1 spent. ` : "")
+        + (r.openTickets > 0 ? `You have ${r.openTickets} open support ticket${r.openTickets === 1 ? "" : "s"} to answer.` : "");
 
   return (
-    <Shell active="/seller/reports" breadcrumb={["Seller Central", "Reports"]} title="Reports">
-      <div className="vh-grid cols-2" style={{ alignItems: "start", marginBottom: "var(--sp-4)" }}>
-        <Card title="Sales by class" action={<span className="small muted">Trailing 30 days</span>}>
-          <div className="vh-row" style={{ gap: 24, alignItems: "center" }}>
-            <Donut segments={classSegments} size={128} />
-            <div className="vh-grid" style={{ gap: 8, flex: 1 }}>
-              {SALES_BY_CLASS.map((s) => (
-                <div key={s.cls} className="vh-row-between small">
-                  <span className="vh-row" style={{ gap: 8 }}>
-                    <span aria-hidden style={{ width: 10, height: 10, borderRadius: 999, background: CLASS_COLORS[s.cls] ?? "var(--vh-accent)", flexShrink: 0 }} />
-                    <span style={{ fontWeight: 600 }}>{CLASS_META[s.cls].short}</span>
-                  </span>
-                  <span className="muted tabular">{Math.round((s.paise / totalPaise) * 100)}% · <MoneyText paise={s.paise} className="small" /></span>
-                </div>
-              ))}
-            </div>
-          </div>
-        </Card>
-
-        <Card title="Top products" action={<span className="small muted">GMV, trailing 30 days</span>}>
-          <BarList items={TOP_PRODUCTS_30D.map((p) => ({ label: p.title, value: p.paise, display: formatPaise(p.paise) }))} />
+    <Shell active="/seller/reports" breadcrumb={["Seller Central", "Reports"]} title="Reports"
+      actions={<Link className="vh-btn vh-btn-sm vh-btn-ghost vh-row" href="/seller/reports/export" style={{ gap: 6 }}><Download size={14} aria-hidden /> Export CSV</Link>}
+    >
+      {/* Plain-language summary */}
+      <div style={{ marginBottom: "var(--sp-4)" }}>
+        <Card title={<span className="vh-row" style={{ gap: 8 }}><TrendingUp size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-accent)" }} /> This fortnight, in plain words</span>}>
+          <p className="small" style={{ margin: 0 }}>{summary}</p>
         </Card>
       </div>
 
-      <div className="vh-grid cols-3">
-        {REPORT_TILES.map((r) => (
-          <Card key={r.key}>
-            <div className="vh-row" style={{ gap: 10, marginBottom: 8, color: "var(--vh-accent)" }}>
-              {TILE_ICONS[r.key] ?? <Puzzle size={18} strokeWidth={2.2} aria-hidden />}
-              <h3 style={{ margin: 0, color: "var(--vh-ink)" }}>{r.label}</h3>
-            </div>
-            <p className="small muted" style={{ marginTop: 0 }}>{r.blurb}</p>
-            <div className="vh-row" style={{ gap: 8 }}>
-              {CSV_KEYS.has(r.key) ? (
-                <a className="vh-btn vh-btn-sm vh-btn-primary" href={withBase(`/api/v1/seller/reports/${r.key}`)} download style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-                  <Download size={13} strokeWidth={2.2} aria-hidden /> Export CSV
-                </a>
-              ) : (
-                <span className="vh-btn vh-btn-sm vh-btn-ghost" title="Custom reports are built with the BI connector at go-live" aria-disabled="true">
-                  Via BI connector
-                </span>
-              )}
-              {VIEW_HREFS[r.key] && (
-                <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={VIEW_HREFS[r.key]!}>View</Link>
-              )}
-            </div>
-          </Card>
-        ))}
+      {/* KPI tiles */}
+      <div className="vh-grid cols-4" style={{ marginBottom: "var(--sp-4)" }}>
+        <Card><div className="vh-row" style={{ gap: 8, marginBottom: 4 }}><Coins size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /><span className="vh-stat-label">Sales (your share)</span></div><div className="vh-stat-value tabular"><MoneyText paise={r.grossPaise} /></div><div className="small muted">{r.orders} orders · {r.units} items</div></Card>
+        <Card><div className="vh-row" style={{ gap: 8, marginBottom: 4 }}><TrendingUp size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /><span className="vh-stat-label">Avg order</span></div><div className="vh-stat-value tabular"><MoneyText paise={r.aov} /></div><div className="small muted">{r.refundedOrders} refunded/cancelled</div></Card>
+        <Card><div className="vh-row" style={{ gap: 8, marginBottom: 4 }}><Star size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /><span className="vh-stat-label">Avg rating</span></div><div className="vh-stat-value tabular">{r.avgRating || "—"}</div><div className="small muted">{r.reviewCount} reviews</div></Card>
+        <Card><div className="vh-row" style={{ gap: 8, marginBottom: 4 }}><Megaphone size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /><span className="vh-stat-label">Sales from ads</span></div><div className="vh-stat-value tabular"><MoneyText paise={r.adSalesPaise} /></div><div className="small muted">{adReturn > 0 ? `₹${adReturn.toFixed(2)} back per ₹1` : "no ad spend yet"}</div></Card>
       </div>
-      <p className="small muted" style={{ marginTop: "var(--sp-3)" }}>
-        Compliance reports never surface health data (Rx contents) — only aggregate counts of licence/CoA state.
-        Any drill-down into a specific sensitive record goes through the reason-code viewer, not this dashboard.
-      </p>
+
+      <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
+        <Card title="Sales — last 14 days" action={<StatusPill tone={wow >= 0 ? "ok" : "warn"}>{wow >= 0 ? "+" : ""}{wow}% WoW</StatusPill>}>
+          <Columns values={r.series.map((d) => d.paise)} labels={r.series.map((d, i) => (i % 2 === 0 ? d.label : ""))} height={140} />
+          <p className="small muted" style={{ marginTop: 10 }}>Each bar is one day&rsquo;s sales (your share of order value). The last bar is today.</p>
+        </Card>
+        <Card title={<span className="vh-row" style={{ gap: 8 }}><Package size={16} strokeWidth={2.2} aria-hidden /> Top products</span>}>
+          {r.topProducts.length === 0 ? (
+            <p className="small muted" style={{ margin: 0 }}>No sales yet — your best sellers will rank here.</p>
+          ) : (
+            <BarList items={r.topProducts.map((p) => ({ label: p.name, value: p.paise, display: `${formatPaise(p.paise)} · ${p.units}u` }))} />
+          )}
+        </Card>
+      </div>
     </Shell>
   );
 }
