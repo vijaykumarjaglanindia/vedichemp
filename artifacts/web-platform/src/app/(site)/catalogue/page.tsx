@@ -194,6 +194,17 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
 
   return (
     <div className="vh-container" style={{ paddingTop: "var(--sp-4)", paddingBottom: "var(--sp-6)" }}>
+      {/* Shop by category — links to the crawlable category landing pages */}
+      {categories.filter((c) => !c.parentId).length > 0 && (
+        <div className="vh-row" style={{ gap: 8, flexWrap: "wrap", marginBottom: 14 }}>
+          <span className="small muted" style={{ alignSelf: "center" }}>Shop by category:</span>
+          {categories.filter((c) => !c.parentId).map((c) => (
+            <Link key={c.id} href={`/category/${c.slug}`} className="vh-pill vh-pill-neutral" style={{ textDecoration: "none" }}>
+              {c.emoji} {c.name}
+            </Link>
+          ))}
+        </div>
+      )}
       {/* Toolbar */}
       <div className="vh-row-between" style={{ flexWrap: "wrap", gap: 12, marginBottom: 14 }}>
         <div>

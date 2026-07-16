@@ -5,6 +5,7 @@ import { readLiveProducts } from "@/lib/catalog";
 // (or is archived) is in (or out) of the next crawl, not the next deploy.
 export const dynamic = "force-dynamic";
 import { publishedPosts } from "@/lib/cms";
+import { readCategories } from "@/lib/categories";
 import { STORE_PROFILES } from "./(site)/_lib/data";
 
 /**
@@ -44,5 +45,12 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "weekly" as const,
     priority: 0.6,
   }));
-  return [...statics, ...products, ...posts, ...stores];
+  // Visible category landing pages (A1: CATEGORY_CLASSES excludes MED_CANNABIS).
+  const categories = (await readCategories()).map((c) => ({
+    url: `${base}/category/${c.slug}`,
+    lastModified: now,
+    changeFrequency: "weekly" as const,
+    priority: 0.6,
+  }));
+  return [...statics, ...products, ...posts, ...stores, ...categories];
 }
