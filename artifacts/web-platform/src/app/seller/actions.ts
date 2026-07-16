@@ -169,6 +169,19 @@ export async function sellerOrderAction(formData: FormData): Promise<void> {
 const SELLABLE_CLASSES = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
 const DEMO_STORE = "Vedic Botanicals"; // this session's storefront, per CONTRACT
 
+/**
+ * KYC gate (CLAUDE.md §0 — server is the only authority). A listing can only
+ * enter review for a store whose verification is APPROVED. A blocked attempt
+ * is logged (denied actions are logged too, §2) and the seller is sent to the
+ * verification page with a remediation, never a bare 403.
+ */
+async function assertVerified(action: string, target: string): Promise<void> {
+  const { kycApproved } = await import("@/lib/vendor");
+  if (kycApproved(DEMO_STORE)) return;
+  await writeAudit({ actor: DEMO_STORE, action, target, outcome: "DENIED", note: "store not verified — go-live blocked" });
+  redirect("/seller/verification?blocked=1");
+}
+
 interface ListingFields {
   title: string; desc: string; pricePaise: number; mrpPaise: number; hsn: string;
 }
@@ -226,6 +239,7 @@ export async function submitProduct(formData: FormData): Promise<void> {
   });
   if (!created) redirect("/seller/products/new?err=cls");
   if (intent !== "draft") {
+    await assertVerified("LISTING_SUBMIT", created!.id);
     await submitForReview(created!.id);
     const { notify } = await import("@/lib/notify");
     await notify("admin", "admin", {
@@ -427,6 +441,9 @@ export async function productLifecycle(formData: FormData): Promise<void> {
   };
   const run = ops[op];
   if (!run) redirect("/seller/products");
+  // Going live requires a verified store; the other ops (take down, archive…)
+  // are always allowed — a seller can pull their own listing regardless.
+  if (op === "submit") await assertVerified("LISTING_SUBMIT", id);
   const result = await run!(id);
   if (op === "delete" && result.ok) redirect("/seller/products?deleted=1");
   if (!result.ok) redirect(`/seller/products/${id}?err=${result.reason ?? "state"}`);
@@ -468,6 +485,48 @@ export async function replyToQuestion(formData: FormData): Promise<void> {
   replies[qid] = reply;
   await writeSellerReplies(replies);
   redirect("/seller/customers?replied=1");
+}
+
+/* ── Vendor verification (KYC) ────────────────────────────── */
+
+/** Seller submits (or re-submits) their store's KYC for review. Validation is
+ *  server-authoritative (a regulated class needs a valid, unexpired licence);
+ *  a pass moves the store into review and pings the compliance queue. */
+export async function submitVendorKyc(formData: FormData): Promise<void> {
+  await requirePerm("staff", "/seller/verification");
+  const { submitKyc } = await import("@/lib/vendor");
+  const session = await getSession();
+  const classes = formData.getAll("classes").map((c) => String(c)) as ComplianceClass[];
+  const result = await submitKyc({
+    store: DEMO_STORE,
+    ownerEmail: session?.email ?? "seller@example.in",
+    legalName: String(formData.get("legalName") ?? ""),
+    gstin: String(formData.get("gstin") ?? ""),
+    pan: String(formData.get("pan") ?? ""),
+    addressLine: String(formData.get("addressLine") ?? ""),
+    city: String(formData.get("city") ?? ""),
+    state: String(formData.get("state") ?? ""),
+    pincode: String(formData.get("pincode") ?? ""),
+    bankName: String(formData.get("bankName") ?? ""),
+    bankAccount: String(formData.get("bankAccount") ?? ""),
+    bankIfsc: String(formData.get("bankIfsc") ?? ""),
+    classes,
+    drugLicenceNo: String(formData.get("drugLicenceNo") ?? ""),
+    drugLicenceExpiry: String(formData.get("drugLicenceExpiry") ?? ""),
+  });
+  if (!result.ok) {
+    await writeAudit({ actor: DEMO_STORE, action: "VENDOR_KYC_SUBMIT", target: DEMO_STORE, outcome: "DENIED", note: `rejected at input: ${result.reason}` });
+    redirect(`/seller/verification?err=${result.reason}`);
+  }
+  await writeAudit({ actor: DEMO_STORE, action: "VENDOR_KYC_SUBMIT", target: DEMO_STORE, outcome: "OK" });
+  const { notify } = await import("@/lib/notify");
+  await notify("admin", "admin", {
+    kind: "KYC_REVIEW",
+    title: "Store verification to review",
+    body: `${DEMO_STORE} submitted business details for verification.`,
+    href: "/admin/verification",
+  });
+  redirect("/seller/verification?done=1");
 }
 
 /** Public response to a flagged review — same copy-check, same fail-closed rule. */

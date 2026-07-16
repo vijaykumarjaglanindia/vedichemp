@@ -289,6 +289,55 @@ export async function decideBusinessAccount(formData: FormData): Promise<void> {
   redirect(`/admin/business?done=${decision}`);
 }
 
+/* ── Vendor verification (KYC) ────────────────────────────── */
+
+/** Admin reviews a submitted store verification: approve / ask for more / reject.
+ *  Every path is audited and the seller is notified. A rejection or a request
+ *  for more information needs a reason (≥10 chars). */
+export async function decideVendorKyc(formData: FormData): Promise<void> {
+  const store = String(formData.get("store") ?? "").trim();
+  const decision = String(formData.get("decision") ?? "") as "approve" | "more_info" | "reject";
+  const note = String(formData.get("note") ?? "").trim();
+  const who = await actor();
+  const { decideKyc } = await import("@/lib/vendor");
+
+  if ((decision === "reject" || decision === "more_info") && note.length < 10) {
+    await writeAudit({ actor: who, action: "VENDOR_KYC_DECIDE", target: store, outcome: "DENIED", note: "reason under 10 chars" });
+    redirect("/admin/verification?err=note");
+  }
+  const result = await decideKyc(store, decision, who, note || undefined);
+  if (!result.ok) redirect(`/admin/verification?err=${result.reason}`);
+  const action = decision === "approve" ? "VENDOR_KYC_APPROVE" : decision === "more_info" ? "VENDOR_KYC_MORE_INFO" : "VENDOR_KYC_REJECT";
+  await writeAudit({ actor: who, action, target: store, outcome: "OK", ...(note ? { note } : {}) });
+  const { notify } = await import("@/lib/notify");
+  await notify("seller", store, decision === "approve"
+    ? { kind: "KYC_APPROVED", title: "Store verified", body: "Your store is verified — you can take listings live now.", href: "/seller/verification" }
+    : decision === "more_info"
+    ? { kind: "KYC_MORE_INFO", title: "Verification needs more information", body: note.slice(0, 120), href: "/seller/verification" }
+    : { kind: "KYC_REJECTED", title: "Verification not approved", body: note.slice(0, 120), href: "/seller/verification" });
+  redirect(`/admin/verification?done=${decision}`);
+}
+
+/** Admin revokes a live verification (licence lapse, compliance breach). The
+ *  store can no longer take listings live until it re-verifies. Reason required. */
+export async function revokeVendorKyc(formData: FormData): Promise<void> {
+  const store = String(formData.get("store") ?? "").trim();
+  const note = String(formData.get("note") ?? "").trim();
+  const who = await actor();
+  const { revokeKyc } = await import("@/lib/vendor");
+
+  if (note.length < 10) {
+    await writeAudit({ actor: who, action: "VENDOR_KYC_REVOKE", target: store, outcome: "DENIED", note: "reason under 10 chars" });
+    redirect("/admin/verification?err=note");
+  }
+  const result = await revokeKyc(store, who, note);
+  if (!result.ok) redirect(`/admin/verification?err=${result.reason}`);
+  await writeAudit({ actor: who, action: "VENDOR_KYC_REVOKE", target: store, outcome: "OK", note });
+  const { notify } = await import("@/lib/notify");
+  await notify("seller", store, { kind: "KYC_REVOKED", title: "Store verification paused", body: note.slice(0, 120), href: "/seller/verification" });
+  redirect("/admin/verification?done=revoke");
+}
+
 /* ── Support tickets (platform) ───────────────────────────── */
 
 export async function adminReplyTicket(formData: FormData): Promise<void> {

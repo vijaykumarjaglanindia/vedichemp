@@ -21,6 +21,7 @@ import { toggleFollowStore } from "../../actions";
 import { ProductCard } from "../../_lib/ProductCard";
 import { ShareButton } from "../../_lib/ShareButton";
 import { sellerBySlug, sellerProducts, STORE_PROFILES } from "../../_lib/data";
+import { kycApproved } from "@/lib/vendor";
 
 export const dynamic = "force-dynamic";
 
@@ -112,6 +113,11 @@ export default async function StorePage({ params }: { params: Promise<Params> })
                 <span style={{ background: "var(--vh-surface)", border: "1px solid var(--vh-line)", borderRadius: 999, padding: "3px 10px", display: "inline-flex" }}>
                   <Rating value={profile.rating} count={profile.reviewCount} />
                 </span>
+                {kycApproved(seller.name) && (
+                  <span className="vh-pill vh-pill-ok">
+                    <BadgeCheck size={12} strokeWidth={2.2} aria-hidden /> Verified seller
+                  </span>
+                )}
                 <span className="vh-pill vh-pill-ok">
                   <ShieldCheck size={12} strokeWidth={2.2} aria-hidden /> Health score {seller.healthScore}
                 </span>

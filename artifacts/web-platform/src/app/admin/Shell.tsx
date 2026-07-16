@@ -33,6 +33,7 @@ const ADMIN_NAV: NavGroup[] = [
     items: [
       { href: "/admin/users", label: "Users", icon: <Users {...I} /> },
       { href: "/admin/sellers", label: "Sellers", icon: <Store {...I} /> },
+      { href: "/admin/verification", label: "Verification (KYC)", icon: <ShieldCheck {...I} /> },
       { href: "/admin/business", label: "Business (B2B)", icon: <Building2 {...I} /> },
     ],
   },

@@ -9,7 +9,7 @@
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Package, Warehouse, ShoppingCart, Landmark,
-  Target, Megaphone, MessagesSquare, BarChart3, Sparkles, Store, Wallet, Bell, Star, Users, LifeBuoy,
+  Target, Megaphone, MessagesSquare, BarChart3, Sparkles, Store, Wallet, Bell, Star, Users, LifeBuoy, ShieldCheck,
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
 import { unreadCount } from "@/lib/notify";
@@ -59,6 +59,7 @@ const SELLER_NAV: NavGroup[] = [
     group: "Store",
     items: [
       { href: "/seller/store", label: "Store & KYC", icon: <Store {...I} /> },
+      { href: "/seller/verification", label: "Verification", icon: <ShieldCheck {...I} /> },
       { href: "/seller/staff", label: "Staff & roles", icon: <Users {...I} /> },
       { href: "/seller/notifications", label: "Notifications", icon: <Bell {...I} /> },
       { href: "/seller/help", label: "Help & guide", icon: <Sparkles {...I} /> },
