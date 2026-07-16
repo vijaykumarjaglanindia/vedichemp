@@ -13,15 +13,13 @@ import { cookies } from "next/headers";
 import { readEnabledPayments } from "@/lib/payments";
 import { randomUUID } from "node:crypto";
 import { clearCartCookies, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
-import { decrementStock, findProduct, hasVariants, isLowStock, readLiveProducts, selectVariant } from "@/lib/catalog";
+import { decrementStock, findProduct, hasVariants, isLowStock, orderBounds, readLiveProducts, selectVariant } from "@/lib/catalog";
 import { notify } from "@/lib/notify";
 import { redeemCoupon } from "@/lib/commerce";
 import { permittedClasses } from "@/lib/compliance";
 import { getSession } from "@/lib/auth-lite";
 import { createOrder, type OrderItem } from "@/lib/orders";
 import { appendOrderHistory, readAddresses, validateAddressFields, writeAddresses } from "@/lib/engage";
-
-const MAX_QTY = 10;
 
 /** Returns the resolved variant id to store (validated), or throws via redirect. */
 async function assertPurchasable(productId: string, variantId?: string): Promise<string | undefined> {
@@ -47,15 +45,22 @@ async function assertPurchasable(productId: string, variantId?: string): Promise
 export async function addToCart(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");
   const rawVariant = String(formData.get("variantId") ?? "") || undefined;
-  const qty = Math.min(Math.max(parseInt(String(formData.get("qty") ?? "1"), 10) || 1, 1), MAX_QTY);
+  const requested = parseInt(String(formData.get("qty") ?? "1"), 10) || 1;
   const intent = String(formData.get("intent") ?? "cart");
   const variantId = await assertPurchasable(id, rawVariant);
+
+  // Per-listing order limits are enforced HERE (server is the authority) — the
+  // buyer's qty is clamped into [min, max], and adding to an existing line
+  // can never carry it past the per-order maximum.
+  const product = (await readLiveProducts()).find((p) => p.id === id);
+  const { min, max } = orderBounds(product ?? {});
+  const qty = Math.min(Math.max(requested, min), max);
 
   const lines = await readCartLines();
   // A line is unique per (product, variant): two sizes of the same product
   // are two lines.
   const existing = lines.find((l) => l.id === id && l.variantId === variantId);
-  if (existing) existing.qty = Math.min(existing.qty + qty, MAX_QTY);
+  if (existing) existing.qty = Math.min(Math.max(existing.qty + qty, min), max);
   else lines.push({ id, qty, ...(variantId ? { variantId } : {}) });
   await writeCartLines(lines);
 
@@ -75,10 +80,13 @@ export async function addBundleToCart(formData: FormData): Promise<void> {
   const catalogue = await readLiveProducts();
   const lines = await readCartLines();
   for (const id of ids) {
-    if (!catalogue.some((p) => p.id === id && permitted.includes(p.cls))) continue;
+    const product = catalogue.find((p) => p.id === id && permitted.includes(p.cls));
+    if (!product) continue;
+    // Respect this listing's minimum — a "buy 3+" product enters the bundle at 3.
+    const { min, max } = orderBounds(product);
     const existing = lines.find((l) => l.id === id);
-    if (existing) existing.qty = Math.min(existing.qty + 1, MAX_QTY);
-    else lines.push({ id, qty: 1 });
+    if (existing) existing.qty = Math.min(existing.qty + min, max);
+    else lines.push({ id, qty: min });
   }
   await writeCartLines(lines);
   redirect("/cart");
@@ -92,7 +100,11 @@ export async function setQty(formData: FormData): Promise<void> {
   // Target the exact (product, variant) line — two sizes are two lines.
   const line = lines.find((l) => l.id === id && l.variantId === variantId);
   if (line) {
-    line.qty = Math.min(Math.max(line.qty + (delta === "up" ? 1 : -1), 0), MAX_QTY);
+    // The stepper floors at the listing's minimum (removal is the Remove
+    // button) and never exceeds its per-order maximum.
+    const product = (await readLiveProducts()).find((p) => p.id === id);
+    const { min, max } = orderBounds(product ?? {});
+    line.qty = Math.min(Math.max(line.qty + (delta === "up" ? 1 : -1), min), max);
   }
   await writeCartLines(lines.filter((l) => l.qty > 0));
   redirect("/cart");

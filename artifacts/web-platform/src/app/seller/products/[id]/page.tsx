@@ -45,6 +45,9 @@ const ERRORS: Record<string, string> = {
   coa: "Blocked by the CoA gate (A2) — the batch needs an APPROVED, batch-matched lab report first.",
   shortdesc: "The short summary should be 160 characters or fewer.",
   weight: "Weight should be a whole number of grams.",
+  minqty: "Minimum per order should be a whole number between 1 and 50.",
+  maxqty: "Maximum per order should be a whole number between 1 and 50.",
+  qtyrange: "Maximum per order can't be less than the minimum.",
   saleprice: "The sale price must be a positive whole number in paise.",
   salehigh: "The sale price must be lower than the regular selling price.",
   saledates: "The sale end date can't be before the start date.",
@@ -268,6 +271,18 @@ export default async function ProductEditorPage({
                   <label className="vh-label" htmlFor="weightGrams">Weight (grams)</label>
                   <input className="vh-input" id="weightGrams" name="weightGrams" type="number" min={0} defaultValue={product!.weightGrams ?? ""} placeholder="120" />
                   <span className="vh-help">Used to work out delivery.</span>
+                </div>
+              </div>
+              <div className="vh-grid cols-2" style={{ gap: 16, marginTop: 16 }}>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="minOrderQty">Minimum per order</label>
+                  <input className="vh-input" id="minOrderQty" name="minOrderQty" type="number" min={1} max={50} defaultValue={product!.minOrderQty ?? ""} placeholder="1" />
+                  <span className="vh-help">Buyers must order at least this many. Leave blank for 1.</span>
+                </div>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="maxOrderQty">Maximum per order</label>
+                  <input className="vh-input" id="maxOrderQty" name="maxOrderQty" type="number" min={1} max={50} defaultValue={product!.maxOrderQty ?? ""} placeholder="10" />
+                  <span className="vh-help">The most a buyer can order at once. Leave blank for the default (10).</span>
                 </div>
               </div>
             </div>

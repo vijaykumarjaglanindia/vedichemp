@@ -16,7 +16,7 @@ import "server-only";
  */
 
 import { cookies } from "next/headers";
-import { readLiveProducts, resolvePriceStock, wholesaleUnitPrice } from "@/lib/catalog";
+import { readLiveProducts, resolvePriceStock, wholesaleUnitPrice, orderBounds } from "@/lib/catalog";
 import { checkCoupon, readActiveCoupons } from "@/lib/commerce";
 import { type SampleProduct } from "@/lib/sample";
 import { permittedClasses } from "@/lib/compliance";
@@ -26,7 +26,6 @@ import { isBusinessBuyer } from "@/lib/b2b";
 const CART_COOKIE = "vh-cart";
 const COUNT_COOKIE = "vh-cart-n";
 const MAX_LINES = 50;
-const MAX_QTY = 10;
 
 export interface CartLine {
   id: string;
@@ -147,16 +146,19 @@ export async function priceCart(opts?: { destState?: string }): Promise<PricedCa
     const resolved = resolvePriceStock(product, line.variantId);
     let unitPaise = resolved.pricePaise;
     const { stockQty: available, variant } = resolved;
+    // The line is bounded by this listing's per-order maximum (server is the
+    // authority — a crafted cookie can't exceed it).
+    const { max: orderMax } = orderBounds(product);
     // Wholesale break: only for an approved business account, on a simple
     // product, when the line quantity reaches a tier and it beats the price.
     if (business && !variant) {
-      const w = wholesaleUnitPrice(product, Math.min(line.qty, MAX_QTY));
+      const w = wholesaleUnitPrice(product, Math.min(line.qty, orderMax));
       if (w !== null && w < unitPaise) unitPaise = w;
     }
     // Out-of-stock lines drop out entirely; in-stock lines are capped at what's
     // actually on hand — the server never prices in units it cannot fulfil.
     if (available <= 0) continue;
-    const requested = Math.min(line.qty, MAX_QTY);
+    const requested = Math.min(line.qty, orderMax);
     const qty = Math.min(requested, available);
     priced.push({
       product, qty, linePaise: unitPaise * qty, stockQty: available, capped: qty < requested,

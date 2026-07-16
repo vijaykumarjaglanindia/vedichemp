@@ -28,6 +28,7 @@ import {
   submitForReview,
   unpublishListing,
   updateListing,
+  ORDER_QTY_HARD_CAP,
 } from "@/lib/catalog";
 import { writeAudit } from "@/lib/audit";
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
@@ -290,6 +291,21 @@ function readMerchFields(formData: FormData, regularPricePaise: number):
     if (!Number.isInteger(w) || w < 0 || w > 100000) return { err: "weight" };
     patch.weightGrams = w;
   } else patch.weightGrams = undefined;
+
+  // Per-order quantity limits. Empty min defaults to 1; empty max defaults to
+  // the platform per-order cap. Server-authoritative — max ≥ min, within cap.
+  const minRaw = String(formData.get("minOrderQty") ?? "").trim();
+  const maxRaw = String(formData.get("maxOrderQty") ?? "").trim();
+  const minQ = minRaw ? parseInt(minRaw, 10) : 1;
+  if (!Number.isInteger(minQ) || minQ < 1 || minQ > ORDER_QTY_HARD_CAP) return { err: "minqty" };
+  let maxQ: number | undefined;
+  if (maxRaw) {
+    maxQ = parseInt(maxRaw, 10);
+    if (!Number.isInteger(maxQ) || maxQ < 1 || maxQ > ORDER_QTY_HARD_CAP) return { err: "maxqty" };
+    if (maxQ < minQ) return { err: "qtyrange" };
+  }
+  patch.minOrderQty = minQ > 1 ? minQ : undefined;
+  patch.maxOrderQty = maxQ;
 
   // Sale price: empty clears it; otherwise it must beat the regular price.
   if (saleRaw) {

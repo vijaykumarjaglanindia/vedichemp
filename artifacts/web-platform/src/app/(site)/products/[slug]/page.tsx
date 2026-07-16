@@ -32,7 +32,7 @@ import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { CLASS_META, isRegulated } from "@/lib/compliance";
 import { aiProviderName, summarizeReviews } from "@/lib/ai";
 import { mdToHtml } from "@/lib/richtext";
-import { findLiveBySlug, hasVariants, saleActive, selectVariant } from "@/lib/catalog";
+import { findLiveBySlug, hasVariants, orderBounds, saleActive, selectVariant } from "@/lib/catalog";
 import { SELLERS } from "@/lib/sample";
 import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
 import { aggregate, approvedFor } from "@/lib/reviews";
@@ -152,6 +152,10 @@ export default async function ProductDetailPage({
   const shownPricePaise = selected ? selected.pricePaise : (onSale ? product.salePricePaise! : product.pricePaise);
   const shownMrpPaise = selected ? selected.mrpPaise : (onSale ? product.pricePaise : product.mrpPaise);
   const shownStock = selected ? selected.stockQty : product.stockQty;
+  // Per-listing order limits — the selector offers only [min … min(max, stock)].
+  const { min: minQty, max: maxQty } = orderBounds(product);
+  const maxSelectable = Math.min(maxQty, shownStock);
+  const qtyOptions = Array.from({ length: Math.max(0, maxSelectable - minQty + 1) }, (_, i) => minQty + i);
   const off = shownMrpPaise > shownPricePaise ? Math.round(((shownMrpPaise - shownPricePaise) / shownMrpPaise) * 100) : 0;
   const gallery = product.images ?? [];
   const fbt = await frequentlyBoughtWith(product, 2);
@@ -600,6 +604,11 @@ export default async function ProductDetailPage({
                 <div style={{ fontWeight: 700, color: "var(--vh-danger)" }}>Out of stock{productHasVariants && selected ? ` — ${selected.label}` : ""}</div>
                 <div className="small muted">{productHasVariants ? "Pick another option above, or add it to your wishlist for when it's restocked." : "The seller has no units on hand. Add it to your wishlist and we'll show it again when it's restocked."}</div>
               </div>
+            ) : maxSelectable < minQty ? (
+              <div role="status" style={{ marginBottom: 12, padding: "12px 14px", borderRadius: "var(--vh-radius-sm)", border: "1px solid var(--vh-line)", borderLeft: "3px solid var(--vh-warn)", background: "color-mix(in srgb, var(--vh-warn-bg) 40%, var(--vh-surface))" }}>
+                <div style={{ fontWeight: 700 }}>Temporarily unavailable</div>
+                <div className="small muted">This product has a minimum order of {minQty}, and only {shownStock} {shownStock === 1 ? "unit is" : "units are"} in stock right now. Add it to your wishlist and we&rsquo;ll show it again when it&rsquo;s restocked.</div>
+              </div>
             ) : (
               <>
                 <div className="vh-row" style={{ gap: 8, marginBottom: 8, flexWrap: "wrap" }}>
@@ -613,12 +622,18 @@ export default async function ProductDetailPage({
                   {selected && <input type="hidden" name="variantId" value={selected.id} />}
                   <div className="vh-field" style={{ marginBottom: 12, maxWidth: 120 }}>
                     <label htmlFor="pdp-qty" className="vh-label">Quantity</label>
-                    <select id="pdp-qty" name="qty" className="vh-select" defaultValue="1">
-                      {[1, 2, 3, 4, 5].filter((n) => n <= shownStock).map((n) => (
+                    <select id="pdp-qty" name="qty" className="vh-select" defaultValue={String(minQty)}>
+                      {qtyOptions.map((n) => (
                         <option key={n} value={n}>{n}</option>
                       ))}
                     </select>
                   </div>
+                  {(minQty > 1 || product.maxOrderQty) && (
+                    <div className="small muted" style={{ marginBottom: 12, marginTop: -4 }}>
+                      {minQty > 1 && <>Minimum order: {minQty}{product.maxOrderQty ? " · " : ""}</>}
+                      {product.maxOrderQty && <>Up to {maxQty} per order</>}
+                    </div>
+                  )}
 
                   <div style={{ display: "flex", flexDirection: "column", gap: 8, marginBottom: 8 }}>
                     <button type="submit" name="intent" value="cart" className="vh-btn vh-btn-primary vh-btn-lg">Add to cart</button>

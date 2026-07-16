@@ -79,6 +79,30 @@ export interface CatalogProduct extends SampleProduct {
   /** Bulk price breaks for approved business (B2B) buyers: buy ≥ minQty, pay
    *  pricePaise per unit. Applied only for an approved business account. */
   wholesaleTiers?: { minQty: number; pricePaise: number }[];
+  /** Per-listing order limits. minOrderQty defaults to 1; maxOrderQty defaults
+   *  to the platform per-order cap. Enforced server-side at add-to-cart, pricing
+   *  and the PDP selector — never only in the UI. */
+  minOrderQty?: number;
+  maxOrderQty?: number;
+}
+
+/** Absolute per-order ceiling — a seller's maxOrderQty can never exceed it. */
+export const ORDER_QTY_HARD_CAP = 50;
+/** Default per-order cap when a seller hasn't set one (preserves prior behaviour). */
+export const ORDER_QTY_DEFAULT_MAX = 10;
+
+/**
+ * Effective order bounds for a listing. `min` is what a buyer must order at
+ * least; `max` is the most they may order in one order, already clamped to the
+ * hard cap. Stock is applied separately by the caller (priceCart caps at
+ * on-hand). If available stock is below `min`, the item can't currently be
+ * bought — the caller treats that as unavailable.
+ */
+export function orderBounds(p: { minOrderQty?: number; maxOrderQty?: number }): { min: number; max: number } {
+  const min = Math.max(1, Math.floor(p.minOrderQty ?? 1));
+  const rawMax = p.maxOrderQty && p.maxOrderQty > 0 ? Math.floor(p.maxOrderQty) : ORDER_QTY_DEFAULT_MAX;
+  const max = Math.max(min, Math.min(rawMax, ORDER_QTY_HARD_CAP));
+  return { min, max };
 }
 
 export interface Variant {
@@ -262,6 +286,7 @@ export async function updateListing(
     | "title" | "desc" | "pricePaise" | "mrpPaise" | "hsn" | "emoji"
     | "shortDesc" | "brand" | "tags" | "salePricePaise" | "saleFrom" | "saleTo"
     | "sku" | "weightGrams" | "metaTitle" | "metaDescription" | "categoryId"
+    | "minOrderQty" | "maxOrderQty"
   >>,
 ): Promise<boolean> {
   const p = await findProduct(id);
