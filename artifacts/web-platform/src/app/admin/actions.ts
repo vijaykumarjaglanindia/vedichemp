@@ -314,6 +314,47 @@ export async function moderateStoreReviewAction(formData: FormData): Promise<voi
   redirect(`/admin/reviews?sdone=${decision}#store-reviews`);
 }
 
+/* ── Listing reports (buyer trust & safety) ───────────────── */
+
+/**
+ * Adjudicate a reported listing. Dismiss (needs a reason) closes the report;
+ * Uphold takes the listing down through the same server guard the catalogue
+ * moderation uses (suspendListing) and resolves every open report on it. Both
+ * paths are audited; upholding notifies the seller with the reason.
+ */
+export async function decideListingReport(formData: FormData): Promise<void> {
+  const id = String(formData.get("reportId") ?? "").trim();
+  const decision = String(formData.get("decision") ?? "");
+  const note = String(formData.get("note") ?? "").trim();
+  const who = await actor();
+  const { findReport, decideReport, resolveOthersForProduct } = await import("@/lib/reports");
+
+  if (decision === "dismiss" && note.length < 10) {
+    await writeAudit({ actor: who, action: "LISTING_REPORT_DISMISS", target: id, outcome: "DENIED", note: "reason under 10 chars" });
+    redirect("/admin/reports?err=note");
+  }
+  const report = findReport(id);
+  if (!report) redirect("/admin/reports?err=missing");
+
+  if (decision === "uphold") {
+    const reason = note || `Upheld report: ${report!.reason.replace(/_/g, " ").toLowerCase()}`;
+    // Take the listing down if it's live (the A2/catalogue guard decides whether it can).
+    const { suspendListing } = await import("@/lib/catalog");
+    await suspendListing(report!.productId, reason);
+    await decideReport(id, true, reason);
+    await resolveOthersForProduct(report!.productId, id, "Resolved with the upheld report on this listing.");
+    await writeAudit({ actor: who, action: "LISTING_REPORT_UPHOLD", target: report!.productId, outcome: "OK", note: report!.reason });
+    const { notify } = await import("@/lib/notify");
+    await notify("seller", report!.seller, { kind: "LISTING_ACTIONED", title: "A listing was taken down", body: `“${report!.productTitle}” was suspended after a buyer report (${report!.reason.replace(/_/g, " ").toLowerCase()}). Fix the issue and resubmit.`, href: "/seller/products" });
+    redirect("/admin/reports?done=uphold");
+  }
+
+  const result = await decideReport(id, false, note);
+  if (!result.ok) redirect(`/admin/reports?err=${result.reason}`);
+  await writeAudit({ actor: who, action: "LISTING_REPORT_DISMISS", target: report!.productId, outcome: "OK", note });
+  redirect("/admin/reports?done=dismiss");
+}
+
 /* ── Vendor verification (KYC) ────────────────────────────── */
 
 /** Admin reviews a submitted store verification: approve / ask for more / reject.

@@ -16,6 +16,7 @@ import Link from "next/link";
 import {
   BadgeCheck,
   BadgePercent,
+  Flag,
   Flame,
   FlaskConical,
   Heart,
@@ -39,7 +40,8 @@ import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
 import { aggregate, approvedFor } from "@/lib/reviews";
 import { questionsFor } from "@/lib/qa";
 import { addBundleToCart, addToCart } from "../../cart/actions";
-import { askQuestion, markReviewHelpful, submitReview, toggleWishlist } from "../../actions";
+import { askQuestion, markReviewHelpful, reportListing, submitReview, toggleWishlist } from "../../actions";
+import { REPORT_REASONS } from "@/lib/reports";
 import { readMyQuestions, readMyReviews, readOrderHistory } from "@/lib/engage";
 import {
   discountPct,
@@ -109,10 +111,10 @@ export default async function ProductDetailPage({
   searchParams,
 }: {
   params: Promise<Params>;
-  searchParams: Promise<{ pin?: string; review?: string; q?: string; variant?: string }>;
+  searchParams: Promise<{ pin?: string; review?: string; q?: string; variant?: string; rep?: string }>;
 }) {
   const { slug } = await params;
-  const { pin, review: reviewErr, q: qErr, variant: variantParam } = await searchParams;
+  const { pin, review: reviewErr, q: qErr, variant: variantParam, rep } = await searchParams;
   // The LIVE store only — a draft, suspended or archived listing gets the
   // identical empty state as an unknown slug.
   const product = await findLiveBySlug(slug);
@@ -505,6 +507,44 @@ export default async function ProductDetailPage({
                 )}
               </div>
             </Card>
+          </section>
+
+          {/* ── Report this listing (trust & safety) ─────────── */}
+          <section id="report" style={{ scrollMarginTop: 90, marginTop: "var(--sp-4)" }}>
+            <details style={{ border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "12px 16px" }} open={!!rep}>
+              <summary className="small" style={{ cursor: "pointer", fontWeight: 700, color: "var(--vh-ink)", display: "flex", alignItems: "center", gap: 6 }}>
+                <Flag size={13} aria-hidden /> Report this listing
+              </summary>
+              {rep === "ok" ? (
+                <div className="small" role="status" style={{ marginTop: 10, color: "var(--vh-ok)", fontWeight: 600 }}>
+                  Thanks — our team will review this listing. You don&rsquo;t need to do anything else.
+                </div>
+              ) : (
+                <>
+                  {rep === "reason" && <p className="small" role="alert" style={{ color: "var(--vh-danger)", margin: "10px 0 0" }}>Please choose a reason.</p>}
+                  {rep === "detail" && <p className="small" role="alert" style={{ color: "var(--vh-danger)", margin: "10px 0 0" }}>Add a few words (4–500 characters) so we can look into it.</p>}
+                  {rep === "claims" && <p className="small" role="alert" style={{ color: "var(--vh-danger)", margin: "10px 0 0" }}>Please describe the problem in plain words, without disease claims (cure/treat/prevent).</p>}
+                  <p className="small muted" style={{ margin: "8px 0 10px" }}>
+                    Spotted something wrong — a counterfeit, the wrong category, claims it shouldn&rsquo;t make? Tell us and our team will look into it.
+                  </p>
+                  <form action={reportListing} style={{ display: "grid", gap: 10, maxWidth: 520 }}>
+                    <input type="hidden" name="productId" value={product.id} />
+                    <div className="vh-field">
+                      <label className="vh-label" htmlFor="rep-reason">What&rsquo;s the problem?</label>
+                      <select className="vh-input" id="rep-reason" name="reason" defaultValue="">
+                        <option value="" disabled>Choose a reason…</option>
+                        {REPORT_REASONS.map((r) => <option key={r.value} value={r.value}>{r.label}</option>)}
+                      </select>
+                    </div>
+                    <div className="vh-field">
+                      <label className="vh-label" htmlFor="rep-detail">Tell us more</label>
+                      <textarea className="vh-input" id="rep-detail" name="detail" rows={2} minLength={4} maxLength={500} required placeholder="What did you notice?" />
+                    </div>
+                    <button type="submit" className="vh-btn vh-btn-sm vh-btn-outline" style={{ justifySelf: "start" }}>Submit report</button>
+                  </form>
+                </>
+              )}
+            </details>
           </section>
         </div>
 

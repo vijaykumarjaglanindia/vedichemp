@@ -244,3 +244,46 @@ export async function submitStoreReview(formData: FormData): Promise<void> {
   await notify("admin", "admin", { kind: "STORE_REVIEW_MOD", title: "Store review to moderate", body: `${rating}★ for ${seller!.name}.`, href: "/admin/reviews#store-reviews" });
   redirect(`${back}?rvw=ok#reviews`);
 }
+
+/* ── Report a listing (buyer trust & safety) ──────────────── */
+
+/**
+ * A shopper reports a listing for a policy concern. Anyone can report (signed
+ * in or not) — trust-and-safety shouldn't require an account — but the free
+ * text still runs the fail-closed claims check, and the report is filed for an
+ * admin to adjudicate. The server resolves the product; the client sends only
+ * the id and a reason.
+ */
+export async function reportListing(formData: FormData): Promise<void> {
+  const productId = String(formData.get("productId") ?? "").trim();
+  const reason = String(formData.get("reason") ?? "").trim();
+  const detail = String(formData.get("detail") ?? "").trim().slice(0, 500);
+
+  const product = (await readLiveProducts()).find((p) => p.id === productId);
+  if (!product) redirect("/catalogue");
+  const back = `/products/${product!.slug}`;
+
+  const { isReason, addReport } = await import("@/lib/reports");
+  if (!isReason(reason)) redirect(`${back}?rep=reason#report`);
+  if (detail.length < 4 || detail.length > 500) redirect(`${back}?rep=detail#report`);
+  // Fail closed: report text is buyer-authored copy that staff read — the same
+  // claims wording is disallowed here as anywhere else.
+  if (CLAIMS_LANGUAGE.test(detail)) redirect(`${back}?rep=claims#report`);
+
+  const session = await getSession();
+  await addReport({
+    productId: product!.id,
+    productSlug: product!.slug,
+    productTitle: product!.title,
+    seller: product!.seller,
+    reason: reason as import("@/lib/reports").ReportReason,
+    detail,
+    reporter: session?.email ?? "guest",
+  });
+
+  const { writeAudit } = await import("@/lib/audit");
+  await writeAudit({ actor: session?.email ?? "guest", action: "LISTING_REPORTED", target: product!.id, outcome: "OK", note: reason });
+  const { notify } = await import("@/lib/notify");
+  await notify("admin", "admin", { kind: "LISTING_REPORT", title: "A listing was reported", body: `“${product!.title}” — ${reason.replace(/_/g, " ").toLowerCase()}.`, href: "/admin/reports" });
+  redirect(`${back}?rep=ok#report`);
+}
