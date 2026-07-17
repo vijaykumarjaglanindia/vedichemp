@@ -19,9 +19,10 @@ import { Shell } from "../Shell";
 import { Card, StatusPill, Banner, ComplianceBadge, EmptyState } from "@/components/ui";
 import { COMPLIANCE_QUEUE, AUDIT } from "@/lib/sample";
 import { SENSITIVE_ACCESS_24H, slaCountdown } from "../_lib/data";
-import { closeRecall, initiateRecall, decidePrescriptionAction, revealPrescriptionAction } from "../actions";
+import { closeRecall, initiateRecall, decidePrescriptionAction, revealPrescriptionAction, correctDispenseAction } from "../actions";
 import { pendingPrescriptions, allPrescriptions, accessLog, SENSITIVE_REASONS, reasonLabel } from "@/lib/prescriptions";
 import { openRecalls, recallEvents } from "@/lib/recalls";
+import { dispenseRegister, supersededSeqs } from "@/lib/dispensing";
 import { allEvents as allAdverse, triageFor } from "@/lib/adverse";
 import { triageAdverseEvent } from "../actions";
 
@@ -52,14 +53,16 @@ const RECALL_NOTES: Record<string, { sev: "ok" | "danger" | "warn"; title: strin
 export default async function AdminCompliancePage({
   searchParams,
 }: {
-  searchParams: Promise<{ recall?: string; ref?: string; rx?: string; rxerr?: string; ae?: string }>;
+  searchParams: Promise<{ recall?: string; ref?: string; rx?: string; rxerr?: string; ae?: string; disp?: string }>;
 }) {
   const { recall, ref, rx: rxDone, rxerr } = await searchParams;
   const openRecs = await openRecalls();
   const recallRegister = await recallEvents();
   const adverse = await allAdverse();
   const adverseTriage = Object.fromEntries(await Promise.all(adverse.map(async (e) => [e.id, await triageFor(e.id)] as const)));
-  const { ae } = await searchParams;
+  const { ae, disp } = await searchParams;
+  const dispensing = await dispenseRegister();
+  const superseded = await supersededSeqs();
   const AE_MSG: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {
     acknowledged: { sev: "ok", text: "Report acknowledged — the reporter's concern is on the pharmacovigilance record." },
     triaged: { sev: "ok", text: "Report triaged — clinical assessment recorded." },
@@ -333,6 +336,85 @@ export default async function AdminCompliancePage({
             </div>
           </div>
         </Card>
+
+        {/* ── Dispensing / dispatch register (A3 append-only) ── */}
+        <div id="dispensing" style={{ scrollMarginTop: 90 }}>
+          {disp && (
+            <div style={{ marginBottom: "var(--sp-3)" }}>
+              <Banner severity={disp === "ok" ? "ok" : "danger"}>
+                {disp === "ok"
+                  ? "Correction appended as a new row. The original entry is preserved (A3 — records are never edited)."
+                  : disp === "reason" ? "A correction needs a reason of at least 8 characters."
+                  : disp === "superseded" ? "That entry has already been corrected once."
+                  : "That register entry doesn't exist."}
+              </Banner>
+            </div>
+          )}
+          <Card
+            title={<span className="vh-row" style={{ gap: 8 }}><ScrollText size={16} strokeWidth={2.2} aria-hidden /> Dispensing register (regulated dispatch · A3)</span>}
+            action={<StatusPill tone="info">{dispensing.length} entr{dispensing.length === 1 ? "y" : "ies"}</StatusPill>}
+          >
+            <p className="small muted" style={{ marginTop: 0 }}>
+              Every regulated (CBD) line is recorded here the moment a seller dispatches it — append-only, never
+              edited or deleted. Corrections are new rows that supersede the old one. §6: batch and destination
+              region only — no buyer identity, no health data.
+            </p>
+            {dispensing.length === 0 ? (
+              <p className="small muted" style={{ margin: 0 }}>No regulated dispatches recorded yet.</p>
+            ) : (
+              <div style={{ overflowX: "auto" }}>
+                <table className="vh-table">
+                  <thead>
+                    <tr><th>#</th><th>When</th><th>Product</th><th>Batch</th><th>CoA</th><th style={{ textAlign: "right" }}>Qty</th><th>To</th><th>Order</th><th>Note</th></tr>
+                  </thead>
+                  <tbody>
+                    {dispensing.map((e) => {
+                      const isCorrection = e.correctionOf !== undefined;
+                      const isSuperseded = superseded.has(e.seq);
+                      return (
+                        <tr key={e.seq} style={isSuperseded ? { textDecoration: "line-through", opacity: 0.6 } : undefined}>
+                          <td className="mono small">{e.seq}</td>
+                          <td className="small tabular">{e.at}</td>
+                          <td className="small">{e.productTitle}{e.variantLabel ? ` · ${e.variantLabel}` : ""}</td>
+                          <td className="small mono">{e.batchCode || "—"}</td>
+                          <td className="small">{e.coaState}</td>
+                          <td className="small tabular" style={{ textAlign: "right" }}>{e.qty}</td>
+                          <td className="small">{e.destState} · <span className="mono">{e.pinRegion}</span></td>
+                          <td className="small mono">{e.orderRef}</td>
+                          <td className="small muted">
+                            {isCorrection ? <StatusPill tone="warn">corrects #{e.correctionOf}: {e.correctionReason}</StatusPill> : isSuperseded ? "superseded" : ""}
+                          </td>
+                        </tr>
+                      );
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            )}
+            {/* A3 correction — appends a superseding row, never edits */}
+            <details style={{ marginTop: 12 }}>
+              <summary className="vh-btn vh-btn-sm vh-btn-ghost" style={{ display: "inline-flex", cursor: "pointer" }}>Correct an entry</summary>
+              <form action={correctDispenseAction} className="vh-grid cols-2" style={{ gap: 10, maxWidth: 620, marginTop: 10 }}>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="disp-seq">Entry #</label>
+                  <input className="vh-input mono" id="disp-seq" name="seq" type="number" min={1} required />
+                </div>
+                <div className="vh-field">
+                  <label className="vh-label" htmlFor="disp-batch">Corrected batch (optional)</label>
+                  <input className="vh-input mono" id="disp-batch" name="batchCode" maxLength={24} placeholder="e.g. VB-2407" />
+                </div>
+                <div className="vh-field" style={{ gridColumn: "1 / -1" }}>
+                  <label className="vh-label" htmlFor="disp-reason">Reason <span className="req">*</span></label>
+                  {/* Server-validated (≥8 chars). No client minLength so the negative path is testable. */}
+                  <input className="vh-input" id="disp-reason" name="reason" placeholder="Why the correction? Written into the superseding row." />
+                </div>
+                <div style={{ gridColumn: "1 / -1" }}>
+                  <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary">Append correction</button>
+                </div>
+              </form>
+            </details>
+          </Card>
+        </div>
 
         {/* ── Adverse events / pharmacovigilance (A3 append-only) ── */}
         <div id="adverse" style={{ scrollMarginTop: 90 }}>

@@ -1152,6 +1152,36 @@ export async function fulfilOrder(formData: FormData): Promise<void> {
   // Keep the buyer in the loop on the milestones they care about.
   const { notify } = await import("@/lib/notify");
   if (op === "ship") {
+    // A3 dispensing register: every REGULATED (CBD) line this store dispatches
+    // is recorded, append-only, at the SHIPPED transition. The state machine
+    // blocks a re-ship, so this logs exactly once per line. §6: batch + region,
+    // never the buyer's identity or any health data.
+    const { recordDispense, isRegulatedClass } = await import("@/lib/dispensing");
+    const { findProduct } = await import("@/lib/catalog");
+    // advanceOrder flips the WHOLE order to SHIPPED (status is one field), so
+    // every regulated line on it is being dispatched now — record them all, each
+    // attributed to its own seller, so no dispatched regulated line goes
+    // unrecorded even on a multi-seller order. (Today all regulated stock is
+    // single-tenant, so this is just the acting store's lines.)
+    for (const it of result.order.items) {
+      const product = await findProduct(it.productId);
+      if (!product || !isRegulatedClass(product.cls)) continue;
+      await recordDispense({
+        orderRef: reference,
+        seller: it.seller,
+        dispatcher: `seller:${DEMO_STORE}`,
+        productId: product.id,
+        productTitle: product.title,
+        ...(it.variantId ? { variantId: it.variantId } : {}),
+        ...(it.variantLabel ? { variantLabel: it.variantLabel } : {}),
+        cls: product.cls,
+        batchCode: product.batchCode,
+        coaState: product.coaState,
+        qty: it.qty,
+        destState: result.order.state ?? "",
+        pincode: result.order.pincode,
+      });
+    }
     await notify("buyer", result.order.buyerEmail, {
       kind: "ORDER_SHIPPED",
       title: `Order ${reference} shipped`,

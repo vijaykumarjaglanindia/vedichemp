@@ -204,6 +204,32 @@ export async function decidePendingUserAction(formData: FormData): Promise<void>
   redirect(`/admin/users?done=${res.approved ? verb + "d" : "rejected"}#inbox`);
 }
 
+/** A3 dispensing-register correction: append a NEW superseding row (never an
+ *  edit). Requires a reason; the original entry is preserved. */
+export async function correctDispenseAction(formData: FormData): Promise<void> {
+  const seq = parseInt(String(formData.get("seq") ?? ""), 10);
+  const reason = String(formData.get("reason") ?? "").trim();
+  const batchCode = String(formData.get("batchCode") ?? "").trim().toUpperCase().slice(0, 24);
+  const coaState = String(formData.get("coaState") ?? "").trim();
+  const who = await actor();
+  if (!Number.isInteger(seq)) redirect("/admin/compliance#dispensing");
+  if (reason.length < 8) {
+    await writeAudit({ actor: who, action: "DISPENSE_CORRECT", target: String(seq), outcome: "DENIED", note: "reason under 8 chars" });
+    redirect("/admin/compliance?disp=reason#dispensing");
+  }
+  const { correctDispense } = await import("@/lib/dispensing");
+  const patch: { batchCode?: string; coaState?: string } = {};
+  if (batchCode) patch.batchCode = batchCode;
+  if (coaState) patch.coaState = coaState;
+  const result = await correctDispense({ seq, actor: who, reason, patch });
+  if (!result.ok) {
+    await writeAudit({ actor: who, action: "DISPENSE_CORRECT", target: String(seq), outcome: "DENIED", note: result.reason });
+    redirect(`/admin/compliance?disp=${result.reason}#dispensing`);
+  }
+  await writeAudit({ actor: who, action: "DISPENSE_CORRECT", target: String(seq), outcome: "OK", note: `superseding row appended: ${reason}` });
+  redirect("/admin/compliance?disp=ok#dispensing");
+}
+
 /* ── CMS: WordPress-style save / publish / unpublish / delete ── */
 
 const CMS_CLAIMS = CLAIMS_LANGUAGE;
