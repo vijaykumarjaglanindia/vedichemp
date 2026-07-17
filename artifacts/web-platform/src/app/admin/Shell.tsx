@@ -16,7 +16,7 @@
 import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, Store, Package, Receipt, Landmark, Megaphone,
-  ShieldCheck, Ban, FileText, Target, BarChart3, Settings, ScrollText, Bell, Star, TicketPercent, Truck, LifeBuoy, Building2, Flag,
+  ShieldCheck, Ban, FileText, Target, BarChart3, Settings, ScrollText, Bell, Star, TicketPercent, Truck, LifeBuoy, Building2, Flag, Send,
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
 import { unreadCount } from "@/lib/notify";
@@ -75,6 +75,7 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/features", label: "Features & tools", icon: <Settings {...I} /> },
       { href: "/admin/audit", label: "Audit trail", icon: <ScrollText {...I} /> },
       { href: "/admin/notifications", label: "Notifications", icon: <Bell {...I} /> },
+      { href: "/admin/outbox", label: "Outbox", icon: <Send {...I} /> },
       { href: "/admin/settings", label: "Settings", icon: <Settings {...I} /> },
     ],
   },
