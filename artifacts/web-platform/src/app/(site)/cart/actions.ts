@@ -12,13 +12,13 @@ import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
 import { readEnabledPayments } from "@/lib/payments";
 import { randomUUID } from "node:crypto";
-import { clearCartCookies, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
+import { clearCartCookies, MAX_LINES, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
 import { decrementStock, findProduct, hasVariants, isLowStock, orderBounds, readLiveProducts, selectVariant } from "@/lib/catalog";
 import { notify } from "@/lib/notify";
 import { redeemCoupon } from "@/lib/commerce";
 import { permittedClasses } from "@/lib/compliance";
 import { getSession } from "@/lib/auth-lite";
-import { createOrder, type OrderItem } from "@/lib/orders";
+import { createOrder, findOrder, type OrderItem } from "@/lib/orders";
 import { appendOrderHistory, readAddresses, validateAddressFields, writeAddresses } from "@/lib/engage";
 
 /** Returns the resolved variant id to store (validated), or throws via redirect. */
@@ -90,6 +90,72 @@ export async function addBundleToCart(formData: FormData): Promise<void> {
   }
   await writeCartLines(lines);
   redirect("/cart");
+}
+
+/**
+ * "Buy again" — re-add a past order's lines to the cart. Server-authoritative:
+ *   - OWNERSHIP: only the order's own buyer may reorder it (absent, not 403).
+ *   - Each line is re-validated against the LIVE catalogue: an archived /
+ *     unpublished / non-permitted (A1) product is skipped, as is a removed
+ *     variant or an out-of-stock line (product or variant).
+ *   - The previously-ordered qty is clamped to the CURRENT per-order bounds —
+ *     never re-added blindly.
+ *   - Prices are NOT carried over; priceCart() reprices at today's server price.
+ * Partial availability is normal: the redirect reports how many lines were added
+ * and how many were skipped.
+ */
+export async function reorder(formData: FormData): Promise<void> {
+  const reference = String(formData.get("reference") ?? "").slice(0, 24);
+  const session = await getSession();
+  const email = session?.email;
+  if (!email) redirect(`/signin?next=/account/orders`);
+
+  const order = await findOrder(reference);
+  if (!order || order.buyerEmail.toLowerCase() !== email!.toLowerCase()) redirect("/account/orders");
+
+  const permitted = permittedClasses({ hasRx: false });
+  const catalogue = await readLiveProducts();
+  const lines = await readCartLines();
+  let added = 0;
+  let skipped = 0;
+
+  for (const it of order!.items) {
+    // LIVE + permitted (A1). A non-LIVE or medical listing can never re-enter
+    // the cart, even from a genuine past order.
+    const product = catalogue.find((p) => p.id === it.productId && permitted.includes(p.cls));
+    if (!product) { skipped++; continue; }
+
+    let variantId: string | undefined;
+    if (hasVariants(product)) {
+      // Match the EXACT variant that was ordered — never selectVariant(), which
+      // falls back to a different in-stock variant and would silently substitute
+      // a size/pack the buyer didn't order. A removed variant is skipped.
+      const v = (product.variants ?? []).find((x) => x.id === it.variantId);
+      if (!v || v.stockQty <= 0) { skipped++; continue; } // variant gone or OOS
+      variantId = v.id;
+    } else if (product.stockQty <= 0) {
+      skipped++; continue; // simple product OOS
+    }
+
+    const { min, max } = orderBounds(product);
+    const wantQty = Math.min(Math.max(it.qty, min), max);
+    const existing = lines.find((l) => l.id === product.id && l.variantId === variantId);
+    if (existing) {
+      existing.qty = Math.min(existing.qty + wantQty, max);
+    } else {
+      // A new line the cart can't hold (writeCartLines caps at MAX_LINES) is a
+      // SKIP, not a silent drop miscounted as added.
+      if (lines.length >= MAX_LINES) { skipped++; continue; }
+      lines.push({ id: product.id, qty: wantQty, ...(variantId ? { variantId } : {}) });
+    }
+    added++;
+  }
+
+  await writeCartLines(lines);
+  // Nothing available to re-add → stay on the order with a note rather than
+  // dropping the buyer on a possibly-empty cart.
+  if (added === 0) redirect(`/account/orders/live-${reference}?reorder=none`);
+  redirect(`/cart?reordered=${added}${skipped ? `&skipped=${skipped}` : ""}`);
 }
 
 export async function setQty(formData: FormData): Promise<void> {

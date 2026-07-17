@@ -12,14 +12,14 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
 import { notFound } from "next/navigation";
-import { FileDown, LifeBuoy, Package, Receipt, RotateCcw, Truck, XCircle } from "lucide-react";
+import { FileDown, LifeBuoy, Package, Receipt, RotateCcw, ShoppingCart, Truck, XCircle } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Card, StatusPill, toneForStatus, MoneyText, Timeline, Banner } from "@/components/ui";
 import { ORDERS, PRODUCTS, type SampleOrder } from "@/lib/sample";
 import { readReturns } from "@/lib/engage";
 import { getSession } from "@/lib/auth-lite";
 import { findOrder, ORDER_TONE, type Order } from "@/lib/orders";
-import { addToCart } from "../../../(site)/cart/actions";
+import { addToCart, reorder } from "../../../(site)/cart/actions";
 import { cancelOwnOrder, reportSideEffect, requestReturn } from "../actions";
 
 export const metadata: Metadata = { title: "Order details" };
@@ -42,7 +42,7 @@ function RealOrderDetail({
   flags,
 }: {
   order: Order;
-  flags: { cancelled?: string; ret?: string; err?: string; ae?: string };
+  flags: { cancelled?: string; ret?: string; err?: string; ae?: string; reorder?: string };
 }) {
   const canCancel = ["PLACED", "ACCEPTED", "PACKED"].includes(order.status);
   const canReturn = order.status === "DELIVERED";
@@ -58,11 +58,25 @@ function RealOrderDetail({
           <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/account/orders/live-${order.reference}/invoice`}>
             <span className="vh-row" style={{ gap: 6 }}><FileDown size={14} strokeWidth={2.2} aria-hidden />Download invoice</span>
           </Link>
+          <form action={reorder} style={{ display: "inline-flex" }}>
+            <input type="hidden" name="reference" value={order.reference} />
+            <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary">
+              <span className="vh-row" style={{ gap: 6 }}><ShoppingCart size={14} strokeWidth={2.2} aria-hidden />Buy again</span>
+            </button>
+          </form>
           {canCancel && <a className="vh-btn vh-btn-sm vh-btn-ghost" href="#cancel"><span className="vh-row" style={{ gap: 6 }}><XCircle size={14} strokeWidth={2.2} aria-hidden />Cancel</span></a>}
           {canReturn && <a className="vh-btn vh-btn-sm vh-btn-danger" href="#return"><span className="vh-row" style={{ gap: 6 }}><RotateCcw size={14} strokeWidth={2.2} aria-hidden />Request return</span></a>}
         </span>
       }
     >
+      {flags.reorder === "none" && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="info" title="Nothing from this order is available right now">
+            None of these items are currently live and in stock, so nothing was added to your cart. Browse the
+            catalogue for alternatives.
+          </Banner>
+        </div>
+      )}
       {flags.cancelled && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="ok" title="Order cancelled — you have been refunded">
@@ -268,7 +282,7 @@ export default async function OrderDetailPage({
   searchParams,
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ ret?: string; cancelled?: string; err?: string; ae?: string }>;
+  searchParams: Promise<{ ret?: string; cancelled?: string; err?: string; ae?: string; reorder?: string }>;
 }) {
   const { id } = await params;
   const sp = await searchParams;

@@ -19,9 +19,11 @@ export const metadata: Metadata = { title: "Your cart" };
 export default async function CartPage({
   searchParams,
 }: {
-  searchParams: Promise<{ coupon?: string }>;
+  searchParams: Promise<{ coupon?: string; reordered?: string; skipped?: string }>;
 }) {
-  const { coupon } = await searchParams;
+  const { coupon, reordered, skipped } = await searchParams;
+  const reorderedN = reordered ? parseInt(reordered, 10) : 0;
+  const skippedN = skipped ? parseInt(skipped, 10) : 0;
   const cart = await priceCart();
 
   if (cart.lines.length === 0) {
@@ -43,6 +45,15 @@ export default async function CartPage({
       <p className="small muted" style={{ marginBottom: "var(--sp-4)" }}>
         <span className="tabular">{cart.count}</span> item{cart.count === 1 ? "" : "s"} · prices include all taxes
       </p>
+
+      {reorderedN > 0 && (
+        <div style={{ marginBottom: "var(--sp-4)" }}>
+          <Banner severity="ok" title="Added to your cart">
+            {reorderedN} item{reorderedN === 1 ? "" : "s"} from your past order {reorderedN === 1 ? "was" : "were"} re-added at today&rsquo;s prices.
+            {skippedN > 0 && ` ${skippedN} ${skippedN === 1 ? "item was" : "items were"} skipped — no longer available or out of stock.`}
+          </Banner>
+        </div>
+      )}
 
       <div className="vh-split">
         {/* Lines */}

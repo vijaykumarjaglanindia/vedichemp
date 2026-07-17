@@ -26,7 +26,7 @@ import { isBusinessBuyer } from "@/lib/b2b";
 
 const CART_COOKIE = "vh-cart";
 const COUNT_COOKIE = "vh-cart-n";
-const MAX_LINES = 50;
+export const MAX_LINES = 50;
 
 export interface CartLine {
   id: string;
