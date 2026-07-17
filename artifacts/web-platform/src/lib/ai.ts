@@ -14,6 +14,40 @@
 
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
 
+/**
+ * Listing-risk read model (deterministic, pure, unit-testable).
+ *
+ * The AI moderation queue on /admin/ai is NOT a black box: the real, hard
+ * signal it surfaces is the deterministic claims-strike a listing earns when
+ * someone tries to save medical-claims copy on it (src/lib/catalog.ts
+ * setClaimsStrike, barred from advertising until compliance clears it — A1 /
+ * Drugs & Magic Remedies Act). This function turns the live catalogue into that
+ * queue so the console shows what actually happened, not a mock. An AI ranks and
+ * explains; the deterministic strike is the block, and only a human clears it.
+ */
+export interface ListingRiskRow {
+  id: string;
+  listing: string;
+  seller: string;
+  finding: string;
+  score: number; // 0–100 risk
+}
+
+export function listingRiskQueue(
+  products: { id: string; title: string; seller: string; claimsStrike?: boolean; status?: string }[],
+): ListingRiskRow[] {
+  return products
+    .filter((p) => p.claimsStrike === true)
+    .map((p) => ({
+      id: p.id,
+      listing: p.title,
+      seller: p.seller,
+      finding: "Attempted medical-claims copy — barred from advertising until compliance clears the strike.",
+      score: 88,
+    }))
+    .sort((a, b) => (b.score - a.score) || a.listing.localeCompare(b.listing));
+}
+
 export function aiProviderName(): string {
   if (process.env.ANTHROPIC_API_KEY) return "claude";
   if (process.env.OPENAI_API_KEY) return "openai";
