@@ -20,7 +20,8 @@ import { Card, Stat, StatusPill, toneForStatus, MoneyText, Banner, ProgressRing,
 import { CampaignLabel, assertCreativeClassRenderable } from "@/components/ui/ads";
 import { currentBuyer } from "@/lib/session";
 import { readLiveProducts } from "@/lib/catalog";
-import { CAMPAIGN_OFFERS, daysUntil, type ActivityEvent } from "./_lib/data";
+import { daysUntil, type ActivityEvent } from "./_lib/data";
+import { readLiveCoupons, LAUNCH_COUPONS } from "@/lib/commerce";
 import { applyCoupon } from "../(site)/cart/actions";
 import { getSession } from "@/lib/auth-lite";
 import { ordersForBuyer, type OrderStatus } from "@/lib/orders";
@@ -97,6 +98,26 @@ export default async function AccountHomePage() {
 
   // Personalisation consent gates offers vs. a generic best-sellers rail.
   const showPersonalisedOffers = viewer.consents.personalisation;
+
+  // Offers come from the LIVE coupon store (admin-managed) — enabled, unexpired,
+  // under its usage cap. A1: a MED_CANNABIS coupon can never surface here, and
+  // the render still asserts per-offer below rather than filtering silently.
+  const CLS_LABEL: Record<string, string> = { HEMP_FOOD: "Hemp Food", AYURVEDA: "Ayurveda", CBD_WELLNESS: "CBD Wellness" };
+  const liveOffers = Object.entries(await readLiveCoupons())
+    .filter(([, c]) => c.cls !== "MED_CANNABIS")
+    // Feature admin-created coupons (not part of the launch set) ahead of the
+    // evergreen launch coupons, so a freshly-created promo actually surfaces.
+    .sort(([a], [b]) => (a in LAUNCH_COUPONS ? 1 : 0) - (b in LAUNCH_COUPONS ? 1 : 0))
+    .slice(0, 4)
+    .map(([code, c]) => ({
+      id: code,
+      code,
+      headline: c.label,
+      detail: c.cls ? `Applies to ${CLS_LABEL[c.cls] ?? c.cls} products.` : "Applies storewide across eligible items.",
+      cls: c.cls,
+      endsOn: c.validTo ?? null,
+      minSpendPaise: c.minPaise > 0 ? c.minPaise : null,
+    }));
 
   // Recent activity from the real notification store (A4 reads surface here too).
   const activity: ActivityEvent[] = notes.length
@@ -281,16 +302,20 @@ export default async function AccountHomePage() {
         >
           {showPersonalisedOffers ? (
             <>
+              {liveOffers.length === 0 ? (
+                <p className="small muted" style={{ margin: 0 }}>No active offers right now — check back soon.</p>
+              ) : (
               <div className="vh-grid cols-2">
-                {CAMPAIGN_OFFERS.map((offer) => {
+                {liveOffers.map((offer) => {
                   // A1 render guard: a MED_CANNABIS creative can never reach this
                   // surface — the assert throws rather than filtering silently.
-                  assertCreativeClassRenderable(offer.cls);
+                  // Storewide coupons carry no class and need no class assertion.
+                  if (offer.cls) assertCreativeClassRenderable(offer.cls as Parameters<typeof assertCreativeClassRenderable>[0]);
                   return (
                     <div key={offer.id} className="vh-card" style={{ padding: 16 }}>
                       <div className="vh-row-between" style={{ marginBottom: 8 }}>
                         <CampaignLabel>Campaign</CampaignLabel>
-                        <span className="small muted">Ends {offer.endsOn}</span>
+                        <span className="small muted">{offer.endsOn ? `Ends ${offer.endsOn}` : "Ongoing"}</span>
                       </div>
                       <div className="vh-row" style={{ gap: 8, marginBottom: 8 }}>
                         <span aria-hidden style={{ display: "inline-flex", color: "var(--vh-accent)" }}>
@@ -313,6 +338,7 @@ export default async function AccountHomePage() {
                   );
                 })}
               </div>
+              )}
               <p className="small muted" style={{ margin: "8px 0 0" }}>
                 Campaign offers only ever cover Hemp Food, Ayurveda and CBD Wellness. Medical Cannabis is
                 never promoted, to anyone (A1).
