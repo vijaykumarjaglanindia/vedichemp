@@ -19,7 +19,7 @@ import { Shell } from "./Shell";
 import { Card, Stat, StatusPill, toneForStatus, MoneyText, Banner, ProgressRing, EmptyState, Timeline } from "@/components/ui";
 import { CampaignLabel, assertCreativeClassRenderable } from "@/components/ui/ads";
 import { currentBuyer } from "@/lib/session";
-import { classProducts } from "@/lib/sample";
+import { readLiveProducts } from "@/lib/catalog";
 import { CAMPAIGN_OFFERS, daysUntil, type ActivityEvent } from "./_lib/data";
 import { applyCoupon } from "../(site)/cart/actions";
 import { getSession } from "@/lib/auth-lite";
@@ -85,11 +85,15 @@ export default async function AccountHomePage() {
     pendingActions.push({ id: "rx-review", label: "A prescription is under pharmacist review", tone: "info", href: "/account/medical" });
   }
 
-  // A1: recommendations are built from classProducts(viewer.permittedClasses).
-  // permittedClasses() never includes MED_CANNABIS for a buyer without a
-  // verified Rx — the product is ABSENT from this array, not filtered out in
-  // the component and not shown blurred/locked. There is nothing here to hide.
-  const recommended = classProducts(viewer.permittedClasses).slice(0, 4);
+  // A1: recommendations are built from the LIVE catalogue, filtered to the
+  // viewer's permitted classes. permittedClasses() never includes MED_CANNABIS
+  // for a buyer without a verified Rx — the product is ABSENT from this array,
+  // not filtered out in the component and not shown blurred/locked. There is
+  // nothing here to hide. In-stock first, then by rating.
+  const recommended = (await readLiveProducts())
+    .filter((p) => viewer.permittedClasses.includes(p.cls))
+    .sort((a, b) => (b.stockQty > 0 ? 1 : 0) - (a.stockQty > 0 ? 1 : 0) || b.rating - a.rating)
+    .slice(0, 4);
 
   // Personalisation consent gates offers vs. a generic best-sellers rail.
   const showPersonalisedOffers = viewer.consents.personalisation;
@@ -318,7 +322,7 @@ export default async function AccountHomePage() {
             // No personalisation consent → a non-personalised "best sellers" rail
             // instead of a targeted offer, rather than personalising anyway.
             <div className="vh-grid cols-4">
-              {classProducts(viewer.permittedClasses).slice(0, 4).map((p) => (
+              {recommended.map((p) => (
                 <div key={p.id} className="vh-card" style={{ padding: 16 }}>
                   <div aria-hidden style={{ fontSize: "1.8rem", marginBottom: 8 }}>{p.emoji}</div>
                   <div className="small" style={{ fontWeight: 600 }}>{p.title}</div>
