@@ -158,6 +158,20 @@ export async function markReviewHelpful(formData: FormData): Promise<void> {
   redirect(`/products/${slug}#reviews`);
 }
 
+export async function reportStore(formData: FormData): Promise<void> {
+  const slug = String(formData.get("slug") ?? "").slice(0, 80);
+  const storeName = String(formData.get("storeName") ?? "").slice(0, 80);
+  const reason = String(formData.get("reason") ?? "");
+  const session = await getSession();
+  const reporter = session?.email;
+  // Attributable: reporting a storefront needs a signed-in buyer (one open
+  // report per person, enforced in the store) so a flag can't be used to brigade.
+  if (!reporter) redirect(`/signin?next=/store/${slug}`);
+  const { reportStore: storeReport } = await import("@/lib/store-reports");
+  const res = await storeReport({ storeSlug: slug, storeName, reporter: reporter!, reason });
+  redirect(`/store/${slug}?rep=${res.ok ? "ok" : res.reason}#report`);
+}
+
 export async function reportReview(formData: FormData): Promise<void> {
   const reviewId = String(formData.get("reviewId") ?? "").slice(0, 20);
   const slug = String(formData.get("slug") ?? "").slice(0, 80);

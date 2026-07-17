@@ -19,7 +19,7 @@ import { announcementLive, readFollows, readStoreAnnouncement, readStoreAvailabi
 import { breadcrumbJsonLd } from "@/lib/seo";
 import { getSession } from "@/lib/auth-lite";
 import { approvedStoreReviews, storeAggregate } from "@/lib/store-reviews";
-import { toggleFollowStore, submitStoreReview } from "../../actions";
+import { toggleFollowStore, submitStoreReview, reportStore } from "../../actions";
 import { ProductCard } from "../../_lib/ProductCard";
 import { ShareButton } from "../../_lib/ShareButton";
 import { sellerBySlug, sellerProducts, STORE_PROFILES } from "../../_lib/data";
@@ -58,9 +58,9 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   };
 }
 
-export default async function StorePage({ params, searchParams }: { params: Promise<Params>; searchParams: Promise<{ rvw?: string }> }) {
+export default async function StorePage({ params, searchParams }: { params: Promise<Params>; searchParams: Promise<{ rvw?: string; rep?: string }> }) {
   const { slug } = await params;
-  const { rvw } = await searchParams;
+  const { rvw, rep } = await searchParams;
   const seller = sellerBySlug(slug);
   const profile = STORE_PROFILES[slug];
 
@@ -388,6 +388,40 @@ export default async function StorePage({ params, searchParams }: { params: Prom
                 </p>
               )}
             </div>
+          </Card>
+        </section>
+
+        {/* ── Report this store ──────────────────────────────── */}
+        <section id="report" className="vh-section" style={{ paddingTop: 0, scrollMarginTop: 80 }}>
+          <Card title="Report this store">
+            {rep === "ok" && <div style={{ marginBottom: 12 }}><Banner severity="ok" title="Thanks — this is with our team">A moderator will look into it. The store stays open unless we find a problem. You&rsquo;ll never be asked to pay outside Vedic Hemp.</Banner></div>}
+            {rep === "duplicate" && <div style={{ marginBottom: 12 }}><Banner severity="info">You&rsquo;ve already reported this store — it&rsquo;s with a moderator.</Banner></div>}
+            {rep === "reason" && <div style={{ marginBottom: 12 }}><Banner severity="danger">Please choose a reason for the report.</Banner></div>}
+            <p className="small muted" style={{ marginTop: 0 }}>
+              Seeing counterfeit goods, misleading claims, or a seller asking you to pay <strong>outside</strong> Vedic Hemp?
+              Tell us — every order on the platform is protected, and off-platform payment is never required.
+            </p>
+            {session?.email ? (
+              <details className="vh-report">
+                <summary className="vh-btn vh-btn-sm vh-btn-ghost" style={{ display: "inline-flex", cursor: "pointer" }}>Report this store</summary>
+                <form action={reportStore} className="vh-row" style={{ gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
+                  <input type="hidden" name="slug" value={slug} />
+                  <input type="hidden" name="storeName" value={seller.name} />
+                  <select name="reason" className="vh-select" defaultValue="OFF_PLATFORM" aria-label="Reason for reporting this store" style={{ maxWidth: 280 }}>
+                    <option value="OFF_PLATFORM">Asked me to pay outside Vedic Hemp</option>
+                    <option value="COUNTERFEIT">Counterfeit or fake products</option>
+                    <option value="MISLEADING">Misleading storefront claims</option>
+                    <option value="PROHIBITED_ITEM">Selling a prohibited item</option>
+                    <option value="OTHER">Something else</option>
+                  </select>
+                  <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary">Submit report</button>
+                </form>
+              </details>
+            ) : (
+              <p className="small muted" style={{ margin: 0 }}>
+                <Link href={`/signin?next=${encodeURIComponent(`/store/${slug}`)}`}>Sign in</Link> to report this store.
+              </p>
+            )}
           </Card>
         </section>
       </div>

@@ -340,6 +340,27 @@ export async function resolveReviewReportsAction(formData: FormData): Promise<vo
   redirect(`/admin/reviews?done=${action === "remove" ? "removed" : "dismissed"}#reported`);
 }
 
+/** Resolve every open report on a store: dismiss (keep) or action (acknowledge
+ *  & escalate to compliance). Append-only; both paths are audited. */
+export async function resolveStoreReportsAction(formData: FormData): Promise<void> {
+  const slug = String(formData.get("slug") ?? "").slice(0, 80);
+  const action = String(formData.get("action") ?? ""); // dismiss | action
+  const who = await actor();
+  if (!["dismiss", "action"].includes(action) || !slug) redirect("/admin/reviews#stores");
+  const { resolveStoreReports } = await import("@/lib/store-reports");
+  const result = await resolveStoreReports(slug, action as "dismiss" | "action", who);
+  if (!result.ok) {
+    await writeAudit({ actor: who, action: "STORE_REPORT_RESOLVE", target: slug, outcome: "DENIED", note: result.reason });
+    redirect(`/admin/reviews?err=${result.reason}#stores`);
+  }
+  await writeAudit({ actor: who, action: action === "action" ? "STORE_REPORT_ACTION" : "STORE_REPORT_DISMISS", target: slug, outcome: "OK", note: action === "action" ? "escalated to compliance" : "reports dismissed, store kept" });
+  if (action === "action") {
+    const { notify } = await import("@/lib/notify");
+    await notify("admin", "admin", { kind: "STORE_REPORT_ESCALATED", title: "Store flagged for compliance review", body: `A reported store (${slug}) was escalated for a compliance/KYC check.`, href: "/admin/sellers" });
+  }
+  redirect(`/admin/reviews?done=${action === "action" ? "escalated" : "sdismissed"}#stores`);
+}
+
 /* ── Business (B2B) accounts ──────────────────────────────── */
 
 export async function decideBusinessAccount(formData: FormData): Promise<void> {

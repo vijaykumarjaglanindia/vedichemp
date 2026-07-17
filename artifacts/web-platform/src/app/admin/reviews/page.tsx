@@ -16,11 +16,16 @@ import { Shell } from "../Shell";
 import { Banner, Card, StatusPill, EmptyState } from "@/components/ui";
 import { pendingQueue, reportedReviews } from "@/lib/reviews";
 import { pendingStoreQueue } from "@/lib/store-reviews";
+import { reportedStores } from "@/lib/store-reports";
 import { recentQuestions } from "@/lib/qa";
-import { moderateReviewAction, hideQuestionAction, moderateStoreReviewAction, resolveReviewReportsAction } from "../actions";
+import { moderateReviewAction, hideQuestionAction, moderateStoreReviewAction, resolveReviewReportsAction, resolveStoreReportsAction } from "../actions";
 
 const REPORT_LABEL: Record<string, string> = {
   SPAM: "Spam", OFFENSIVE: "Offensive", FAKE: "Fake / not a real purchase", MEDICAL_CLAIM: "Medical claim", OTHER: "Other",
+};
+
+const STORE_REPORT_LABEL: Record<string, string> = {
+  OFF_PLATFORM: "Off-platform payment", COUNTERFEIT: "Counterfeit", MISLEADING: "Misleading", PROHIBITED_ITEM: "Prohibited item", OTHER: "Other",
 };
 
 export const metadata: Metadata = { title: "Reviews & Q&A · Admin" };
@@ -35,6 +40,8 @@ const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> 
   qhidden: { sev: "ok", text: "Question hidden — it no longer shows on the product page. The action is logged." },
   removed: { sev: "ok", text: "Review removed after report — it's hidden and dropped from the rating. The reports are stamped resolved (append-only)." },
   dismissed: { sev: "ok", text: "Reports dismissed — the review stays live. The reports are stamped resolved (append-only)." },
+  escalated: { sev: "ok", text: "Store escalated to compliance for a KYC/licence review. The reports are stamped resolved (append-only)." },
+  sdismissed: { sev: "ok", text: "Store reports dismissed — the store stays open. The reports are stamped resolved (append-only)." },
 };
 
 const STORE_MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {
@@ -56,6 +63,7 @@ export default async function AdminReviewsPage({ searchParams }: { searchParams:
   const { done, err, qhidden, sdone, serr } = await searchParams;
   const queue = await pendingQueue();
   const reported = await reportedReviews();
+  const flaggedStores = await reportedStores();
   const storeQueue = await pendingStoreQueue();
   const questions = await recentQuestions(20);
   const msg = (done && MESSAGES[done]) || (qhidden && MESSAGES.qhidden) || (err && MESSAGES[err]) || undefined;
@@ -101,6 +109,45 @@ export default async function AdminReviewsPage({ searchParams }: { searchParams:
                     <input type="hidden" name="reviewId" value={r.id} />
                     <input type="hidden" name="action" value="dismiss" />
                     <button className="vh-btn vh-btn-sm vh-btn-ghost" type="submit">Dismiss reports (keep)</button>
+                  </form>
+                </div>
+              </div>
+            ))}
+          </Card>
+        </div>
+      )}
+
+      {flaggedStores.length > 0 && (
+        <div id="stores" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-3)" }}>
+          <Card
+            title={<span className="vh-row" style={{ gap: 8 }}><EyeOff size={16} strokeWidth={2.2} aria-hidden /> Reported stores</span>}
+            action={<StatusPill tone="danger">{flaggedStores.length} flagged</StatusPill>}
+            pad0
+          >
+            {flaggedStores.map((f) => (
+              <div key={f.storeSlug} style={{ borderTop: "1px solid var(--vh-line)", padding: "14px 16px" }}>
+                <div className="vh-row-between" style={{ gap: 12, flexWrap: "wrap", marginBottom: 8 }}>
+                  <span className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
+                    <strong style={{ color: "var(--vh-ink)" }}>{f.storeName}</strong>
+                    <Link className="small" href={`/store/${f.storeSlug}`} style={{ fontWeight: 700 }}>{f.storeSlug}</Link>
+                  </span>
+                  <span className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
+                    {[...new Set(f.reports.map((x) => x.reason))].map((reason) => (
+                      <StatusPill key={reason} tone={reason === "OFF_PLATFORM" ? "danger" : "warn"}>{STORE_REPORT_LABEL[reason] ?? reason}</StatusPill>
+                    ))}
+                    <span className="small muted">· {f.reports.length} report{f.reports.length === 1 ? "" : "s"}</span>
+                  </span>
+                </div>
+                <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
+                  <form action={resolveStoreReportsAction} style={{ display: "inline-flex" }}>
+                    <input type="hidden" name="slug" value={f.storeSlug} />
+                    <input type="hidden" name="action" value="action" />
+                    <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit">Escalate to compliance</button>
+                  </form>
+                  <form action={resolveStoreReportsAction} style={{ display: "inline-flex" }}>
+                    <input type="hidden" name="slug" value={f.storeSlug} />
+                    <input type="hidden" name="action" value="dismiss" />
+                    <button className="vh-btn vh-btn-sm vh-btn-ghost" type="submit">Dismiss (keep store)</button>
                   </form>
                 </div>
               </div>
