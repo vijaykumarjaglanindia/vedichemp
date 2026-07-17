@@ -284,7 +284,10 @@ export function specsFor(p: SpecSource): ProductSpecs {
     netWeight: p.netQuantity || seed?.netWeight || DASH,
     ingredients: p.ingredients || seed?.ingredients || "See pack label",
     hsn: p.hsn || seed?.hsn || DASH,
-    batch: p.batchCode || seed?.batch || DASH,
+    // The curated batch for a seeded product is its QR-printed/public batch (the
+    // one the /verify page and PDP surface). A seller-CREATED listing has no
+    // curated entry, so it falls through to its own catalog batchCode.
+    batch: seed?.batch || p.batchCode || DASH,
     lab: seed?.lab || (p.labVerified ? "NABL-accredited independent lab" : "Licensed facility"),
     marketer: p.marketer || seed?.marketer,
     countryOfOrigin: p.countryOfOrigin || seed?.countryOfOrigin || "India",
