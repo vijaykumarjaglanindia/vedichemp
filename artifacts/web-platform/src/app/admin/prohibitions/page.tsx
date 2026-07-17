@@ -10,11 +10,13 @@
 
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
-import { Megaphone, FlaskConical, Archive, Stethoscope, CalendarClock, UsersRound } from "lucide-react";
+import { Megaphone, FlaskConical, Archive, Stethoscope, CalendarClock, UsersRound, Check, X } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, Banner } from "@/components/ui";
+import { prohibitionProbes } from "@/lib/prohibition-checks";
 
 export const metadata: Metadata = { title: "Prohibition Registry · Admin" };
+export const dynamic = "force-dynamic";
 
 const I = { size: 18, strokeWidth: 2.2 } as const;
 
@@ -97,7 +99,13 @@ const PROHIBITIONS: Prohibition[] = [
   },
 ];
 
-export default function AdminProhibitionsPage() {
+export default async function AdminProhibitionsPage() {
+  const statuses = await prohibitionProbes();
+  const byCode = Object.fromEntries(statuses.map((s) => [s.code, s]));
+  const allGreen = statuses.every((s) => s.ok);
+  const totalProbes = statuses.reduce((n, s) => n + s.total, 0);
+  const passedProbes = statuses.reduce((n, s) => n + s.passed, 0);
+
   return (
     <Shell active="/admin/prohibitions" breadcrumb={["Admin", "Prohibitions"]} title="Prohibition Registry">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
@@ -108,11 +116,17 @@ export default function AdminProhibitionsPage() {
           sign-off, with a new test. What it cannot do is change quietly.
         </Banner>
 
-        <Card title="prohibition_status" action={<StatusPill tone="ok">live view</StatusPill>}>
+        <Card
+          title="prohibition_status"
+          action={<StatusPill tone={allGreen ? "ok" : "danger"}>{allGreen ? "all enforced" : "check failed"}</StatusPill>}
+        >
           <p className="small muted" style={{ marginTop: 0 }}>
-            This table mirrors the <code>prohibition_status</code> database view — a read-only rollup joining each
-            code to its constraint definitions, current pass/fail state from the last CI run, and the CODEOWNERS
-            file guarding its test. There is no write path from this page into that view.
+            Each status below is <strong>computed at request time</strong> by running the actual guards in-process —
+            not a stored pill. The A1 and A6 rows call the very functions{" "}
+            <code>tests/prohibitions.test.ts</code> asserts (<code>assertAdvertisable</code>,{" "}
+            <code>assertCheckerPresent</code>); the rest exercise the runtime enforcement primitives. If a guard is
+            deleted or weakened, its probe fails and the row turns red here. Every probe is read-only — there is no
+            write path from this page. <span className="mono">{passedProbes}/{totalProbes}</span> probes passing.
           </p>
           <div style={{ overflowX: "auto" }}>
             <table className="vh-table">
@@ -121,12 +135,14 @@ export default function AdminProhibitionsPage() {
                   <th>Code</th>
                   <th>Rule</th>
                   <th>Enforcement</th>
-                  <th>Test</th>
+                  <th>Live probes</th>
                   <th>Status</th>
                 </tr>
               </thead>
               <tbody>
-                {PROHIBITIONS.map((p) => (
+                {PROHIBITIONS.map((p) => {
+                  const st = byCode[p.code];
+                  return (
                   <tr key={p.code}>
                     <td style={{ verticalAlign: "top" }}>
                       <span className="vh-row" style={{ gap: 8, alignItems: "center" }}>
@@ -134,7 +150,7 @@ export default function AdminProhibitionsPage() {
                         <span className="mono" style={{ fontWeight: 700 }}>{p.code}</span>
                       </span>
                     </td>
-                    <td style={{ maxWidth: 260, verticalAlign: "top" }}>{p.rule}</td>
+                    <td style={{ maxWidth: 240, verticalAlign: "top" }}>{p.rule}</td>
                     <td style={{ verticalAlign: "top" }}>
                       <ul style={{ margin: 0, paddingLeft: 16, display: "grid", gap: 4 }}>
                         {p.enforcement.map((e, i) => (
@@ -144,12 +160,29 @@ export default function AdminProhibitionsPage() {
                         ))}
                       </ul>
                     </td>
-                    <td className="small mono" style={{ verticalAlign: "top", whiteSpace: "nowrap" }}>{p.testRef}</td>
+                    <td style={{ verticalAlign: "top", minWidth: 260 }}>
+                      {st ? (
+                        <ul style={{ margin: 0, padding: 0, listStyle: "none", display: "grid", gap: 4 }}>
+                          {st.probes.map((pr, i) => (
+                            <li key={i} className="small vh-row" style={{ gap: 6, alignItems: "flex-start", color: pr.ok ? "var(--vh-ok)" : "var(--vh-danger)" }}>
+                              {pr.ok
+                                ? <Check size={13} strokeWidth={3} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />
+                                : <X size={13} strokeWidth={3} aria-hidden style={{ flexShrink: 0, marginTop: 2 }} />}
+                              <span style={{ color: "var(--vh-text)" }}>{pr.name}</span>
+                            </li>
+                          ))}
+                        </ul>
+                      ) : <span className="small muted">—</span>}
+                    </td>
                     <td style={{ verticalAlign: "top" }}>
-                      <StatusPill tone="ok">ENFORCED</StatusPill>
+                      {st?.ok
+                        ? <StatusPill tone="ok">ENFORCED</StatusPill>
+                        : <StatusPill tone="danger">CHECK FAILED</StatusPill>}
+                      {st && <div className="small tabular muted" style={{ marginTop: 4 }}>{st.passed}/{st.total} probes</div>}
                     </td>
                   </tr>
-                ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>
