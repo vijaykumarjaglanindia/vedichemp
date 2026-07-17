@@ -85,7 +85,7 @@ export const SITE_FIELDS: SiteField[] = [
   },
   {
     key: "footerCompany", group: "Menus", label: "Footer — Company column", kind: "rich", max: 500,
-    def: "- Help Centre | /help\n- About Vedic Hemp | /about\n- Wellness journal | /blog\n- My account | /account\n- Featured stores | /store/vedic-botanicals",
+    def: "- Help Centre | /help\n- About Vedic Hemp | /about\n- Wellness journal | /blog\n- My account | /account\n- Verified stores | /stores",
   },
   {
     key: "footerPolicies", group: "Menus", label: "Footer — Policies column", kind: "rich", max: 500,

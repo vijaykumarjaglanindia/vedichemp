@@ -17,7 +17,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = "https://vedichemp.in";
   const now = new Date();
   const statics = [
-    "", "/catalogue", "/trust", "/about", "/sell", "/blog", "/verify", "/gifts", "/compare", "/help",
+    "", "/catalogue", "/stores", "/trust", "/about", "/sell", "/blog", "/verify", "/gifts", "/compare", "/help",
     "/legal/terms", "/legal/privacy", "/legal/returns", "/legal/shipping",
   ].map((p) => ({
     url: `${base}${p}`,
