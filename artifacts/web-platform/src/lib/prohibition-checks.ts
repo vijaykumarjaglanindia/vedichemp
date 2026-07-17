@@ -7,21 +7,28 @@
  * request time that EXERCISE the real guards. If a guard is deleted or
  * weakened, its probe fails and the row turns red on the page — loudly.
  *
- * Where possible a probe calls the actual production guard
- * (src/lib/prohibitions.ts: assertAdvertisable, assertCheckerPresent) so this is
- * the same code the CI test in tests/prohibitions.test.ts asserts. The rest
- * exercise the demo's runtime enforcement primitives (the CoA class rule, the
- * §6 redactor, the 30-day-notice math, the append-only audit shape). Every
- * probe is pure or read-only — none mutates a store or touches the database.
+ * Every probe calls a REAL guard, never a private copy of its logic: the A1/A6
+ * probes call the production guards assertAdvertisable / assertCheckerPresent;
+ * A2 calls catalog's single-source-of-truth coaBlocksPublish() (the same
+ * function approveListing/restoreListing use); A4 calls the prescriptions role
+ * and reason gates; A3 inspects the audit module's shape; A5 the 30-day-notice
+ * math. Weaken any of these and the matching probe — sharing the guard, not
+ * duplicating it — goes red. Every probe is pure or read-only: none mutates a
+ * store or touches the database.
+ *
+ * (Note on CI: A6's assertCheckerPresent is also exercised transitively by
+ * tests/prohibitions.test.ts via the settlement/refund tests. A1's
+ * assertAdvertisable is one of A1's three layers; the CODEOWNERS-protected
+ * suite backstops A1 through the DB CHECK and the auction, not this function.)
  *
  * A "throws expected" probe is green ONLY if the guard throws with its expected
  * error CODE — a missing guard throws a ReferenceError instead, which does not
  * match, so a deleted guard reads red rather than falsely green.
  */
 
-import { assertAdvertisable, assertCheckerPresent, SENSITIVE_REASONS } from "@/lib/prohibitions";
+import { assertAdvertisable, assertCheckerPresent, SENSITIVE_REASONS, SENSITIVE_ROLES } from "@/lib/prohibitions";
 import type { ComplianceClass } from "@prisma/client";
-import { REGULATED_CLASSES, CREATABLE_CLASSES } from "@/lib/catalog";
+import { REGULATED_CLASSES, CREATABLE_CLASSES, coaBlocksPublish, type CoaState } from "@/lib/catalog";
 import { screenCampaign } from "@/lib/marketing";
 import { hasHealthData, redactHealthData, REDACTION_MARK } from "@/lib/s6";
 import { minEffectiveFrom } from "@/lib/adminstate";
@@ -57,23 +64,22 @@ async function a1(): Promise<Probe[]> {
     { name: "assertAdvertisable(MED_CANNABIS) is rejected", ok: await expectCode(() => assertAdvertisable(cls("MED_CANNABIS")), "NOT_ADVERTISABLE") },
     { name: "assertAdvertisable(HEMP_FOOD) is allowed", ok: await expectOk(() => assertAdvertisable(cls("HEMP_FOOD"))) },
     { name: "MED_CANNABIS is absent from the creatable/advertisable classes", ok: !CREATABLE_CLASSES.includes(cls("MED_CANNABIS")) },
-    { name: "a promotional send claiming to cure/treat is BLOCKED", ok: screenCampaign("Festival sale", "This balm cures anxiety fast.").verdict === "BLOCKED" },
+    // Claims-only string (no clinical noun) so this probes the CLAIMS guard
+    // specifically — not the §6 health guard — via reason === "claims".
+    { name: "a promotional send making a cure/treat claim is BLOCKED on claims", ok: ((r) => r.verdict === "BLOCKED" && r.reason === "claims")(screenCampaign("Festival sale", "This balm cures common ailments overnight.")) },
   ];
 }
 
-// Mirrors catalog's publish rule exactly (regulated class ⇒ needs APPROVED CoA),
-// driven by the SAME REGULATED_CLASSES constant the gate uses — change it and the
-// probe changes with it.
-function coaGateBlocks(p: { cls: string; coaState: string }): boolean {
-  return REGULATED_CLASSES.includes(cls(p.cls)) && p.coaState !== "APPROVED";
-}
+// Probes call catalog's coaBlocksPublish — the SAME function approveListing and
+// restoreListing use — so weakening the demo publish gate turns this row red.
+const coa = (c: string, s: string) => coaBlocksPublish({ cls: cls(c), coaState: s as CoaState });
 
 async function a2(): Promise<Probe[]> {
   return [
     { name: "CBD_WELLNESS and MED_CANNABIS are regulated classes", ok: REGULATED_CLASSES.includes(cls("CBD_WELLNESS")) && REGULATED_CLASSES.includes(cls("MED_CANNABIS")) },
-    { name: "a regulated batch without an APPROVED CoA is not sellable", ok: coaGateBlocks({ cls: "CBD_WELLNESS", coaState: "PENDING_REVIEW" }) },
-    { name: "the same batch with an APPROVED CoA is sellable", ok: !coaGateBlocks({ cls: "CBD_WELLNESS", coaState: "APPROVED" }) },
-    { name: "a non-regulated class is never gated on a CoA", ok: !coaGateBlocks({ cls: "HEMP_FOOD", coaState: "NONE" }) },
+    { name: "coaBlocksPublish: a regulated batch without an APPROVED CoA is not sellable", ok: coa("CBD_WELLNESS", "PENDING_REVIEW") },
+    { name: "coaBlocksPublish: the same batch with an APPROVED CoA is sellable", ok: !coa("CBD_WELLNESS", "APPROVED") },
+    { name: "coaBlocksPublish: a non-regulated class is never gated on a CoA", ok: !coa("HEMP_FOOD", "NONE") },
   ];
 }
 
@@ -87,13 +93,18 @@ async function a3(): Promise<Probe[]> {
 }
 
 async function a4(): Promise<Probe[]> {
-  const clinical = "Reminder about your anxiety diagnosis";
-  const r = redactHealthData(clinical);
+  const clinical = "Reminder about your scheduled review";
+  const r = redactHealthData("Reminder about your anxiety diagnosis");
   return [
-    { name: "the §6 guard detects clinical vocabulary", ok: hasHealthData(clinical) },
-    { name: "redaction removes it and leaves the neutral marker", ok: !hasHealthData(r.text) && r.text.includes(REDACTION_MARK) },
-    { name: "ordinary process copy is not a false positive", ok: !hasHealthData("Your order VH123 has shipped") },
-    { name: "sensitive access uses a controlled reason list", ok: Array.isArray(SENSITIVE_REASONS) && SENSITIVE_REASONS.length > 0 },
+    // The real A4 gate data: only pharmacist/compliance roles read health data,
+    // and only with a reason from the controlled list (the same SENSITIVE_ROLES
+    // / SENSITIVE_REASONS the production guard membership-checks). Widen the role
+    // list or drop a reason and the corresponding probe flips red.
+    { name: "only the pharmacist/compliance roles pass the sensitive-role gate", ok: (SENSITIVE_ROLES as readonly string[]).includes("ADMIN_COMPLIANCE") && !(SENSITIVE_ROLES as readonly string[]).includes("ADMIN_MARKETING") },
+    { name: "only a controlled reason code is accepted", ok: (SENSITIVE_REASONS as readonly string[]).includes("PRESCRIPTION_VERIFICATION") && !(SENSITIVE_REASONS as readonly string[]).includes("JUST_CURIOUS") },
+    // §6 backstop: health data never rides out in a message/log line.
+    { name: "the §6 guard detects and redacts clinical vocabulary", ok: !hasHealthData(r.text) && r.text.includes(REDACTION_MARK) },
+    { name: "ordinary process copy is not a false positive", ok: !hasHealthData(clinical) && !hasHealthData("Your order VH123 has shipped") },
   ];
 }
 

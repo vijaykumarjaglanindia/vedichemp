@@ -122,11 +122,13 @@ export default async function AdminProhibitionsPage() {
         >
           <p className="small muted" style={{ marginTop: 0 }}>
             Each status below is <strong>computed at request time</strong> by running the actual guards in-process —
-            not a stored pill. The A1 and A6 rows call the very functions{" "}
-            <code>tests/prohibitions.test.ts</code> asserts (<code>assertAdvertisable</code>,{" "}
-            <code>assertCheckerPresent</code>); the rest exercise the runtime enforcement primitives. If a guard is
-            deleted or weakened, its probe fails and the row turns red here. Every probe is read-only — there is no
-            write path from this page. <span className="mono">{passedProbes}/{totalProbes}</span> probes passing.
+            not a stored pill. Every probe calls a real guard, never a private copy: the A1/A6 rows call the
+            production guards <code>assertAdvertisable</code> / <code>assertCheckerPresent</code>; A2 calls catalog&rsquo;s
+            single-source-of-truth <code>coaBlocksPublish</code>; A4 the prescriptions role/reason gates. If a guard is
+            deleted or weakened, its shared probe fails and the row turns red here. (The deeper backstop remains the
+            DB constraints and the CODEOWNERS-protected <code>tests/prohibitions.test.ts</code>.) Every probe is
+            read-only — there is no write path from this page.{" "}
+            <span className="mono">{passedProbes}/{totalProbes}</span> probes passing.
           </p>
           <div style={{ overflowX: "auto" }}>
             <table className="vh-table">

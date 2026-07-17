@@ -88,7 +88,7 @@ export async function assertBatchSellable(batchId: string): Promise<void> {
 
 /* ─────────────────────────── A4 ─────────────────────────── */
 
-const SENSITIVE_ROLES: AdminRole[] = [AdminRole.ADMIN_PHARMACIST, AdminRole.ADMIN_COMPLIANCE];
+export const SENSITIVE_ROLES: AdminRole[] = [AdminRole.ADMIN_PHARMACIST, AdminRole.ADMIN_COMPLIANCE];
 
 export const SENSITIVE_REASONS = [
   "PRESCRIPTION_VERIFICATION",

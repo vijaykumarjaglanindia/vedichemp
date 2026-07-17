@@ -31,6 +31,16 @@ export const REGULATED_CLASSES: ComplianceClass[] = ["CBD_WELLNESS", "MED_CANNAB
 /** Classes a seller can create listings in. MED_CANNABIS is absent on purpose. */
 export const CREATABLE_CLASSES: ComplianceClass[] = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
 
+/**
+ * A2 publish gate (pure, single source of truth): a batch of a regulated class
+ * is not sellable without an APPROVED CoA. `approveListing`, `restoreListing`
+ * AND the live Prohibition Registry probe all call THIS one function — so
+ * weakening the rule turns the A2 registry row red rather than lying green.
+ */
+export function coaBlocksPublish(p: { cls: ComplianceClass; coaState: CoaState }): boolean {
+  return REGULATED_CLASSES.includes(p.cls) && p.coaState !== "APPROVED";
+}
+
 export interface CatalogProduct extends SampleProduct {
   desc: string;
   hsn: string;
@@ -474,8 +484,7 @@ export async function approveListing(id: string): Promise<TransitionResult> {
   const p = await findProduct(id);
   if (!p) return { ok: false, reason: "missing" };
   if (p.status !== "UNDER_REVIEW") return { ok: false, reason: "state" };
-  if (REGULATED_CLASSES.includes(p.cls) && p.coaState !== "APPROVED")
-    return { ok: false, reason: "coa" };
+  if (coaBlocksPublish(p)) return { ok: false, reason: "coa" };
   apply(id, { status: "LIVE", state: "LIVE" });
   return { ok: true };
 }
@@ -512,8 +521,7 @@ export async function restoreListing(id: string): Promise<TransitionResult> {
   const p = await findProduct(id);
   if (!p) return { ok: false, reason: "missing" };
   if (p.status !== "SUSPENDED") return { ok: false, reason: "state" };
-  if (REGULATED_CLASSES.includes(p.cls) && p.coaState !== "APPROVED")
-    return { ok: false, reason: "coa" };
+  if (coaBlocksPublish(p)) return { ok: false, reason: "coa" };
   apply(id, { status: "LIVE", state: "LIVE", reviewNote: undefined });
   return { ok: true };
 }
