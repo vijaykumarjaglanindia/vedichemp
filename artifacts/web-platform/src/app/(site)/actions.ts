@@ -158,6 +158,20 @@ export async function markReviewHelpful(formData: FormData): Promise<void> {
   redirect(`/products/${slug}#reviews`);
 }
 
+export async function reportReview(formData: FormData): Promise<void> {
+  const reviewId = String(formData.get("reviewId") ?? "").slice(0, 20);
+  const slug = String(formData.get("slug") ?? "").slice(0, 80);
+  const reason = String(formData.get("reason") ?? "");
+  const session = await getSession();
+  // Reporting requires a signed-in buyer (one open report per person, enforced
+  // in the store) so a flag is attributable and can't be used to brigade.
+  const reporter = session?.email;
+  if (!reporter) redirect(`/signin?next=/products/${slug}`);
+  const { reportReview: storeReport } = await import("@/lib/reviews");
+  const res = await storeReport(reviewId, reporter!, reason);
+  redirect(`/products/${slug}?rr=${res.ok ? "ok" : res.reason}#reviews`);
+}
+
 export async function askQuestion(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");
   const text = String(formData.get("text") ?? "").trim();

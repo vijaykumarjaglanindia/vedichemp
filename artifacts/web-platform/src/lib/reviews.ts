@@ -34,8 +34,26 @@ export interface Aggregate {
   histogram: Record<1 | 2 | 3 | 4 | 5, number>;
 }
 
+/** Reasons a buyer can flag a published review. */
+export const REPORT_REASONS = ["SPAM", "OFFENSIVE", "FAKE", "MEDICAL_CLAIM", "OTHER"] as const;
+export type ReportReason = (typeof REPORT_REASONS)[number];
+
+/** An append-only abuse report against a published review (A3 spirit: reports
+ *  and their resolutions are new rows, never edits of the review itself). */
+export interface ReviewReport {
+  id: string;
+  reviewId: string;
+  reporter: string; // buyer email
+  reason: ReportReason;
+  at: string;
+  resolution?: "REMOVED" | "DISMISSED";
+  resolvedBy?: string;
+  resolvedAt?: string;
+}
+
 interface ReviewStore {
   items: Review[];
+  reports: ReviewReport[]; // append-only
   seq: number;
 }
 
@@ -58,7 +76,7 @@ function seed(): Review[] {
 }
 
 function store(): ReviewStore {
-  globalThis.__vhReviews ??= { items: seed(), seq: 100 };
+  globalThis.__vhReviews ??= { items: seed(), reports: [], seq: 100 };
   return globalThis.__vhReviews;
 }
 
@@ -158,4 +176,78 @@ export async function markHelpful(id: string): Promise<boolean> {
   if (!r || r.status !== "APPROVED") return false;
   r.helpful += 1;
   return true;
+}
+
+export function isReportReason(x: string): x is ReportReason {
+  return (REPORT_REASONS as readonly string[]).includes(x);
+}
+
+export type ReportResult =
+  | { ok: true; report: ReviewReport }
+  | { ok: false; reason: "missing" | "state" | "reason" | "duplicate" };
+
+/**
+ * Flag a PUBLISHED review as abusive. Appends an OPEN report (append-only) and
+ * routes it to the admin queue — it does NOT hide the review on its own (only a
+ * moderator decides). One open report per (reporter, review) — a repeat flag is
+ * a no-op "duplicate", never a way to brigade a review down.
+ */
+export async function reportReview(reviewId: string, reporter: string, reason: string): Promise<ReportResult> {
+  const s = store();
+  const r = findReview(reviewId);
+  if (!r) return { ok: false, reason: "missing" };
+  if (r.status !== "APPROVED") return { ok: false, reason: "state" };
+  if (!isReportReason(reason)) return { ok: false, reason: "reason" };
+  const already = s.reports.some(
+    (x) => x.reviewId === reviewId && x.reporter.toLowerCase() === reporter.toLowerCase() && !x.resolution,
+  );
+  if (already) return { ok: false, reason: "duplicate" };
+  const report: ReviewReport = { id: `rr-${s.seq++}`, reviewId, reporter, reason, at: now() };
+  s.reports.unshift(report);
+  return { ok: true, report };
+}
+
+/** Reviews with at least one OPEN (unresolved) report — the admin queue. */
+export async function reportedReviews(): Promise<{ review: Review; reports: ReviewReport[] }[]> {
+  const s = store();
+  const openByReview = new Map<string, ReviewReport[]>();
+  for (const rep of s.reports) {
+    if (rep.resolution) continue;
+    (openByReview.get(rep.reviewId) ?? openByReview.set(rep.reviewId, []).get(rep.reviewId)!).push(rep);
+  }
+  const out: { review: Review; reports: ReviewReport[] }[] = [];
+  for (const [reviewId, reports] of openByReview) {
+    const review = findReview(reviewId);
+    if (review) out.push({ review, reports });
+  }
+  return out;
+}
+
+/** All reports (append-only log), newest first — admin transparency surface. */
+export async function reviewReports(reviewId?: string): Promise<ReviewReport[]> {
+  return store().reports.filter((r) => !reviewId || r.reviewId === reviewId);
+}
+
+/**
+ * Resolve every open report on a review. "remove" rejects the review (hidden
+ * from the public and dropped from the rating); "dismiss" keeps it. Either way
+ * the open reports are stamped with the resolution — append-only, no deletes.
+ */
+export async function resolveReports(reviewId: string, action: "remove" | "dismiss", by: string): Promise<ReviewResult> {
+  const s = store();
+  const r = findReview(reviewId);
+  if (!r) return { ok: false, reason: "missing" };
+  const open = s.reports.filter((x) => x.reviewId === reviewId && !x.resolution);
+  if (open.length === 0) return { ok: false, reason: "state" };
+  const resolution = action === "remove" ? "REMOVED" : "DISMISSED";
+  for (const rep of open) {
+    rep.resolution = resolution;
+    rep.resolvedBy = by;
+    rep.resolvedAt = now();
+  }
+  if (action === "remove") {
+    r.status = "REJECTED";
+    r.moderationNote = "Removed after an abuse report";
+  }
+  return { ok: true, review: r };
 }

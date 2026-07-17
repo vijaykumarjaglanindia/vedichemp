@@ -323,6 +323,23 @@ export async function moderateReviewAction(formData: FormData): Promise<void> {
   redirect(`/admin/reviews?done=${decision}`);
 }
 
+/** Resolve every open abuse report on a review: remove it (reject + drop from
+ *  the rating) or dismiss the reports (keep it). Append-only either way. */
+export async function resolveReviewReportsAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("reviewId") ?? "");
+  const action = String(formData.get("action") ?? ""); // remove | dismiss
+  const who = await actor();
+  if (!["remove", "dismiss"].includes(action)) redirect("/admin/reviews");
+  const { resolveReports } = await import("@/lib/reviews");
+  const result = await resolveReports(id, action as "remove" | "dismiss", who);
+  if (!result.ok) {
+    await writeAudit({ actor: who, action: "REVIEW_REPORT_RESOLVE", target: id, outcome: "DENIED", note: result.reason });
+    redirect(`/admin/reviews?err=${result.reason}#reported`);
+  }
+  await writeAudit({ actor: who, action: action === "remove" ? "REVIEW_REPORT_REMOVE" : "REVIEW_REPORT_DISMISS", target: id, outcome: "OK", note: action === "remove" ? "review removed after report" : "reports dismissed, review kept" });
+  redirect(`/admin/reviews?done=${action === "remove" ? "removed" : "dismissed"}#reported`);
+}
+
 /* ── Business (B2B) accounts ──────────────────────────────── */
 
 export async function decideBusinessAccount(formData: FormData): Promise<void> {

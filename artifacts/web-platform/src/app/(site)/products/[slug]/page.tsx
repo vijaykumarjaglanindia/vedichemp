@@ -40,7 +40,7 @@ import { breadcrumbJsonLd, productJsonLd } from "@/lib/seo";
 import { aggregate, approvedFor } from "@/lib/reviews";
 import { questionsFor } from "@/lib/qa";
 import { addBundleToCart, addToCart } from "../../cart/actions";
-import { askQuestion, markReviewHelpful, reportListing, submitReview, toggleWishlist } from "../../actions";
+import { askQuestion, markReviewHelpful, reportListing, reportReview, submitReview, toggleWishlist } from "../../actions";
 import { REPORT_REASONS } from "@/lib/reports";
 import { readMyQuestions, readMyReviews, readOrderHistory } from "@/lib/engage";
 import {
@@ -111,10 +111,10 @@ export default async function ProductDetailPage({
   searchParams,
 }: {
   params: Promise<Params>;
-  searchParams: Promise<{ pin?: string; review?: string; q?: string; variant?: string; rep?: string }>;
+  searchParams: Promise<{ pin?: string; review?: string; q?: string; variant?: string; rep?: string; rr?: string }>;
 }) {
   const { slug } = await params;
-  const { pin, review: reviewErr, q: qErr, variant: variantParam, rep } = await searchParams;
+  const { pin, review: reviewErr, q: qErr, variant: variantParam, rep, rr } = await searchParams;
   // The LIVE store only — a draft, suspended or archived listing gets the
   // identical empty state as an unknown slug.
   const product = await findLiveBySlug(slug);
@@ -327,6 +327,17 @@ export default async function ProductDetailPage({
               title="Reviews"
               action={<Rating value={ratingValue} count={reviewCount} />}
             >
+              {rr && (
+                <div style={{ marginBottom: "var(--sp-3)" }}>
+                  <Banner severity={rr === "ok" ? "ok" : "info"}>
+                    {rr === "ok"
+                      ? "Thanks — a moderator will review this report. The review stays up unless it's removed."
+                      : rr === "duplicate"
+                        ? "You've already reported this review — it's with a moderator."
+                        : "That report couldn't be filed."}
+                  </Banner>
+                </div>
+              )}
               {/* Rating summary + histogram, computed from approved reviews */}
               {agg.count > 0 && (
                 <div className="vh-row" style={{ gap: "var(--sp-4)", alignItems: "center", flexWrap: "wrap", marginBottom: "var(--sp-3)", paddingBottom: "var(--sp-3)", borderBottom: "1px solid var(--vh-line)" }}>
@@ -371,11 +382,28 @@ export default async function ProductDetailPage({
                           <p className="small muted" style={{ margin: "2px 0 0" }}>{r.sellerReply}</p>
                         </div>
                       )}
-                      <form action={markReviewHelpful} style={{ marginTop: 8 }}>
-                        <input type="hidden" name="reviewId" value={r.id} />
-                        <input type="hidden" name="slug" value={product.slug} />
-                        <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm">👍 Helpful{r.helpful > 0 ? ` (${r.helpful})` : ""}</button>
-                      </form>
+                      <div className="vh-row" style={{ gap: 8, marginTop: 8, flexWrap: "wrap", alignItems: "center" }}>
+                        <form action={markReviewHelpful}>
+                          <input type="hidden" name="reviewId" value={r.id} />
+                          <input type="hidden" name="slug" value={product.slug} />
+                          <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm">👍 Helpful{r.helpful > 0 ? ` (${r.helpful})` : ""}</button>
+                        </form>
+                        <details className="vh-report">
+                          <summary className="small muted" style={{ cursor: "pointer", listStyle: "none" }}>Report</summary>
+                          <form action={reportReview} className="vh-row" style={{ gap: 6, marginTop: 6, flexWrap: "wrap", alignItems: "center" }}>
+                            <input type="hidden" name="reviewId" value={r.id} />
+                            <input type="hidden" name="slug" value={product.slug} />
+                            <select name="reason" className="vh-select vh-select-sm" defaultValue="SPAM" aria-label="Reason for reporting this review">
+                              <option value="SPAM">Spam</option>
+                              <option value="OFFENSIVE">Offensive</option>
+                              <option value="FAKE">Fake / not a real purchase</option>
+                              <option value="MEDICAL_CLAIM">Makes a medical claim</option>
+                              <option value="OTHER">Other</option>
+                            </select>
+                            <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm">Submit report</button>
+                          </form>
+                        </details>
+                      </div>
                     </li>
                   ))}
                 </ul>
