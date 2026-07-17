@@ -16,7 +16,7 @@
 import { redirect } from "next/navigation";
 import { getSession } from "@/lib/auth-lite";
 import { writeAudit } from "@/lib/audit";
-import { approveCampaign, createCampaign, findCampaign, sendCampaign } from "@/lib/marketing";
+import { approveCampaign, createCampaign, findCampaign, sendCampaign, redactHealthData } from "@/lib/marketing";
 
 async function actor(): Promise<string> {
   return (await getSession())?.email ?? "unknown-admin";
@@ -33,6 +33,11 @@ export async function createCampaignAction(formData: FormData): Promise<void> {
   };
   const result = await createCampaign(who, input);
   if (!result.ok) {
+    // A health-data audience is a §6 catch, not a mere typo — log the DENIED
+    // attempt (machine reason only, never the label itself).
+    if (result.reason === "audience") {
+      await writeAudit({ actor: who, action: "CAMPAIGN_CREATE", target: "(rejected)", outcome: "DENIED", note: "rejected: audience carries health data" });
+    }
     redirect(`/admin/marketing?mk=${result.reason}#new`);
   }
   const c = result.campaign;
@@ -80,6 +85,8 @@ export async function sendCampaignAction(formData: FormData): Promise<void> {
     await writeAudit({ actor: who, action: "CAMPAIGN_SEND", target: id, outcome: "DENIED", note: `refused: ${result.reason} (was ${before?.status ?? "?"})` });
     redirect(`/admin/marketing?mk=send_${result.reason}#campaigns`);
   }
-  await writeAudit({ actor: who, action: "CAMPAIGN_SEND", target: id, outcome: "OK", note: `${result.campaign.channel} · ${result.campaign.audience}` });
+  // Audience is already guaranteed health-data-free at create; redact anyway as
+  // a backstop — nothing health-descriptive ever lands in the immutable log.
+  await writeAudit({ actor: who, action: "CAMPAIGN_SEND", target: id, outcome: "OK", note: `${result.campaign.channel} · ${redactHealthData(result.campaign.audience).text}` });
   redirect(`/admin/marketing?mk=sent#campaigns`);
 }

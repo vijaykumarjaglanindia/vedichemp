@@ -105,6 +105,17 @@ describe("send gate — only APPROVED goes out", () => {
     expect(findCampaign(id)!.status).toBe("BLOCKED");
   });
 
+  it("REJECTS an audience built from health data (§6 — never lands in an audit line)", async () => {
+    for (const aud of ["Chronic pain patients", "Diabetes segment", "People with anxiety"]) {
+      const r = await createCampaign("ops@vh.in", { channel: "Email", name: "Seasonal", subject: "Offers", body: "Fresh hemp foods restocked.", audience: aud });
+      expect(r.ok).toBe(false);
+      expect(r.ok === false && r.reason).toBe("audience");
+    }
+    // A behaviour/product-interest segment is fine.
+    const ok = await createCampaign("ops@vh.in", { channel: "Email", name: "Seasonal", subject: "Offers", body: "Fresh hemp foods restocked.", audience: "Cart abandoners (12k)" });
+    expect(ok.ok).toBe(true);
+  });
+
   it("createCampaign validates channel and field lengths", async () => {
     expect((await createCampaign("a@b.in", { channel: "Telegram", name: "x", subject: "s", body: "body body", audience: "" })).ok).toBe(false);
     expect((await createCampaign("a@b.in", { channel: "Email", name: "ab", subject: "sub", body: "body body", audience: "" })).ok).toBe(false); // name too short

@@ -29,6 +29,10 @@
 import { violatesClaimsCopy } from "@/lib/claims";
 import { hasHealthData } from "@/lib/s6";
 
+// Re-exported so callers building an audit line can scrub the audience label as
+// a backstop, even though createCampaign already refuses a health-data segment.
+export { redactHealthData } from "@/lib/s6";
+
 /* ── Vocabulary ───────────────────────────────────────────── */
 
 export type Channel = "Email" | "SMS" | "WhatsApp" | "Push";
@@ -127,7 +131,7 @@ export interface CampaignInput {
 
 export type CreateResult =
   | { ok: true; campaign: Campaign }
-  | { ok: false; reason: "channel" | "name" | "subject" | "body" };
+  | { ok: false; reason: "channel" | "name" | "subject" | "body" | "audience" };
 
 /**
  * Create + screen a campaign in one step. The resulting status is whatever the
@@ -146,6 +150,10 @@ export async function createCampaign(actor: string, input: CampaignInput): Promi
   if (name.length < 4 || name.length > 80) return { ok: false, reason: "name" };
   if (subject.length < 3 || subject.length > 120) return { ok: false, reason: "subject" };
   if (body.length < 8 || body.length > 600) return { ok: false, reason: "body" };
+  // §6 + the platform's own promise ("no audience is ever built from health
+  // data"): a segment named for a condition is refused outright. Otherwise the
+  // label would ride into an audit line — an append-only (A3) log — on send.
+  if (hasHealthData(audience) || violatesClaimsCopy(audience)) return { ok: false, reason: "audience" };
 
   const screen = screenCampaign(subject, body);
   const campaign: Campaign = {

@@ -77,6 +77,7 @@ const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> 
   name: { sev: "danger", text: "Campaign name should be 4–80 characters." },
   subject: { sev: "danger", text: "Subject should be 3–120 characters." },
   body: { sev: "danger", text: "Message body should be 8–600 characters." },
+  audience: { sev: "danger", text: "Rejected: an audience is never built from health data. Name the segment by behaviour or product interest, never by a condition." },
 };
 
 export default async function AdminMarketingPage({ searchParams }: { searchParams: Promise<{ mk?: string; r?: string }> }) {
