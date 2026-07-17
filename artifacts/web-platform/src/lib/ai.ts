@@ -89,6 +89,38 @@ export async function aiComplete(prompt: string, fallback: () => string): Promis
   return { text, provider };
 }
 
+/**
+ * Deterministic listing-description drafter — the no-key fallback for the
+ * seller assistant's description writer. Composition-and-traditional-use only,
+ * claims-free BY CONSTRUCTION: it never emits a cure/treat/prevent/diagnose
+ * verb, so a listing drafted from it passes the same copy-check every human
+ * draft must pass (Drugs & Magic Remedies Act). `variant` gives "Regenerate"
+ * a genuinely different draft without any randomness (pure/replayable).
+ */
+export function draftListingDescription(
+  p: { title: string; cls?: string; brand?: string },
+  variant = 0,
+): string {
+  const t = p.title;
+  const form = /balm|roll|gel|cream|salve/i.test(t) ? "topical"
+    : /oil|tincture|drops|serum/i.test(t) ? "preparation"
+    : /protein|hearts|seed|food|powder|flour|butter/i.test(t) ? "food"
+    : "product";
+  const openers = [
+    `${t} is a composition-first ${form}`,
+    `Meet ${t} — a ${form} made for everyday wellness routines`,
+  ];
+  const bodies = [
+    "made from carefully sourced ingredients and lab-tested every batch, with the batch report linked on this listing.",
+    "blended to a consistent, transparent formula; every batch carries an accessible lab report on the listing.",
+  ];
+  const closer = p.cls === "CBD_WELLNESS"
+    ? "AYUSH-aligned wellness copy, for external or traditional use as directed. No disease or medical claims are made."
+    : "Described by its composition and traditional use only. No disease or medical claims are made.";
+  const i = ((variant % 2) + 2) % 2;
+  return `${openers[i]} ${bodies[i]} ${closer}`;
+}
+
 /** Deterministic review summarizer — the no-key fallback for PDP summaries. */
 export function summarizeReviews(input: { title: string; rating: number; reviewCount: number; labVerified: boolean }): string {
   const tone = input.rating >= 4.4 ? "consistently positive" : input.rating >= 4 ? "positive with minor gripes" : "mixed";
