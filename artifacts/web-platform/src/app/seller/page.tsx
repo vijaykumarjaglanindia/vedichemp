@@ -17,16 +17,16 @@ import {
 import { Shell } from "./Shell";
 import { Card, Stat, ProgressRing, DataTable, StatusPill, MoneyText, type Column } from "@/components/ui";
 import { Columns, BarList } from "@/components/ui/charts";
-import type { SampleOrder } from "@/lib/sample";
-import { readSellerOrderOverrides } from "@/lib/engage";
-import { sellerOrderAction } from "./actions";
+import { getSession } from "@/lib/auth-lite";
+import { fulfilOrder } from "./actions";
+import { sellerHome, type Blocker } from "@/lib/seller-home";
+import type { Order } from "@/lib/orders";
 import {
-  SELLER, ACCOUNT_HEALTH, TODAY_KPIS, SELLER_ORDERS, WAREHOUSE_STOCK, LOW_STOCK_THRESHOLD,
-  SELLER_SETTLEMENTS, LICENCES, BLOCKED_BATCHES, PENDING_REVIEW_BATCHES, daysUntil,
-  ADS_SUMMARY, AD_CAMPAIGNS, GMV_7D,
+  SELLER, ACCOUNT_HEALTH, LICENCES, daysUntil, ADS_SUMMARY, AD_CAMPAIGNS,
 } from "./_lib/data";
 
 export const metadata: Metadata = { title: "Seller Home" };
+export const dynamic = "force-dynamic";
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
 const PERIODS = ["7d", "30d", "90d"] as const;
@@ -77,29 +77,35 @@ export default async function SellerHomePage({
   const { period: rawPeriod } = await searchParams;
   const period = PERIODS.includes(rawPeriod as (typeof PERIODS)[number]) ? (rawPeriod as (typeof PERIODS)[number]) : "7d";
 
-  const overrides = await readSellerOrderOverrides();
-  const pendingOrders = SELLER_ORDERS.filter((o) => (overrides[o.id] ?? o.status) === "PENDING");
-  const lowStock = WAREHOUSE_STOCK.filter((w) => w.qty - w.reserved < LOW_STOCK_THRESHOLD);
-  const awaitingSettlement = SELLER_SETTLEMENTS.filter((s) => s.status === "AWAITING_CHECKER");
-  const settlementDuePaise = awaitingSettlement.reduce((sum, s) => sum + s.netPaise, 0);
+  // Live read model — orders, listings (A2 CoA state), settlements from the
+  // real stores. Illustrative-only cards (account health, ads) stay seeded.
+  const session = await getSession();
+  const today = new Date().toISOString().slice(0, 10);
+  const home = await sellerHome(session?.email ?? "seller@example.in", today);
+
+  const pendingOrders = home.toAccept;
+  const lowStock = home.lowStock;
+  const settlementDuePaise = home.settlementDuePaise;
   const ayush = LICENCES.find((l) => l.type === "AYUSH");
   const ayushDays = ayush?.validTo ? daysUntil(ayush.validTo) : null;
-  const openBlockers = BLOCKED_BATCHES.length + (ayushDays !== null && ayushDays <= 30 ? 1 : 0);
-  const weekGmvPaise = GMV_7D.valuesPaise.reduce((s, v) => s + v, 0);
+  const openBlockers = home.blockers.length + (ayushDays !== null && ayushDays <= 30 ? 1 : 0);
+  const weekGmvPaise = home.kpis.gmvPaise;
 
-  const orderColumns: Column<SampleOrder>[] = [
-    { key: "reference", header: "Order", render: (o) => <div><div style={{ fontWeight: 600 }}>{o.reference}</div><div className="small muted">{o.placedAt}</div></div> },
-    { key: "buyer", header: "Buyer", render: (o) => o.buyer ?? "—" },
-    { key: "total", header: "Total", align: "right", render: (o) => <MoneyText paise={o.totalPaise} /> },
+  const coaLabel: Record<string, string> = { NONE: "no lab report uploaded", PENDING_REVIEW: "lab report awaiting compliance review", REJECTED: "lab report rejected" };
+
+  const orderColumns: Column<Order>[] = [
+    { key: "reference", header: "Order", render: (o) => <div><div style={{ fontWeight: 600 }}>{o.reference}</div><div className="small muted">{o.placedAt.slice(0, 10)}</div></div> },
+    { key: "city", header: "Ship to", render: (o) => o.city || "—" },
+    { key: "total", header: "Your share", align: "right", render: (o) => <MoneyText paise={o.items.filter((it) => it.seller === SELLER.name).reduce((n, it) => n + it.linePaise, 0)} /> },
     {
       key: "actions", header: "", align: "right", render: (o) => (
         <span className="vh-row" style={{ gap: 8, justifyContent: "flex-end" }}>
-          <form action={sellerOrderAction} style={{ display: "inline-flex" }}>
-            <input type="hidden" name="orderId" value={o.id} />
+          <form action={fulfilOrder} style={{ display: "inline-flex" }}>
+            <input type="hidden" name="reference" value={o.reference} />
             <input type="hidden" name="op" value="accept" />
             <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">Accept</button>
           </form>
-          <Link className="small" href={`/seller/orders/${o.id}`}>Details →</Link>
+          <Link className="small" href={`/seller/orders/${o.reference}`}>Details →</Link>
         </span>
       ),
     },
@@ -145,20 +151,20 @@ export default async function SellerHomePage({
       </div>
 
       <div className="vh-grid cols-2" style={{ alignItems: "start", marginBottom: "var(--sp-4)" }}>
-        {/* Performance */}
-        <Card title="Performance" action={<span className="small muted">GMV, trailing 7 days ({period})</span>}>
+        {/* Performance — live from the seller's real orders */}
+        <Card title="Performance" action={<span className="small muted">GMV — your share of every order</span>}>
           <div className="vh-row" style={{ gap: 24, alignItems: "baseline", marginBottom: 16 }}>
             <span style={{ fontSize: "1.6rem", fontWeight: 800, letterSpacing: "-0.02em" }}>
               <MoneyText paise={weekGmvPaise} />
             </span>
-            <span className="small" style={{ color: "var(--vh-ok)", fontWeight: 700 }}>▲ 8.2% vs prior week</span>
+            <span className="small muted">across {home.kpis.orders} order{home.kpis.orders === 1 ? "" : "s"}</span>
           </div>
-          <Columns values={GMV_7D.valuesPaise} labels={GMV_7D.labels} height={112} />
+          <Columns values={home.kpis.series.map((d) => d.paise)} labels={home.kpis.series.map((d, i) => (i % 2 === 0 ? d.label : ""))} height={112} />
           <div className="vh-grid cols-4" style={{ marginTop: "var(--sp-4)", paddingTop: "var(--sp-3)", borderTop: "1px solid var(--vh-line)" }}>
-            <Stat label="GMV today" value={<MoneyText paise={TODAY_KPIS.gmvPaise} />} />
-            <Stat label="Orders" value={TODAY_KPIS.orders} delta={{ dir: "up", text: "+3" }} />
-            <Stat label="AOV" value={<MoneyText paise={TODAY_KPIS.aovPaise} />} />
-            <Stat label="Buy-box" value={`${TODAY_KPIS.buyBoxPercent}%`} delta={{ dir: "down", text: "1.1pt" }} />
+            <Stat label="GMV (total)" value={<MoneyText paise={home.kpis.gmvPaise} />} />
+            <Stat label="Orders" value={home.kpis.orders} />
+            <Stat label="AOV" value={<MoneyText paise={home.kpis.aovPaise} />} />
+            <Stat label="To accept" value={pendingOrders.length} />
           </div>
         </Card>
 
@@ -199,24 +205,22 @@ export default async function SellerHomePage({
               remediation={{ label: "Renew licence", href: "/seller/store#licences" }}
             />
           )}
-          {BLOCKED_BATCHES.map(({ product, batch }) => (
+          {home.blockers.length === 0 && (ayushDays === null || ayushDays > 30) && (
+            <div className="small muted vh-row" style={{ gap: 6 }}>
+              <CheckCircle2 size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)" }} />
+              No open compliance blockers — every regulated listing has an APPROVED, batch-matched CoA.
+            </div>
+          )}
+          {home.blockers.map((b: Blocker) => (
             <BlockerRow
-              key={batch.code}
-              icon={<FileWarning {...I} />}
-              severity="danger"
-              title={`CoA missing for batch ${batch.code}`}
-              body={`${product.title} — this batch cannot be published without an APPROVED, batch-matched Certificate of Analysis (A2). There is no override.`}
-              remediation={{ label: "Upload CoA", href: `/seller/products/${product.id}#coa-upload` }}
+              key={b.productId}
+              icon={b.coaState === "PENDING_REVIEW" ? <Hourglass {...I} /> : <FileWarning {...I} />}
+              severity={b.coaState === "PENDING_REVIEW" ? "info" : "danger"}
+              title={b.coaState === "PENDING_REVIEW" ? `Batch ${b.batchCode} awaiting CoA review` : `CoA required for “${b.title}”`}
+              body={`${b.title} — ${coaLabel[b.coaState] ?? "no approved CoA"}. This regulated listing cannot go live without an APPROVED, batch-matched Certificate of Analysis (A2). There is no override.`}
+              remediation={b.coaState === "PENDING_REVIEW" ? undefined : { label: "Upload CoA", href: `/seller/products/${b.productId}#coa-upload` }}
             />
           ))}
-          {PENDING_REVIEW_BATCHES.length > 0 && (
-            <BlockerRow
-              icon={<Hourglass {...I} />}
-              severity="info"
-              title={`${PENDING_REVIEW_BATCHES.length} batch(es) awaiting CoA review`}
-              body="Typical SLA 4h. New stock stays unsellable until compliance approves the matching lab report."
-            />
-          )}
           <div className="vh-row" style={{ gap: 8, marginTop: 4 }}>
             <button className="vh-btn vh-btn-sm vh-btn-ghost" type="button" disabled title="Acknowledging a blocker does not resolve it">
               Acknowledge
@@ -236,21 +240,21 @@ export default async function SellerHomePage({
         <div className="vh-grid" style={{ gap: "var(--sp-3)" }}>
           <Card title="Low-stock alerts" action={<Link className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/inventory">Review inventory</Link>}>
             {lowStock.length === 0 ? (
-              <div className="small muted">All sellable batches are above the {LOW_STOCK_THRESHOLD}-unit threshold.</div>
+              <div className="small muted">Every live listing is above its low-stock threshold.</div>
             ) : (
               <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
                 {lowStock.map((w) => (
-                  <li key={`${w.product}-${w.batch}`} className="vh-row-between">
+                  <li key={w.productId} className="vh-row-between">
                     <span>
-                      <div style={{ fontWeight: 600, fontSize: "0.88rem" }}>{w.product}</div>
-                      <div className="small muted">Batch {w.batch} · {w.warehouse}</div>
+                      <div style={{ fontWeight: 600, fontSize: "0.88rem" }}><Link href={`/seller/products/${w.productId}`}>{w.title}</Link></div>
+                      <div className="small muted">threshold {w.lowStockAt}</div>
                     </span>
-                    <StatusPill tone={w.qty - w.reserved <= 15 ? "danger" : "warn"}>{w.qty - w.reserved} left</StatusPill>
+                    <StatusPill tone={w.stockQty <= Math.ceil(w.lowStockAt / 2) ? "danger" : "warn"}>{w.stockQty} left</StatusPill>
                   </li>
                 ))}
               </ul>
             )}
-            <div className="small muted" style={{ marginTop: 8 }}>FEFO applies — oldest expiry ships first.</div>
+            <div className="small muted" style={{ marginTop: 8 }}>Stock is the server&rsquo;s authority — a sale decrements it, a restocking return adds it back.</div>
           </Card>
 
           <div className="vh-grid cols-2">

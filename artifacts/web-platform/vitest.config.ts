@@ -3,7 +3,12 @@ import { defineConfig } from "vitest/config";
 
 export default defineConfig({
   resolve: {
-    alias: { "@": fileURLToPath(new URL("./src", import.meta.url)) },
+    alias: {
+      "@": fileURLToPath(new URL("./src", import.meta.url)),
+      // `server-only` throws in a client bundle; under vitest (Node) it is a
+      // no-op so server libs can be unit-tested for their pure exports.
+      "server-only": fileURLToPath(new URL("./tests/stubs/server-only.ts", import.meta.url)),
+    },
   },
   test: {
     // Prohibition tests talk to a real Postgres. They are not unit tests, and
