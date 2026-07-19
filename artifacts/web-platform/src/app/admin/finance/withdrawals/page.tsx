@@ -25,6 +25,7 @@ const MSG: Record<string, { severity: "ok" | "danger" | "warn"; title: string; b
   split: { severity: "danger", title: "Blocked — cumulative threshold reached (A6 anti-splitting)", body: "This seller's payouts add up to ₹10,000 or more — several small payouts are still one large money movement, so a different admin must confirm this one. The attempt was logged." },
   state: { severity: "warn", title: "Nothing to do", body: "That request is no longer in a state where the action applies." },
   note: { severity: "danger", title: "A reason is required to cancel", body: "Give at least 10 characters — the vendor sees it." },
+  role: { severity: "danger", title: "Blocked — this money action checks your held roles (§7/A6)", body: "Approving or cancelling needs ADMIN_FINANCE; confirming a payout needs ADMIN_FINANCE_APPROVER — and no account can hold both, so maker and checker are always two humans. Ask an owner to grant the role on Settings → Roles. The attempt was logged." },
 };
 
 export default async function AdminWithdrawalsPage({ searchParams }: { searchParams: Promise<{ done?: string; err?: string }> }) {

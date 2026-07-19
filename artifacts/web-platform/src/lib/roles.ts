@@ -150,6 +150,14 @@ export function canViewAuditTrail(email: string): boolean {
   return held.includes("ADMIN_AUDITOR") || held.includes("ADMIN_SECURITY");
 }
 
+/** A6 use-time gate: money actions consult held roles. The maker step needs
+ *  ADMIN_FINANCE, the checker step ADMIN_FINANCE_APPROVER — and because the
+ *  SoD matrix bars one account from holding both, requiring a different ROLE
+ *  per step structurally guarantees two different humans. */
+export function holdsRole(email: string, role: AdminRoleName): boolean {
+  return (findAdmin(email)?.roles ?? []).includes(role);
+}
+
 /** Revoke a held role. The LAST ADMIN_OWNER can never be revoked (lockout). */
 export async function revokeRole(args: { target: string; role: string }): Promise<RevokeResult> {
   const target = findAdmin(args.target);

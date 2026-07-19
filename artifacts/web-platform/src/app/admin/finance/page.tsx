@@ -55,6 +55,7 @@ const ST_MSG: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = 
   created: { sev: "ok", text: "Settlement run created (you are its maker). A DIFFERENT admin must post it — you cannot." },
   posted: { sev: "ok", text: "Settlement posted by a second admin. The statement is now immutable (A3) and the seller is notified." },
   makerdenied: { sev: "danger", text: "Blocked — you created this run, so you cannot also post it (A6 maker ≠ checker). The denied attempt is logged." },
+  role: { sev: "danger", text: "Blocked — money actions check the roles you actually hold: preparing a run needs ADMIN_FINANCE, posting one needs ADMIN_FINANCE_APPROVER (no account can hold both). Ask an owner to grant the role on Settings → Roles. The denied attempt is logged." },
   pending: { sev: "warn", text: "That seller already has a run awaiting its checker." },
   empty: { sev: "warn", text: "Nothing to settle — no un-settled delivered orders for that seller." },
   state: { sev: "warn", text: "That run was already posted." },

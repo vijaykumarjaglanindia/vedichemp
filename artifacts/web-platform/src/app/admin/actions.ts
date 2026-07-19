@@ -521,10 +521,17 @@ export async function triageAdverseEvent(formData: FormData): Promise<void> {
 /* ── Settlements (A6 maker–checker, A3 immutable) ─────────── */
 
 /** MAKER: create a settlement run for a seller's un-settled delivered orders.
- *  Amounts are derived from the earnings lines — never typed in. */
+ *  Amounts are derived from the earnings lines — never typed in. Requires the
+ *  ADMIN_FINANCE role, checked against HELD roles at use time (§7/A6): the
+ *  owner — or any admin without the role — cannot be a money maker. */
 export async function createSettlementRun(formData: FormData): Promise<void> {
   const seller = String(formData.get("seller") ?? "").trim();
   const who = await actor();
+  const { holdsRole } = await import("@/lib/roles");
+  if (!holdsRole(who, "ADMIN_FINANCE")) {
+    await writeAudit({ actor: who, action: "SETTLEMENT_CREATE", target: seller, outcome: "DENIED", note: "role: preparing a settlement needs ADMIN_FINANCE" });
+    redirect("/admin/finance?st=role#settlements");
+  }
   const { createRun } = await import("@/lib/settlements");
   const result = await createRun(seller, who);
   if (!result.ok) redirect(`/admin/finance?st=${result.reason}#settlements`);
@@ -532,11 +539,18 @@ export async function createSettlementRun(formData: FormData): Promise<void> {
   redirect("/admin/finance?st=created#settlements");
 }
 
-/** CHECKER: post an awaiting run. The checker can never be the maker (A6);
- *  once posted, the statement is immutable (A3). */
+/** CHECKER: post an awaiting run. Requires ADMIN_FINANCE_APPROVER (held-role
+ *  check at use time) — and since SoD bars holding it together with
+ *  ADMIN_FINANCE, the maker and checker are structurally two different
+ *  humans. Once posted, the statement is immutable (A3). */
 export async function postSettlementRun(formData: FormData): Promise<void> {
   const id = String(formData.get("runId") ?? "").trim();
   const who = await actor();
+  const { holdsRole } = await import("@/lib/roles");
+  if (!holdsRole(who, "ADMIN_FINANCE_APPROVER")) {
+    await writeAudit({ actor: who, action: "SETTLEMENT_POST", target: id, outcome: "DENIED", note: "role: posting a settlement needs ADMIN_FINANCE_APPROVER" });
+    redirect("/admin/finance?st=role#settlements");
+  }
   const { postRun, findRun } = await import("@/lib/settlements");
   const result = await postRun(id, who);
   if (!result.ok) {
@@ -1419,10 +1433,16 @@ import {
   findWithdrawal as ernFind,
 } from "@/lib/earnings";
 
-/** Maker step: approve a pending withdrawal. Records this admin as the maker. */
+/** Maker step: approve a pending withdrawal. Records this admin as the maker.
+ *  Requires ADMIN_FINANCE, checked against held roles at use time (§7/A6). */
 export async function approveWithdrawal(formData: FormData): Promise<void> {
   const id = String(formData.get("withdrawId") ?? "");
   const who = await actor();
+  const { holdsRole } = await import("@/lib/roles");
+  if (!holdsRole(who, "ADMIN_FINANCE")) {
+    await writeAudit({ actor: who, action: "WITHDRAW_APPROVE", target: id, outcome: "DENIED", note: "role: approving a withdrawal needs ADMIN_FINANCE" });
+    redirect("/admin/finance/withdrawals?err=role");
+  }
   const result = await ernApprove(id, who);
   if (!result.ok) redirect(`/admin/finance/withdrawals?err=${result.reason}`);
   await writeAudit({ actor: who, action: "WITHDRAW_APPROVE", target: id, outcome: "OK", note: "maker" });
@@ -1437,6 +1457,13 @@ export async function approveWithdrawal(formData: FormData): Promise<void> {
 export async function confirmWithdrawal(formData: FormData): Promise<void> {
   const id = String(formData.get("withdrawId") ?? "");
   const who = await actor();
+  const { holdsRole } = await import("@/lib/roles");
+  // Checker step needs ADMIN_FINANCE_APPROVER — SoD bars holding it together
+  // with ADMIN_FINANCE, so maker and checker are two different humans.
+  if (!holdsRole(who, "ADMIN_FINANCE_APPROVER")) {
+    await writeAudit({ actor: who, action: "WITHDRAW_PAY", target: id, outcome: "DENIED", note: "role: confirming a payout needs ADMIN_FINANCE_APPROVER" });
+    redirect("/admin/finance/withdrawals?err=role");
+  }
   const w = await ernFind(id);
   const result = await ernConfirm(id, who);
   if (!result.ok) {
@@ -1467,6 +1494,12 @@ export async function cancelWithdrawal(formData: FormData): Promise<void> {
   const id = String(formData.get("withdrawId") ?? "");
   const note = String(formData.get("note") ?? "").trim();
   const who = await actor();
+  const { holdsRole } = await import("@/lib/roles");
+  // Cancelling moves the amount back to the vendor's balance — a money action.
+  if (!holdsRole(who, "ADMIN_FINANCE")) {
+    await writeAudit({ actor: who, action: "WITHDRAW_CANCEL", target: id, outcome: "DENIED", note: "role: cancelling a withdrawal needs ADMIN_FINANCE" });
+    redirect("/admin/finance/withdrawals?err=role");
+  }
   const w = await ernFind(id);
   const result = await ernCancel(id, who, note);
   if (!result.ok) {
