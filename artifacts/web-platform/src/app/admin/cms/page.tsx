@@ -9,24 +9,16 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { FileText, Pencil, Trash2, Image as ImageIcon, Film, Newspaper, HelpCircle, GalleryHorizontal } from "lucide-react";
+import { FileText, Image as ImageIcon, Newspaper, HelpCircle, GalleryHorizontal, Plus } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, StatusPill, Banner } from "@/components/ui";
-import { MEDIA_ITEMS } from "../_lib/data";
+import { Card, StatusPill, Banner, EmptyState } from "@/components/ui";
 import { allPosts } from "@/lib/cms";
+import { listPages, listMedia } from "@/lib/pagebuilder";
 
 export const metadata: Metadata = { title: "CMS · Admin" };
+export const dynamic = "force-dynamic";
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
-const IB = { size: 14, strokeWidth: 2.2 } as const;
-
-const PAGES = [
-  { id: "pg1", title: "Homepage", type: "Landing", views: 284_300, status: "PUBLISHED" },
-  { id: "pg2", title: "Hemp Wellness — CBD guide", type: "Landing", views: 41_200, status: "PUBLISHED" },
-  { id: "pg3", title: "Ayurveda 101", type: "Blog", views: 12_600, status: "PUBLISHED" },
-  { id: "pg4", title: "Monsoon skincare routine", type: "Blog", views: 980, status: "DRAFT" },
-  { id: "pg5", title: "Shipping & returns FAQ", type: "FAQ", views: 63_500, status: "PUBLISHED" },
-];
 
 export default async function AdminCmsPage({
   searchParams,
@@ -35,6 +27,8 @@ export default async function AdminCmsPage({
 }) {
   const { cms } = await searchParams;
   const posts = await allPosts();
+  const pages = await listPages();
+  const media = await listMedia();
   return (
     <Shell active="/admin/cms" breadcrumb={["Admin", "CMS"]} title="Content management">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
@@ -49,38 +43,46 @@ export default async function AdminCmsPage({
             <Link className="vh-btn vh-btn-sm vh-btn-outline" href="/admin/cms/media">Media library</Link>
           </div>
         </Card>
-        <Card title={<span className="vh-row" style={{ gap: 8 }}><FileText {...I} aria-hidden /> Pages</span>} pad0>
-          <div style={{ overflowX: "auto" }}>
-            <table className="vh-table">
-              <thead><tr><th>Title</th><th>Type</th><th style={{ textAlign: "right" }}>Monthly views</th><th>Status</th><th>Actions</th></tr></thead>
-              <tbody>
-                {PAGES.map((p) => (
-                  <tr key={p.id}>
-                    <td style={{ fontWeight: 600 }}>{p.title}</td>
-                    <td>{p.type}</td>
-                    <td className="tabular" style={{ textAlign: "right" }}>{p.views.toLocaleString("en-IN")}</td>
-                    <td><StatusPill tone={p.status === "PUBLISHED" ? "ok" : "neutral"}>{p.status}</StatusPill></td>
-                    <td>
-                      <div className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
-                        <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/cms#${p.id}-edit`}>
-                          <Pencil {...IB} aria-hidden /> Edit
-                        </Link>
-                        <Link className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/cms#${p.id}-delete`}>
-                          <Trash2 {...IB} aria-hidden /> {p.views > 1000 ? "Delete (needs checker)" : "Delete"}
-                        </Link>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
+        <Card
+          title={<span className="vh-row" style={{ gap: 8 }}><FileText {...I} aria-hidden /> Custom pages</span>}
+          action={<Link className="vh-btn vh-btn-sm vh-btn-primary vh-row" href="/admin/cms/pages" style={{ gap: 6 }}><Plus size={14} aria-hidden /> Page builder</Link>}
+          pad0
+        >
+          {pages.length === 0 ? (
+            <div style={{ padding: 16 }}>
+              <EmptyState icon="📄" headline="No custom pages yet" sub="Build landing pages from blocks in the Page builder — each one publishes to /p/<slug>." />
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table className="vh-table">
+                <thead><tr><th>Title</th><th>URL</th><th style={{ textAlign: "right" }}>Blocks</th><th>Status</th><th>Updated</th><th>Actions</th></tr></thead>
+                <tbody>
+                  {pages.map((p) => (
+                    <tr key={p.slug}>
+                      <td style={{ fontWeight: 600 }}>{p.title}</td>
+                      <td className="small mono">/p/{p.slug}</td>
+                      <td className="tabular" style={{ textAlign: "right" }}>{p.blocks.length}</td>
+                      <td><StatusPill tone={p.status === "PUBLISHED" ? "ok" : "neutral"}>{p.status}</StatusPill></td>
+                      <td className="small muted tabular">{p.updatedAt}</td>
+                      <td>
+                        <div className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
+                          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/cms/pages/editor?slug=${encodeURIComponent(p.slug)}`}>Edit</Link>
+                          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/p/${p.slug}${p.status === "DRAFT" ? "?preview=1" : ""}`}>{p.status === "PUBLISHED" ? "View" : "Preview"}</Link>
+                        </div>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
 
-        <Banner severity="info" title="Deletion gate">
-          Deleting a page with more than 1,000 monthly views is a maker–checker action: the requesting editor
-          proposes the deletion, and a second, different admin confirms before the page is actually removed. Pages
-          under that threshold can be deleted by a single editor.
+        <Banner severity="info" title="Deletion is protected, not casual">
+          High-traffic and seed blog posts cannot be removed by a single editor — the delete is refused server-side
+          and the attempt is logged (see the <Link href="/admin/cms/editor?slug=new">post editor</Link>). Custom
+          pages and media are created and removed in their own libraries; every change lands in the{" "}
+          <Link href="/admin/audit">audit trail</Link>.
         </Banner>
 
         <div className="vh-grid cols-2">
@@ -106,26 +108,26 @@ export default async function AdminCmsPage({
             </ul>
             <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/admin/cms/editor?slug=new">New post</Link>
           </Card>
-          <Card title={<span className="vh-row" style={{ gap: 8 }}><ImageIcon {...I} aria-hidden /> Media library</span>}>
-            <div className="vh-grid cols-3" style={{ gap: "var(--sp-2)" }}>
-              {MEDIA_ITEMS.map((m) => (
-                <div key={m.id} className="vh-card" style={{ padding: "var(--sp-2)", display: "grid", gap: 8 }}>
-                  <div
-                    aria-hidden
-                    style={{
-                      height: 56, borderRadius: 8, background: "var(--vh-bg-subtle)",
-                      display: "grid", placeItems: "center", color: "var(--vh-accent)",
-                    }}
-                  >
-                    {m.kind === "video" ? <Film size={20} strokeWidth={2.2} /> : <ImageIcon size={20} strokeWidth={2.2} />}
+          <Card
+            title={<span className="vh-row" style={{ gap: 8 }}><ImageIcon {...I} aria-hidden /> Media library</span>}
+            action={<Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/cms/media">Manage →</Link>}
+          >
+            {media.length === 0 ? (
+              <EmptyState icon="🖼️" headline="No media uploaded yet" sub="Upload images in the Media library, then drop them into an Image block or a listing." />
+            ) : (
+              <div className="vh-grid cols-3" style={{ gap: "var(--sp-2)" }}>
+                {media.slice(0, 6).map((m) => (
+                  <div key={m.id} className="vh-card" style={{ padding: "var(--sp-2)", display: "grid", gap: 8 }}>
+                    {/* eslint-disable-next-line @next/next/no-img-element */}
+                    <img src={m.dataUrl} alt={m.alt || m.name} style={{ height: 56, width: "100%", objectFit: "cover", borderRadius: 8, background: "var(--vh-bg-subtle)" }} />
+                    <div className="small" style={{ minWidth: 0 }}>
+                      <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</div>
+                      <div className="muted mono">{m.id} · {m.addedAt}</div>
+                    </div>
                   </div>
-                  <div className="small" style={{ minWidth: 0 }}>
-                    <div style={{ fontWeight: 600, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{m.name}</div>
-                    <div className="muted">{m.kind} · {m.size}</div>
-                  </div>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </Card>
         </div>
 
