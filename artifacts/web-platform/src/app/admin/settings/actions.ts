@@ -60,7 +60,12 @@ export async function proposeFlagAction(formData: FormData): Promise<void> {
   const key = String(formData.get("key") ?? "").trim();
   const who = await actor();
   const result = await proposeFlagChange(key, who);
-  if (!result.ok) redirect(`/admin/settings?fs=${result.reason}#flags`);
+  if (!result.ok) {
+    // Denied actions are logged too (§2) — a duplicate proposal or an unknown
+    // key is a refused attempt on a config surface, and the trail records it.
+    await writeAudit({ actor: who, action: "FLAG_PROPOSE", target: key || "(blank)", outcome: "DENIED", note: result.reason === "pending" ? "a proposal is already awaiting a checker" : "no such flag" });
+    redirect(`/admin/settings?fs=${result.reason}#flags`);
+  }
   await writeAudit({ actor: who, action: "FLAG_PROPOSE", target: `${key} → ${result.proposal.to ? "ON" : "OFF"}`, outcome: "OK", note: "maker — awaiting a second admin" });
   redirect("/admin/settings?fs=proposed#flags");
 }
@@ -69,7 +74,11 @@ export async function decideFlagAction(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "").trim();
   const decision = String(formData.get("decision") ?? "");
   const who = await actor();
-  if (!["approve", "reject"].includes(decision)) redirect("/admin/settings#flags");
+  if (!["approve", "reject"].includes(decision)) {
+    // A crafted decision value is a refused attempt — log it (§2).
+    await writeAudit({ actor: who, action: "FLAG_DECIDE", target: id || "(blank)", outcome: "DENIED", note: "invalid decision value" });
+    redirect("/admin/settings#flags");
+  }
   const result = await decideFlagChange(id, who, decision === "approve");
   if (!result.ok) {
     if (result.reason === "maker") {
@@ -77,6 +86,8 @@ export async function decideFlagAction(formData: FormData): Promise<void> {
       await writeAudit({ actor: who, action: "FLAG_CONFIRM", target: id, outcome: "DENIED", note: "A6: maker cannot confirm their own flag change" });
       redirect("/admin/settings?fs=maker#flags");
     }
+    // Stale/unknown proposal id (e.g. another admin already decided it).
+    await writeAudit({ actor: who, action: "FLAG_DECIDE", target: id || "(blank)", outcome: "DENIED", note: "no such pending proposal (stale or already decided)" });
     redirect(`/admin/settings?fs=${result.reason}#flags`);
   }
   await writeAudit({

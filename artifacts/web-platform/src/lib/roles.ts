@@ -39,13 +39,14 @@ export interface SodPair {
 export const SOD_PAIRS: SodPair[] = [
   { a: "ADMIN_FINANCE", b: "ADMIN_FINANCE_APPROVER", note: "The admin who prepares a settlement or refund (maker) cannot also hold the approver (checker) role — A6 at grant time, not just at click time." },
   { a: "ADMIN_DISPUTE", b: "ADMIN_GRIEVANCE", note: "The admin adjudicating a buyer–seller dispute is not the same admin who handles the buyer's escalated grievance about that dispute." },
-  { a: "ADMIN_ANALYST", b: "ADMIN_SUPPORT", note: "Analysts with broad read access to aggregate data do not also hold support's per-record lookup powers, and vice versa." },
-  // §7 "no superadmin": the owner appoints, and can therefore do none of these.
-  { a: "ADMIN_OWNER", b: "ADMIN_PHARMACIST", note: "The owner appoints who reads prescriptions — it cannot read them itself (§7)." },
-  { a: "ADMIN_OWNER", b: "ADMIN_COMPLIANCE", note: "The owner appoints compliance — health-data access never concentrates with ownership (§7/A4)." },
-  { a: "ADMIN_OWNER", b: "ADMIN_FINANCE", note: "The owner appoints who moves money — it cannot be a money maker itself (§7/A6)." },
-  { a: "ADMIN_OWNER", b: "ADMIN_FINANCE_APPROVER", note: "The owner appoints who approves money — it cannot be the checker itself (§7/A6)." },
-  { a: "ADMIN_OWNER", b: "ADMIN_DISPUTE", note: "The owner appoints who adjudicates disputes — it cannot adjudicate itself (§7)." },
+  { a: "ADMIN_ANALYST", b: "ADMIN_SUPPORT", note: "The analyst and support roles are never held together — granting either is refused while the other is held, so aggregate read access and per-record lookup stay on separate accounts." },
+  // §7 "no superadmin": the owner appoints, so the roles that DO these things
+  // can never be granted to the owner's account (and vice versa).
+  { a: "ADMIN_OWNER", b: "ADMIN_PHARMACIST", note: "The owner appoints who reads prescriptions — the pharmacist role can never be granted to it (§7). The prescription reveal checks held roles at use time (A4)." },
+  { a: "ADMIN_OWNER", b: "ADMIN_COMPLIANCE", note: "The owner appoints compliance — the compliance role can never be granted to it, so health-data access never concentrates with ownership (§7/A4)." },
+  { a: "ADMIN_OWNER", b: "ADMIN_FINANCE", note: "The owner appoints who prepares money movements — the finance role can never be granted to it (§7/A6)." },
+  { a: "ADMIN_OWNER", b: "ADMIN_FINANCE_APPROVER", note: "The owner appoints who approves money — the approver role can never be granted to it (§7/A6)." },
+  { a: "ADMIN_OWNER", b: "ADMIN_DISPUTE", note: "The owner appoints who adjudicates disputes — the dispute role can never be granted to it (§7)." },
 ];
 
 /** Pure: the first held role that bars `role`, or null if none. */
@@ -69,7 +70,10 @@ declare global {
 
 function seed(): AdminAccount[] {
   return [
-    { email: "admin@example.in", roles: ["ADMIN_OWNER"] },
+    // OWNER + SECURITY is a permitted combination: security oversight (audit
+    // trail) is exactly the owner's appoint-and-watch remit, not one of the
+    // §7-barred powers (prescriptions, money, disputes).
+    { email: "admin@example.in", roles: ["ADMIN_OWNER", "ADMIN_SECURITY"] },
     { email: "compliance2@example.in", roles: ["ADMIN_COMPLIANCE"] },
     { email: "pharmacist.nair@vedichemp.in", roles: ["ADMIN_PHARMACIST"] },
     { email: "finance.rao@vedichemp.in", roles: ["ADMIN_FINANCE"] },
@@ -123,6 +127,28 @@ export async function grantRole(args: { target: string; role: string; actor: str
 export type RevokeResult =
   | { ok: true }
   | { ok: false; reason: "missing" | "lastowner" };
+
+/* ── Use-time gates ───────────────────────────────────────────
+ * The labels above are only worth anything if actions CONSULT them. These
+ * helpers are the use-time side: the A4 prescription reveal derives the
+ * viewer's role from what they actually HOLD (never from a hardcoded string),
+ * and the audit trail is readable only by the auditor/security roles. */
+
+/** A4: the sensitive-viewer role the actor actually holds, or null. An actor
+ *  holding neither role gets null — and the reveal fails closed on it. */
+export function sensitiveViewerRole(email: string): "ADMIN_PHARMACIST" | "ADMIN_COMPLIANCE" | null {
+  const held = findAdmin(email)?.roles ?? [];
+  if (held.includes("ADMIN_PHARMACIST")) return "ADMIN_PHARMACIST";
+  if (held.includes("ADMIN_COMPLIANCE")) return "ADMIN_COMPLIANCE";
+  return null;
+}
+
+/** The audit trail is for ADMIN_AUDITOR and ADMIN_SECURITY — checked on the
+ *  page itself, not just described in copy. */
+export function canViewAuditTrail(email: string): boolean {
+  const held = findAdmin(email)?.roles ?? [];
+  return held.includes("ADMIN_AUDITOR") || held.includes("ADMIN_SECURITY");
+}
 
 /** Revoke a held role. The LAST ADMIN_OWNER can never be revoked (lockout). */
 export async function revokeRole(args: { target: string; role: string }): Promise<RevokeResult> {

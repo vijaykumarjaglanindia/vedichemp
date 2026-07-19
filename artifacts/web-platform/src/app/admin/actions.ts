@@ -466,9 +466,11 @@ export async function decidePrescriptionAction(formData: FormData): Promise<void
 /**
  * A4 reveal. The reason code + text are mandatory and enforced in the store;
  * the access is logged (GRANTED or DENIED) before any URL is issued, and on
- * success the buyer is notified. This console operator acts as ADMIN_COMPLIANCE
- * — the role is set server-side, not taken from the client. No health data is
- * placed in the audit note (only the controlled reason code).
+ * success the buyer is notified. The viewer's role is derived server-side from
+ * the roles they actually HOLD in the roles service — never hardcoded, never
+ * taken from the client. An operator holding neither Pharmacist nor Compliance
+ * is denied (scope) and the denial logged — the §7 owner included. No health
+ * data is placed in the audit note (only the controlled reason code).
  */
 export async function revealPrescriptionAction(formData: FormData): Promise<void> {
   const id = String(formData.get("rxId") ?? "").trim();
@@ -476,8 +478,10 @@ export async function revealPrescriptionAction(formData: FormData): Promise<void
   const reasonText = String(formData.get("reasonText") ?? "").trim();
   const who = await actor();
   const { revealPrescription, findRx } = await import("@/lib/prescriptions");
+  const { sensitiveViewerRole } = await import("@/lib/roles");
 
-  const result = await revealPrescription({ prescriptionId: id, viewer: who, viewerRole: "ADMIN_COMPLIANCE", reasonCode, reasonText });
+  const viewerRole = sensitiveViewerRole(who) ?? "NONE";
+  const result = await revealPrescription({ prescriptionId: id, viewer: who, viewerRole, reasonCode, reasonText });
   await writeAudit({
     actor: who,
     action: result.ok ? "SENSITIVE_READ" : "SENSITIVE_READ_DENIED",

@@ -9,15 +9,38 @@
  */
 
 import type { Metadata } from "next";
-import { ScrollText } from "lucide-react";
+import { ScrollText, Lock } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, EmptyState, StatusPill } from "@/components/ui";
+import { Card, EmptyState, StatusPill, Banner } from "@/components/ui";
 import { readAudit } from "@/lib/audit";
+import { getSession } from "@/lib/auth-lite";
+import { canViewAuditTrail } from "@/lib/roles";
 
 export const metadata: Metadata = { title: "Audit trail · Admin" };
 export const dynamic = "force-dynamic";
 
 export default async function AuditPage() {
+  // The trail is for ADMIN_AUDITOR / ADMIN_SECURITY — checked here, not just
+  // described in settings copy. Others get a restricted notice with the next
+  // step, never the rows (and never a bare 403).
+  const session = await getSession();
+  const allowed = !!session && canViewAuditTrail(session.email);
+  if (!allowed) {
+    return (
+      <Shell active="/admin/settings" breadcrumb={["Admin", "Audit trail"]} title="Audit trail">
+        <Banner severity="warn" title="Restricted to the auditor and security roles" icon="🔒">
+          The audit trail is readable only by <code>ADMIN_AUDITOR</code> and <code>ADMIN_SECURITY</code>. Your
+          account does not hold either role. Ask an <code>ADMIN_OWNER</code> to grant one on the{" "}
+          <a href="/admin/settings#roles">Roles &amp; permissions</a> page — grants are audited and SoD-checked.
+        </Banner>
+        <p className="small muted vh-row" style={{ gap: 6, marginTop: "var(--sp-3)" }}>
+          <Lock size={14} strokeWidth={2.2} aria-hidden /> The trail itself is append-only for everyone (A3) — this
+          gate controls reading it, not changing it. Nothing can change it.
+        </p>
+      </Shell>
+    );
+  }
+
   const entries = await readAudit(200);
   return (
     <Shell active="/admin/settings" breadcrumb={["Admin", "Audit trail"]} title="Audit trail">

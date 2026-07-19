@@ -7,7 +7,7 @@
  * Runs under the shared setup like every vitest file.
  */
 import { describe, it, expect, beforeEach } from "vitest";
-import { grantRole, revokeRole, conflictOf, listAdmins, SOD_PAIRS, ADMIN_ROLES } from "@/lib/roles";
+import { grantRole, revokeRole, conflictOf, listAdmins, SOD_PAIRS, ADMIN_ROLES, sensitiveViewerRole, canViewAuditTrail } from "@/lib/roles";
 import { proposeFlagChange, decideFlagChange, listFlags, listPendingFlagChanges } from "@/lib/flags";
 
 beforeEach(() => {
@@ -83,6 +83,26 @@ describe("revokeRole", () => {
   it("allows revoking a non-last owner", async () => {
     await grantRole({ target: "second.owner@vedichemp.in", role: "ADMIN_OWNER", actor: "admin@example.in" });
     expect((await revokeRole({ target: "admin@example.in", role: "ADMIN_OWNER" })).ok).toBe(true);
+  });
+});
+
+describe("use-time gates — labels are consulted where the deed happens", () => {
+  it("A4: only actually-held pharmacist/compliance roles yield a viewer role", () => {
+    expect(sensitiveViewerRole("compliance2@example.in")).toBe("ADMIN_COMPLIANCE");
+    expect(sensitiveViewerRole("pharmacist.nair@vedichemp.in")).toBe("ADMIN_PHARMACIST");
+    // §7: the owner holds no sensitive role — the reveal fails closed on null.
+    expect(sensitiveViewerRole("admin@example.in")).toBeNull();
+    expect(sensitiveViewerRole("nobody@nowhere.in")).toBeNull();
+  });
+  it("audit trail is readable only via ADMIN_AUDITOR / ADMIN_SECURITY", () => {
+    expect(canViewAuditTrail("admin@example.in")).toBe(true); // holds ADMIN_SECURITY
+    expect(canViewAuditTrail("compliance2@example.in")).toBe(false);
+    expect(canViewAuditTrail("nobody@nowhere.in")).toBe(false);
+  });
+  it("granting AUDITOR flips audit access on — the gate reads live state", async () => {
+    expect(canViewAuditTrail("compliance2@example.in")).toBe(false);
+    await grantRole({ target: "compliance2@example.in", role: "ADMIN_AUDITOR", actor: "admin@example.in" });
+    expect(canViewAuditTrail("compliance2@example.in")).toBe(true);
   });
 });
 

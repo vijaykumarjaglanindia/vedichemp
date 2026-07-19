@@ -59,9 +59,11 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
         <Banner severity="danger" title="No superadmin">
           There is no <code>PLATFORM_OWNER</code>-can-do-everything role. <code>ADMIN_OWNER</code> can appoint the
-          people who read prescriptions, approve money and adjudicate disputes — it cannot itself do any of those
-          three things. That is enforced below as SoD pairs with <code>ADMIN_OWNER</code>, by the same grant-time
-          rule as every other pair (CLAUDE.md §7).
+          people who read prescriptions, approve money and adjudicate disputes — the roles that do those things can
+          never be <em>granted</em> to it, enforced below as SoD pairs by the same grant-time rule as every other
+          pair (CLAUDE.md §7). Held roles are also consulted at <em>use</em> time where the deed is most sensitive:
+          the prescription reveal derives the viewer&rsquo;s role from what they actually hold, and the audit trail
+          is readable only by the auditor/security roles.
         </Banner>
 
         {msg && <Banner severity={msg.sev}>{msg.text}{rs === "sod" && conflict ? <> Conflicting role held: <code>{conflict}</code>.</> : null}</Banner>}
@@ -148,17 +150,17 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
           </Card>
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Percent {...I} aria-hidden /> Commission rules (A5)</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>
-              Every commission schedule change is subject to <code>CHECK (effectiveFrom &gt;= noticeSentAt +
-              interval &apos;30 days&apos;)</code> at the database. This settings page can draft a new schedule and
-              send the notice — it cannot make the new rate effective before that 30-day clock elapses, for any
-              seller, under any admin combination.
+              A rate <strong>increase</strong> cannot take effect before 30 days&rsquo; notice elapses —
+              <code> CHECK (effectiveFrom &gt;= noticeSentAt + interval &apos;30 days&apos;)</code>, mirrored by the
+              server guard on <Link href="/admin/finance/commissions">the schedules page</Link>. A decrease only
+              ever benefits the seller and may apply immediately (A5 bars retroactive <em>increases</em>).
             </p>
           </Card>
         </div>
 
         <div className="vh-grid cols-2">
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Truck {...I} aria-hidden /> Shipping</span>}>
-            <p className="small muted" style={{ marginTop: 0 }}>Carrier zones, SLA tiers by pincode and compliance class (MED_CANNABIS ships signature-required only). The platform is prepaid-only — no COD configuration exists.</p>
+            <p className="small muted" style={{ marginTop: 0 }}>Carrier zones, SLA tiers by pincode and compliance class. The platform is prepaid-only — no COD configuration exists, anywhere.</p>
           </Card>
           <Card title={<span className="vh-row" style={{ gap: 8 }}><CreditCard {...I} aria-hidden /> Payments</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>Gateway routing, settlement bank accounts (masked here — full account numbers are never returned to this console).</p>
@@ -255,7 +257,11 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
         </Card>
 
         <Card title={<span className="vh-row" style={{ gap: 8 }}><ScrollText {...I} aria-hidden /> Audit logs</span>}>
-          <p className="small muted" style={{ marginTop: 0 }}>Full AuditLog and SensitiveAccessLog search lives here for ADMIN_AUDITOR and ADMIN_SECURITY. Both tables are append-only.</p>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            The audit trail is readable only by <code>ADMIN_AUDITOR</code> and <code>ADMIN_SECURITY</code> —
+            enforced on the page itself against held roles, not just described here; other accounts get a
+            restricted notice with the next step. The table is append-only for everyone (A3).
+          </p>
           <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/audit">Open the audit trail →</Link>
         </Card>
       </div>
