@@ -71,4 +71,17 @@ describe("kpisFrom — GMV is the seller's SHARE of each order", () => {
     const k = kpisFrom([], "2026-07-19");
     expect(k).toMatchObject({ gmvPaise: 0, orders: 0, aovPaise: 0 });
   });
+
+  it("scopes GMV/orders/series to the selected window (the period selector is real)", () => {
+    const recent = order("R", "2026-07-18T09:00:00Z", [{ seller: SELLER_STORE, linePaise: 10000 }]); // 1 day ago
+    const old = order("O", "2026-06-25T09:00:00Z", [{ seller: SELLER_STORE, linePaise: 90000 }]); // ~24 days ago
+    const week = kpisFrom([recent, old], "2026-07-19", 7);
+    expect(week.gmvPaise).toBe(10000); // the 24-day-old order is outside the 7-day window
+    expect(week.orders).toBe(1);
+    expect(week.series).toHaveLength(7);
+    const quarter = kpisFrom([recent, old], "2026-07-19", 90);
+    expect(quarter.gmvPaise).toBe(100000); // both orders inside a 90-day window
+    expect(quarter.orders).toBe(2);
+    expect(quarter.series).toHaveLength(90);
+  });
 });

@@ -60,19 +60,25 @@ export function lowStockFrom(listings: CatalogProduct[]): LowStockRow[] {
     .map((p) => ({ productId: p.id, title: p.title, stockQty: p.stockQty, lowStockAt: p.lowStockAt }));
 }
 
-/** GMV KPIs from the seller's real orders (their SHARE of each order). The
- *  daily series buckets by placedAt over the last `days` days ending `today`. */
+/** GMV KPIs from the seller's real orders (their SHARE of each order), scoped
+ *  to the window `[today - days + 1, today]` so the headline total, the KPIs
+ *  and the daily series all describe the SAME period the selector picked —
+ *  no all-time figure floating above a 7-day chart. */
 export function kpisFrom(orders: Order[], today: string, days = 7): SellerKpis {
-  const gmvPaise = orders.reduce((n, o) => n + sellerSubtotal(o, SELLER_STORE), 0);
-  const count = orders.length;
+  const end = new Date(`${today}T00:00:00Z`);
+  const startIso = new Date(end.getTime() - (days - 1) * 86400000).toISOString().slice(0, 10);
+  const inWindow = orders.filter((o) => {
+    const d = (o.placedAt ?? "").slice(0, 10);
+    return d >= startIso && d <= today;
+  });
+  const gmvPaise = inWindow.reduce((n, o) => n + sellerSubtotal(o, SELLER_STORE), 0);
+  const count = inWindow.length;
   const aovPaise = count ? Math.round(gmvPaise / count) : 0;
 
-  const end = new Date(`${today}T00:00:00Z`);
   const series: { label: string; paise: number }[] = [];
   for (let i = days - 1; i >= 0; i--) {
-    const d = new Date(end.getTime() - i * 86400000);
-    const iso = d.toISOString().slice(0, 10);
-    const paise = orders
+    const iso = new Date(end.getTime() - i * 86400000).toISOString().slice(0, 10);
+    const paise = inWindow
       .filter((o) => (o.placedAt ?? "").slice(0, 10) === iso)
       .reduce((n, o) => n + sellerSubtotal(o, SELLER_STORE), 0);
     series.push({ label: iso.slice(5), paise });
@@ -80,7 +86,7 @@ export function kpisFrom(orders: Order[], today: string, days = 7): SellerKpis {
   return { gmvPaise, orders: count, aovPaise, series };
 }
 
-export async function sellerHome(email: string, today: string): Promise<SellerHome> {
+export async function sellerHome(email: string, today: string, days = 7): Promise<SellerHome> {
   const listings = await sellerListings(email, SELLER_STORE);
   const orders = await ordersForSeller(SELLER_STORE);
   const runs = await runsForSeller(SELLER_STORE);
@@ -90,6 +96,6 @@ export async function sellerHome(email: string, today: string): Promise<SellerHo
     lowStock: lowStockFrom(listings),
     toAccept: orders.filter((o) => o.status === "PLACED"),
     settlementDuePaise: runs.filter((r) => r.status === "AWAITING_CHECKER").reduce((n, r) => n + r.netPaise, 0),
-    kpis: kpisFrom(orders, today),
+    kpis: kpisFrom(orders, today, days),
   };
 }

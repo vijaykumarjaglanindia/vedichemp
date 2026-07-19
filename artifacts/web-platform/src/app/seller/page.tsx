@@ -78,10 +78,13 @@ export default async function SellerHomePage({
   const period = PERIODS.includes(rawPeriod as (typeof PERIODS)[number]) ? (rawPeriod as (typeof PERIODS)[number]) : "7d";
 
   // Live read model — orders, listings (A2 CoA state), settlements from the
-  // real stores. Illustrative-only cards (account health, ads) stay seeded.
+  // real stores, scoped to the selected reporting period. Illustrative-only
+  // cards (ads) stay seeded and are labelled as such.
   const session = await getSession();
   const today = new Date().toISOString().slice(0, 10);
-  const home = await sellerHome(session?.email ?? "seller@example.in", today);
+  const periodDays = period === "30d" ? 30 : period === "90d" ? 90 : 7;
+  const home = await sellerHome(session?.email ?? "seller@example.in", today, periodDays);
+  const labelStride = Math.max(1, Math.round(home.kpis.series.length / 7));
 
   const pendingOrders = home.toAccept;
   const lowStock = home.lowStock;
@@ -151,41 +154,50 @@ export default async function SellerHomePage({
       </div>
 
       <div className="vh-grid cols-2" style={{ alignItems: "start", marginBottom: "var(--sp-4)" }}>
-        {/* Performance — live from the seller's real orders */}
-        <Card title="Performance" action={<span className="small muted">GMV — your share of every order</span>}>
+        {/* Performance — live from the seller's real orders, scoped to `period` */}
+        <Card title="Performance" action={<span className="small muted">GMV — your share, last {period}</span>}>
           <div className="vh-row" style={{ gap: 24, alignItems: "baseline", marginBottom: 16 }}>
             <span style={{ fontSize: "1.6rem", fontWeight: 800, letterSpacing: "-0.02em" }}>
               <MoneyText paise={weekGmvPaise} />
             </span>
-            <span className="small muted">across {home.kpis.orders} order{home.kpis.orders === 1 ? "" : "s"}</span>
+            <span className="small muted">across {home.kpis.orders} order{home.kpis.orders === 1 ? "" : "s"} · last {period}</span>
           </div>
-          <Columns values={home.kpis.series.map((d) => d.paise)} labels={home.kpis.series.map((d, i) => (i % 2 === 0 ? d.label : ""))} height={112} />
+          <Columns values={home.kpis.series.map((d) => d.paise)} labels={home.kpis.series.map((d, i) => (i % labelStride === 0 ? d.label : ""))} height={112} />
           <div className="vh-grid cols-4" style={{ marginTop: "var(--sp-4)", paddingTop: "var(--sp-3)", borderTop: "1px solid var(--vh-line)" }}>
-            <Stat label="GMV (total)" value={<MoneyText paise={home.kpis.gmvPaise} />} />
+            <Stat label={`GMV (${period})`} value={<MoneyText paise={home.kpis.gmvPaise} />} />
             <Stat label="Orders" value={home.kpis.orders} />
             <Stat label="AOV" value={<MoneyText paise={home.kpis.aovPaise} />} />
             <Stat label="To accept" value={pendingOrders.length} />
           </div>
         </Card>
 
-        {/* Account health */}
-        <Card title="Account health">
+        {/* Account health — the CoA sub-score + standing are LIVE (from the
+            real A2 blockers computed above); the other sub-scores are an
+            illustrative sample pending real fulfilment/defect analytics. */}
+        <Card title="Account health" action={<span className="small muted">CoA sub-score is live</span>}>
           <div className="vh-row" style={{ gap: 20, alignItems: "center", marginBottom: 16 }}>
             <ProgressRing percent={ACCOUNT_HEALTH.score} size={84} />
             <div>
               <div className="vh-row" style={{ gap: 6, fontWeight: 700, fontSize: "1.05rem" }}>
-                <CheckCircle2 size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)" }} />
-                Good standing
+                {home.blockers.length === 0 ? (
+                  <><CheckCircle2 size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)" }} /> CoA-compliant</>
+                ) : (
+                  <><FileWarning size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-danger)" }} /> {home.blockers.length} CoA blocker{home.blockers.length === 1 ? "" : "s"} open</>
+                )}
               </div>
-              <div className="small muted">Composite of fulfilment, defect rate, policy and CoA compliance.</div>
+              <div className="small muted">CoA compliance is live from your catalogue; fulfilment / defect / policy shown are an illustrative sample.</div>
             </div>
           </div>
           <BarList
-            items={ACCOUNT_HEALTH.subScores.map((s) => ({
-              label: s.label,
-              value: s.value,
-              display: s.note ? `${s.value} · ${s.note}` : `${s.value}/100`,
-            }))}
+            items={ACCOUNT_HEALTH.subScores.map((s) =>
+              s.key === "coa"
+                ? {
+                    label: "CoA compliance (live)",
+                    value: home.blockers.length === 0 ? 100 : Math.max(40, 100 - home.blockers.length * 15),
+                    display: home.blockers.length === 0 ? "no open blockers" : `${home.blockers.length} regulated listing(s) awaiting an approved CoA`,
+                  }
+                : { label: `${s.label} (sample)`, value: s.value, display: s.note ? `${s.value} · ${s.note}` : `${s.value}/100` }
+            )}
           />
         </Card>
       </div>
