@@ -8,7 +8,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { getPrescriptionUrl } from "@/server/health/prescriptions";
 import { SENSITIVE_REASONS } from "@/lib/prohibitions";
-import { errorResponse } from "@/server/http";
+import { errorResponse, requireSession } from "@/server/http";
 
 const Body = z.object({
   actor: z.string().min(1),
@@ -17,6 +17,8 @@ const Body = z.object({
 });
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const gate = await requireSession("ADMIN");
+  if ("response" in gate) return gate.response;
   const { id } = await ctx.params;
   let body: z.infer<typeof Body>;
   try {

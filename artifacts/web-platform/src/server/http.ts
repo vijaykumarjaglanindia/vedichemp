@@ -10,6 +10,7 @@
 
 import { NextResponse } from "next/server";
 import { ProhibitionError } from "@/lib/prohibitions";
+import { getSession, type Session } from "@/lib/auth-lite";
 
 export interface ErrorEnvelope {
   error: {
@@ -44,6 +45,37 @@ export function errorResponse(err: unknown, status = 400): NextResponse<ErrorEnv
     { error: { code: "INTERNAL", message, field: null, trace_id, retryable: true, remediation: null } },
     { status: 500 }
   );
+}
+
+/**
+ * Authenticate a route handler before it touches money, roles or health data.
+ * The server is the only authority (§0): a mutation endpoint never trusts a
+ * body-supplied identity without first proving the caller holds a session of
+ * the required audience. Returns the session, or a ready-to-return 401/403 —
+ * the caller does `if ("response" in gate) return gate.response`. Fail closed:
+ * no session cookie ⇒ 401, wrong audience ⇒ 403, before any service runs.
+ */
+export async function requireSession(
+  role?: Session["role"],
+): Promise<{ session: Session } | { response: NextResponse<ErrorEnvelope> }> {
+  const session = await getSession();
+  if (!session) {
+    return {
+      response: NextResponse.json(
+        { error: { code: "UNAUTHENTICATED", message: "Sign in to continue.", field: null, trace_id: crypto.randomUUID(), retryable: false, remediation: { label: "Sign in", href: "/signin" } } },
+        { status: 401 },
+      ),
+    };
+  }
+  if (role && session.role !== role) {
+    return {
+      response: NextResponse.json(
+        { error: { code: "FORBIDDEN", message: `This action requires the ${role} role.`, field: null, trace_id: crypto.randomUUID(), retryable: false, remediation: null } },
+        { status: 403 },
+      ),
+    };
+  }
+  return { session };
 }
 
 /** Every money/order mutation requires an Idempotency-Key (UUIDv4) — §0.6 V-G-08. */

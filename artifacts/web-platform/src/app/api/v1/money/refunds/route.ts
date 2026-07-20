@@ -6,7 +6,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { issueRefund } from "@/server/money/refunds";
-import { errorResponse, requireIdempotencyKey } from "@/server/http";
+import { errorResponse, requireIdempotencyKey, requireSession } from "@/server/http";
 
 const Body = z.object({
   orderId: z.string().min(1),
@@ -17,6 +17,8 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  const gate = await requireSession("ADMIN");
+  if ("response" in gate) return gate.response;
   try {
     requireIdempotencyKey(req);
   } catch (err) {

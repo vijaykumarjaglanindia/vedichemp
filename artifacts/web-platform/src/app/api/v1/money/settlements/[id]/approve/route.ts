@@ -6,11 +6,13 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { approveSettlement } from "@/server/money/settlements";
-import { errorResponse } from "@/server/http";
+import { errorResponse, requireSession } from "@/server/http";
 
 const Body = z.object({ checker: z.string().min(1), note: z.string().min(20) });
 
 export async function POST(req: Request, ctx: { params: Promise<{ id: string }> }) {
+  const gate = await requireSession("ADMIN");
+  if ("response" in gate) return gate.response;
   const { id } = await ctx.params;
   let body: z.infer<typeof Body>;
   try {

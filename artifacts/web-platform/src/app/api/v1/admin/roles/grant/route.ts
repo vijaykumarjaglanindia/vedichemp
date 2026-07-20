@@ -7,7 +7,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { AdminRole } from "@prisma/client";
 import { grantRole } from "@/server/rbac";
-import { errorResponse } from "@/server/http";
+import { errorResponse, requireSession } from "@/server/http";
 
 const Body = z.object({
   userId: z.string().min(1),
@@ -16,6 +16,8 @@ const Body = z.object({
 });
 
 export async function POST(req: Request) {
+  const gate = await requireSession("ADMIN");
+  if ("response" in gate) return gate.response;
   let body: z.infer<typeof Body>;
   try {
     body = Body.parse(await req.json());
