@@ -449,9 +449,35 @@ a.vh-card:hover { border-color: color-mix(in srgb, var(--vh-accent) 34%, var(--v
   border: 1px solid var(--vh-line); border-radius: 999px; padding: 8px 14px; color: var(--vh-muted); font-size: 0.86rem;
 }
 .vh-site-search input { border: none; background: transparent; outline: none; font: inherit; color: var(--vh-body); }
-.vh-site-footer { background: var(--vh-surface); color: var(--vh-muted); margin-top: var(--sp-7); padding: 44px 0 32px; border-top: 1px solid var(--vh-line); }
+.vh-site-footer {
+  position: relative;
+  background: linear-gradient(180deg, var(--vh-bg-subtle) 0%, var(--vh-green-50) 100%);
+  color: var(--vh-muted); margin-top: var(--sp-7); padding: 48px 0 32px; border-top: 1px solid var(--vh-line);
+}
+/* A thin brand accent seam bookends the page above the footer. */
+.vh-site-footer::before {
+  content: ""; position: absolute; top: -1px; left: 0; right: 0; height: 2px;
+  background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--vh-green-500) 55%, transparent) 22%, var(--vh-saffron) 50%, color-mix(in srgb, var(--vh-green-500) 55%, transparent) 78%, transparent);
+  opacity: .5;
+}
 .vh-site-footer a { color: var(--vh-body); }
 .vh-site-footer a:hover { color: var(--vh-accent); }
+
+/* ── Accordion (details/summary as cards) ────────────────────── */
+details.vh-card > summary {
+  list-style: none; display: flex; align-items: center; justify-content: space-between; gap: 14px;
+  outline: none;
+}
+details.vh-card > summary::-webkit-details-marker { display: none; }
+details.vh-card > summary::after {
+  content: ""; width: 8px; height: 8px; flex-shrink: 0; margin-right: 3px;
+  border-right: 2px solid var(--vh-faint); border-bottom: 2px solid var(--vh-faint);
+  transform: rotate(45deg); transition: transform .22s var(--vh-ease, ease), border-color .15s;
+}
+details.vh-card[open] > summary::after { transform: rotate(-135deg); border-color: var(--vh-accent); }
+details.vh-card > summary:hover::after { border-color: var(--vh-accent); }
+details.vh-card[open] { border-color: var(--vh-line-strong); }
+details.vh-card > summary + * { margin-top: 10px; animation: vh-rise .32s ease both; }
 
 .vh-hero {
   background:
