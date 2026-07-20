@@ -236,7 +236,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
 
         <Card title={<span className="vh-row" style={{ gap: 8 }}><KeyRound {...I} aria-hidden /> API keys</span>} pad0>
           <table className="vh-table">
-            <thead><tr><th>Key</th><th>Scope</th><th>Last used</th></tr></thead>
+            <thead><tr><th>Key</th><th>Scope</th></tr></thead>
             <tbody>
               {API_KEYS.map((k) => (
                 <tr key={k.id}>
@@ -245,7 +245,6 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
                     <div className="mono small muted">{k.masked}</div>
                   </td>
                   <td className="mono small">{k.scope}</td>
-                  <td className="small muted">{k.lastUsed}</td>
                 </tr>
               ))}
             </tbody>

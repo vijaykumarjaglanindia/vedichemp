@@ -67,6 +67,16 @@ const PENDING_APPROVALS = [
 ];
 
 /** KPI tile: Stat + a small trend sparkline beneath it. */
+/** Day-over-day change of a series' last two points — a real delta derived
+ *  from the same 14-day data the sparkline shows (never a hand-typed claim). */
+function dod(points: number[]): { dir: "up" | "down"; text: string } | undefined {
+  const last = points.at(-1);
+  const prev = points.at(-2);
+  if (last === undefined || prev === undefined || prev === 0) return undefined;
+  const pct = ((last - prev) / prev) * 100;
+  return { dir: pct >= 0 ? "up" : "down", text: `${Math.abs(pct).toFixed(1)}% vs yesterday` };
+}
+
 function KpiTile({
   label, value, delta, points, spark,
 }: {
@@ -95,10 +105,10 @@ export default function AdminHomePage() {
           action={<span className="small muted">14-day trend under each figure</span>}
         >
           <div className="vh-grid cols-4">
-            <KpiTile label="GMV today" value={<MoneyText paise={KPIS.gmvTodayPaise} />} delta={{ dir: "up", text: "6.2% vs yesterday" }} points={GMV_14D_PAISE} spark="GMV, last 14 days" />
-            <KpiTile label="Orders today" value={KPIS.ordersToday.toLocaleString("en-IN")} delta={{ dir: "up", text: "142 in the last hour" }} points={ORDERS_14D} spark="Orders, last 14 days" />
-            <KpiTile label="AOV" value={<MoneyText paise={KPIS.aovPaise} />} points={AOV_14D_PAISE} spark="Average order value, last 14 days" />
-            <KpiTile label="Live sellers" value={KPIS.liveSellers.toLocaleString("en-IN")} delta={{ dir: "up", text: "3 approved this week" }} points={LIVE_SELLERS_14D} spark="Live sellers, last 14 days" />
+            <KpiTile label="GMV today" value={<MoneyText paise={KPIS.gmvTodayPaise} />} delta={dod(GMV_14D_PAISE)} points={GMV_14D_PAISE} spark="GMV, last 14 days" />
+            <KpiTile label="Orders today" value={KPIS.ordersToday.toLocaleString("en-IN")} delta={dod(ORDERS_14D)} points={ORDERS_14D} spark="Orders, last 14 days" />
+            <KpiTile label="AOV" value={<MoneyText paise={KPIS.aovPaise} />} delta={dod(AOV_14D_PAISE)} points={AOV_14D_PAISE} spark="Average order value, last 14 days" />
+            <KpiTile label="Live sellers" value={KPIS.liveSellers.toLocaleString("en-IN")} delta={dod(LIVE_SELLERS_14D)} points={LIVE_SELLERS_14D} spark="Live sellers, last 14 days" />
           </div>
         </Card>
 

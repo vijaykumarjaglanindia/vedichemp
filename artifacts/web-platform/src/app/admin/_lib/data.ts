@@ -196,10 +196,11 @@ export const FEATURE_FLAGS = [
   { key: "rx_renewal_reminders", desc: "Prescription expiry reminder notifications", status: "ON" },
 ];
 
+// No usage telemetry is wired, so no fabricated "last used" recency is shown.
 export const API_KEYS = [
-  { id: "k1", name: "logistics-webhook", masked: "vh_live_••••••••3f9a", scope: "shipments:write", lastUsed: "2m ago" },
-  { id: "k2", name: "tax-engine", masked: "vh_live_••••••••81cd", scope: "tax:read", lastUsed: "18m ago" },
-  { id: "k3", name: "search-indexer", masked: "vh_live_••••••••c044", scope: "catalogue:read", lastUsed: "41s ago" },
+  { id: "k1", name: "logistics-webhook", masked: "vh_live_••••••••3f9a", scope: "shipments:write" },
+  { id: "k2", name: "tax-engine", masked: "vh_live_••••••••81cd", scope: "tax:read" },
+  { id: "k3", name: "search-indexer", masked: "vh_live_••••••••c044", scope: "catalogue:read" },
 ];
 
 /* ── CMS media library ─────────────────────────────────────── */
