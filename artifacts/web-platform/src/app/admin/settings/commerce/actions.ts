@@ -13,15 +13,13 @@ const BACK = "/admin/settings/commerce";
 
 export async function saveCommerceSettings(formData: FormData): Promise<void> {
   const rupees = (k: string) => Math.round(Number(formData.get(k)) * 100);
-  const freeShipAtPaise = rupees("freeShipAt");
-  const flatShipPaise = rupees("flatShip");
   const loyaltyPtsPer100 = Number(formData.get("ptsPer100"));
   const referralCreditPaise = rupees("referral");
-  if (![freeShipAtPaise, flatShipPaise, referralCreditPaise].every((n) => Number.isInteger(n) && n >= 0) || !Number.isInteger(loyaltyPtsPer100) || loyaltyPtsPer100 < 0) {
+  if (!Number.isInteger(referralCreditPaise) || referralCreditPaise < 0 || !Number.isInteger(loyaltyPtsPer100) || loyaltyPtsPer100 < 0) {
     redirect(`${BACK}?cm=bad`);
   }
-  await writeCommerce({ freeShipAtPaise, flatShipPaise, loyaltyPtsPer100, referralCreditPaise });
-  await writeAudit({ actor: await actor(), action: "COMMERCE_SETTINGS", target: "shipping/loyalty/referral", outcome: "OK", note: `freeShip@₹${freeShipAtPaise / 100}, flat ₹${flatShipPaise / 100}, ${loyaltyPtsPer100}pts/₹100` });
+  await writeCommerce({ loyaltyPtsPer100, referralCreditPaise });
+  await writeAudit({ actor: await actor(), action: "COMMERCE_SETTINGS", target: "loyalty/referral", outcome: "OK", note: `${loyaltyPtsPer100}pts/₹100, referral ₹${referralCreditPaise / 100}` });
   redirect(`${BACK}?cm=saved`);
 }
 

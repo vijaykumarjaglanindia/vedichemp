@@ -1,24 +1,22 @@
 /**
  * VEDIC HEMP — COMMERCE SETTINGS (the owner's levers)
  *
- * Every business number is an admin setting: shipping thresholds, loyalty
- * and referral economics, gift-card codes, the buyer coupon table, and the
- * display copy of each category. What is NOT here, by design: compliance
- * flags (rxRequired / ageGated / advertisable) — those are the law's, not
- * the owner's. Server-side stores; DB seam throughout.
+ * Every business number is an admin setting: loyalty and referral economics,
+ * gift-card codes, the buyer coupon table, and the display copy of each
+ * category. Shipping thresholds and zone rates are NOT here — they live in
+ * lib/shipping.ts and are edited at /admin/shipping, the single surface the
+ * cart actually reads. What is also NOT here, by design: compliance flags
+ * (rxRequired / ageGated / advertisable) — those are the law's, not the
+ * owner's. Server-side stores; DB seam throughout.
  */
 
 export interface CommerceSettings {
-  freeShipAtPaise: number;
-  flatShipPaise: number;
   loyaltyPtsPer100: number;
   loyaltyPtsValuePaise: number; // value of 100 points, in paise
   referralCreditPaise: number;
 }
 
 export const COMMERCE_DEFAULTS: CommerceSettings = {
-  freeShipAtPaise: 5_000_00,
-  flatShipPaise: 100_00,
   loyaltyPtsPer100: 5,
   loyaltyPtsValuePaise: 10_00,
   referralCreditPaise: 200_00,

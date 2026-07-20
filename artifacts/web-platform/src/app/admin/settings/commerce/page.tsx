@@ -9,7 +9,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowLeft, BadgePercent, Boxes, Gift, Truck } from "lucide-react";
+import { ArrowLeft, BadgePercent, Boxes, Gift, Sparkles, Truck } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Banner, Card, MoneyText, StatusPill } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
@@ -38,7 +38,7 @@ export default async function CommercePage({
       actions={<Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/settings"><ArrowLeft size={14} aria-hidden /> Settings</Link>}
     >
       <div className="vh-grid" style={{ gap: "var(--sp-3)" }}>
-        {cm === "saved" && <Banner severity="ok" title="Economics saved">Shipping, loyalty and referral numbers apply to every cart from the next request.</Banner>}
+        {cm === "saved" && <Banner severity="ok" title="Economics saved">Loyalty and referral numbers apply from the next request.</Banner>}
         {cm === "bad" && <Banner severity="danger">Enter non-negative numbers.</Banner>}
         {cp === "saved" && <Banner severity="ok" title="Coupon saved">Buyers can apply it at the cart immediately.</Banner>}
         {cp === "toggled" && <Banner severity="ok" title="Coupon updated" />}
@@ -49,16 +49,8 @@ export default async function CommercePage({
         {cd === "claims" && <Banner severity="danger">Category copy cannot carry claims language.</Banner>}
 
         <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
-          <Card title={<span className="vh-row" style={{ gap: 8 }}><Truck size={16} strokeWidth={2.2} aria-hidden /> Shipping, loyalty & referral</span>}>
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><Sparkles size={16} strokeWidth={2.2} aria-hidden /> Loyalty & referral</span>}>
             <form action={saveCommerceSettings} className="vh-grid cols-2" style={{ gap: 12 }}>
-              <div className="vh-field">
-                <label className="vh-label" htmlFor="cm-free">Free shipping at (₹)</label>
-                <input className="vh-input" id="cm-free" name="freeShipAt" type="number" min={0} step={1} defaultValue={commerce.freeShipAtPaise / 100} />
-              </div>
-              <div className="vh-field">
-                <label className="vh-label" htmlFor="cm-flat">Flat shipping below it (₹)</label>
-                <input className="vh-input" id="cm-flat" name="flatShip" type="number" min={0} step={1} defaultValue={commerce.flatShipPaise / 100} />
-              </div>
               <div className="vh-field">
                 <label className="vh-label" htmlFor="cm-pts">Loyalty points per ₹100</label>
                 <input className="vh-input" id="cm-pts" name="ptsPer100" type="number" min={0} step={1} defaultValue={commerce.loyaltyPtsPer100} />
@@ -71,6 +63,10 @@ export default async function CommercePage({
             </form>
             <p className="small muted" style={{ margin: "10px 0 0" }}>
               All amounts store as integer paise; totals stay server-computed.
+            </p>
+            <p className="small muted vh-row" style={{ gap: 6, margin: "10px 0 0", alignItems: "center" }}>
+              <Truck size={13} aria-hidden />
+              Shipping rates and the free-shipping threshold live on <Link href="/admin/shipping">Money → Shipping</Link> — the only place the cart reads them.
             </p>
           </Card>
 
