@@ -446,8 +446,10 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
         </div>
       </div>
 
-      {/* Responsive: facets collapse above results on small screens */}
-      <style>{`@media (max-width: 900px){ .vhx-catalogue-grid{ grid-template-columns: 1fr !important; } .vhx-catalogue-grid aside{ position: static !important; } }`}</style>
+      {/* Responsive: facets collapse above results on small screens. Use
+          minmax(0,1fr) — a bare 1fr keeps the track's auto minimum, so the
+          sidebar's min-content pins the column open and overflows the phone. */}
+      <style>{`.vhx-catalogue-grid > *{ min-width: 0; } @media (max-width: 900px){ .vhx-catalogue-grid{ grid-template-columns: minmax(0,1fr) !important; } .vhx-catalogue-grid aside{ position: static !important; } }`}</style>
     </div>
   );
 }

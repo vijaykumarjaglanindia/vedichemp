@@ -46,7 +46,7 @@ export function HeaderBits() {
           {user.split(" ")[0]}
         </Link>
       ) : (
-        <details className="vhx-signin">
+        <details className="vhx-signin vhx-hide-sm">
           <summary
             className="vh-btn vh-btn-ghost vh-btn-sm"
             style={{ listStyle: "none", cursor: "pointer", width: "auto", height: "auto", border: "1px solid var(--vh-line)" }}
