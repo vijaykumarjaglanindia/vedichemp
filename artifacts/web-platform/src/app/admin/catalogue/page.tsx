@@ -36,6 +36,7 @@ const COA_MESSAGES: Record<string, { severity: "ok" | "danger" | "warn"; title: 
   approved: { severity: "ok", title: "Batch CoA approved", body: "The batch is sellable; the listing can now pass review (A2 gate open for this batch)." },
   rejected: { severity: "ok", title: "Batch CoA rejected", body: "If the listing was LIVE it is now suspended — an unverified batch cannot stay sellable (A2 fails closed)." },
   note: { severity: "danger", title: "A reviewer note is required", body: "CoA decisions are per-batch legal assertions: write what you checked (≥ 20 characters). The attempt was logged." },
+  role: { severity: "danger", title: "Blocked — deciding a CoA needs Pharmacist/Compliance (A2/§7)", body: "A batch CoA is the A2 gate that lets a regulated product sell, so only an admin holding the Pharmacist or Compliance role may decide it — the owner, who appoints them, cannot. Ask an owner to grant the role on Settings → Roles. The attempt was logged." },
   state: { severity: "warn", title: "Nothing pending on that batch", body: "The CoA is no longer PENDING_REVIEW." },
 };
 
