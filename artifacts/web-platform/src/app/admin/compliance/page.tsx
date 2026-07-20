@@ -87,6 +87,7 @@ export default async function AdminCompliancePage({
     reasoncode: { sev: "danger", text: "Choose a reason from the controlled list — the access was denied and logged." },
     reasontext: { sev: "danger", text: "State why this must be viewed now (at least 20 characters) — the denied attempt was logged." },
     scope: { sev: "danger", text: "Only Pharmacist/Compliance may view health data — the attempt was denied and logged." },
+    role: { sev: "danger", text: "Only Pharmacist/Compliance may verify a prescription (§7/A4) — the owner appoints these roles but cannot adjudicate health records itself. The attempt was denied and logged." },
     missing: { sev: "warn", text: "That prescription no longer exists." },
     state: { sev: "warn", text: "That prescription was already reviewed." },
   };

@@ -90,6 +90,13 @@ export async function saveCommissionSchedule(formData: FormData): Promise<void> 
   const effectiveFrom = String(formData.get("effectiveFrom") ?? "");
   const who = await actor();
 
+  // Setting a fee schedule is a money-governance act (§7/A6): only ADMIN_FINANCE.
+  const { holdsRole } = await import("@/lib/roles");
+  if (!holdsRole(who, "ADMIN_FINANCE")) {
+    await writeAudit({ actor: who, action: "COMMISSION_SCHEDULE", target: "-", outcome: "DENIED", note: "role: a fee schedule change needs ADMIN_FINANCE" });
+    redirect("/admin/finance/commissions?cs=role");
+  }
+
   if (!["GLOBAL", "CATEGORY", "SELLER", "PRODUCT"].includes(scope)) redirect("/admin/finance/commissions?cs=cls");
   const target = scope === "GLOBAL" ? "GLOBAL" : scope === "CATEGORY" ? cls : freeTarget;
   if (scope === "CATEGORY" && !["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS", "MED_CANNABIS"].includes(cls)) redirect("/admin/finance/commissions?cs=cls");
@@ -445,6 +452,14 @@ export async function decidePrescriptionAction(formData: FormData): Promise<void
   const note = String(formData.get("note") ?? "").trim();
   const who = await actor();
   const { decidePrescription, findRx } = await import("@/lib/prescriptions");
+  // Verifying a prescription is a pharmacist/compliance act (A4/§7): the role
+  // is derived from what the actor HOLDS, so the owner cannot adjudicate health
+  // records any more than they can read them.
+  const { sensitiveViewerRole } = await import("@/lib/roles");
+  if (!sensitiveViewerRole(who)) {
+    await writeAudit({ actor: who, action: decision === "approve" ? "RX_VERIFY" : "RX_REJECT", target: id, outcome: "DENIED", note: "role: only Pharmacist/Compliance may adjudicate a prescription" });
+    redirect("/admin/compliance?rxerr=role#rx");
+  }
 
   if (decision === "reject" && note.length < 10) {
     await writeAudit({ actor: who, action: "RX_REJECT", target: id, outcome: "DENIED", note: "reason under 10 chars" });
@@ -1361,6 +1376,13 @@ import {
 export async function adminRefundBuyer(formData: FormData): Promise<void> {
   const reference = String(formData.get("reference") ?? "").slice(0, 30);
   const who = await actor();
+  // A refund MOVES MONEY (§7/A6): only ADMIN_FINANCE may issue one, checked
+  // against held roles at use time. The owner — who appoints finance — cannot.
+  const { holdsRole } = await import("@/lib/roles");
+  if (!holdsRole(who, "ADMIN_FINANCE")) {
+    await writeAudit({ actor: who, action: "REFUND_BUYER", target: reference, outcome: "DENIED", note: "role: issuing a refund needs ADMIN_FINANCE" });
+    redirect("/admin/orders?err=role#returns");
+  }
   const result = await ordRefundBuyer(reference, who);
   if (!result.ok) {
     // Denied actions are logged too — a self-approved refund attempt (A6)

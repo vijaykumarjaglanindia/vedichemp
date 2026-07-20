@@ -32,6 +32,7 @@ const ORDER_MSG: Record<string, { severity: "ok" | "danger" | "warn"; title: str
 /** Reason-specific error copy (overrides the generic `err` banner). */
 const ERR_MSG: Record<string, { severity: "ok" | "danger" | "warn"; title: string; body: string }> = {
   maker_checker: { severity: "danger", title: "Blocked — maker cannot be checker (A6)", body: "You initiated this return, so you cannot also issue its refund. A different admin must refund. The denied attempt has been logged." },
+  role: { severity: "danger", title: "Blocked — issuing a refund needs ADMIN_FINANCE (§7/A6)", body: "Refunds move money, so only an admin holding the finance role may issue one — the owner, who appoints finance, cannot. Ask an owner to grant the role on Settings → Roles. The attempt was logged." },
 };
 
 const I = { size: 16, strokeWidth: 2.2 } as const;

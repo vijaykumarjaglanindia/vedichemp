@@ -26,6 +26,7 @@ const NOTES: Record<string, { sev: "ok" | "danger"; text: string }> = {
   rate: { sev: "danger", text: "Rate must be between 0 and 40 percent." },
   cls: { sev: "danger", text: "Pick a compliance class." },
   target: { sev: "danger", text: "Seller- and product-level schedules need a target (seller name or product slug)." },
+  role: { sev: "danger", text: "Blocked — changing a fee schedule needs the ADMIN_FINANCE role (§7/A6). The owner appoints finance; it cannot set fees itself. Ask an owner to grant the role on Settings → Roles. The attempt was logged." },
 };
 
 export default async function CommissionsPage({
