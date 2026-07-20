@@ -200,12 +200,12 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
 
       {/* ── Announcement bar (admin-edited; switchable in Features) ── */}
       {flags.announcementBar && <div className="vh-announce">
-        <span className="vh-row" style={{ justifyContent: "center", gap: 8, flexWrap: "wrap" }}>
-          <Truck size={14} strokeWidth={2.2} aria-hidden />
+        <span className="vh-row vh-announce-track" style={{ justifyContent: "center", gap: 8 }}>
+          <Truck size={14} strokeWidth={2.2} aria-hidden style={{ flexShrink: 0 }} />
           {(content.announcement ?? "").split("·").map((seg, i) => (
-            <span key={i} className="vh-row" style={{ gap: 8 }}>
+            <span key={i} className="vh-row" style={{ gap: 8, flexShrink: 0 }}>
               {i > 0 && <span aria-hidden>·</span>}
-              <span>{seg.trim()}</span>
+              <span style={{ whiteSpace: "nowrap" }}>{seg.trim()}</span>
             </span>
           ))}
         </span>
@@ -214,7 +214,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
       {/* ── Sticky glass header ──────────────────────────── */}
       <header className="vh-site-header">
         <div className="vh-container vh-site-nav">
-          <Link href="/" className="vh-row" style={{ fontWeight: 800, fontSize: "1.12rem", color: "var(--vh-ink)", gap: 8 }}>
+          <Link href="/" className="vh-row" style={{ fontWeight: 800, fontSize: "1.12rem", color: "var(--vh-ink)", gap: 8, whiteSpace: "nowrap", flexShrink: 0 }}>
             <span
               aria-hidden
               style={{

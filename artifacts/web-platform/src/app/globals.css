@@ -249,6 +249,14 @@ a.vh-card:hover { border-color: color-mix(in srgb, var(--vh-accent) 34%, var(--v
 /* ── Announcement bar ────────────────────────────────────────── */
 .vh-announce { background: var(--vh-surface); color: var(--vh-muted); border-bottom: 1px solid var(--vh-line); font-size: .76rem; font-weight: 500; text-align: center; padding: 7px 16px; letter-spacing: .01em; }
 .vh-announce a { color: var(--vh-accent); text-decoration: underline; }
+/* One line always — swipeable on narrow screens with a soft right-edge fade,
+   never a stack of three lines eating the top of the viewport. */
+.vh-announce-track { flex-wrap: nowrap; max-width: 100%; overflow-x: auto; scrollbar-width: none; -ms-overflow-style: none; }
+.vh-announce-track::-webkit-scrollbar { display: none; }
+@media (max-width: 640px) {
+  .vh-announce { padding: 7px 14px; }
+  .vh-announce-track { justify-content: flex-start; -webkit-mask-image: linear-gradient(90deg, #000 90%, transparent); mask-image: linear-gradient(90deg, #000 90%, transparent); }
+}
 
 /* ── Tables ──────────────────────────────────────────────────── */
 .vh-table { width: 100%; border-collapse: separate; border-spacing: 0; font-size: 0.88rem; }
