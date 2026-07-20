@@ -19,11 +19,12 @@
  */
 
 import { describe, it, expect } from "vitest";
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, ComplianceClass, ListingState } from "@prisma/client";
 
 const db = new PrismaClient();
 
 interface Seed {
+  sellerId: string;
   orderId: string;
   adminOwner: string;
   adminFinance: string;
@@ -104,5 +105,50 @@ describe("§7 — server/rbac.grantRole refuses self-grant and the owner bars", 
     await grantRole({ userId: seed().adminSupport, role: "ADMIN_ADS", grantedBy: seed().adminOwner });
     const admin = await db.adminUser.findUnique({ where: { id: seed().adminSupport } });
     expect(admin?.roles).toContain("ADMIN_ADS");
+  });
+});
+
+describe("A1 — the auction resolves the product's true class, not the caller's label", () => {
+  it("drops a real MED_CANNABIS product even when it is relabelled HEMP_FOOD in the bid", async () => {
+    const { runAuction } = await import("../src/server/ads/auction");
+    // A genuine MED_CANNABIS product exists (they are sold on prescription; only
+    // their advertising is barred). Submit it to the auction claiming HEMP_FOOD.
+    const med = await db.product.create({
+      data: {
+        sellerId: seed().sellerId,
+        title: "Relabel Test — medical cannabis",
+        slug: `med-relabel-${crypto.randomUUID()}`,
+        complianceClass: ComplianceClass.MED_CANNABIS,
+        listingState: ListingState.DRAFT,
+        mrpPaise: 500_000,
+        pricePaise: 400_000,
+      },
+    });
+    const result = await runAuction({
+      candidates: [{ productId: med.id, complianceClass: ComplianceClass.HEMP_FOOD, bidPaise: 999_00 }],
+    });
+    expect(result.winners).toHaveLength(0);
+    expect(result.dropped).toContain(med.id);
+    const violation = await db.adClassViolation.findFirst({ where: { productId: med.id } });
+    expect(violation?.blocked).toBe(true);
+  });
+
+  it("still admits a genuinely advertisable product", async () => {
+    const { runAuction } = await import("../src/server/ads/auction");
+    const hemp = await db.product.create({
+      data: {
+        sellerId: seed().sellerId,
+        title: "Advertisable hemp food",
+        slug: `hemp-ok-${crypto.randomUUID()}`,
+        complianceClass: ComplianceClass.HEMP_FOOD,
+        listingState: ListingState.LIVE,
+        mrpPaise: 10_000,
+        pricePaise: 8_000,
+      },
+    });
+    const result = await runAuction({
+      candidates: [{ productId: hemp.id, complianceClass: ComplianceClass.HEMP_FOOD, bidPaise: 50_00 }],
+    });
+    expect(result.winners.map((w) => w.productId)).toContain(hemp.id);
   });
 });

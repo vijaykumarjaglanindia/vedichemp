@@ -43,8 +43,14 @@ export function assertAdvertisable(complianceClass: ComplianceClass): void {
 }
 
 /** Called by the auction on every candidate. A leak here is a SEV-1. */
-export async function auctionAssertClass(productId: string, complianceClass: ComplianceClass) {
-  const blocked = complianceClass === ComplianceClass.MED_CANNABIS;
+export async function auctionAssertClass(productId: string, _claimedClass?: ComplianceClass) {
+  // A1 layer 3: the product's REAL compliance class is authoritative — the
+  // caller-supplied class is never trusted, so relabelling a MED_CANNABIS
+  // product as HEMP_FOOD cannot buy it into the auction. An id that resolves to
+  // no product cannot be proven non-MED, so it fails closed (dropped + logged).
+  const product = await db.product.findUnique({ where: { id: productId }, select: { complianceClass: true } });
+  const trueClass = product?.complianceClass;
+  const blocked = trueClass === undefined || trueClass === ComplianceClass.MED_CANNABIS;
   if (blocked) {
     await db.adClassViolation.create({ data: { layer: "AUCTION", productId, blocked: true } });
     return false;
