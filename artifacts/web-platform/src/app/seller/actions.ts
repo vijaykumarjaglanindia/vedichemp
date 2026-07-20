@@ -36,10 +36,8 @@ import { redirect } from "next/navigation";
 import {
   appendCoupon,
   readSellerOrderOverrides,
-  readSellerReplies,
   readStockAdds,
   writeSellerOrderOverrides,
-  writeSellerReplies,
   writeStockAdds,
 } from "@/lib/engage";
 import { SELLER_ORDERS } from "./_lib/data";
@@ -556,22 +554,6 @@ export async function submitCoaForBatch(formData: FormData): Promise<void> {
   redirect(result.ok ? `/seller/products/${id}?coa=submitted` : `/seller/products/${id}?err=${result.reason}`);
 }
 
-/* ── Q&A replies (copy-checked) ───────────────────────────── */
-
-export async function replyToQuestion(formData: FormData): Promise<void> {
-  const qid = String(formData.get("qid") ?? "").slice(0, 12);
-  const reply = String(formData.get("reply") ?? "").trim();
-  if (!/^q[0-9]+$/.test(qid)) redirect("/seller/customers");
-  // Fail closed: a copy-check failure blocks the send (CLAUDE.md §2).
-  if (reply.length < 10 || reply.length > 600) redirect("/seller/customers?err=short");
-  if (CLAIM_WORDS.test(reply)) redirect("/seller/customers?err=claims");
-
-  const replies = await readSellerReplies();
-  replies[qid] = reply;
-  await writeSellerReplies(replies);
-  redirect("/seller/customers?replied=1");
-}
-
 /* ── Store reviews: public seller reply ───────────────────── */
 
 export async function replyStoreReviewAction(formData: FormData): Promise<void> {
@@ -630,20 +612,6 @@ export async function submitVendorKyc(formData: FormData): Promise<void> {
     href: "/admin/verification",
   });
   redirect("/seller/verification?done=1");
-}
-
-/** Public response to a flagged review — same copy-check, same fail-closed rule. */
-export async function respondToReview(formData: FormData): Promise<void> {
-  const rid = String(formData.get("rid") ?? "").slice(0, 12);
-  const reply = String(formData.get("reply") ?? "").trim();
-  if (!/^r[0-9]+$/.test(rid)) redirect("/seller/customers");
-  if (reply.length < 10 || reply.length > 600) redirect("/seller/customers?err=short");
-  if (CLAIM_WORDS.test(reply)) redirect("/seller/customers?err=claims");
-
-  const replies = await readSellerReplies();
-  replies[rid] = reply;
-  await writeSellerReplies(replies);
-  redirect("/seller/customers?replied=1");
 }
 
 /** Seller answers a product question (copy-checked; only their own products). */

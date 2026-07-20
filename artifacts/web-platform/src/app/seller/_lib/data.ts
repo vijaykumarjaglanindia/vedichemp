@@ -237,22 +237,9 @@ export const FLASH_SALES = [
   { name: "Weekend Wellness Flash Sale", window: "12–13 Jul 2026", discount: "Up to 20%", status: "SCHEDULED" },
 ];
 
-/* ── Customers ─────────────────────────────────────────────── */
-
-export const QUESTIONS = [
-  { id: "q1", product: "CBD Wellness Balm 30g", buyer: "Priya N.", text: "Does this contain THC above 0.3%?", status: "UNANSWERED", askedAt: "2026-07-09" },
-  { id: "q2", product: "CBD Ayurvedic Tincture 10ml", buyer: "Manoj D.", text: "Is the batch CoA available to view?", status: "ANSWERED", askedAt: "2026-07-07" },
-];
-
-export const REVIEWS = [
-  { id: "r1", product: "CBD Wellness Balm 30g", rating: 5, buyer: "Ananya S.", text: "Great texture, noticeable relief.", status: "PUBLISHED" },
-  { id: "r2", product: "CBD Muscle Relief Roll-On 50ml", rating: 2, buyer: "Meera K.", text: "Arrived leaking, requested return.", status: "FLAGGED" },
-];
-
-export const MESSAGES = [
-  { id: "m1", buyer: "Kavya R.", subject: "Order VH2026070931 — delivery window?", unread: true, at: "2026-07-09 09:20" },
-  { id: "m2", buyer: "Rohit K.", subject: "Invoice copy needed for order VH2026070812", unread: false, at: "2026-07-08 17:05" },
-];
+// Customers: product questions come from the real Q&A store (src/lib/qa.ts)
+// and store reviews from src/lib/store-reviews.ts. Response metrics are derived
+// from those — no mock questions/reviews/messages or hand-typed averages.
 
 /* ── Reports ───────────────────────────────────────────────── */
 
@@ -344,14 +331,6 @@ export const CAMPAIGN_SPARKS: Record<string, number[]> = {
   ad1: [38, 44, 41, 52, 58, 54, 61],
   ad2: [22, 25, 21, 18, 12, 8, 0],
   ad3: [0, 0, 4, 9, 12, 15, 19],
-};
-
-/* ── Customers: response-time stats ────────────────────────── */
-
-export const RESPONSE_STATS = {
-  avgFirstResponse: "2h 14m",
-  targetFirstResponse: "4h",
-  answeredWithin24hPercent: 94,
 };
 
 /* ── Reports: sales by class + top products ────────────────── */

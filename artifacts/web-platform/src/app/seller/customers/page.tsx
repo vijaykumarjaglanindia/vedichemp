@@ -7,39 +7,50 @@
  */
 
 import type { Metadata } from "next";
-import { MessageCircleQuestion, Star, Inbox, Timer } from "lucide-react";
+import Link from "next/link";
+import { MessageCircleQuestion, Star, Timer } from "lucide-react";
 import { Shell } from "../Shell";
-import { Banner, Card, StatusPill, toneForStatus, Stat, Rating } from "@/components/ui";
-import { RichTextEditor } from "@/components/ui/RichTextEditor";
-import { mdToHtml } from "@/lib/richtext";
-import { readSellerReplies } from "@/lib/engage";
+import { Banner, Card, StatusPill, Stat, Rating } from "@/components/ui";
 import { sellerListings } from "@/lib/catalog";
 import { getSession } from "@/lib/auth-lite";
 import { questionsForSlugs } from "@/lib/qa";
-import { QUESTIONS, REVIEWS, MESSAGES, RESPONSE_STATS } from "../_lib/data";
-import { answerProductQuestion, replyToQuestion, respondToReview } from "../actions";
+import { approvedStoreReviews, storeAggregate } from "@/lib/store-reviews";
+import { answerProductQuestion } from "../actions";
 
 export const metadata: Metadata = { title: "Customers" };
 export const dynamic = "force-dynamic";
 
-const REPLY_ERRORS: Record<string, string> = {
-  short: "Replies need 10–600 characters.",
-  claims: "The copy-check blocked that reply — claims language (cure/treat/prevent/heal) can't be published. It was not sent.",
-};
-
 const STORE = "Vedic Botanicals";
+const STORE_SLUG = "vedic-botanicals";
+
+/** Whole days between two YYYY-MM-DD dates (never negative). */
+function daysBetween(from: string, to: string): number {
+  return Math.max(0, (Date.parse(to) - Date.parse(from)) / 86_400_000);
+}
 
 export default async function CustomersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ replied?: string; err?: string; answered?: string; qerr?: string }>;
+  searchParams: Promise<{ answered?: string; qerr?: string }>;
 }) {
-  const { replied, err, answered, qerr } = await searchParams;
-  const myReplies = await readSellerReplies();
+  const { answered, qerr } = await searchParams;
   const session = await getSession();
   const slugs = (await sellerListings(session?.email ?? "seller@example.in", STORE)).map((p) => p.slug);
   const liveUnanswered = await questionsForSlugs(slugs, { answered: false });
   const liveAnswered = await questionsForSlugs(slugs, { answered: true });
+
+  // Real response metrics from the Q&A store (no fabricated averages).
+  const totalQ = liveUnanswered.length + liveAnswered.length;
+  const answerRate = totalQ > 0 ? Math.round((liveAnswered.length / totalQ) * 100) : null;
+  const timed = liveAnswered.filter((q) => q.answeredAt);
+  const avgDays = timed.length > 0
+    ? timed.reduce((n, q) => n + daysBetween(q.createdAt, q.answeredAt as string), 0) / timed.length
+    : null;
+  const avgLabel = avgDays === null ? "—" : avgDays < 1 ? "Same day" : `${avgDays.toFixed(1)} days`;
+
+  // Real store reviews (moderated buyer reviews of this store).
+  const agg = await storeAggregate(STORE_SLUG);
+  const recentReviews = (await approvedStoreReviews(STORE_SLUG)).slice(0, 4);
   return (
     <Shell active="/seller/customers" breadcrumb={["Seller Central", "Customers"]} title="Customers">
       {answered && (
@@ -49,13 +60,6 @@ export default async function CustomersPage({
       )}
       {qerr === "claims" && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="danger" title="Answer blocked">Answers can't carry medical claims (cure / treat / prevent). It was not published.</Banner></div>}
       {qerr === "short" && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="danger" title="Answer too short">Write between 5 and 500 characters.</Banner></div>}
-      {replied && (
-        <div style={{ marginBottom: "var(--sp-3)" }}>
-          <Banner severity="ok" title="Reply queued">
-            It passed the automated copy-check and publishes after moderation review.
-          </Banner>
-        </div>
-      )}
 
       {/* ── Live product questions (real Q&A store) ─────────── */}
       <div id="product-questions" style={{ marginBottom: "var(--sp-4)", scrollMarginTop: 90 }}>
@@ -94,136 +98,59 @@ export default async function CustomersPage({
         </Card>
       </div>
 
-      {err && REPLY_ERRORS[err] && (
-        <div style={{ marginBottom: "var(--sp-3)" }}>
-          <Banner severity="danger" title="Reply not sent">{REPLY_ERRORS[err]}</Banner>
-        </div>
-      )}
-      {/* Response-time stats */}
+      {/* Response metrics — derived from the real Q&A store */}
       <div className="vh-grid cols-3" style={{ marginBottom: "var(--sp-4)" }}>
         <Card>
           <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}>
             <Timer size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} />
             <span className="vh-stat-label">Avg first response</span>
           </div>
-          <div className="vh-stat-value tabular">{RESPONSE_STATS.avgFirstResponse}</div>
-          <div className="small muted" style={{ marginTop: 4 }}>Target {RESPONSE_STATS.targetFirstResponse} — fast replies protect account health.</div>
+          <div className="vh-stat-value tabular">{avgLabel}</div>
+          <div className="small muted" style={{ marginTop: 4 }}>
+            {timed.length > 0 ? `Across ${timed.length} answered question${timed.length === 1 ? "" : "s"}. Fast replies protect account health.` : "No answered questions yet."}
+          </div>
         </Card>
-        <Card><Stat label="Answered within 24h" value={`${RESPONSE_STATS.answeredWithin24hPercent}%`} delta={{ dir: "up", text: "2pt vs last month" }} /></Card>
-        <Card><Stat label="Open threads" value={QUESTIONS.filter((q) => q.status === "UNANSWERED").length + MESSAGES.filter((m) => m.unread).length} /></Card>
+        <Card><Stat label="Answer rate" value={answerRate === null ? "—" : `${answerRate}%`} /></Card>
+        <Card><Stat label="Questions to answer" value={liveUnanswered.length} /></Card>
       </div>
 
-      <div className="vh-grid cols-3" style={{ alignItems: "start" }}>
-        {/* Q&A with reply box */}
-        <Card title={<span className="vh-row" style={{ gap: 8 }}><MessageCircleQuestion size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /> Questions</span>}>
-          {QUESTIONS.length === 0 ? (
-            <div className="vh-empty">No open questions.</div>
-          ) : (
-            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 16 }}>
-              {QUESTIONS.map((q) => (
-                <li key={q.id} style={{ borderBottom: "1px solid var(--vh-line)", paddingBottom: 16 }}>
-                  <div className="vh-row-between" style={{ marginBottom: 4 }}>
-                    <span className="small muted">{q.product}</span>
-                    <StatusPill tone={toneForStatus(q.status)}>{q.status}</StatusPill>
-                  </div>
-                  <div style={{ fontSize: "0.9rem", fontWeight: 600 }}>&ldquo;{q.text}&rdquo;</div>
-                  <div className="small muted" style={{ marginTop: 2 }}>{q.buyer} · {q.askedAt}</div>
-                  {q.status === "UNANSWERED" && (
-                    myReplies[q.id] ? (
-                      <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: "var(--vh-radius-sm)", background: "var(--vh-bg-subtle)", border: "1px solid var(--vh-line)" }}>
-                        <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}>
-                          <StatusPill tone="warn">Pending moderation</StatusPill>
-                          <span className="small muted">Your reply passed the copy-check</span>
-                        </div>
-                        <div className="small vh-prose" style={{ margin: 0 }} dangerouslySetInnerHTML={{ __html: mdToHtml(myReplies[q.id] ?? "") }} />
-                      </div>
-                    ) : (
-                      <form action={replyToQuestion} className="vh-field" style={{ marginTop: 8 }}>
-                        <input type="hidden" name="qid" value={q.id} />
-                        <label className="vh-label" htmlFor={`reply-${q.id}`}>Your reply</label>
-                        <RichTextEditor
-                          compact
-                          name="reply"
-                          id={`reply-${q.id}`}
-                          maxLength={600}
-                          minHeight={72}
-                          placeholder="Answer factually — composition, batch CoA link, usage format. No medical claims."
-                          help="Replies pass the compliance copy-check before publishing."
-                        />
-                        <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit" style={{ justifySelf: "start" }}>Post reply</button>
-                      </form>
-                    )
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-
-        {/* Reviews with Rating */}
-        <Card title={<span className="vh-row" style={{ gap: 8 }}><Star size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /> Reviews</span>}>
-          {REVIEWS.length === 0 ? (
-            <div className="vh-empty">No reviews yet.</div>
-          ) : (
-            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 16 }}>
-              {REVIEWS.map((r) => (
-                <li key={r.id} style={{ borderBottom: "1px solid var(--vh-line)", paddingBottom: 16 }}>
-                  <div className="vh-row-between" style={{ marginBottom: 4 }}>
-                    <span className="small muted">{r.product}</span>
-                    <StatusPill tone={toneForStatus(r.status)}>{r.status}</StatusPill>
-                  </div>
+      {/* Store reviews — real, moderated; managed on the Reviews console */}
+      <Card
+        title={<span className="vh-row" style={{ gap: 8 }}><Star size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /> Store reviews</span>}
+        action={
+          <span className="vh-row small" style={{ gap: 10 }}>
+            {agg.count > 0 && <Rating value={agg.avg} count={agg.count} />}
+            <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/reviews">Manage reviews</Link>
+          </span>
+        }
+      >
+        {recentReviews.length === 0 ? (
+          <div className="vh-empty">No store reviews yet. Buyers can review your store after a delivered order.</div>
+        ) : (
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 16 }}>
+            {recentReviews.map((r) => (
+              <li key={r.id} style={{ borderBottom: "1px solid var(--vh-line)", paddingBottom: 16 }}>
+                <div className="vh-row-between" style={{ marginBottom: 4 }}>
                   <Rating value={r.rating} />
-                  <div style={{ fontSize: "0.9rem", marginTop: 4 }}>&ldquo;{r.text}&rdquo;</div>
-                  <div className="small muted" style={{ marginTop: 2 }}>{r.buyer}</div>
-                  {r.status === "FLAGGED" && (
-                    myReplies[r.id] ? (
-                      <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: "var(--vh-radius-sm)", background: "var(--vh-bg-subtle)", border: "1px solid var(--vh-line)" }}>
-                        <StatusPill tone="warn">Response pending moderation</StatusPill>
-                        <div className="small vh-prose" style={{ margin: "6px 0 0" }} dangerouslySetInnerHTML={{ __html: mdToHtml(myReplies[r.id] ?? "") }} />
-                      </div>
-                    ) : (
-                      <form action={respondToReview} className="vh-field" style={{ marginTop: 8 }}>
-                        <input type="hidden" name="rid" value={r.id} />
-                        <RichTextEditor
-                          compact
-                          name="reply"
-                          id={`respond-${r.id}`}
-                          maxLength={600}
-                          minHeight={72}
-                          placeholder="Respond factually — no medical claims; the copy-check blocks the send otherwise."
-                        />
-                        <button className="vh-btn vh-btn-sm vh-btn-ghost" type="submit" style={{ justifySelf: "start", marginTop: 6 }}>Post response</button>
-                      </form>
-                    )
-                  )}
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="small muted" style={{ margin: "12px 0 0" }}>
-            Reviews mentioning health conditions are redacted server-side before they reach this console (A4 boundary).
-          </p>
-        </Card>
-
-        {/* Messages */}
-        <Card title={<span className="vh-row" style={{ gap: 8 }}><Inbox size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /> Messages</span>}>
-          {MESSAGES.length === 0 ? (
-            <div className="vh-empty">No messages.</div>
-          ) : (
-            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 12 }}>
-              {MESSAGES.map((m) => (
-                <li key={m.id} className="vh-row-between">
-                  <span>
-                    <div style={{ fontWeight: m.unread ? 700 : 400, fontSize: ".9rem" }}>{m.subject}</div>
-                    <div className="small muted">{m.buyer} · {m.at}</div>
-                  </span>
-                  {m.unread && <StatusPill tone="info">New</StatusPill>}
-                </li>
-              ))}
-            </ul>
-          )}
-        </Card>
-      </div>
+                  {r.verified && <StatusPill tone="ok">Verified buyer</StatusPill>}
+                </div>
+                <div style={{ fontSize: "0.9rem", marginTop: 4 }}>&ldquo;{r.body}&rdquo;</div>
+                <div className="small muted" style={{ marginTop: 2 }}>{r.author} · {r.createdAt}</div>
+                {r.sellerReply && (
+                  <div style={{ marginTop: 8, padding: "8px 10px", borderRadius: "var(--vh-radius-sm)", background: "var(--vh-bg-subtle)", border: "1px solid var(--vh-line)" }}>
+                    <span className="small" style={{ fontWeight: 700 }}>Your reply: </span>
+                    <span className="small muted">{r.sellerReply}</span>
+                  </div>
+                )}
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="small muted" style={{ margin: "12px 0 0" }}>
+          Ratings are computed by the platform — you can reply on the Reviews console but cannot edit or remove a
+          review. Reviews mentioning health conditions are redacted server-side before they reach you (A4 boundary).
+        </p>
+      </Card>
     </Shell>
   );
 }
