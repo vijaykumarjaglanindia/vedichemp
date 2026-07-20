@@ -59,6 +59,7 @@ export interface PricedCart {
   shippingZone: string;
   shippingEta: string; // "2–3 days"
   shippingFree: boolean;
+  shippingFreeAtPaise: number; // order subtotal at/above which shipping is free
   shippingEstimated: boolean; // true when no destination state was supplied yet
   weightGrams: number;
   /** GST already included in the item prices (Indian B2C pricing) — derived,
@@ -242,6 +243,7 @@ export async function priceCart(opts?: { destState?: string }): Promise<PricedCa
     shippingZone: quote.zoneName,
     shippingEta: etaLabel(quote),
     shippingFree: shippingPaise === 0 && subtotalPaise > 0,
+    shippingFreeAtPaise: shipCfg.freeAtPaise,
     shippingEstimated: !opts?.destState,
     weightGrams,
     gstIncludedPaise: gstIncludedInLines(

@@ -177,7 +177,7 @@ export default async function CartPage({
           <p className="small muted" style={{ margin: "2px 0 0" }}>
             {cart.shippingFree
               ? <>Free delivery · arrives in {cart.shippingEta} ({cart.shippingZone}).</>
-              : <>{cart.shippingZone} · arrives in {cart.shippingEta}. Free over <MoneyText paise={500000} />. Exact charge is set from your delivery state at checkout.</>}
+              : <>{cart.shippingZone} · arrives in {cart.shippingEta}. Free over <MoneyText paise={cart.shippingFreeAtPaise} />. Exact charge is set from your delivery state at checkout.</>}
           </p>
           <hr className="vh-divider" />
           <div className="vh-row-between" style={{ marginBottom: 4 }}>
