@@ -17,6 +17,7 @@ import {
   ProhibitionError,
   writeAudit,
 } from "@/lib/prohibitions";
+import { resolveAdmin } from "@/server/actor";
 
 export async function issueRefund(args: {
   orderId: string;
@@ -32,20 +33,30 @@ export async function issueRefund(args: {
 
   const wallet = order.user.wallet ?? (await db.wallet.create({ data: { userId: order.userId } }));
 
-  const checkerId = args.checkerId ?? null;
+  // Resolve both parties against the DB — a made-up id is a non-human service
+  // actor, and a service account may neither move money nor stand in as checker
+  // (mirrors approveSettlement). This closes two gaps: a service-account maker
+  // issuing refunds, and a caller inventing a bogus `checkerId` string to both
+  // satisfy maker≠checker and — because that id is non-null — skip the
+  // cumulative-split guard below. A bogus checker now fails as non-human.
+  const maker = await resolveAdmin(args.actor);
+  const checker = args.checkerId ? await resolveAdmin(args.checkerId) : null;
+  const checkerId = checker?.id ?? null;
 
-  // A single movement at or above the threshold needs a second human approver.
+  // A single movement at or above the threshold needs a second human approver;
+  // a non-human maker or checker is rejected outright.
   await assertCheckerPresent({
-    makerId: args.actor,
+    makerId: maker.id,
     checkerId,
     amountPaise: args.amountPaise,
-    actorIsService: false,
+    actorIsService: !maker.isHuman || (checker ? !checker.isHuman : false),
   });
 
   // Cumulative: if this maker's already-unchecked movements in 24h cross the
   // threshold, the next one needs a checker even if each was individually small.
+  // Reached only when there is no (real, human) checker on this movement.
   if (!checkerId) {
-    await assertNoThresholdSplitting(args.actor, args.amountPaise);
+    await assertNoThresholdSplitting(maker.id, args.amountPaise);
   }
 
   const balanceAfter = wallet.balancePaise + args.amountPaise;
@@ -66,8 +77,8 @@ export async function issueRefund(args: {
   });
 
   await writeAudit({
-    actorId: args.actor,
-    actorRoles: [],
+    actorId: maker.id,
+    actorRoles: maker.isHuman ? maker.roles : [],
     actionCode: "REFUND_ISSUE",
     entityType: "Order",
     entityId: order.id,

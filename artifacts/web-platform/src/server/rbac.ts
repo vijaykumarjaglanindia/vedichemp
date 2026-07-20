@@ -22,6 +22,14 @@ export const SEPARATION_OF_DUTIES: ReadonlyArray<readonly [AdminRole, AdminRole]
   [AdminRole.ADMIN_FINANCE, AdminRole.ADMIN_FINANCE_APPROVER],
   [AdminRole.ADMIN_DISPUTE, AdminRole.ADMIN_GRIEVANCE],
   [AdminRole.ADMIN_ANALYST, AdminRole.ADMIN_SUPPORT],
+  // §7 — no superadmin. ADMIN_OWNER appoints the people who read prescriptions,
+  // move money and adjudicate disputes; it can never hold any of those roles
+  // itself. Same mechanism as any other SoD pair — no special case.
+  [AdminRole.ADMIN_OWNER, AdminRole.ADMIN_PHARMACIST],
+  [AdminRole.ADMIN_OWNER, AdminRole.ADMIN_COMPLIANCE],
+  [AdminRole.ADMIN_OWNER, AdminRole.ADMIN_FINANCE],
+  [AdminRole.ADMIN_OWNER, AdminRole.ADMIN_FINANCE_APPROVER],
+  [AdminRole.ADMIN_OWNER, AdminRole.ADMIN_DISPUTE],
 ] as const;
 
 export function conflictingRole(existing: AdminRole[], candidate: AdminRole): AdminRole | null {
@@ -40,6 +48,22 @@ export async function grantRole(args: {
   const role = args.role as AdminRole;
   const admin = await db.adminUser.findUnique({ where: { id: args.userId } });
   if (!admin) throw new ProhibitionError("ADMIN_NOT_FOUND", "No such admin user.");
+
+  // No self-grant: privilege must come from a DIFFERENT admin. A single actor
+  // handing themselves a role is the whole failure mode SoD exists to prevent,
+  // so it is refused before the conflict check even runs (and logged as DENIED).
+  if (args.grantedBy === args.userId) {
+    await writeAudit({
+      actorId: args.grantedBy,
+      actorRoles: [],
+      actionCode: "ROLE_GRANT",
+      entityType: "AdminUser",
+      entityId: args.userId,
+      reasonCode: "SELF_GRANT",
+      outcome: "DENIED",
+    });
+    throw new ProhibitionError("SELF_GRANT", "You cannot grant a role to yourself — privilege must be granted by a different admin.");
+  }
 
   const clash = conflictingRole(admin.roles, role);
   if (clash) {
