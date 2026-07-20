@@ -66,7 +66,7 @@ describe("financeSummary", () => {
   it("ranks recognised commission revenue by seller, descending", async () => {
     const fin = await financeSummary();
     expect(fin.revenueBySeller.map((r) => r.seller)).toEqual(["Vedic Botanicals", "Ananda Foods"]);
-    expect(fin.revenueBySeller[0].commissionPaise).toBe(ST1.commissionPaise);
+    expect(fin.revenueBySeller[0]?.commissionPaise).toBe(ST1.commissionPaise);
     // The AWAITING run's seller is not recognised yet.
     expect(fin.revenueBySeller.some((r) => r.seller === "Himalayan Hemp Co.")).toBe(false);
   });

@@ -370,10 +370,10 @@ export const TOP_PRODUCTS_30D: { title: string; paise: number }[] = [
 
 /* ── Storefront preview (Store & KYC) ──────────────────────── */
 
+// Store rating/review-count come from the real store-reviews store, and the
+// team roster from the real staff store — see src/app/seller/store/page.tsx.
+// Only the handle and a fallback tagline are static identity here.
 export const STORE_PREVIEW = {
   handle: "vedic-botanicals",
-  followers: 1_284,
-  rating: 4.5,
-  reviewCount: 861,
   tagline: "AYUSH-licensed CBD wellness & Ayurveda, lab-tested every batch.",
 };

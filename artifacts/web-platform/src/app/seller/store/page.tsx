@@ -10,18 +10,22 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ExternalLink, Plus, Users, BadgeCheck } from "lucide-react";
+import { ExternalLink, Plus, BadgeCheck } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, toneForStatus, Banner, Rating } from "@/components/ui";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { SELLER, LICENCES, CAPABILITY_MATRIX, STORE_PREVIEW, daysUntil } from "../_lib/data";
 import { CLASS_META } from "@/lib/compliance";
-import { groupIndian } from "@/lib/money";
 import { addLicence, requestOwnerTransfer, saveStoreAnnouncement, saveStoreAvailability, updateStorefront } from "../actions";
 import { readStoreAnnouncement, readStoreAvailability, readStoreCopy } from "@/lib/engage";
+import { storeAggregate } from "@/lib/store-reviews";
+import { listStaff, ROLE_DEFS } from "@/lib/staff";
 import { cookies } from "next/headers";
 
 export const metadata: Metadata = { title: "Store & KYC" };
+export const dynamic = "force-dynamic";
+
+const ROLE_LABEL = Object.fromEntries(ROLE_DEFS.map((r) => [r.role, r.label]));
 
 export default async function StorePage({
   searchParams,
@@ -33,6 +37,9 @@ export default async function StorePage({
   const storeCopy = await readStoreCopy();
   const availability = await readStoreAvailability();
   const announcement = await readStoreAnnouncement();
+  // Real store rating (from moderated buyer reviews) and real team roster.
+  const storeAgg = await storeAggregate(STORE_PREVIEW.handle);
+  const staff = await listStaff();
   const jar = await cookies();
   let submittedLicences: { type: string; number: string; validTo: string; status: string }[] = [];
   try { submittedLicences = JSON.parse(jar.get("vh-sell-lic")?.value ?? "[]") as typeof submittedLicences; } catch { submittedLicences = []; }
@@ -148,13 +155,11 @@ export default async function StorePage({
                 <div className="small muted">/store/{STORE_PREVIEW.handle}</div>
               </div>
             </div>
-            <p className="small muted" style={{ margin: "10px 0" }}>{STORE_PREVIEW.tagline}</p>
+            <p className="small muted" style={{ margin: "10px 0" }}>{storeCopy?.tagline ?? STORE_PREVIEW.tagline}</p>
             <div className="vh-row" style={{ gap: 16, flexWrap: "wrap" }}>
-              <span className="vh-row small" style={{ gap: 6, fontWeight: 700 }}>
-                <Users size={14} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} />
-                {groupIndian(STORE_PREVIEW.followers)} followers
-              </span>
-              <Rating value={STORE_PREVIEW.rating} count={STORE_PREVIEW.reviewCount} />
+              {storeAgg.count > 0
+                ? <Rating value={storeAgg.avg} count={storeAgg.count} />
+                : <span className="small muted">No store reviews yet</span>}
             </div>
           </div>
         </Card>
@@ -165,8 +170,8 @@ export default async function StorePage({
             <div className="vh-grid cols-2" style={{ gap: 16 }}>
               <div className="vh-field">
                 <label className="vh-label" htmlFor="storeName">Store name</label>
-                <input className="vh-input" id="storeName" name="storeName" type="text" defaultValue={SELLER.name} maxLength={60} />
-                <span className="vh-help">{SELLER.name.length}/60 · shown on every listing</span>
+                <input className="vh-input" id="storeName" name="storeName" type="text" defaultValue={SELLER.name} readOnly />
+                <span className="vh-help">Your registered store name — shown on every listing. Contact support to change it (it re-runs KYC).</span>
               </div>
               <div className="vh-field">
                 <label className="vh-label" htmlFor="regState">Registered state</label>
@@ -411,11 +416,14 @@ export default async function StorePage({
           <div className="small muted">Re-verification due annually. Next check: 1 Apr 2027.</div>
         </Card>
 
-        <Card title="Users & roles">
+        <Card title="Users & roles" action={<Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/staff">Manage staff</Link>}>
           <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
-            <li className="vh-row-between"><span>Priya Vedic (Owner)</span><StatusPill tone="ok">Active</StatusPill></li>
-            <li className="vh-row-between"><span>Arun K. (Catalogue manager)</span><StatusPill tone="ok">Active</StatusPill></li>
-            <li className="vh-row-between"><span>Nisha R. (Finance viewer)</span><StatusPill tone="ok">Active</StatusPill></li>
+            {staff.map((m) => (
+              <li key={m.id} className="vh-row-between">
+                <span>{m.name} <span className="muted">({ROLE_LABEL[m.role] ?? m.role})</span></span>
+                <StatusPill tone={m.status === "ACTIVE" ? "ok" : m.status === "INVITED" ? "warn" : "neutral"}>{m.status === "ACTIVE" ? "Active" : m.status === "INVITED" ? "Invited" : "Suspended"}</StatusPill>
+              </li>
+            ))}
           </ul>
           <p className="small muted" style={{ marginTop: 10 }}>
             Separation of duties: the user who edits payout bank details can never be the same user who approves a
