@@ -226,11 +226,8 @@ export const ADS_SUMMARY = {
 
 /* ── Marketing ─────────────────────────────────────────────── */
 
-export const COUPONS = [
-  { code: "VEDIC10", type: "Percent off", value: "10%", scope: "All CBD Wellness", status: "ACTIVE", redemptions: 214 },
-  { code: "FIRSTBUY150", type: "Flat off", value: "₹150", scope: "New buyers", status: "ACTIVE", redemptions: 88 },
-  { code: "MONSOON25", type: "Percent off", value: "25%", scope: "Roll-On range", status: "SCHEDULED", redemptions: 0 },
-];
+// Seller coupons are real: they live in the commerce coupon store (owner-tagged)
+// and are rendered live on /seller/marketing from readCoupons(). No mock table.
 
 export const BUNDLES = [
   { name: "Balm + Roll-On Duo", products: ["CBD Wellness Balm 30g", "CBD Muscle Relief Roll-On 50ml"], discountPaise: 20000, status: "ACTIVE" },

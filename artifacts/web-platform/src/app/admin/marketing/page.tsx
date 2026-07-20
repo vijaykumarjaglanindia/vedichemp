@@ -19,6 +19,7 @@ import { Card, StatusPill, MoneyText, Banner } from "@/components/ui";
 import { CampaignLabel } from "@/components/ui/ads";
 import { AUDIENCES } from "../_lib/data";
 import { listCampaigns, CHANNELS, type Channel, type CampaignStatus, type ScreenReason } from "@/lib/marketing";
+import { couponLive, readCoupons, type CouponDef } from "@/lib/commerce";
 import { createCampaignAction, approveCampaignAction, sendCampaignAction } from "./actions";
 
 export const metadata: Metadata = { title: "Marketing · Admin" };
@@ -26,11 +27,14 @@ export const dynamic = "force-dynamic";
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
 
-const COUPONS = [
-  { id: "c1", code: "FLAT15", desc: "15% off Ayurveda essentials", uses: 4820, status: "ACTIVE" },
-  { id: "c2", code: "HEMP50", desc: "₹50 off first hemp food order", uses: 12_400, status: "ACTIVE" },
-  { id: "c3", code: "MONSOON10", desc: "10% off wellness balms", uses: 0, status: "SCHEDULED" },
-];
+/** The same status a coupon shows on the dedicated /admin/coupons console —
+ *  derived from the real store, never a static label. */
+function couponStatus(c: CouponDef): { tone: "ok" | "warn" | "danger"; label: string } {
+  if (!c.enabled) return { tone: "warn", label: "Paused" };
+  if (c.validTo && new Date().toISOString().slice(0, 10) > c.validTo) return { tone: "danger", label: "Expired" };
+  if (c.usageLimit !== undefined && (c.usedCount ?? 0) >= c.usageLimit) return { tone: "danger", label: "Used up" };
+  return { tone: "ok", label: "Active" };
+}
 
 const CHANNEL_ICON: Record<string, ReactNode> = {
   Email: <Mail {...I} aria-hidden />,
@@ -83,6 +87,13 @@ const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> 
 export default async function AdminMarketingPage({ searchParams }: { searchParams: Promise<{ mk?: string; r?: string }> }) {
   const { mk } = await searchParams;
   const campaigns = await listCampaigns();
+  // Real coupon store — the same one the cart honours and /admin/coupons edits.
+  // Show the most-redeemed few here; the full console manages all of them.
+  const coupons = Object.entries(await readCoupons())
+    .map(([code, c]) => ({ code, ...c }))
+    .sort((a, b) => (b.usedCount ?? 0) - (a.usedCount ?? 0))
+    .slice(0, 6);
+  const liveCount = Object.values(await readCoupons()).filter(couponLive).length;
   const msg = mk ? MESSAGES[mk] : undefined;
   const pendingN = campaigns.filter((c) => c.status === "PENDING_COPY_CHECK").length;
   const blockedN = campaigns.filter((c) => c.status === "BLOCKED").length;
@@ -94,19 +105,34 @@ export default async function AdminMarketingPage({ searchParams }: { searchParam
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
         {msg && <Banner severity={msg.sev}>{msg.text}</Banner>}
 
-        <Card title={<span className="vh-row" style={{ gap: 8 }}><TicketPercent {...I} aria-hidden /> Coupons</span>} pad0>
+        <Card
+          title={<span className="vh-row" style={{ gap: 8 }}><TicketPercent {...I} aria-hidden /> Coupons</span>}
+          action={
+            <span className="vh-row small" style={{ gap: 8 }}>
+              <StatusPill tone="ok">{liveCount} live</StatusPill>
+              <a className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/coupons">Manage coupons</a>
+            </span>
+          }
+          pad0
+        >
           <div style={{ overflowX: "auto" }}>
             <table className="vh-table">
               <thead><tr><th>Code</th><th>Description</th><th style={{ textAlign: "right" }}>Uses</th><th>Status</th></tr></thead>
               <tbody>
-                {COUPONS.map((c) => (
-                  <tr key={c.id}>
-                    <td className="mono" style={{ fontWeight: 600 }}>{c.code}</td>
-                    <td>{c.desc}</td>
-                    <td className="tabular" style={{ textAlign: "right" }}>{c.uses.toLocaleString("en-IN")}</td>
-                    <td><StatusPill tone={c.status === "ACTIVE" ? "ok" : "info"}>{c.status}</StatusPill></td>
-                  </tr>
-                ))}
+                {coupons.length === 0 && (
+                  <tr><td colSpan={4} className="small muted" style={{ padding: "14px 18px" }}>No coupons yet — <a href="/admin/coupons#new">create one</a>. Discounts always apply server-side at checkout.</td></tr>
+                )}
+                {coupons.map((c) => {
+                  const st = couponStatus(c);
+                  return (
+                    <tr key={c.code}>
+                      <td className="mono" style={{ fontWeight: 600 }}>{c.code}</td>
+                      <td>{c.label}{c.owner && c.owner !== "platform" ? <span className="muted"> · {c.owner}</span> : null}</td>
+                      <td className="tabular" style={{ textAlign: "right" }}>{(c.usedCount ?? 0).toLocaleString("en-IN")}{c.usageLimit !== undefined ? ` / ${c.usageLimit.toLocaleString("en-IN")}` : ""}</td>
+                      <td><StatusPill tone={st.tone}>{st.label}</StatusPill></td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

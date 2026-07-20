@@ -14,7 +14,7 @@ import { Shell } from "../Shell";
 import { Banner, Card, StatusPill, toneForStatus, MoneyText } from "@/components/ui";
 import { CampaignLabel } from "@/components/ui/ads";
 import { couponLive, readCoupons as readCommerceCoupons } from "@/lib/commerce";
-import { COUPONS, BUNDLES, FLASH_SALES } from "../_lib/data";
+import { BUNDLES, FLASH_SALES } from "../_lib/data";
 import { createCoupon } from "../actions";
 
 export const metadata: Metadata = { title: "Marketing" };
@@ -104,21 +104,6 @@ export default async function MarketingPage({
             </Card>
           );
         })}
-        {COUPONS.map((c) => (
-          <Card key={c.code}>
-            <div className="vh-row-between" style={{ marginBottom: 8 }}>
-              <CampaignLabel>Coupon</CampaignLabel>
-              <StatusPill tone={toneForStatus(c.status)}>{c.status}</StatusPill>
-            </div>
-            <div className="mono" style={{ fontWeight: 800, fontSize: "1.2rem", letterSpacing: ".04em" }}>{c.code}</div>
-            <div className="small" style={{ marginTop: 4 }}>{c.type} · <strong>{c.value}</strong></div>
-            <div className="small muted" style={{ marginTop: 2 }}>{c.scope}</div>
-            <div className="vh-row-between" style={{ marginTop: 12, paddingTop: 10, borderTop: "1px solid var(--vh-line)" }}>
-              <span className="small muted">Redemptions</span>
-              <span className="tabular" style={{ fontWeight: 700 }}>{c.redemptions}</span>
-            </div>
-          </Card>
-        ))}
       </div>
 
       {/* New coupon */}
