@@ -61,6 +61,12 @@
   --vh-glass: rgba(255, 255, 255, 0.82);
   --vh-scrim: rgba(6, 22, 21, 0.5);
 
+  /* Premium accent gradient — a two-tone teal used on primary CTAs and
+     expressive marketing surfaces. Depth without leaving the brand ramp. */
+  --vh-accent-grad: linear-gradient(135deg, var(--vh-green-500) 0%, var(--vh-green-700) 100%);
+  --vh-accent-grad-hover: linear-gradient(135deg, var(--vh-green-600) 0%, var(--vh-green-800) 100%);
+  --vh-gold-grad: linear-gradient(135deg, var(--vh-saffron) 0%, var(--vh-clay-600) 120%);
+
   /* Space — 8px grid */
   --sp-1: 4px; --sp-2: 8px; --sp-3: 16px; --sp-4: 24px;
   --sp-5: 32px; --sp-6: 40px; --sp-7: 56px; --sp-8: 80px;
@@ -69,14 +75,16 @@
   --vh-radius: 12px;
   --vh-radius-sm: 8px;
   --vh-radius-lg: 18px;
-  --vh-shadow-sm: 0 1px 2px rgba(10, 40, 35, 0.04);
-  --vh-shadow: 0 1px 2px rgba(10, 40, 35, 0.04), 0 10px 28px rgba(10, 40, 35, 0.06);
-  --vh-shadow-lg: 0 18px 44px rgba(10, 40, 35, 0.12);
+  --vh-shadow-sm: 0 1px 2px rgba(10, 40, 35, 0.05);
+  --vh-shadow: 0 1px 2px rgba(10, 40, 35, 0.04), 0 6px 16px -6px rgba(10, 40, 35, 0.10), 0 14px 40px -12px rgba(10, 40, 35, 0.10);
+  --vh-shadow-lg: 0 8px 24px -8px rgba(10, 40, 35, 0.12), 0 28px 60px -20px rgba(10, 40, 35, 0.18);
   --vh-ring: 0 0 0 3px color-mix(in srgb, var(--vh-green-500) 32%, transparent);
 
   /* Type */
   --vh-font: var(--font-sans, ui-sans-serif), ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   --vh-display: var(--font-display, var(--vh-font)), Georgia, serif;
+  /* Editorial serif for marketing display moments (hero + section heads). */
+  --vh-serif: var(--font-serif, Georgia), "Iowan Old Style", "Palatino Linotype", Georgia, "Times New Roman", serif;
   --vh-mono: ui-monospace, "SF Mono", "JetBrains Mono", "Cascadia Code", Menlo, monospace;
 
   --vh-maxw: 1240px;
@@ -121,7 +129,8 @@ img, svg { max-width: 100%; }
 .small { font-size: 0.82rem; }
 .mono { font-family: var(--vh-mono); font-size: 0.86em; }
 .vh-display { font-family: var(--vh-display); font-weight: 700; letter-spacing: -0.025em; }
-.vh-eyebrow { font-size: .7rem; font-weight: 650; letter-spacing: .13em; text-transform: uppercase; color: var(--vh-green-500); }
+.vh-eyebrow { display: inline-flex; align-items: center; gap: 8px; font-size: .7rem; font-weight: 700; letter-spacing: .16em; text-transform: uppercase; color: var(--vh-green-600); }
+.vh-eyebrow::before { content: ""; width: 18px; height: 1.5px; border-radius: 2px; background: var(--vh-gold-grad); }
 .vh-kbd { font-family: var(--vh-mono); font-size: .74rem; background: var(--vh-bg-subtle); border: 1px solid var(--vh-line-strong); border-bottom-width: 2px; border-radius: 6px; padding: 1px 6px; }
 
 /* ── Layout primitives ───────────────────────────────────────── */
@@ -151,9 +160,9 @@ img, svg { max-width: 100%; }
   border: 1px solid var(--vh-line);
   border-radius: var(--vh-radius);
   padding: 18px;
-  transition: box-shadow .18s ease, border-color .18s ease;
+  transition: box-shadow .2s ease, border-color .2s ease, transform .2s ease;
 }
-.vh-card:hover { box-shadow: var(--vh-shadow); border-color: var(--vh-line-strong); }
+.vh-card:hover { box-shadow: var(--vh-shadow); border-color: var(--vh-line-strong); transform: translateY(-2px); }
 .vh-card h3 { margin-top: 0; }
 .vh-card-pad-0 { padding: 0; overflow: hidden; }
 
@@ -168,11 +177,20 @@ img, svg { max-width: 100%; }
 }
 .vh-btn:active { transform: translateY(1px); }
 .vh-btn-primary {
-  background: var(--vh-accent);
+  background: var(--vh-accent-grad);
   color: var(--vh-on-accent);
-  box-shadow: 0 1px 2px rgba(10, 40, 35, .16);
+  box-shadow: 0 1px 2px rgba(6, 48, 43, .24), 0 6px 16px -6px color-mix(in srgb, var(--vh-green-700) 55%, transparent);
+  position: relative;
 }
-.vh-btn-primary:hover { background: var(--vh-green-700); color: var(--vh-on-accent); }
+/* Hairline top highlight — the physical, glossy tactility of a premium control */
+.vh-btn-primary::after {
+  content: ""; position: absolute; inset: 0; border-radius: inherit; pointer-events: none;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .22);
+}
+.vh-btn-primary:hover {
+  background: var(--vh-accent-grad-hover); color: var(--vh-on-accent);
+  box-shadow: 0 1px 2px rgba(6, 48, 43, .28), 0 10px 24px -8px color-mix(in srgb, var(--vh-green-700) 65%, transparent);
+}
 .vh-btn-ghost { background: var(--vh-surface); color: var(--vh-ink); border-color: var(--vh-line-strong); }
 .vh-btn-ghost:hover { background: var(--vh-bg-subtle); border-color: var(--vh-faint); color: var(--vh-ink); }
 .vh-btn-outline { background: transparent; color: var(--vh-accent); border-color: color-mix(in srgb, var(--vh-accent) 45%, transparent); }
@@ -431,18 +449,33 @@ img, svg { max-width: 100%; }
 
 .vh-hero {
   background:
-    radial-gradient(760px 380px at 94% -18%, color-mix(in srgb, var(--vh-green-400) 8%, transparent), transparent 64%),
-    linear-gradient(178deg, #ffffff 55%, var(--vh-green-50));
+    radial-gradient(680px 340px at 92% -16%, color-mix(in srgb, var(--vh-green-400) 14%, transparent), transparent 60%),
+    radial-gradient(560px 300px at 4% 6%, color-mix(in srgb, var(--vh-saffron) 8%, transparent), transparent 58%),
+    radial-gradient(900px 500px at 50% 128%, color-mix(in srgb, var(--vh-green-500) 10%, transparent), transparent 62%),
+    linear-gradient(176deg, #ffffff 46%, var(--vh-green-50));
   color: var(--vh-body); border-bottom: 1px solid var(--vh-line);
-  padding: clamp(44px, 5.5vw, 84px) 0; position: relative; overflow: hidden;
+  padding: clamp(44px, 5.5vw, 88px) 0; position: relative; overflow: hidden;
 }
-.vh-hero h1 { color: var(--vh-ink); font-family: var(--vh-display); font-weight: 800; font-size: clamp(2rem, 1.3rem + 2.8vw, 3.2rem); max-width: 17ch; letter-spacing: -0.03em; line-height: 1.08; }
-.vh-hero p { color: var(--vh-body); max-width: 56ch; font-size: 1.02rem; }
+/* Fine grain overlay — the barely-there texture premium sites use so a large
+   gradient never reads as flat/plastic. Pure CSS, no asset. */
+.vh-hero::before {
+  content: ""; position: absolute; inset: 0; z-index: 0; pointer-events: none; opacity: .5;
+  background-image: radial-gradient(color-mix(in srgb, var(--vh-green-700) 8%, transparent) 0.5px, transparent 0.5px);
+  background-size: 22px 22px; mask-image: radial-gradient(120% 80% at 70% 0%, #000, transparent 75%);
+}
+.vh-hero h1 {
+  color: var(--vh-ink); font-family: var(--vh-serif); font-weight: 600;
+  font-size: clamp(2.15rem, 1.3rem + 3.2vw, 3.5rem); max-width: 18ch;
+  letter-spacing: -0.02em; line-height: 1.04; font-optical-sizing: auto;
+}
+.vh-hero h1 em { font-style: italic; font-weight: 500; color: var(--vh-green-600); }
+.vh-hero p { color: var(--vh-body); max-width: 56ch; font-size: 1.06rem; }
 
 /* Marketing section rhythm */
 .vh-section { padding: var(--sp-7) 0; }
 .vh-section-head { max-width: 62ch; margin-bottom: var(--sp-5); }
-.vh-section-head h2 { font-family: var(--vh-display); font-weight: 700; font-size: clamp(1.45rem, 1.1rem + 1.5vw, 2rem); letter-spacing: -0.025em; }
+.vh-section-head h2 { font-family: var(--vh-serif); font-weight: 600; font-size: clamp(1.55rem, 1.1rem + 1.7vw, 2.15rem); letter-spacing: -0.015em; font-optical-sizing: auto; }
+.vh-section-head h2 em { font-style: italic; font-weight: 500; color: var(--vh-green-600); }
 .vh-section-alt { background: var(--vh-bg-subtle); border-top: 1px solid var(--vh-line); border-bottom: 1px solid var(--vh-line); }
 
 /* Sticky purchase box (PDP) */

@@ -1,15 +1,21 @@
 import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
-import { Inter, Plus_Jakarta_Sans } from "next/font/google";
+import { Inter, Plus_Jakarta_Sans, Fraunces } from "next/font/google";
 import { readThemePreset, themeCss } from "@/lib/features";
 import { readSiteContent } from "@/lib/sitecontent";
 import "./globals.css";
 
 /**
- * Typography — Inter for UI and body (the professional standard: neutral,
- * highly legible, dark and crisp at text sizes); Plus Jakarta Sans for
- * display headlines (geometric, confident, modern-premium). Self-hosted via
- * next/font: zero layout shift, no render-blocking CSS.
+ * Typography — a three-voice system, self-hosted via next/font (zero layout
+ * shift, no render-blocking CSS):
+ *   • Inter — UI and body. The professional standard: neutral, crisp, dark
+ *     and legible at text sizes and in dense console tables.
+ *   • Plus Jakarta Sans — functional headings (h2–h4, console titles):
+ *     geometric, confident, modern.
+ *   • Fraunces — the editorial voice for marketing hero + section headlines.
+ *     A high-contrast "old-style" soft-serif with optical sizing; it gives the
+ *     public storefront a premium, apothecary-meets-modern character that a
+ *     geometric sans cannot. Scoped to display moments, never the consoles.
  */
 const sans = Inter({
   subsets: ["latin"],
@@ -22,6 +28,13 @@ const display = Plus_Jakarta_Sans({
   display: "swap",
   variable: "--font-display",
   weight: ["600", "700", "800"],
+});
+const serif = Fraunces({
+  subsets: ["latin"],
+  display: "swap",
+  variable: "--font-serif",
+  weight: ["400", "500", "600", "700"],
+  style: ["normal", "italic"],
 });
 
 // Site-wide metadata defaults are admin-edited (Site content → SEO & metadata).
@@ -61,7 +74,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const preset = await readThemePreset();
   const css = themeCss(preset);
   return (
-    <html lang="en-IN" suppressHydrationWarning className={`${sans.variable} ${display.variable}`}>
+    <html lang="en-IN" suppressHydrationWarning className={`${sans.variable} ${display.variable} ${serif.variable}`}>
       <body>
         {css && <style dangerouslySetInnerHTML={{ __html: css }} />}
         {children}
