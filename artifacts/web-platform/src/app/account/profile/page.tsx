@@ -20,7 +20,7 @@ import { signOut } from "../../(site)/signin/actions";
 import { Shell } from "../Shell";
 import { Card, StatusPill, Banner } from "@/components/ui";
 import { currentBuyer } from "@/lib/session";
-import { deleteAccount, requestPasskey, revokeSession, sendPasswordReset, toggleConsent, toggleSmsOtp } from "./actions";
+import { deleteAccount, requestPasskey, sendPasswordReset, toggleConsent, toggleSmsOtp } from "./actions";
 
 export const metadata: Metadata = { title: "Profile" };
 
@@ -45,11 +45,6 @@ function FieldLabel({ text, verified }: { text: string; verified?: boolean }) {
   );
 }
 
-const SESSIONS = [
-  { id: "se1", device: "Chrome · Windows", location: "Bengaluru, IN", lastActive: "Active now", current: true },
-  { id: "se2", device: "Vedic Hemp App · Android", location: "Bengaluru, IN", lastActive: "2 days ago", current: false },
-];
-
 const CONSENTS = [
   { key: "essential", label: "Essential (checkout, security, fraud prevention)", locked: true, on: true },
   { key: "analytics", label: "Product analytics", locked: false, on: true },
@@ -68,7 +63,6 @@ const SEC_NOTES: Record<string, { title: string; body: string }> = {
   pwd: { title: "Reset link sent", body: "Check your registered email — the link expires in 30 minutes. The password never changes inline in a session." },
   passkey: { title: "Passkey enrolment requested", body: "Finish enrolment from the prompt on a WebAuthn-capable device. Until then, sign-in continues with email + OTP." },
   "2fa": { title: "Two-factor preference updated", body: "Sensitive changes (contact details, payout info) always re-prompt regardless of this setting." },
-  revoked: { title: "Session signed out", body: "That device's session token is revoked server-side — it takes effect on its next request." },
   confirm: { title: "Deletion not confirmed", body: "Type DELETE exactly to confirm — nothing was changed." },
   deleteblocked: { title: "Deletion on hold", body: "You have an order still in flight (or a return being settled). We can't erase your account until it completes — your refund rights come first. Try again once it's delivered or resolved." },
 };
@@ -79,18 +73,15 @@ export default async function ProfilePage({
   searchParams: Promise<{ sec?: string; sid?: string }>;
 }) {
   const viewer = currentBuyer();
-  const { sec, sid } = await searchParams;
+  const { sec } = await searchParams;
   const jar = await cookies();
   const passkeyRequested = jar.get("vh-passkey")?.value === "requested";
   const smsOtpOff = jar.get("vh-2fa-sms")?.value === "off";
-  let revoked: string[] = [];
-  try { revoked = JSON.parse(jar.get("vh-revoked")?.value ?? "[]") as string[]; } catch { revoked = []; }
   // Consent is read from the append-only ledger (server-side), not a cookie.
   const { getSession } = await import("@/lib/auth-lite");
   const { currentConsent } = await import("@/lib/consent");
   const consentEmail = (await getSession())?.email ?? "buyer@example.in";
   const consentOverrides: Record<string, boolean> = await currentConsent(consentEmail);
-  const sessions = SESSIONS.filter((x) => !revoked.includes(x.id) && x.id !== sid);
 
   return (
     <Shell active="/account/profile" breadcrumb={["My Account", "Profile"]} title="Profile">
@@ -185,26 +176,20 @@ export default async function ProfilePage({
           </Banner>
 
           <div style={{ marginTop: 16 }}>
-            <div className="small muted" style={{ marginBottom: 8 }}>Active sessions</div>
+            <div className="small muted" style={{ marginBottom: 8 }}>Active session</div>
             <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
-              {sessions.map((s) => (
-                <li key={s.id} className="vh-row-between">
-                  <span className="small vh-row" style={{ gap: 8 }}>
-                    <Smartphone size={14} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} />
-                    {s.device} · {s.location} {s.current && <StatusPill tone="ok">This device</StatusPill>}
-                  </span>
-                  <span className="vh-row" style={{ gap: 8 }}>
-                    <span className="small muted">{s.lastActive}</span>
-                    {!s.current && (
-                      <form action={revokeSession} style={{ display: "inline-flex" }}>
-                        <input type="hidden" name="sessionId" value={s.id} />
-                        <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">Sign out</button>
-                      </form>
-                    )}
-                  </span>
-                </li>
-              ))}
+              <li className="vh-row-between">
+                <span className="small vh-row" style={{ gap: 8 }}>
+                  <Smartphone size={14} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} />
+                  This device <StatusPill tone="ok">Signed in</StatusPill>
+                </span>
+                <span className="small muted">{consentEmail}</span>
+              </li>
             </ul>
+            <p className="small muted" style={{ margin: "8px 0 0" }}>
+              You&rsquo;re signed in on this device with a single session cookie. Signing out below ends it; sensitive
+              changes re-prompt for OTP or passkey regardless.
+            </p>
           </div>
         </Card>
 

@@ -35,19 +35,6 @@ export async function toggleSmsOtp(): Promise<void> {
   redirect("/account/profile?sec=2fa#security");
 }
 
-export async function revokeSession(formData: FormData): Promise<void> {
-  const id = String(formData.get("sessionId") ?? "").slice(0, 10);
-  if (!/^se\d+$/.test(id)) redirect("/account/profile#security");
-  const jar = await cookies();
-  const revoked = new Set<string>(JSON.parse(jar.get("vh-revoked")?.value ?? "[]") as string[]);
-  revoked.add(id);
-  jar.set("vh-revoked", JSON.stringify([...revoked]), OPTS);
-  revalidatePath("/account/profile");
-  // The id also rides the redirect so the very first re-render reflects the
-  // revocation even before the cookie round-trips.
-  redirect(`/account/profile?sec=revoked&sid=${id}#security`);
-}
-
 export async function toggleConsent(formData: FormData): Promise<void> {
   const key = String(formData.get("key") ?? "");
   const { isPurpose, currentConsent, appendConsent } = await import("@/lib/consent");
