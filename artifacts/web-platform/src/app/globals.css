@@ -163,6 +163,9 @@ img, svg { max-width: 100%; }
   transition: box-shadow .2s ease, border-color .2s ease, transform .2s ease;
 }
 .vh-card:hover { box-shadow: var(--vh-shadow); border-color: var(--vh-line-strong); transform: translateY(-2px); }
+/* Interactive card links get a warmer, accent-tinted hover — a clear "this is
+   clickable" cue that stays within the brand. */
+a.vh-card:hover { border-color: color-mix(in srgb, var(--vh-accent) 34%, var(--vh-line)); box-shadow: var(--vh-shadow), 0 0 0 1px color-mix(in srgb, var(--vh-accent) 12%, transparent); }
 .vh-card h3 { margin-top: 0; }
 .vh-card-pad-0 { padding: 0; overflow: hidden; }
 
@@ -421,10 +424,13 @@ img, svg { max-width: 100%; }
 }
 .vh-product:hover { box-shadow: var(--vh-shadow); transform: translateY(-3px); border-color: var(--vh-line-strong); }
 .vh-product-media {
-  aspect-ratio: 1; background: linear-gradient(180deg, #f8fbfa, #eef4f2);
-  box-shadow: inset 0 0 0 1px rgba(10, 40, 35, 0.03);
-  display: flex; align-items: center; justify-content: center; font-size: 2.1rem;
-  filter: saturate(.9);
+  aspect-ratio: 1;
+  /* A soft spotlight: the product sits in a subtle pool of light over a cool
+     green-tinted base — richer and more premium than a flat linear wash. */
+  background:
+    radial-gradient(120% 100% at 50% 18%, #ffffff 0%, color-mix(in srgb, var(--vh-green-50) 70%, #ffffff) 55%, var(--vh-green-100) 130%);
+  box-shadow: inset 0 0 0 1px rgba(10, 40, 35, 0.03), inset 0 -20px 40px -28px rgba(14, 117, 105, 0.18);
+  display: flex; align-items: center; justify-content: center; font-size: 2.35rem;
 }
 .vh-product-body { padding: 12px; display: flex; flex-direction: column; gap: 7px; flex: 1; }
 .vh-product-title { font-weight: 700; color: var(--vh-ink); font-size: 0.92rem; line-height: 1.35; }
