@@ -165,19 +165,10 @@ export const CLASS_MIX_GMV: { cls: ComplianceClass; label: string; paise: number
   { cls: "AYURVEDA", label: "Ayurveda", paise: 4_18_00_000, color: "var(--vh-warn)" },
 ];
 
-/* ── Finance: revenue series, tax mix, period close ────────── */
+/* ── Finance: period close ─────────────────────────────────── */
 
-export const REVENUE_6M = {
-  labels: ["Feb", "Mar", "Apr", "May", "Jun", "Jul*"],
-  /** Platform revenue (commission + ads), integer paise. *Jul is month-to-date. */
-  valuesPaise: [2_61_40_000, 2_88_10_000, 3_04_60_000, 3_21_90_000, 3_45_20_000, 1_18_70_000],
-};
-
-export const TAX_POSITION = {
-  gstPaise: 2_84_20_000,
-  tcsPaise: 18_60_000,
-  tdsPaise: 9_30_000,
-};
+// Revenue, take rate and the GST/TCS/TDS position are DERIVED from the real
+// order + settlement stores (src/lib/finance-summary.ts) — no static series.
 
 export const PERIOD_CLOSE_CHECKLIST: { label: string; done: boolean }[] = [
   { label: "All settlement runs for the period posted or parked", done: true },

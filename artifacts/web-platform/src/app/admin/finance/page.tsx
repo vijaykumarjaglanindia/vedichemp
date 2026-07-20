@@ -14,15 +14,17 @@ import { Ban, Landmark, Wallet, ReceiptText, CheckCircle2, Circle, CalendarCheck
 import { Shell } from "../Shell";
 import { Card, Stat, StatusPill, toneForStatus, MoneyText, Banner, DataTable, type Column } from "@/components/ui";
 import { Columns, Donut } from "@/components/ui/charts";
-import { KPIS } from "@/lib/sample";
 import { allRuns, type SettlementRun } from "@/lib/settlements";
+import { financeSummary, TCS_RATE_BPS, TDS_RATE_BPS } from "@/lib/finance-summary";
 import { createSettlementRun, postSettlementRun } from "../actions";
-import { REVENUE_6M, TAX_POSITION, PERIOD_CLOSE_CHECKLIST } from "../_lib/data";
+import { PERIOD_CLOSE_CHECKLIST } from "../_lib/data";
 import { initiatePeriodClose } from "../actions";
 
 export const metadata: Metadata = { title: "Finance · Admin" };
+export const dynamic = "force-dynamic";
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
+const pct = (bps: number) => `${(bps / 100).toFixed(bps % 100 === 0 ? 0 : 1)}%`;
 
 const columns: Column<SettlementRun>[] = [
   { key: "seller", header: "Seller", render: (s) => s.seller },
@@ -42,7 +44,6 @@ const columns: Column<SettlementRun>[] = [
       );
     } },
 ];
-const taxTotal = TAX_POSITION.gstPaise + TAX_POSITION.tcsPaise + TAX_POSITION.tdsPaise;
 const closeDone = PERIOD_CLOSE_CHECKLIST.filter((c) => c.done).length;
 
 const CLOSE_NOTES: Record<string, { sev: "ok" | "danger" | "warn"; title: string; body: string }> = {
@@ -68,6 +69,7 @@ export default async function AdminFinancePage({
 }) {
   const { close, st } = await searchParams;
   const runs = await allRuns();
+  const fin = await financeSummary();
   const totalPending = runs.filter((s) => s.status === "AWAITING_CHECKER").reduce((sum, s) => sum + s.netPaise, 0);
   const totalPosted = runs.filter((s) => s.status === "POSTED").reduce((sum, s) => sum + s.netPaise, 0);
   const stMsg = st ? ST_MSG[st] : undefined;
@@ -81,17 +83,21 @@ export default async function AdminFinancePage({
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
         <Card title={<span className="vh-row" style={{ gap: 8 }}><Landmark {...I} aria-hidden /> Marketplace revenue</span>}>
           <div className="vh-grid cols-4">
-            <Stat label="GMV today" value={<MoneyText paise={KPIS.gmvTodayPaise} />} />
+            <Stat label="GMV (orders placed)" value={<MoneyText paise={fin.gmvPaise} />} delta={{ dir: "up", text: `${fin.orderCount} order${fin.orderCount === 1 ? "" : "s"}` }} />
             <Stat label="Settlements awaiting checker" value={<MoneyText paise={totalPending} />} delta={{ dir: "up", text: `${runs.filter((s) => s.status === "AWAITING_CHECKER").length} runs` }} />
             <Stat label="Posted this period" value={<MoneyText paise={totalPosted} />} />
-            <Stat label="Take rate" value="7.4%" />
+            <Stat label="Take rate" value={fin.takeRateBps > 0 ? pct(fin.takeRateBps) : "—"} />
           </div>
           <div style={{ marginTop: "var(--sp-4)" }}>
             <div className="vh-row-between" style={{ marginBottom: "var(--sp-2)" }}>
-              <span className="small muted">Platform revenue (commission + ads), last 6 months</span>
-              <span className="small muted tabular">Jul is month-to-date</span>
+              <span className="small muted">Recognised commission revenue by seller (posted settlements)</span>
+              <span className="small muted tabular">₹{Math.round(fin.commissionPaise / 100).toLocaleString("en-IN")} total</span>
             </div>
-            <Columns values={REVENUE_6M.valuesPaise} labels={REVENUE_6M.labels} height={120} />
+            {fin.revenueBySeller.length > 0 ? (
+              <Columns values={fin.revenueBySeller.map((r) => r.commissionPaise)} labels={fin.revenueBySeller.map((r) => r.seller)} height={120} />
+            ) : (
+              <p className="small muted" style={{ margin: 0 }}>No settlements posted yet — commission revenue is recognised only once a run is posted by its checker.</p>
+            )}
           </div>
         </Card>
 
@@ -134,17 +140,19 @@ export default async function AdminFinancePage({
 
           <Card title={<span className="vh-row" style={{ gap: 8 }}><ReceiptText {...I} aria-hidden /> GST / TCS / TDS</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>
-              Statutory withholding is computed server-side per order line at checkout time and is never re-derived
-              in this console — the numbers below are what was actually withheld, not a recomputation.
+              GST is the tax already included in buyer prices, summed from {fin.orderCount} placed order{fin.orderCount === 1 ? "" : "s"} —
+              what was actually collected. TCS (GST §52) and TDS (§194-O) are the marketplace&rsquo;s statutory
+              withholding on seller payouts, derived from <MoneyText paise={fin.settledGrossPaise} /> of posted settlements
+              at the rates shown.
             </p>
             <div className="vh-row" style={{ gap: "var(--sp-4)", alignItems: "center", flexWrap: "wrap" }}>
               <Donut
                 size={112}
                 centre="mix"
                 segments={[
-                  { value: TAX_POSITION.gstPaise, color: "var(--vh-accent)", label: "GST" },
-                  { value: TAX_POSITION.tcsPaise, color: "var(--vh-ok)", label: "TCS" },
-                  { value: TAX_POSITION.tdsPaise, color: "var(--vh-warn)", label: "TDS" },
+                  { value: fin.gstCollectedPaise, color: "var(--vh-accent)", label: "GST" },
+                  { value: fin.tcsPaise, color: "var(--vh-ok)", label: "TCS" },
+                  { value: fin.tdsPaise, color: "var(--vh-warn)", label: "TDS" },
                 ]}
               />
               <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8, flex: 1, minWidth: 180 }}>
@@ -153,25 +161,25 @@ export default async function AdminFinancePage({
                     <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: "var(--vh-accent)" }} />
                     GST collected
                   </span>
-                  <MoneyText paise={TAX_POSITION.gstPaise} />
+                  <MoneyText paise={fin.gstCollectedPaise} />
                 </li>
                 <li className="vh-row-between small">
                   <span className="vh-row" style={{ gap: 6 }}>
                     <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: "var(--vh-ok)" }} />
-                    TCS withheld
+                    TCS withheld <span className="muted">@ {pct(TCS_RATE_BPS)}</span>
                   </span>
-                  <MoneyText paise={TAX_POSITION.tcsPaise} />
+                  <MoneyText paise={fin.tcsPaise} />
                 </li>
                 <li className="vh-row-between small">
                   <span className="vh-row" style={{ gap: 6 }}>
                     <span aria-hidden style={{ width: 10, height: 10, borderRadius: 3, background: "var(--vh-warn)" }} />
-                    TDS withheld
+                    TDS withheld <span className="muted">@ {pct(TDS_RATE_BPS)}</span>
                   </span>
-                  <MoneyText paise={TAX_POSITION.tdsPaise} />
+                  <MoneyText paise={fin.tdsPaise} />
                 </li>
                 <li className="vh-row-between small" style={{ borderTop: "1px solid var(--vh-line)", paddingTop: 8 }}>
-                  <span className="muted">Total withheld</span>
-                  <MoneyText paise={taxTotal} />
+                  <span className="muted">GST + TCS + TDS</span>
+                  <MoneyText paise={fin.taxTotalPaise} />
                 </li>
               </ul>
             </div>
