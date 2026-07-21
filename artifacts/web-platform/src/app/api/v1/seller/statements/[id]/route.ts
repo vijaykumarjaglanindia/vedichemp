@@ -8,7 +8,10 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth-lite";
 import { formatPaise } from "@/lib/money";
+import { findRun } from "@/lib/settlements";
 import { SELLER_SETTLEMENTS } from "@/app/seller/_lib/data";
+
+const SELLER_STORE = "Vedic Botanicals";
 
 export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> }): Promise<NextResponse> {
   const session = await getSession();
@@ -19,8 +22,10 @@ export async function GET(_req: Request, ctx: { params: Promise<{ id: string }> 
     );
   }
   const { id } = await ctx.params;
-  const s = SELLER_SETTLEMENTS.find((x) => x.id === id);
-  if (!s) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
+  // The live settlement store is the authority; the static list only carries
+  // archived periods that predate it. Another seller's run is a 404, not a 403.
+  const s = findRun(id) ?? SELLER_SETTLEMENTS.find((x) => x.id === id);
+  if (!s || s.seller !== SELLER_STORE) return NextResponse.json({ error: "NOT_FOUND" }, { status: 404 });
   if (s.status !== "POSTED") {
     return NextResponse.json(
       { error: "NOT_POSTED", remediation: { label: "Awaiting checker sign-off (A6)", href: "/seller/finance" } },
