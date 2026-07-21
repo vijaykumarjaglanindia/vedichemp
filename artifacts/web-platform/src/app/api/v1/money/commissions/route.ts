@@ -10,6 +10,7 @@ import { NextResponse } from "next/server";
 import { z } from "zod";
 import { scheduleCommissionChange } from "@/server/money/commissions";
 import { adminIdForEmail } from "@/server/actor";
+import { withIdempotency } from "@/server/idempotency";
 import { errorResponse, requireIdempotencyKey, requireSession } from "@/server/http";
 
 const Body = z.object({
@@ -21,8 +22,9 @@ const Body = z.object({
 export async function POST(req: Request) {
   const gate = await requireSession("ADMIN");
   if ("response" in gate) return gate.response;
+  let idemKey: string;
   try {
-    requireIdempotencyKey(req);
+    idemKey = requireIdempotencyKey(req);
   } catch (err) {
     return errorResponse(err, 428);
   }
@@ -38,12 +40,16 @@ export async function POST(req: Request) {
     return errorResponse(new Error("A compliance class, a positive ppm rate, and an effective date are required."), 422);
   }
   try {
-    const result = await scheduleCommissionChange({
-      complianceClass: body.complianceClass,
-      ratePpm: body.ratePpm,
-      effectiveFrom: new Date(body.effectiveFrom),
-      actor,
-    });
+    // §4 replay window: a retried POST with the same key returns the stored
+    // result instead of scheduling a second fee change.
+    const { result } = await withIdempotency("money.commission", idemKey, () =>
+      scheduleCommissionChange({
+        complianceClass: body.complianceClass,
+        ratePpm: body.ratePpm,
+        effectiveFrom: new Date(body.effectiveFrom),
+        actor,
+      }),
+    );
     return NextResponse.json({ data: result });
   } catch (err) {
     return errorResponse(err, 409);

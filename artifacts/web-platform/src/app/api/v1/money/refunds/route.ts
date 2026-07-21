@@ -6,6 +6,7 @@
 import { NextResponse } from "next/server";
 import { z } from "zod";
 import { issueRefund } from "@/server/money/refunds";
+import { withIdempotency } from "@/server/idempotency";
 import { errorResponse, requireIdempotencyKey, requireSession } from "@/server/http";
 
 const Body = z.object({
@@ -19,8 +20,9 @@ const Body = z.object({
 export async function POST(req: Request) {
   const gate = await requireSession("ADMIN");
   if ("response" in gate) return gate.response;
+  let idemKey: string;
   try {
-    requireIdempotencyKey(req);
+    idemKey = requireIdempotencyKey(req);
   } catch (err) {
     return errorResponse(err, 428);
   }
@@ -31,7 +33,9 @@ export async function POST(req: Request) {
     return errorResponse(new Error("Invalid refund body."), 422);
   }
   try {
-    const result = await issueRefund(body);
+    // §4 replay window: a retried POST with the same key returns the stored
+    // result instead of issuing the refund a second time.
+    const { result } = await withIdempotency("money.refund", idemKey, () => issueRefund(body));
     return NextResponse.json({ data: result });
   } catch (err) {
     return errorResponse(err, 409);

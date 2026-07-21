@@ -144,39 +144,39 @@ model User {
 }
 
 model AdminUser {
-  id        String      @id @default(uuid())
-  email     String      @unique
-  name      String
-  roles     AdminRole[]
+  id         String      @id @default(uuid())
+  email      String      @unique
+  name       String
+  roles      AdminRole[]
   // Separation of duties is enforced at grant time — see src/server/rbac.ts.
   // FINANCE ⊕ FINANCE_APPROVER, DISPUTE ⊕ GRIEVANCE, ANALYST ⊕ SUPPORT.
-  createdAt DateTime    @default(now())
+  createdAt  DateTime    @default(now())
   disabledAt DateTime?
 }
 
 model Consent {
-  id        String   @id @default(uuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id])
-  purpose   String // analytics | marketing | personalisation
-  granted   Boolean
-  at        DateTime @default(now())
+  id      String   @id @default(uuid())
+  userId  String
+  user    User     @relation(fields: [userId], references: [id])
+  purpose String // analytics | marketing | personalisation
+  granted Boolean
+  at      DateTime @default(now())
 
   // Append-only: withdrawal is a new row, never an update.
   @@index([userId, purpose])
 }
 
 model Address {
-  id         String  @id @default(uuid())
-  userId     String
-  user       User    @relation(fields: [userId], references: [id])
-  label      String
-  line       String
-  city       String
-  state      String
-  pincode    String
-  phone      String
-  isDefault  Boolean @default(false)
+  id        String  @id @default(uuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id])
+  label     String
+  line      String
+  city      String
+  state     String
+  pincode   String
+  phone     String
+  isDefault Boolean @default(false)
 
   @@index([userId])
 }
@@ -184,31 +184,31 @@ model Address {
 // ─────────────────────────── SELLER ───────────────────────────
 
 model Seller {
-  id        String      @id @default(uuid())
-  legalName String
-  gstin     String      @unique
-  pan       String
-  state     SellerState @default(REGISTERED)
-  healthScore Int       @default(0)
-  createdAt DateTime    @default(now())
+  id          String      @id @default(uuid())
+  legalName   String
+  gstin       String      @unique
+  pan         String
+  state       SellerState @default(REGISTERED)
+  healthScore Int         @default(0)
+  createdAt   DateTime    @default(now())
 
-  licences  Licence[]
-  products  Product[]
-  campaigns AdCampaign[]
+  licences    Licence[]
+  products    Product[]
+  campaigns   AdCampaign[]
   settlements Settlement[]
 }
 
 model Licence {
-  id              String          @id @default(uuid())
-  sellerId        String
-  seller          Seller          @relation(fields: [sellerId], references: [id])
-  type            String // FSSAI | AYUSH | STATE_DRUG | LEGAL_METROLOGY
-  number          String
-  authority       String
-  validTill       DateTime
-  verified        Boolean         @default(false)
+  id           String          @id @default(uuid())
+  sellerId     String
+  seller       Seller          @relation(fields: [sellerId], references: [id])
+  type         String // FSSAI | AYUSH | STATE_DRUG | LEGAL_METROLOGY
+  number       String
+  authority    String
+  validTill    DateTime
+  verified     Boolean         @default(false)
   // A licence unlocks a compliance class. No licence, no capability.
-  unlocksClass    ComplianceClass
+  unlocksClass ComplianceClass
 
   @@index([sellerId])
 }
@@ -229,7 +229,7 @@ model Product {
   description     String?
   createdAt       DateTime        @default(now())
 
-  batches   Batch[]
+  batches    Batch[]
   orderItems OrderItem[]
 
   // A2: a product is only sellable through a batch with an APPROVED, batch-matched CoA.
@@ -279,17 +279,17 @@ model LabReport {
 // ─────────────────────────── ORDERS & MONEY ───────────────────────────
 
 model Order {
-  id          String      @id @default(uuid())
-  reference   String      @unique // VH2026071234
-  userId      String
-  user        User        @relation(fields: [userId], references: [id])
-  status      OrderStatus @default(PLACED)
+  id             String      @id @default(uuid())
+  reference      String      @unique // VH2026071234
+  userId         String
+  user           User        @relation(fields: [userId], references: [id])
+  status         OrderStatus @default(PLACED)
   // Server-computed. A client-supplied total is rejected at the API.
-  subtotalPaise Int
-  taxPaise      Int
-  totalPaise    Int
-  idempotencyKey String    @unique
-  placedAt    DateTime    @default(now())
+  subtotalPaise  Int
+  taxPaise       Int
+  totalPaise     Int
+  idempotencyKey String      @unique
+  placedAt       DateTime    @default(now())
 
   items OrderItem[]
 
@@ -322,17 +322,17 @@ model Wallet {
 
 // Append-only ledger. REVOKE UPDATE, DELETE — see migration 0001.
 model WalletEntry {
-  id            String   @id @default(uuid())
-  walletId      String
-  wallet        Wallet   @relation(fields: [walletId], references: [id])
-  deltaPaise    Int
-  balanceAfter  Int
-  reason        String
-  reference     String?
+  id           String   @id @default(uuid())
+  walletId     String
+  wallet       Wallet   @relation(fields: [walletId], references: [id])
+  deltaPaise   Int
+  balanceAfter Int
+  reason       String
+  reference    String?
   // A6: any adjustment (not an order payment) needs two humans.
-  makerId       String?
-  checkerId     String?
-  at            DateTime @default(now())
+  makerId      String?
+  checkerId    String?
+  at           DateTime @default(now())
 
   @@index([walletId, at])
 }
@@ -350,19 +350,19 @@ model CommissionSchedule {
 }
 
 model Settlement {
-  id           String           @id @default(uuid())
-  sellerId     String
-  seller       Seller           @relation(fields: [sellerId], references: [id])
-  periodStart  DateTime
-  periodEnd    DateTime
-  grossPaise   Int
+  id              String           @id @default(uuid())
+  sellerId        String
+  seller          Seller           @relation(fields: [sellerId], references: [id])
+  periodStart     DateTime
+  periodEnd       DateTime
+  grossPaise      Int
   deductionsPaise Int
-  netPaise     Int
-  status       SettlementStatus @default(DRAFT)
+  netPaise        Int
+  status          SettlementStatus @default(DRAFT)
   // A6: maker ≠ checker, both human, enforced by CHECK constraint.
-  makerId      String
-  checkerId    String?
-  postedAt     DateTime? // once posted, immutable. Corrections are new adjustment rows.
+  makerId         String
+  checkerId       String?
+  postedAt        DateTime? // once posted, immutable. Corrections are new adjustment rows.
 
   @@index([sellerId, status])
 }
@@ -393,16 +393,16 @@ model Prescription {
 // A4: every read of health data writes here, with a reason, before the object is served.
 // The buyer is notified. REVOKE UPDATE, DELETE.
 model SensitiveAccessLog {
-  id             String   @id @default(uuid())
-  actorId        String
-  actorRoles     String[]
-  subjectUserId  String
-  entityType     String // Prescription | MedicalNote | ConsultationNote
-  entityId       String
-  reasonCode     String // PRESCRIPTION_VERIFICATION | ADVERSE_EVENT_TRIAGE | REGULATORY_REQUEST | DISPUTE_EVIDENCE
-  reasonText     String
+  id              String    @id @default(uuid())
+  actorId         String
+  actorRoles      String[]
+  subjectUserId   String
+  entityType      String // Prescription | MedicalNote | ConsultationNote
+  entityId        String
+  reasonCode      String // PRESCRIPTION_VERIFICATION | ADVERSE_EVENT_TRIAGE | REGULATORY_REQUEST | DISPUTE_EVIDENCE
+  reasonText      String
   buyerNotifiedAt DateTime?
-  at             DateTime @default(now())
+  at              DateTime  @default(now())
 
   @@index([subjectUserId, at])
   @@index([actorId, at])
@@ -411,16 +411,16 @@ model SensitiveAccessLog {
 // ─────────────────────────── ADVERTISING (A1) ───────────────────────────
 
 model AdCampaign {
-  id              String          @id @default(uuid())
-  sellerId        String
-  seller          Seller          @relation(fields: [sellerId], references: [id])
-  name            String
+  id               String          @id @default(uuid())
+  sellerId         String
+  seller           Seller          @relation(fields: [sellerId], references: [id])
+  name             String
   // A1: there is deliberately NO `complianceClass = MED_CANNABIS` path.
   // The CHECK constraint in migration 0001 rejects it at the database.
-  complianceClass ComplianceClass
+  complianceClass  ComplianceClass
   dailyBudgetPaise Int
-  active          Boolean         @default(false)
-  createdAt       DateTime        @default(now())
+  active           Boolean         @default(false)
+  createdAt        DateTime        @default(now())
 
   @@index([sellerId, active])
 }
@@ -439,50 +439,66 @@ model AdClassViolation {
 
 // REVOKE DELETE, UPDATE. Object-lock mirrored. Corrections are new rows.
 model AuditLog {
-  id            BigInt       @id @default(autoincrement())
-  at            DateTime     @default(now())
-  actorId       String
-  actorRoles    String[]
-  elevationId   String?
+  id                 BigInt       @id @default(autoincrement())
+  at                 DateTime     @default(now())
+  actorId            String
+  actorRoles         String[]
+  elevationId        String?
   impersonatedUserId String?
-  actionCode    String
-  entityType    String
-  entityId      String
-  before        Json?
-  after         Json?
-  reasonCode    String
-  reasonText    String?
-  makerId       String?
-  checkerId     String?
-  requestId     String
-  ip            String?
-  outcome       AuditOutcome // DENIED actions are logged too.
+  actionCode         String
+  entityType         String
+  entityId           String
+  before             Json?
+  after              Json?
+  reasonCode         String
+  reasonText         String?
+  makerId            String?
+  checkerId          String?
+  requestId          String
+  ip                 String?
+  outcome            AuditOutcome // DENIED actions are logged too.
 
   @@index([entityType, entityId, at])
   @@index([actorId, at])
 }
 
 model AdverseEvent {
-  id          String   @id @default(uuid())
-  productId   String
-  batchId     String?
-  reportedBy  String
-  narrative   String
+  id             String    @id @default(uuid())
+  productId      String
+  batchId        String?
+  reportedBy     String
+  narrative      String
   acknowledgedAt DateTime?
-  at          DateTime @default(now())
+  at             DateTime  @default(now())
   // A3: no delete, no update. A correction is a new row referencing this id.
-  correctsId  String?
+  correctsId     String?
 }
 
 model Recall {
-  id         String    @id @default(uuid())
-  batchId    String
-  reason     String
-  quarantinedAt DateTime  @default(now())
+  id             String    @id @default(uuid())
+  batchId        String
+  reason         String
+  quarantinedAt  DateTime  @default(now())
   buyersAffected Int
-  buyersNotified Int      @default(0)
+  buyersNotified Int       @default(0)
   // Initiation and closure both require maker–checker.
-  makerId    String
-  checkerId  String?
-  closedAt   DateTime?
+  makerId        String
+  checkerId      String?
+  closedAt       DateTime?
+}
+
+// ─────────────────────────── §4 IDEMPOTENCY ───────────────────────────
+// Every POST/PATCH that moves money or orders carries an Idempotency-Key
+// (UUIDv4). This table IS the 24h replay window: a key is claimed once per
+// operation scope; a repeat within 24h returns the stored result instead of
+// running the mutation again, so a retried or double-submitted request cannot
+// move money twice. Keys older than 24h may be reclaimed.
+model IdempotencyKey {
+  scope      String // operation, e.g. "money.refund" | "money.settlement.post"
+  key        String // client-supplied UUIDv4
+  resultJson Json? // the stored response payload, set once the op succeeds
+  createdAt  DateTime @default(now())
+
+  @@id([scope, key])
+  @@index([createdAt])
 }
