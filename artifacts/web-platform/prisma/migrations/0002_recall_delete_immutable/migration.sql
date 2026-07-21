@@ -24,3 +24,28 @@ CREATE TRIGGER a3_recall_no_delete
 
 COMMENT ON TRIGGER a3_recall_no_delete ON "Recall" IS
   'A3: recall records are append-only. Closing a recall is an UPDATE (allowed); deleting one is not, for anyone.';
+
+-- A3 "cannot be altered" for a CLOSED recall. A Recall is UPDATEd exactly once —
+-- the checker closes it. After that it is history and must never be rewritten
+-- (re-closed, re-attributed, reason edited). A BEFORE UPDATE trigger that raises
+-- only when the row is ALREADY closed allows the single close (OLD.closedAt IS
+-- NULL) but rejects any later mutation, for anyone — the app role's atomic
+-- `WHERE closedAt IS NULL` write handles the concurrent race; this is the
+-- belt-and-braces backstop against a bug or a direct query touching a closed row.
+CREATE OR REPLACE FUNCTION a3_recall_closed_immutable() RETURNS trigger AS $$
+BEGIN
+  IF OLD."closedAt" IS NOT NULL THEN
+    RAISE EXCEPTION 'A3: a closed recall is append-only and cannot be altered. A change is a new recall row.';
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+DROP TRIGGER IF EXISTS a3_recall_no_reclose ON "Recall";
+
+CREATE TRIGGER a3_recall_no_reclose
+  BEFORE UPDATE ON "Recall"
+  FOR EACH ROW EXECUTE FUNCTION a3_recall_closed_immutable();
+
+COMMENT ON TRIGGER a3_recall_no_reclose ON "Recall" IS
+  'A3: a recall may be UPDATEd once (the close). An already-closed recall is immutable — no re-close, no re-attribution, for anyone.';

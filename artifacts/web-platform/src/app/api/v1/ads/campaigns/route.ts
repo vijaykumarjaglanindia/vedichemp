@@ -6,6 +6,12 @@
  * compliance class is resolved SERVER-SIDE from the real product inside the
  * service — a `complianceClass` in the body is deliberately ignored, so a caller
  * cannot relabel a MED_CANNABIS product into an advertisable one.
+ *
+ * The audit actor is the AUTHENTICATED session, not a body-supplied id, so a
+ * campaign (and its audit row) cannot be attributed to someone else. The Zod
+ * schema checks only that the required fields are present and well-typed — the
+ * A1 class gate and the name/budget rules are enforced by the service so that a
+ * MED advertising attempt is logged even when another field is also malformed.
  */
 import { NextResponse } from "next/server";
 import { z } from "zod";
@@ -14,10 +20,9 @@ import { errorResponse, requireSession } from "@/server/http";
 
 const Body = z.object({
   sellerId: z.string().min(1),
-  name: z.string().min(4),
+  name: z.string(),
   productId: z.string().min(1),
-  dailyBudgetPaise: z.number().int().positive(),
-  actor: z.string().min(1),
+  dailyBudgetPaise: z.number(),
 });
 
 export async function POST(req: Request) {
@@ -28,21 +33,19 @@ export async function POST(req: Request) {
   try {
     body = Body.parse(await req.json());
   } catch {
-    return errorResponse(
-      new Error("A seller id, a 4+ character name, a product id, a positive daily budget and an actor are required."),
-      422
-    );
+    return errorResponse(new Error("A seller id, a name, a product id and a daily budget are required."), 422);
   }
 
   try {
-    // Only the fields the service trusts are forwarded. Any complianceClass the
-    // body may carry is not read here and never reaches the service.
+    // The actor is the signed-in session — never a body value. Only the fields
+    // the service trusts are forwarded; any complianceClass the body may carry
+    // is not read here and never reaches the service.
     const r = await createCampaign({
       sellerId: body.sellerId,
       name: body.name,
       productId: body.productId,
       dailyBudgetPaise: body.dailyBudgetPaise,
-      actor: body.actor,
+      actor: gate.session.email,
     });
     return NextResponse.json({ data: r });
   } catch (err) {

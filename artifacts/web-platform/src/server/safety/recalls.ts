@@ -92,8 +92,8 @@ export async function closeRecall(args: {
   const recall = await db.recall.findUnique({ where: { id: args.recallId } });
   if (!recall) throw new ProhibitionError("RECALL_NOT_FOUND", "No such recall.");
 
-  // A closed recall is immutable (A3). Re-closing — a retried request, a double
-  // click — must fail cleanly here, not by rewriting safety history.
+  // Fast, clean error in the common case. This is NOT the real guard — a read
+  // here and the write below are not atomic — it just gives a nice message.
   if (recall.closedAt) {
     throw new ProhibitionError("RECALL_ALREADY_CLOSED", "This recall is already closed; a change is a new recall row.");
   }
@@ -121,10 +121,19 @@ export async function closeRecall(args: {
     throw new ProhibitionError("MAKER_IS_CHECKER", "The admin who initiated a recall cannot also close it.");
   }
 
-  await db.recall.update({
-    where: { id: recall.id },
+  // A3: the close is a single ATOMIC conditional write — the `closedAt: null`
+  // predicate is evaluated by the database inside the UPDATE, so two concurrent
+  // closes (two checkers, or one checker retrying) cannot both win: exactly one
+  // flips the row and sees count 1; the loser sees count 0 and is refused. This
+  // closes the read-check-update race the fast-path check above cannot. The
+  // a3_recall_no_reclose trigger (migration 0002) is the DB backstop.
+  const closed = await db.recall.updateMany({
+    where: { id: recall.id, closedAt: null },
     data: { checkerId: checker.id, closedAt: new Date() },
   });
+  if (closed.count === 0) {
+    throw new ProhibitionError("RECALL_ALREADY_CLOSED", "This recall is already closed; a change is a new recall row.");
+  }
 
   await writeAudit({
     actorId: checker.id,

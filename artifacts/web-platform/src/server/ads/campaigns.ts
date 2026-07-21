@@ -27,16 +27,14 @@ export async function createCampaign(args: {
   dailyBudgetPaise: number;
   actor: string;
 }): Promise<{ id: string }> {
-  // Input shape — malformed input is not an advertising violation, so it throws
-  // without logging an AdClassViolation (the violation log stays clean).
-  if (args.name.trim().length < 4) {
-    throw new ProhibitionError("CAMPAIGN_NAME_TOO_SHORT", "Give the campaign a name of at least 4 characters.");
-  }
-  if (!Number.isInteger(args.dailyBudgetPaise) || args.dailyBudgetPaise <= 0) {
-    throw new ProhibitionError("BUDGET_INVALID", "The daily budget must be a positive whole number of paise.");
-  }
-
-  // A1 layer 1: resolve the product's REAL compliance class. Never the caller's.
+  // A1 layer 1 runs FIRST — before any input-shape validation — so that a
+  // prohibited advertising attempt is ALWAYS logged and audited, even if the
+  // request also carries a malformed name or budget. "Denied actions are logged
+  // too": a MED attempt must never slip through unrecorded by piggy-backing on
+  // an unrelated validation error.
+  //
+  // The product's REAL compliance class is resolved server-side. Never the
+  // caller's — a relabelled MED_CANNABIS body cannot buy a campaign.
   const product = await db.product.findUnique({
     where: { id: args.productId },
     select: { complianceClass: true },
@@ -73,9 +71,20 @@ export async function createCampaign(args: {
     throw new ProhibitionError("CLASS_NOT_ADVERTISABLE", "This class can never be advertised.");
   }
 
-  // Past the gate: the product exists and is advertisable. Persist with the REAL
-  // resolved class — never a caller-supplied one — so the DB CHECK
-  // a1_no_med_cannabis_ads can only ever see an advertisable class from here.
+  // Past the A1 gate. Now the ordinary input-shape validation — a short name or
+  // a bad budget is a plain input error, not an advertising violation, so it
+  // throws without logging (the AdClassViolation log stays reserved for real
+  // class breaches, which were already caught and logged above).
+  if (args.name.trim().length < 4) {
+    throw new ProhibitionError("CAMPAIGN_NAME_TOO_SHORT", "Give the campaign a name of at least 4 characters.");
+  }
+  if (!Number.isInteger(args.dailyBudgetPaise) || args.dailyBudgetPaise <= 0) {
+    throw new ProhibitionError("BUDGET_INVALID", "The daily budget must be a positive whole number of paise.");
+  }
+
+  // The product exists and is advertisable. Persist with the REAL resolved class
+  // — never a caller-supplied one — so the DB CHECK a1_no_med_cannabis_ads can
+  // only ever see an advertisable class from here.
   const campaign = await db.adCampaign.create({
     data: {
       sellerId: args.sellerId,

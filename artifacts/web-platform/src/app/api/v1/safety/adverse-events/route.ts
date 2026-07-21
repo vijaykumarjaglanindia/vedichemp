@@ -12,7 +12,6 @@ import { errorResponse, requireSession } from "@/server/http";
 const Body = z.object({
   productId: z.string().min(1),
   batchId: z.string().optional(),
-  reportedBy: z.string().min(1),
   narrative: z.string().min(10),
 });
 
@@ -23,10 +22,12 @@ export async function POST(req: Request) {
   try {
     body = Body.parse(await req.json());
   } catch {
-    return errorResponse(new Error("A product, a reporter and a 10+ character description are required."), 422);
+    return errorResponse(new Error("A product and a 10+ character description are required."), 422);
   }
   try {
-    const r = await reportAdverseEvent(body);
+    // The reporter is the authenticated session — who filed the report is a fact
+    // of record, not something the caller may forge onto another person.
+    const r = await reportAdverseEvent({ ...body, reportedBy: gate.session.email });
     return NextResponse.json({ data: r });
   } catch (err) {
     return errorResponse(err, 409);

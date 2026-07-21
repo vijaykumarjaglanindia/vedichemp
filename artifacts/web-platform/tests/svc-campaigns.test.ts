@@ -118,7 +118,31 @@ describe("A1 layer 1 — campaign create rejects MED_CANNABIS by RESOLVING the r
     expect(violation).not.toBeNull();
   });
 
-  it("(d) never records a blocked=false violation (that would be a SEV-1)", async () => {
+  it("(d) a MED attempt is logged even when another field is ALSO malformed (A1 gate runs first)", async () => {
+    const { createCampaign } = await import("../src/server/ads/campaigns");
+    const med = await db.product.create({
+      data: {
+        sellerId: seed().sellerId,
+        title: "Campaign Test — med, short name",
+        slug: `camp-med2-${crypto.randomUUID()}`,
+        complianceClass: ComplianceClass.MED_CANNABIS,
+        listingState: ListingState.LIVE,
+        mrpPaise: 500_000,
+        pricePaise: 400_000,
+      },
+    });
+    // Name too short AND budget zero — the class gate must still fire first, so
+    // the prohibited advertising attempt is recorded, not swallowed by an input
+    // error ("denied actions are logged too").
+    await expectRejection(
+      () => createCampaign({ sellerId: seed().sellerId, name: "x", productId: med.id, dailyBudgetPaise: 0, actor: seed().sellerId }),
+      /CLASS_NOT_ADVERTISABLE/,
+    );
+    const violation = await db.adClassViolation.findFirst({ where: { productId: med.id, layer: "API", blocked: true } });
+    expect(violation).not.toBeNull();
+  });
+
+  it("(e) never records a blocked=false violation (that would be a SEV-1)", async () => {
     const leaked = await db.adClassViolation.findFirst({ where: { blocked: false } });
     expect(leaked).toBeNull();
   });

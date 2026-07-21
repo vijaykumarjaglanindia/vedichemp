@@ -37,6 +37,19 @@ export async function resolveAdmin(actorId: string): Promise<ResolvedActor> {
   return { id: admin.id, roles: admin.roles, isHuman: true };
 }
 
+/**
+ * Resolve the AdminUser id for an authenticated admin session by its email.
+ * Route handlers use this to derive the acting admin from the *session* rather
+ * than a body-supplied id — closing the confused-deputy gap where any admin
+ * session could name a different, more-privileged admin as the actor. Returns
+ * null when no live AdminUser matches (the caller then fails closed).
+ */
+export async function adminIdForEmail(email: string): Promise<string | null> {
+  const admin = await db.adminUser.findUnique({ where: { email } });
+  if (!admin || admin.disabledAt) return null;
+  return admin.id;
+}
+
 export function requireHuman(actor: ResolvedActor): AdminActor {
   if (!actor.isHuman) {
     throw new Error("CHECKER_MUST_BE_HUMAN");

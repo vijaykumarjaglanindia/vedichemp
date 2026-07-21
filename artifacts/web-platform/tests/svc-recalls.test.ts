@@ -114,4 +114,30 @@ describe("A3/A6 — recalls are append-only and maker != checker", () => {
       /append-only/,
     );
   });
+
+  it("(f) A3 — a closed recall cannot be closed twice (atomic guard, not a racy read)", async () => {
+    const { initiateRecall, closeRecall } = await import("../src/server/safety/recalls");
+    const { id } = await initiateRecall({ batchId: batchId(), reason: REASON, buyersAffected: 2, maker: seed().adminCompliance });
+    const checkerA = await db.adminUser.create({ data: { email: `c-a-${crypto.randomUUID()}@vedichemp.test`, name: "Checker A", roles: [AdminRole.ADMIN_COMPLIANCE] } });
+    const checkerB = await db.adminUser.create({ data: { email: `c-b-${crypto.randomUUID()}@vedichemp.test`, name: "Checker B", roles: [AdminRole.ADMIN_COMPLIANCE] } });
+    await closeRecall({ recallId: id, checker: checkerA.id });
+    // A second close — a retry, or a different checker racing in — is refused; the
+    // first sign-off stands and is never silently overwritten.
+    await expectRejection(() => closeRecall({ recallId: id, checker: checkerB.id }), /RECALL_ALREADY_CLOSED/);
+    const row = await db.recall.findUnique({ where: { id } });
+    expect(row?.checkerId).toBe(checkerA.id);
+  });
+
+  it("(g) A3 — a closed recall is immutable at the DB (a3_recall_no_reclose), even as superuser", async () => {
+    const { initiateRecall, closeRecall } = await import("../src/server/safety/recalls");
+    const { id } = await initiateRecall({ batchId: batchId(), reason: REASON, buyersAffected: 0, maker: seed().adminCompliance });
+    const checker = await db.adminUser.create({ data: { email: `c-${crypto.randomUUID()}@vedichemp.test`, name: "Checker", roles: [AdminRole.ADMIN_COMPLIANCE] } });
+    await closeRecall({ recallId: id, checker: checker.id });
+    // A raw UPDATE of the already-closed row raises — the trigger allows the one
+    // close (OLD.closedAt was null) but nothing after it, for anyone.
+    await expectRejection(
+      () => db.recall.update({ where: { id }, data: { reason: "tampered" } }),
+      /append-only|cannot be altered/,
+    );
+  });
 });

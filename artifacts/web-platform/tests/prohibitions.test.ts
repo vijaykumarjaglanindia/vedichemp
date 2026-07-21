@@ -174,6 +174,23 @@ describe("A3 — safety and audit records are append-only", () => {
     );
   });
 
+  it("test_a3_closed_recall_immutable: a closed recall cannot be re-updated, even as owner", async () => {
+    // A recall is UPDATEd exactly once — the close. The a3_recall_no_reclose
+    // trigger (migration 0002) allows that one close (closedAt was null) and
+    // rejects every mutation afterward, so a closed safety record can never be
+    // re-attributed, re-closed or reworded — a correction is a new recall row.
+    const recall = await db.recall.create({
+      data: {
+        batchId: `batch-${crypto.randomUUID()}`, reason: "close-immutability check",
+        buyersAffected: 0, makerId: seed.adminOwner, checkerId: seed.adminCompliance, closedAt: new Date(),
+      },
+    });
+    await expectRejection(
+      () => db.recall.update({ where: { id: recall.id }, data: { reason: "tampered after close" } }),
+      /append-only|cannot be altered/
+    );
+  });
+
   it("test_a3_correction_is_a_new_row: corrections reference the original", async () => {
     const correction = await db.adverseEvent.create({
       data: {
