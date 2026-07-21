@@ -44,7 +44,7 @@ describe("A3/A6 — recalls are append-only and maker != checker", () => {
     expect(row?.makerId).toBe(seed().adminCompliance);
   });
 
-  it("(b) the same admin who raised the recall cannot close it (A6)", async () => {
+  it("(b) the same admin who raised the recall cannot close it (A6), and the attempt is audited DENIED", async () => {
     const { initiateRecall, closeRecall } = await import("../src/server/safety/recalls");
     const { id } = await initiateRecall({
       batchId: batchId(),
@@ -56,6 +56,11 @@ describe("A3/A6 — recalls are append-only and maker != checker", () => {
       () => closeRecall({ recallId: id, checker: seed().adminCompliance }),
       /MAKER_IS_CHECKER/,
     );
+    // §2: the separation-of-duties bypass attempt is logged, not silent.
+    const denied = await db.auditLog.findFirst({
+      where: { entityType: "Recall", entityId: id, actionCode: "RECALL_CLOSE", outcome: "DENIED" },
+    });
+    expect(denied).not.toBeNull();
   });
 
   it("(c) a different compliance human can close it — checker and closedAt are set", async () => {

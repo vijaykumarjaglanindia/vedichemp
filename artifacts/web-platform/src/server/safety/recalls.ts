@@ -116,8 +116,19 @@ export async function closeRecall(args: {
   }
 
   // A6: the admin who raised the recall cannot also close it. The DB CHECK
-  // a6_recall_maker_is_not_checker backstops this on the UPDATE below.
+  // a6_recall_maker_is_not_checker backstops this on the UPDATE below. An attempt
+  // to self-approve a safety sign-off is a separation-of-duties bypass attempt —
+  // "denied actions are logged too" (§2) — so it leaves a DENIED audit row.
   if (checker.id === recall.makerId) {
+    await writeAudit({
+      actorId: checker.id,
+      actorRoles: checker.roles,
+      actionCode: "RECALL_CLOSE",
+      entityType: "Recall",
+      entityId: recall.id,
+      reasonCode: "SAFETY",
+      outcome: "DENIED",
+    });
     throw new ProhibitionError("MAKER_IS_CHECKER", "The admin who initiated a recall cannot also close it.");
   }
 

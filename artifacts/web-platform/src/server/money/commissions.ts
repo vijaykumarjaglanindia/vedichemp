@@ -57,6 +57,14 @@ export async function scheduleCommissionChange(args: {
     );
   }
 
+  // Fail closed on the compliance gate: an unparseable effectiveFrom yields an
+  // Invalid Date, and `NaN < earliest` is false — which would SKIP the 30-day
+  // guard rather than enforce it. Reject it with a clean ProhibitionError before
+  // the comparison, so the guard can never be silently bypassed by a bad date.
+  if (Number.isNaN(args.effectiveFrom.getTime())) {
+    throw new ProhibitionError("INVALID_EFFECTIVE_DATE", "effectiveFrom is not a valid date.");
+  }
+
   // A5, anchored server-side: notice is sent NOW; the change cannot take effect
   // for at least 30 days. A caller cannot back-date the notice to shorten this.
   const now = new Date();

@@ -89,6 +89,22 @@ describe("A5 — commission schedule needs 30 days notice (anchored server-side)
     );
   });
 
+  it("(c2) fails CLOSED on an unparseable effectiveFrom — no NaN-comparison bypass", async () => {
+    const { scheduleCommissionChange } = await import("../src/server/money/commissions");
+    // An Invalid Date must be rejected by a clean guard, not slip past because
+    // `NaN < earliest` is false. The compliance gate never fails open.
+    await expectRejection(
+      () =>
+        scheduleCommissionChange({
+          complianceClass: ComplianceClass.CBD_WELLNESS,
+          ratePpm: 200_000,
+          effectiveFrom: new Date("not-a-date"),
+          actor: seed().adminFinance,
+        }),
+      /INVALID_EFFECTIVE_DATE/,
+    );
+  });
+
   it("(d) rejects a non-finance human even with a lawful (30-day) date", async () => {
     const { scheduleCommissionChange } = await import("../src/server/money/commissions");
     await expectRejection(
