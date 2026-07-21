@@ -17,10 +17,10 @@ import {
   WITHDRAW_TONE, type OrderEarning, type WithdrawRequest,
 } from "@/lib/earnings";
 import { saveWithdrawAccount, submitWithdraw } from "../actions";
+import { actingStore } from "../_lib/store";
 
 export const metadata: Metadata = { title: "Earnings & Withdrawals" };
 
-const DEMO_STORE = "Vedic Botanicals";
 
 const ERRORS: Record<string, string> = {
   min: `The minimum withdrawal is ₹${Math.round(MIN_WITHDRAW_PAISE / 100)}.`,
@@ -32,6 +32,7 @@ const ERRORS: Record<string, string> = {
 };
 
 export default async function EarningsPage({ searchParams }: { searchParams: Promise<{ err?: string; saved?: string; requested?: string }> }) {
+  const DEMO_STORE = await actingStore();
   const { err, saved, requested } = await searchParams;
   const balance = await vendorBalance(DEMO_STORE);
   const lines = await earningLines(DEMO_STORE);

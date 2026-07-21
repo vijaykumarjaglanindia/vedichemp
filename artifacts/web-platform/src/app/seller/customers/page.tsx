@@ -16,11 +16,11 @@ import { getSession } from "@/lib/auth-lite";
 import { questionsForSlugs } from "@/lib/qa";
 import { approvedStoreReviews, storeAggregate } from "@/lib/store-reviews";
 import { answerProductQuestion } from "../actions";
+import { actingStore } from "../_lib/store";
 
 export const metadata: Metadata = { title: "Customers" };
 export const dynamic = "force-dynamic";
 
-const STORE = "Vedic Botanicals";
 const STORE_SLUG = "vedic-botanicals";
 
 /** Whole days between two YYYY-MM-DD dates (never negative). */
@@ -34,6 +34,7 @@ export default async function CustomersPage({
   searchParams: Promise<{ answered?: string; qerr?: string }>;
 }) {
   const { answered, qerr } = await searchParams;
+  const STORE = await actingStore();
   const session = await getSession();
   const slugs = (await sellerListings(session?.email ?? "seller@example.in", STORE)).map((p) => p.slug);
   const liveUnanswered = await questionsForSlugs(slugs, { answered: false });

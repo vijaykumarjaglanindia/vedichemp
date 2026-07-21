@@ -17,7 +17,8 @@ import { Sparkles, PenLine, BadgeIndianRupee, PackageSearch, TrendingUp, ShieldC
 import { Shell } from "../Shell";
 import { Card, MoneyText } from "@/components/ui";
 import { Columns } from "@/components/ui/charts";
-import { FORECAST_4W } from "../_lib/data";
+import { sellerData } from "../_lib/data";
+import { actingStore } from "../_lib/store";
 import { getSession } from "@/lib/auth-lite";
 import { sellerListings, type CatalogProduct } from "@/lib/catalog";
 import { aiComplete, draftListingDescription } from "@/lib/ai";
@@ -63,7 +64,9 @@ export default async function AssistantPage({
   const draftIndex = v === "2" ? 1 : 0;
 
   const session = await getSession();
-  const listings = await sellerListings(session?.email ?? "seller@example.in", "Vedic Botanicals");
+  const store = await actingStore();
+  const { FORECAST_4W } = sellerData(store);
+  const listings = await sellerListings(session?.email ?? "seller@example.in", store);
   // Real listings drive the panels. Prefer a CBD listing for the copy-check
   // demo (the class the compliance gate is strictest on); fall back to any.
   const descTarget: CatalogProduct | undefined = listings.find((p) => p.cls === "CBD_WELLNESS") ?? listings[0];

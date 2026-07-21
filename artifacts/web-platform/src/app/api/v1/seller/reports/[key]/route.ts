@@ -9,46 +9,47 @@
 import { NextResponse } from "next/server";
 import { getSession } from "@/lib/auth-lite";
 import { formatPaise } from "@/lib/money";
-import { AD_CAMPAIGNS, SELLER_ORDERS, SELLER_PRODUCTS, WAREHOUSE_STOCK } from "@/app/seller/_lib/data";
+import { sellerData, type SellerData } from "@/app/seller/_lib/data";
+import { actingStore } from "@/app/seller/_lib/store";
 
 function csv(rows: (string | number)[][]): string {
   return rows.map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(",")).join("\r\n");
 }
 
-const REPORTS: Record<string, () => { name: string; rows: (string | number)[][] }> = {
-  sales: () => ({
+const REPORTS: Record<string, (d: SellerData) => { name: string; rows: (string | number)[][] }> = {
+  sales: (d) => ({
     name: "sales",
     rows: [
       ["reference", "placed_at", "buyer", "status", "total_paise", "total_display"],
-      ...SELLER_ORDERS.map((o) => [o.reference, o.placedAt, o.buyer ?? "", o.status, o.totalPaise, formatPaise(o.totalPaise)]),
+      ...d.SELLER_ORDERS.map((o) => [o.reference, o.placedAt, o.buyer ?? "", o.status, o.totalPaise, formatPaise(o.totalPaise)]),
     ],
   }),
-  product: () => ({
+  product: (d) => ({
     name: "products",
     rows: [
       ["id", "title", "class", "listing_state", "price_paise", "mrp_paise", "hsn", "batches"],
-      ...SELLER_PRODUCTS.map((p) => [p.id, p.title, p.cls, p.listingState, p.pricePaise, p.mrpPaise, p.hsn, p.batches.length]),
+      ...d.SELLER_PRODUCTS.map((p) => [p.id, p.title, p.cls, p.listingState, p.pricePaise, p.mrpPaise, p.hsn, p.batches.length]),
     ],
   }),
-  inventory: () => ({
+  inventory: (d) => ({
     name: "inventory",
     rows: [
       ["product", "batch", "warehouse", "on_hand", "reserved", "sellable"],
-      ...WAREHOUSE_STOCK.map((w) => [w.product, w.batch, w.warehouse, w.qty, w.reserved, w.sellable ? "yes" : "BLOCKED (CoA)"]),
+      ...d.WAREHOUSE_STOCK.map((w) => [w.product, w.batch, w.warehouse, w.qty, w.reserved, w.sellable ? "yes" : "BLOCKED (CoA)"]),
     ],
   }),
-  advertising: () => ({
+  advertising: (d) => ({
     name: "advertising",
     rows: [
       ["campaign", "type", "class", "budget_paise", "spend_paise", "acos_pct", "roas", "status"],
-      ...AD_CAMPAIGNS.map((c) => [c.name, c.type, c.cls, c.budgetPaise, c.spendPaise, c.acos, c.roas, c.status]),
+      ...d.AD_CAMPAIGNS.map((c) => [c.name, c.type, c.cls, c.budgetPaise, c.spendPaise, c.acos, c.roas, c.status]),
     ],
   }),
-  compliance: () => ({
+  compliance: (d) => ({
     name: "compliance",
     rows: [
       ["product", "class", "batch", "coa_status", "note"],
-      ...SELLER_PRODUCTS.flatMap((p) => p.batches.map((b) => [p.title, p.cls, b.code, b.coaStatus, b.note ?? ""])),
+      ...d.SELLER_PRODUCTS.flatMap((p) => p.batches.map((b) => [p.title, p.cls, b.code, b.coaStatus, b.note ?? ""])),
     ],
   }),
 };
@@ -65,7 +66,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ key: string }>
   const build = REPORTS[key];
   if (!build) return NextResponse.json({ error: "UNKNOWN_REPORT" }, { status: 404 });
 
-  const { name, rows } = build();
+  const { name, rows } = build(sellerData(await actingStore()));
   return new NextResponse(csv(rows), {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",

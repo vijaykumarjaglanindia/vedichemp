@@ -23,6 +23,7 @@ import { getSession } from "@/lib/auth-lite";
 import { accountResults, adEligibility, adIdeas, AD_LOCATIONS, BID_STRATEGIES, campaignResults, listCampaigns, PLACEMENTS, qualityScore, type Campaign } from "@/lib/ads";
 import { sellerListings } from "@/lib/catalog";
 import { AD_PLACEMENTS } from "../_lib/data";
+import { actingStore } from "../_lib/store";
 import { CLASS_META } from "@/lib/compliance";
 import { createCampaign } from "../actions";
 
@@ -44,8 +45,9 @@ export default async function AdsPage({
 }) {
   const { created, err } = await searchParams;
   const session = await getSession();
+  const store = await actingStore();
   const campaigns = await listCampaigns(session?.email ?? "seller@example.in");
-  const listings = await sellerListings(session?.email ?? "seller@example.in", "Vedic Botanicals");
+  const listings = await sellerListings(session?.email ?? "seller@example.in", store);
 
   const results = accountResults(campaigns);
   const ideas = adIdeas(campaigns);

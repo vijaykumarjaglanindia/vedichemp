@@ -16,7 +16,8 @@ import { Lock, ArrowRight, FileUp } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Banner, Card, StatusPill } from "@/components/ui";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
-import { CAPABILITY_MATRIX } from "../../_lib/data";
+import { sellerData } from "../../_lib/data";
+import { actingStore } from "../../_lib/store";
 import { CLASS_META } from "@/lib/compliance";
 import { submitProduct } from "../../actions";
 
@@ -48,6 +49,7 @@ export default async function NewProductPage({
   searchParams: Promise<{ err?: string }>;
 }) {
   const { err } = await searchParams;
+  const { CAPABILITY_MATRIX } = sellerData(await actingStore());
   return (
     <Shell active="/seller/products" breadcrumb={["Seller Central", "Products", "Add product"]} title="Add product">
       {/* Step indicator */}

@@ -12,13 +12,14 @@ import { Shell } from "../Shell";
 import { NotifFeed } from "@/components/NotifFeed";
 import { notificationsFor } from "@/lib/notify";
 import { markNotif, markAllNotif } from "./actions";
+import { actingStore } from "../_lib/store";
 
 export const metadata: Metadata = { title: "Notifications" };
 export const dynamic = "force-dynamic";
 
-const STORE = "Vedic Botanicals";
 
 export default async function SellerNotificationsPage() {
+  const STORE = await actingStore();
   const items = await notificationsFor("seller", STORE);
   return (
     <Shell active="/seller/notifications" breadcrumb={["Seller Central", "Notifications"]} title="Notifications">

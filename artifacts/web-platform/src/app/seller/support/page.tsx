@@ -13,11 +13,11 @@ import { Shell } from "../Shell";
 import { Banner, Card, StatusPill, EmptyState } from "@/components/ui";
 import { ticketsForSeller, TICKET_TONE } from "@/lib/support";
 import { sellerReplyTicket, sellerSetTicketStatus, sellerEscalateTicket } from "../actions";
+import { actingStore } from "../_lib/store";
 
 export const metadata: Metadata = { title: "Support" };
 export const dynamic = "force-dynamic";
 
-const STORE = "Vedic Botanicals";
 const PARTY_LABEL: Record<string, string> = { buyer: "Buyer", seller: "You", admin: "Vedic Hemp" };
 
 const MESSAGES: Record<string, { sev: "ok" | "danger"; text: string }> = {
@@ -29,6 +29,7 @@ const MESSAGES: Record<string, { sev: "ok" | "danger"; text: string }> = {
 };
 
 export default async function SellerSupportPage({ searchParams }: { searchParams: Promise<{ done?: string; err?: string; replied?: string }> }) {
+  const STORE = await actingStore();
   const { done, err, replied } = await searchParams;
   const tickets = await ticketsForSeller(STORE);
   const open = tickets.filter((t) => t.status === "OPEN" || t.status === "PENDING").length;

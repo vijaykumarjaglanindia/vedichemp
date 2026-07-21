@@ -21,9 +21,7 @@ import { getSession } from "@/lib/auth-lite";
 import { fulfilOrder } from "./actions";
 import { sellerHome, type Blocker } from "@/lib/seller-home";
 import type { Order } from "@/lib/orders";
-import {
-  SELLER, ACCOUNT_HEALTH, LICENCES, daysUntil, ADS_SUMMARY, AD_CAMPAIGNS,
-} from "./_lib/data";
+import { sellerData, daysUntil } from "./_lib/data";
 
 export const metadata: Metadata = { title: "Seller Home" };
 export const dynamic = "force-dynamic";
@@ -84,6 +82,9 @@ export default async function SellerHomePage({
   const today = new Date().toISOString().slice(0, 10);
   const periodDays = period === "30d" ? 30 : period === "90d" ? 90 : 7;
   const home = await sellerHome(session?.email ?? "seller@example.in", today, periodDays);
+  // Illustrative cards (account-health sample, ads mini-card, licences) for the
+  // seller's OWN store — the seed store keeps its fixtures; others are derived.
+  const { ACCOUNT_HEALTH, LICENCES, ADS_SUMMARY, AD_CAMPAIGNS } = sellerData(home.store);
   const labelStride = Math.max(1, Math.round(home.kpis.series.length / 7));
 
   const pendingOrders = home.toAccept;

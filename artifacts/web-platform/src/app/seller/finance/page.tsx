@@ -13,10 +13,8 @@ import { Download } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, Stat, DataTable, StatusPill, toneForStatus, MoneyText, Banner, type Column } from "@/components/ui";
 import { Sparkline, Donut } from "@/components/ui/charts";
-import {
-  WALLET, PAYOUT_HISTORY, COMMISSION_BREAKDOWN, NEXT_FEE_CHANGE,
-  FEE_BREAKDOWN_SEGMENTS, REVENUE_SPARK, daysUntil,
-} from "../_lib/data";
+import { sellerData, daysUntil } from "../_lib/data";
+import { actingStore } from "../_lib/store";
 import { runsForSeller } from "@/lib/settlements";
 
 export const metadata: Metadata = { title: "Finance" };
@@ -28,8 +26,14 @@ interface PayoutRow { id: string; date: string; amountPaise: number; status: str
 const FEE_COLORS = ["var(--vh-accent)", "var(--vh-saffron)", "var(--vh-info)", "var(--vh-clay-600)"] as const;
 
 export default async function FinancePage() {
-  // Live settlement runs for this store (posted by admin under maker–checker).
-  const myRuns = (await runsForSeller("Vedic Botanicals")).map((r) => ({
+  // Live settlement runs for the signed-in seller's store (posted by admin
+  // under maker–checker).
+  const store = await actingStore();
+  const {
+    WALLET, PAYOUT_HISTORY, COMMISSION_BREAKDOWN, NEXT_FEE_CHANGE,
+    FEE_BREAKDOWN_SEGMENTS, REVENUE_SPARK,
+  } = sellerData(store);
+  const myRuns = (await runsForSeller(store)).map((r) => ({
     id: r.id, seller: r.seller, period: r.period, netPaise: r.netPaise, status: r.status, maker: r.maker, checker: r.checker,
   }));
   const settlementColumns: Column<SettlementRowLocal>[] = [

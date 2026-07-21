@@ -14,7 +14,8 @@ import { Donut } from "@/components/ui/charts";
 import { getSession } from "@/lib/auth-lite";
 import { isLowStock, sellerListings, type CatalogProduct } from "@/lib/catalog";
 import { readStockAdds } from "@/lib/engage";
-import { WAREHOUSE_STOCK, LOW_STOCK_THRESHOLD, type WarehouseStock } from "../_lib/data";
+import { sellerData, LOW_STOCK_THRESHOLD, type WarehouseStock } from "../_lib/data";
+import { actingStore } from "../_lib/store";
 import { addStock, saveStock } from "../actions";
 
 export const metadata: Metadata = { title: "Inventory" };
@@ -22,9 +23,11 @@ export const metadata: Metadata = { title: "Inventory" };
 export default async function InventoryPage({ searchParams }: { searchParams: Promise<{ saved?: string }> }) {
   const { saved } = await searchParams;
   const session = await getSession();
+  const store = await actingStore();
+  const { WAREHOUSE_STOCK } = sellerData(store);
   // The stock that actually gates purchases: the live catalog store's on-hand
   // quantity per listing. An order decrements it; zero blocks add-to-cart.
-  const listings = (await sellerListings(session?.email ?? "seller@example.in", "Vedic Botanicals"))
+  const listings = (await sellerListings(session?.email ?? "seller@example.in", store))
     .filter((p) => p.status === "LIVE" || p.status === "DRAFT" || p.status === "UNDER_REVIEW");
   const lowCount = listings.filter((p) => isLowStock(p)).length;
   const outCount = listings.filter((p) => p.stockQty === 0).length;

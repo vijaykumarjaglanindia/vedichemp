@@ -16,6 +16,7 @@ import { getSession } from "@/lib/auth-lite";
 import { REGULATED_CLASSES, sellerListings, type CatalogProduct } from "@/lib/catalog";
 import { bulkUploadListings } from "../actions";
 import { LISTING_QUALITY } from "../_lib/data";
+import { actingStore } from "../_lib/store";
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -44,7 +45,7 @@ export default async function SellerProductsPage({
   // The live catalog store: this storefront's launch listings plus everything
   // created in Seller Central — one list, one lifecycle, no cookie shadow copy.
   const session = await getSession();
-  const listings = await sellerListings(session?.email ?? "seller@example.in", "Vedic Botanicals");
+  const listings = await sellerListings(session?.email ?? "seller@example.in", await actingStore());
 
   const rows = listings
     .filter((p) => (status === "ALL" ? true : p.status === status))

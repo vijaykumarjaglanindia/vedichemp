@@ -7,13 +7,19 @@
  */
 
 import { statementCsv } from "@/lib/settlements";
+import { actingStore } from "../../_lib/store";
+
+function slug(store: string): string {
+  return store.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "") || "store";
+}
 
 export async function GET(): Promise<Response> {
-  const csv = await statementCsv("Vedic Botanicals");
+  const store = await actingStore();
+  const csv = await statementCsv(store);
   return new Response(csv, {
     headers: {
       "Content-Type": "text/csv; charset=utf-8",
-      "Content-Disposition": 'attachment; filename="vedic-botanicals-settlements.csv"',
+      "Content-Disposition": `attachment; filename="${slug(store)}-settlements.csv"`,
     },
   });
 }
