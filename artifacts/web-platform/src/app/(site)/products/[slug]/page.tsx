@@ -215,7 +215,7 @@ export default async function ProductDetailPage({
             </>
           ) : (
             <>
-              <div className="vh-product-media" style={{ aspectRatio: "4 / 3", fontSize: "5rem", borderRadius: "var(--vh-radius)" }} aria-hidden>
+              <div className="vh-product-media" style={{ aspectRatio: "4 / 3", fontSize: "clamp(5rem, 14vw, 8rem)", borderRadius: "var(--vh-radius)" }} aria-hidden>
                 {product.emoji}
               </div>
               <p className="small muted" style={{ marginTop: 8 }}>Illustrative product imagery.</p>

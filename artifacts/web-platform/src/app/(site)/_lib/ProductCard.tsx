@@ -31,7 +31,7 @@ type CardProduct = SampleProduct & Partial<Pick<CatalogProduct, "images" | "sale
 export function ProductCard({
   p,
   actions = false,
-  mediaSize = "2.6rem",
+  mediaSize = "clamp(3.4rem, 7vw, 4.6rem)",
 }: {
   p: CardProduct;
   /** Show Add-to-cart primary + quick-view ghost row (listing view). */
