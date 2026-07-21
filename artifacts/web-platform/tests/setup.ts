@@ -50,7 +50,9 @@ beforeAll(async () => {
   const seller = await db.seller.create({
     data: {
       legalName: "Prohibition Test Seller",
-      gstin: `05TEST${Math.floor(Math.random() * 1e4)}M1Z9`,
+      // UUID-derived so repeated suite runs against a shared database never
+      // collide on the unique constraint (Math.random()*1e4 gave 10k values).
+      gstin: `05T${crypto.randomUUID().replace(/-/g, "").slice(0, 9).toUpperCase()}Z9`,
       pan: "AABCT0000M",
       state: "ACTIVE",
       licences: {
