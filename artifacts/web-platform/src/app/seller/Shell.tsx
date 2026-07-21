@@ -88,6 +88,8 @@ export async function Shell({
       active={active}
       bellHref="/seller/notifications"
       bellCount={await unreadCount("seller", STORE)}
+      userLabel={STORE}
+      userSub={me.role === "OWNER" ? "Owner" : `${me.name} · ${roleLabel}`}
       topbarExtra={me.role !== "OWNER" ? (
         <a href="/seller/staff" className="vh-pill vh-pill-warn" style={{ textDecoration: "none" }}>Acting as {me.name} · {roleLabel}</a>
       ) : undefined}

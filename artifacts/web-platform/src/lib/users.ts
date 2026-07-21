@@ -115,6 +115,13 @@ export function findAccount(id: string): Account | undefined {
   return store().accounts.find((a) => a.id === id);
 }
 
+/** Loyalty tier for a buyer email, or null if they aren't in the directory
+ *  (a brand-new account starts at the entry tier). */
+export function tierForEmail(email: string): string | null {
+  const e = email.trim().toLowerCase();
+  return store().accounts.find((a) => a.email.toLowerCase() === e)?.tier ?? null;
+}
+
 function record(a: Account, to: AccountStatus, actor: string, reason: string, via: StatusEvent["via"]) {
   const s = store();
   s.events.unshift({ id: `ue-${s.seq++}`, userId: a.id, from: a.status, to, actor, reason, at: nowIso(), via });

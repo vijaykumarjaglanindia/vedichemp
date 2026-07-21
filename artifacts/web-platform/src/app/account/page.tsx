@@ -18,7 +18,7 @@ import {
 import { Shell } from "./Shell";
 import { Card, Stat, StatusPill, toneForStatus, MoneyText, Banner, ProgressRing, EmptyState, Timeline } from "@/components/ui";
 import { CampaignLabel, assertCreativeClassRenderable } from "@/components/ui/ads";
-import { currentBuyer } from "@/lib/session";
+import { resolveBuyer } from "@/lib/session";
 import { readLiveProducts } from "@/lib/catalog";
 import { daysUntil, type ActivityEvent } from "./_lib/data";
 import { readLiveCoupons, LAUNCH_COUPONS } from "@/lib/commerce";
@@ -53,10 +53,10 @@ const QUICK_ACTIONS = [
 ];
 
 export default async function AccountHomePage() {
-  const viewer = currentBuyer();
+  const viewer = await resolveBuyer();
   const session = await getSession();
   const email = session?.email ?? "buyer@example.in";
-  const firstName = (session?.name || viewer.firstName).split(" ")[0] || viewer.firstName;
+  const firstName = viewer.firstName;
 
   // ── Real buyer-specific data (server stores, this buyer only) ──────────
   const allOrders = await ordersForBuyer(email);

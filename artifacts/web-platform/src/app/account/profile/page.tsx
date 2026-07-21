@@ -19,7 +19,7 @@ import { cookies } from "next/headers";
 import { signOut } from "../../(site)/signin/actions";
 import { Shell } from "../Shell";
 import { Card, StatusPill, Banner } from "@/components/ui";
-import { currentBuyer } from "@/lib/session";
+import { resolveBuyer } from "@/lib/session";
 import { deleteAccount, requestPasskey, sendPasswordReset, toggleConsent, toggleSmsOtp } from "./actions";
 
 export const metadata: Metadata = { title: "Profile" };
@@ -72,16 +72,23 @@ export default async function ProfilePage({
 }: {
   searchParams: Promise<{ sec?: string; sid?: string }>;
 }) {
-  const viewer = currentBuyer();
+  const viewer = await resolveBuyer();
   const { sec } = await searchParams;
   const jar = await cookies();
   const passkeyRequested = jar.get("vh-passkey")?.value === "requested";
   const smsOtpOff = jar.get("vh-2fa-sms")?.value === "off";
-  // Consent is read from the append-only ledger (server-side), not a cookie.
+  // Identity + consent are the signed-in buyer's own, read server-side.
   const { getSession } = await import("@/lib/auth-lite");
   const { currentConsent } = await import("@/lib/consent");
-  const consentEmail = (await getSession())?.email ?? "buyer@example.in";
+  const session = await getSession();
+  const consentEmail = session?.email ?? "buyer@example.in";
   const consentOverrides: Record<string, boolean> = await currentConsent(consentEmail);
+  const fullName = (session?.name ?? "").trim() || viewer.firstName;
+  // Mask the real email for display (identity is verified, not editable here).
+  const maskedEmail = (() => {
+    const [u = "", d = ""] = consentEmail.split("@");
+    return d ? `${u.slice(0, 2)}${"•".repeat(Math.max(2, u.length - 2))}@${d}` : consentEmail;
+  })();
 
   return (
     <Shell active="/account/profile" breadcrumb={["My Account", "Profile"]} title="Profile">
@@ -100,7 +107,7 @@ export default async function ProfilePage({
           <div className="vh-grid cols-2">
             <div className="vh-field">
               <label className="vh-label" htmlFor="pf-name">Full name</label>
-              <input className="vh-input" id="pf-name" defaultValue={`${viewer.firstName} Sharma`} readOnly />
+              <input className="vh-input" id="pf-name" defaultValue={fullName} readOnly />
             </div>
             <div className="vh-field">
               <FieldLabel text="Mobile number" verified />
@@ -109,7 +116,7 @@ export default async function ProfilePage({
             </div>
             <div className="vh-field">
               <FieldLabel text="Email" verified />
-              <input className="vh-input" id="pf-email" aria-label="Email" defaultValue="ananya••@example.com" readOnly />
+              <input className="vh-input" id="pf-email" aria-label="Email" defaultValue={maskedEmail} readOnly />
               <span className="vh-help">Changing this re-prompts for OTP or passkey (step-up auth).</span>
             </div>
             <div className="vh-field">
