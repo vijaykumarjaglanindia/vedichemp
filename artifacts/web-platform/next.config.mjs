@@ -8,6 +8,9 @@ const nextConfig = {
   // Server logic lives in src/server; route handlers stay thin.
   typedRoutes: false,
   ...(basePath ? { basePath } : {}),
+  // basePath is a build-time option, so a prefixed build must live in its own
+  // output dir to coexist with the default one (used by the E2E basePath suite).
+  ...(process.env.NEXT_DIST_DIR ? { distDir: process.env.NEXT_DIST_DIR } : {}),
   // The Replit preview is a proxied iframe on a different origin.
   allowedDevOrigins: ["*.replit.dev", "*.replit.app", "127.0.0.1", "localhost"],
 
