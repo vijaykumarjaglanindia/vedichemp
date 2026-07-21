@@ -99,7 +99,7 @@ export default async function SellerHomePage({
   const orderColumns: Column<Order>[] = [
     { key: "reference", header: "Order", render: (o) => <div><div style={{ fontWeight: 600 }}>{o.reference}</div><div className="small muted">{o.placedAt.slice(0, 10)}</div></div> },
     { key: "city", header: "Ship to", render: (o) => o.city || "—" },
-    { key: "total", header: "Your share", align: "right", render: (o) => <MoneyText paise={o.items.filter((it) => it.seller === SELLER.name).reduce((n, it) => n + it.linePaise, 0)} /> },
+    { key: "total", header: "Your share", align: "right", render: (o) => <MoneyText paise={o.items.filter((it) => it.seller === home.store).reduce((n, it) => n + it.linePaise, 0)} /> },
     {
       key: "actions", header: "", align: "right", render: (o) => (
         <span className="vh-row" style={{ gap: 8, justifyContent: "flex-end" }}>
@@ -118,7 +118,7 @@ export default async function SellerHomePage({
     <Shell
       active="/seller"
       breadcrumb={["Seller Central", "Home"]}
-      title={`Welcome back, ${SELLER.name}`}
+      title={`Welcome back, ${home.store}`}
       actions={
         <nav className="vh-seg" aria-label="Reporting period">
           {PERIODS.map((p) => (

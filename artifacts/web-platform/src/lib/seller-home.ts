@@ -13,6 +13,7 @@
 import { sellerListings, coaBlocksPublish, type CatalogProduct } from "@/lib/catalog";
 import { ordersForSeller, sellerSubtotal, type Order } from "@/lib/orders";
 import { runsForSeller } from "@/lib/settlements";
+import { findAccount } from "@/lib/accounts";
 
 /** "This seller" is the Vedic Botanicals store (CONTRACT — the seed store the
  *  demo seller session owns). */
@@ -37,6 +38,7 @@ export interface SellerKpis {
   series: { label: string; paise: number }[];
 }
 export interface SellerHome {
+  store: string; // the storefront the signed-in seller owns
   blockers: Blocker[];
   lowStock: LowStockRow[];
   toAccept: Order[];
@@ -64,14 +66,14 @@ export function lowStockFrom(listings: CatalogProduct[]): LowStockRow[] {
  *  to the window `[today - days + 1, today]` so the headline total, the KPIs
  *  and the daily series all describe the SAME period the selector picked —
  *  no all-time figure floating above a 7-day chart. */
-export function kpisFrom(orders: Order[], today: string, days = 7): SellerKpis {
+export function kpisFrom(orders: Order[], today: string, days = 7, store: string = SELLER_STORE): SellerKpis {
   const end = new Date(`${today}T00:00:00Z`);
   const startIso = new Date(end.getTime() - (days - 1) * 86400000).toISOString().slice(0, 10);
   const inWindow = orders.filter((o) => {
     const d = (o.placedAt ?? "").slice(0, 10);
     return d >= startIso && d <= today;
   });
-  const gmvPaise = inWindow.reduce((n, o) => n + sellerSubtotal(o, SELLER_STORE), 0);
+  const gmvPaise = inWindow.reduce((n, o) => n + sellerSubtotal(o, store), 0);
   const count = inWindow.length;
   const aovPaise = count ? Math.round(gmvPaise / count) : 0;
 
@@ -80,22 +82,33 @@ export function kpisFrom(orders: Order[], today: string, days = 7): SellerKpis {
     const iso = new Date(end.getTime() - i * 86400000).toISOString().slice(0, 10);
     const paise = inWindow
       .filter((o) => (o.placedAt ?? "").slice(0, 10) === iso)
-      .reduce((n, o) => n + sellerSubtotal(o, SELLER_STORE), 0);
+      .reduce((n, o) => n + sellerSubtotal(o, store), 0);
     series.push({ label: iso.slice(5), paise });
   }
   return { gmvPaise, orders: count, aovPaise, series };
 }
 
+/**
+ * The storefront the signed-in seller owns, resolved from their account. Every
+ * seller sees THEIR store's live data, not a fixed demo store; an email with no
+ * seller account falls back to the seed store so the demo is still explorable.
+ */
+export function storeForEmail(email: string): string {
+  return findAccount(email)?.sellerStore ?? SELLER_STORE;
+}
+
 export async function sellerHome(email: string, today: string, days = 7): Promise<SellerHome> {
-  const listings = await sellerListings(email, SELLER_STORE);
-  const orders = await ordersForSeller(SELLER_STORE);
-  const runs = await runsForSeller(SELLER_STORE);
+  const store = storeForEmail(email);
+  const listings = await sellerListings(email, store);
+  const orders = await ordersForSeller(store);
+  const runs = await runsForSeller(store);
 
   return {
+    store,
     blockers: blockersFrom(listings),
     lowStock: lowStockFrom(listings),
     toAccept: orders.filter((o) => o.status === "PLACED"),
     settlementDuePaise: runs.filter((r) => r.status === "AWAITING_CHECKER").reduce((n, r) => n + r.netPaise, 0),
-    kpis: kpisFrom(orders, today, days),
+    kpis: kpisFrom(orders, today, days, store),
   };
 }
