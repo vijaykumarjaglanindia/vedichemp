@@ -78,7 +78,7 @@ export default async function VerifyPage({
                     <div className="small muted">Sold by {hit.product.seller} · {CLASS_META[hit.product.cls].label}</div>
                   </div>
                   <StatusPill tone={hit.product.labVerified ? "ok" : "neutral"}>
-                    {hit.product.labVerified ? "CoA APPROVED · batch-matched" : "Food class — no CoA gate"}
+                    {hit.product.labVerified ? "Lab report verified" : "Licensed food product"}
                   </StatusPill>
                 </div>
                 <dl className="small" style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", margin: 0 }}>

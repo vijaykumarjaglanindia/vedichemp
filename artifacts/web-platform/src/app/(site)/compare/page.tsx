@@ -58,7 +58,7 @@ export default async function ComparePage({
     { label: "Rating", va: <Rating value={a.rating} />, vb: <Rating value={b.rating} /> },
     { label: "Category", va: CLASS_META[a.cls].label, vb: CLASS_META[b.cls].label },
     { label: "Seller", va: a.seller, vb: b.seller },
-    { label: "Lab report", va: a.labVerified ? `Batch ${sa.batch} · approved` : "Food class — no CoA gate", vb: b.labVerified ? `Batch ${sb.batch} · approved` : "Food class — no CoA gate" },
+    { label: "Lab report", va: a.labVerified ? `Lab-tested · batch ${sa.batch}` : "Licensed food product", vb: b.labVerified ? `Lab-tested · batch ${sb.batch}` : "Licensed food product" },
     { label: "Net quantity", va: sa.netWeight, vb: sb.netWeight },
     { label: "Ingredients", va: sa.ingredients, vb: sb.ingredients },
   ];

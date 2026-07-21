@@ -210,7 +210,7 @@ export default async function ProfilePage({
             <div className="vh-field">
               <label className="vh-label" htmlFor="pf-tier">Membership tier</label>
               <input className="vh-input" id="pf-tier" defaultValue={viewer.membershipTier} readOnly />
-              <span className="vh-help">Tier is computed by the server from your order history.</span>
+              <span className="vh-help">Your tier grows automatically with your orders.</span>
             </div>
           </div>
         </Card>

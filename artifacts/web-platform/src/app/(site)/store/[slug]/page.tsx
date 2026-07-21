@@ -279,7 +279,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
           <SectionHead
             eyebrow="Featured"
             title={`Products from ${seller.name}`}
-            sub="Every regulated item below carries an approved, batch-matched lab report — it could not be listed otherwise."
+            sub="Every wellness item below was lab-tested for its exact batch before it could be listed."
           />
           {products.length === 0 ? (
             <EmptyState

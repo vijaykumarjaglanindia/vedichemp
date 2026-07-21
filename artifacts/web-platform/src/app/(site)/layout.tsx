@@ -59,9 +59,9 @@ const FOOTER_COLUMNS: { heading: string; links: { href: string; label: string }[
     heading: "Trust",
     links: [
       { href: "/trust", label: "How it works" },
-      { href: "/trust#coa", label: "Certificate of Analysis" },
+      { href: "/trust#coa", label: "Lab-tested products" },
       { href: "/trust#prescriptions", label: "How prescriptions work" },
-      { href: "/trust#prohibitions", label: "Our six prohibitions" },
+      { href: "/trust#prohibitions", label: "Our safety promise" },
     ],
   },
   {
@@ -353,11 +353,11 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
           <div className="vh-row" style={{ flexWrap: "wrap", gap: "var(--sp-4)", padding: "var(--sp-3) 0" }}>
             {[
               { icon: CreditCard, label: "UPI · Cards · Netbanking" },
-              { icon: Banknote, label: cod ? "UPI · Cards · COD available" : "100% prepaid orders" },
-              { icon: ShieldCheck, label: "PCI-DSS checkout" },
-              { icon: RotateCcw, label: "Buyer-first refunds" },
-              { icon: Landmark, label: "FSSAI · AYUSH licensed sellers" },
-              { icon: Lock, label: "Data held in India" },
+              { icon: Banknote, label: cod ? "Cash on Delivery available" : "Simple, secure payment" },
+              { icon: ShieldCheck, label: "Secure checkout" },
+              { icon: RotateCcw, label: "Easy refunds — you're paid back first" },
+              { icon: Landmark, label: "Licensed sellers only" },
+              { icon: Lock, label: "Your data stays in India" },
             ].map(({ icon: Icon, label }) => (
               <span key={label} className="vh-row small" style={{ gap: 6 }}>
                 <Icon size={15} strokeWidth={2.2} aria-hidden />
@@ -374,8 +374,8 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
               dangerouslySetInnerHTML={{ __html: mdToHtml(content.footerLegal ?? "") }}
             />
             <p className="small" style={{ opacity: 0.75, margin: 0 }}>
-              All personal data and payment data are held in Indian data centres (ap-south-1 /
-              ap-south-2). Vedic Hemp is operated by WEBMM Consultants Private Limited, Pune, Maharashtra. Support: {content.supportEmail} · © {new Date().getFullYear()}
+              Your data is stored securely in India. Vedic Hemp is operated by WEBMM Consultants
+              Private Limited, Pune. Support: {content.supportEmail} · © {new Date().getFullYear()}
             </p>
           </div>
         </div>

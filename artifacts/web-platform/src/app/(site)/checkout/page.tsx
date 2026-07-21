@@ -163,8 +163,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
                 <input type="checkbox" name="ageConfirm" style={{ marginTop: 3, accentColor: "var(--vh-accent)" }} />
                 <span className="small">
                   <b style={{ color: "var(--vh-ink)" }}>I confirm I am 21 years or older.</b>{" "}
-                  Your cart contains a CBD wellness product; age is checked again at delivery
-                  handover. This confirmation is validated on the server.
+                  Your cart contains a CBD wellness product — age is checked again when your
+                  order is handed over.
                 </span>
               </label>
             </section>
@@ -226,8 +226,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
             <Lock size={15} aria-hidden /> Place order · <MoneyText paise={cart.totalPaise} />
           </button>
           <p className="small muted" style={{ margin: "10px 0 0" }}>
-            Totals are recomputed on the server when you place the order. By continuing you agree
-            to the <Link href="/trust">marketplace terms</Link>.
+            By placing this order you agree to the <Link href="/trust">marketplace terms</Link>.
           </p>
         </aside>
       </form>

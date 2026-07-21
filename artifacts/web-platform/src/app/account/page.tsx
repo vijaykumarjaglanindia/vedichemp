@@ -269,7 +269,7 @@ export default async function AccountHomePage() {
         {/* Activity timeline — companion to the ranked widgets, placed after wallet */}
         <Card
           title={<TitleIcon icon={<Activity {...I} />}>Recent activity</TitleIcon>}
-          action={<span className="small muted">Sensitive reads always appear here and notify you (A4)</span>}
+          action={<span className="small muted">We notify you whenever your records are viewed</span>}
         >
           <Timeline nodes={activity} />
         </Card>

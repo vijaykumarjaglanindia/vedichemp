@@ -62,7 +62,7 @@ export const SITE_FIELDS: SiteField[] = [
     key: "footerLegal", group: "Global chrome", label: "Footer — marketplace disclosure", kind: "rich", max: 900,
     help: "The intermediary disclosure. Commercial terms (commission rates) never appear on public pages.",
     allowClaimVerbs: true,
-    def: "Vedic Hemp is a marketplace intermediary: products are listed and sold by independent sellers, who submit their licences when they create an account and who are responsible for the genuineness, quality and compliance of their listings. After you pay, your order is forwarded to the seller, who ships it and updates its status. Medical Cannabis is prescription-only and is never advertised or promoted — anywhere, to anyone. No product on this site claims to cure, treat or prevent any disease.",
+    def: "Products on Vedic Hemp are listed and sold by independent, licensed sellers — after you pay, your seller packs and ships your order. No product on this site claims to cure, treat or prevent any disease. Full details are in our Terms of Service.",
   },
   {
     key: "supportEmail", group: "Global chrome", label: "Support email", kind: "text", max: 80,

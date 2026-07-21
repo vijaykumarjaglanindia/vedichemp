@@ -195,7 +195,7 @@ export default async function CartPage({
           </Link>
           <div style={{ display: "grid", gap: 8, marginTop: 14 }}>
             {[
-              { icon: ShieldCheck, text: "Totals computed server-side — the page never decides a price" },
+              { icon: ShieldCheck, text: "Prices verified at checkout — what you see is what you pay" },
               { icon: Truck, text: "Packed & shipped by the seller who lists each item" },
               { icon: ShoppingBag, text: "100% prepaid — UPI, cards & netbanking" },
             ].map(({ icon: Icon, text }) => (

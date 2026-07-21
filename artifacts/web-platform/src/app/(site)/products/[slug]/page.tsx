@@ -300,22 +300,19 @@ export default async function ProductDetailPage({
               {regulated ? (
                 <>
                   <div className="vh-row" style={{ gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
-                    <span className="vh-pill vh-pill-ok">CoA approved · batch {specs.batch}</span>
+                    <span className="vh-pill vh-pill-ok">Lab-tested · batch {specs.batch}</span>
                     <span className="vh-pill vh-pill-info">THC ≤ 0.3%</span>
                   </div>
                   <p className="small muted" style={{ marginBottom: 12 }}>
-                    The seller has uploaded a lab report for this exact batch — regulated
-                    listings on Vedic Hemp require one before they can go live. The report is
-                    the seller&apos;s document; genuineness and accuracy of the listing are the
-                    seller&apos;s responsibility. Open the report and check it before you buy.
+                    This exact batch was tested by an independent lab before it could be sold —
+                    you can read the seller&apos;s report yourself before you buy.
                   </p>
-                  <Link href="/trust#coa" className="vh-btn vh-btn-outline vh-btn-sm">View CoA</Link>
+                  <Link href="/trust#coa" className="vh-btn vh-btn-outline vh-btn-sm">View lab report</Link>
                 </>
               ) : (
                 <p className="small muted" style={{ marginBottom: 0 }}>
-                  {meta.label} is not a lab-gated compliance class. It ships under standard{" "}
-                  {product.cls === "HEMP_FOOD" ? "FSSAI food-safety" : "AYUSH"} manufacturing
-                  requirements rather than a batch CoA.
+                  Made in a licensed{" "}
+                  {product.cls === "HEMP_FOOD" ? "FSSAI food-safety" : "AYUSH"} facility.
                 </p>
               )}
             </Card>
@@ -628,7 +625,7 @@ export default async function ProductDetailPage({
               )}
               {onSale && <span className="vh-pill vh-pill-warn"><Flame size={11} aria-hidden /> Sale</span>}
             </div>
-            <p className="small muted" style={{ margin: "4px 0 12px" }}>Inclusive of all taxes. Final total is computed at checkout by the server.</p>
+            <p className="small muted" style={{ margin: "4px 0 12px" }}>Inclusive of all taxes.</p>
 
             {/* Variant selector (size / pack / strength) — server-driven so it
                 works without JavaScript; selecting reloads with the variant's
@@ -754,23 +751,23 @@ export default async function ProductDetailPage({
                   <span className="muted" style={{ display: "block", fontWeight: 400 }}>{pinResult.body}</span>
                 </span>
               ) : (
-                <span className="vh-help">Serviceability for regulated classes is checked per PIN on the server.</span>
+                <span className="vh-help">We&apos;ll confirm delivery availability for your PIN before you pay.</span>
               )}
             </form>
 
             {meta.ageGated && (
-              <Banner severity="warn" title="Age verification required">
-                This is an age-gated (21+) product. Age is verified at checkout and on delivery
-                handover — the check happens on the server, per order.
+              <Banner severity="warn" title="21+ product">
+                You&apos;ll confirm your age at checkout, and it&apos;s checked again when your
+                order is handed over.
               </Banner>
             )}
 
             <div style={{ borderTop: "1px solid var(--vh-line)", marginTop: "var(--sp-3)", paddingTop: "var(--sp-3)", display: "flex", flexDirection: "column", gap: 10 }}>
               {[
-                { icon: FlaskConical, text: regulated ? `Seller-uploaded lab report · batch ${specs.batch}` : "Seller-declared licensed facility" },
-                { icon: BadgeCheck, text: `Sold & shipped by ${product.seller} — order forwarded to the seller after payment` },
-                { icon: ShieldCheck, text: "Secure PCI-DSS payment · UPI, cards, COD" },
-                { icon: RotateCcw, text: "Easy returns · buyer refunded first" },
+                { icon: FlaskConical, text: regulated ? `Lab-tested · batch ${specs.batch}` : "Made in a licensed facility" },
+                { icon: BadgeCheck, text: `Sold & shipped by ${product.seller}` },
+                { icon: ShieldCheck, text: "Secure payment · UPI, cards & more" },
+                { icon: RotateCcw, text: "Easy returns — you're refunded first" },
               ].map(({ icon: Icon, text }) => (
                 <span key={text} className="vh-row small" style={{ gap: 8 }}>
                   <Icon size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-accent)", flexShrink: 0 }} />

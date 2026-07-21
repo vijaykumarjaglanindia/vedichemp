@@ -183,8 +183,7 @@ export default async function HomePage() {
               <div style={{ fontSize: "2rem", marginBottom: 8 }} aria-hidden>{CLASS_META.MED_CANNABIS.emoji}</div>
               <h3 style={{ marginBottom: 4 }}>{CLASS_META.MED_CANNABIS.label}</h3>
               <p className="small muted" style={{ marginBottom: 10 }}>
-                Prescription-only — sign in with a verified prescription to view this category. It
-                is never advertised, searchable or recommended.
+                Available only with a verified prescription — sign in to access.
               </p>
               <Link href="/trust#prescriptions" className="small" style={{ fontWeight: 700 }}>
                 How prescriptions work →
@@ -209,7 +208,7 @@ export default async function HomePage() {
           <SectionHead
             eyebrow="Today's deals"
             title={content.headDeals ?? ""}
-            sub="Strike-through prices are seller MRPs — the platform computes every total server-side."
+            sub="Genuine discounts from our sellers — the crossed-out price is the seller's own MRP."
             action={<Link href="/catalogue" className="small vh-row" style={{ gap: 4, fontWeight: 700 }}>All deals <ArrowRight size={14} strokeWidth={2.2} aria-hidden /></Link>}
           />
           <div className="vh-scroller" style={{ gridAutoColumns: "minmax(230px, 260px)" }}>
@@ -259,7 +258,7 @@ export default async function HomePage() {
             <span className="vh-spacer" />
             <span className="vh-pill vh-pill-warn">
               <Timer size={13} strokeWidth={2.2} aria-hidden />
-              Ends in 06:12:44 · server time
+              Ends in 06:12:44
             </span>
           </div>
           <div className="vh-grid cols-4">
@@ -268,8 +267,7 @@ export default async function HomePage() {
             ))}
           </div>
           <p className="small muted" style={{ marginTop: "var(--sp-3)", marginBottom: 0 }}>
-            Campaign pricing is applied and timed by the server — the countdown you see is the
-            server&apos;s clock, not your device&apos;s.
+            Sale prices apply automatically at checkout while the sale is on.
           </p>
         </div>
       </section>}
@@ -326,8 +324,7 @@ export default async function HomePage() {
             </div>
           </AdSlot>
           <p className="small muted" style={{ marginTop: 8, marginBottom: 0, fontSize: ".72rem" }}>
-            Placements configured in Admin → Ads. Prescription-only products are never eligible for
-            any placement (A1).
+            Sponsored placements are always labelled and never influence your search results.
           </p>
         </div>
       </section>}

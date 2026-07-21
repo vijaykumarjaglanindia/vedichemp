@@ -149,10 +149,9 @@ export default async function MedicalPage({
         </Card>
 
         {/* A4 explainer */}
-        <Banner severity="info" title="Who can see your prescription (A4)">
-          Only a licensed Pharmacist or the Compliance team can view it, only with a logged reason code,
-          and you are notified every time. Support agents cannot open your Rx image. Attempts without a
-          valid reason are denied — and the denial itself is logged.
+        <Banner severity="info" title="Who can see your prescription">
+          Only a licensed pharmacist or our compliance team can view it, and you are notified every
+          time it happens. Support agents can never open your prescription.
         </Banner>
 
         {/* Prescriptions with validity progress */}
@@ -163,8 +162,8 @@ export default async function MedicalPage({
           {viewlink && (
             <div style={{ marginBottom: 12 }}>
               <Banner severity="ok" title="Signed link issued — valid for 5 minutes" icon="🔗">
-                Opening your own prescription is also written to the access log below (actor: you,
-                reason: SELF_ACCESS) — the log is append-only, with no exceptions (A3/A4).
+                For your safety, even you opening your own prescription is recorded in the
+                access history below.
               </Banner>
             </div>
           )}
@@ -298,7 +297,7 @@ export default async function MedicalPage({
         {/* Access log — the A4 receipt */}
         <Card
           title={title(<Eye {...I} />, "Who viewed my prescription")}
-          action={<span className="small muted">Buyer notification is mandatory on every sensitive read</span>}
+          action={<span className="small muted">You’re notified every time, without exception</span>}
           pad0
         >
           <DataTable
