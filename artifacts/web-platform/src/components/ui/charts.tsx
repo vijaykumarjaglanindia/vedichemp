@@ -101,9 +101,13 @@ export function Donut({
 
 /* ── Column chart (period series) ──────────────────────────── */
 export function Columns({
-  values, labels, height = 120, color = "var(--vh-accent)",
-}: { values: number[]; labels?: string[]; height?: number; color?: string }) {
+  values, labels, height = 120, color = "var(--vh-accent)", emphasizeLast = true,
+}: { values: number[]; labels?: string[]; height?: number; color?: string; emphasizeLast?: boolean }) {
   const max = Math.max(...values, 1);
+  // emphasizeLast highlights the final bar and mutes the rest — the right cue
+  // for a time series (the last bar is "now"). For a categorical breakdown
+  // (e.g. revenue by seller) pass emphasizeLast={false} so every bar reads as a
+  // peer in the brand colour, not one arbitrary category singled out.
   return (
     <div>
       <div style={{ display: "flex", alignItems: "flex-end", gap: 6, height }} role="img" aria-label="column chart">
@@ -111,7 +115,7 @@ export function Columns({
           <div key={i} style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "flex-end", height: "100%" }}>
             <div style={{
               height: `${Math.max((v / max) * 100, 3)}%`, borderRadius: "6px 6px 2px 2px",
-              background: i === values.length - 1 ? color : `color-mix(in srgb, ${color} 45%, var(--vh-bg-subtle))`,
+              background: !emphasizeLast || i === values.length - 1 ? color : `color-mix(in srgb, ${color} 45%, var(--vh-bg-subtle))`,
             }} />
           </div>
         ))}

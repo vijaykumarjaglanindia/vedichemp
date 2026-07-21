@@ -94,7 +94,7 @@ export default async function AdminFinancePage({
               <span className="small muted tabular">₹{Math.round(fin.commissionPaise / 100).toLocaleString("en-IN")} total</span>
             </div>
             {fin.revenueBySeller.length > 0 ? (
-              <Columns values={fin.revenueBySeller.map((r) => r.commissionPaise)} labels={fin.revenueBySeller.map((r) => r.seller)} height={120} />
+              <Columns values={fin.revenueBySeller.map((r) => r.commissionPaise)} labels={fin.revenueBySeller.map((r) => r.seller)} height={120} emphasizeLast={false} />
             ) : (
               <p className="small muted" style={{ margin: 0 }}>No settlements posted yet — commission revenue is recognised only once a run is posted by its checker.</p>
             )}
