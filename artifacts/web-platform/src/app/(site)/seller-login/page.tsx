@@ -103,7 +103,7 @@ export default async function SellerLoginPage({ searchParams }: { searchParams: 
               <div className="small" style={{ background: "var(--vh-warn-bg, #fff7e6)", border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "10px 12px" }}>
                 <strong>SMS gateway sandbox</strong> — no SMS key configured, so the code for
                 +91&nbsp;{otpPreview.phone.slice(0, 5)}&nbsp;{otpPreview.phone.slice(5)} is{" "}
-                <span className="mono" style={{ fontWeight: 800 }}>{otpPreview.code}</span>.
+                <span className="mono" id="otp-code" style={{ fontWeight: 800 }}>{otpPreview.code}</span>.
                 With SMS_API_KEY set, this box disappears and the code arrives by SMS.
               </div>
             )}
