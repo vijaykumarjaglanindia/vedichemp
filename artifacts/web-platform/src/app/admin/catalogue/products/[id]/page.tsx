@@ -35,7 +35,7 @@ const ERRORS: Record<string, string> = {
   reason: "Deleting a listing needs a written reason of at least 20 characters. The attempt was logged.",
   state: "That action isn't available in the listing's current state.",
   fixture: "Launch listings can be archived but never hard-deleted.",
-  coa: "Blocked by the CoA gate (A2) — no approved, batch-matched lab report.",
+  coa: "Blocked by the CoA gate — no approved, batch-matched lab report.",
 };
 
 const DONE: Record<string, string> = {
@@ -99,7 +99,7 @@ export default async function AdminListingManagerPage({
       {coa === "submitted" && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="ok" title="CoA submitted on the seller's behalf">
-            It joined the same PENDING_REVIEW queue as every other batch — submission is not approval (A2).
+            It joined the same PENDING_REVIEW queue as every other batch — submission is not approval.
           </Banner>
         </div>
       )}
@@ -179,7 +179,7 @@ export default async function AdminListingManagerPage({
           <Card title="Lifecycle (on the seller's behalf)">
             {regulated && (
               <div className="vh-row-between" style={{ marginBottom: 12 }}>
-                <span className="small muted">CoA gate (A2)</span>
+                <span className="small muted">CoA gate</span>
                 <StatusPill tone={product!.coaState === "APPROVED" ? "ok" : "danger"}>
                   {product!.coaState === "APPROVED" ? `Open — batch ${product!.batchCode}` : `Closed — ${product!.coaState.replace(/_/g, " ").toLowerCase()}`}
                 </StatusPill>
@@ -250,7 +250,7 @@ export default async function AdminListingManagerPage({
                 <div className="vh-row" style={{ alignItems: "flex-start", gap: 8 }}>
                   <FileUp size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)", marginTop: 3, flexShrink: 0 }} />
                   <p className="small muted" style={{ margin: 0 }}>
-                    For lab reports the seller sent by email. It joins the same review queue — submitting is not approving (A2).
+                    For lab reports the seller sent by email. It joins the same review queue — submitting is not approving.
                   </p>
                 </div>
                 <div className="vh-field">

@@ -47,7 +47,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
           <Banner severity="ok" title="Deletion request received">
             Your session has ended. The account service checks the deletion gates (orders in
             transit, open disputes, settlement or statutory holds) and emails you the outcome —
-            health records are retained for the statutory period regardless (A3).
+            health records are retained for the statutory period regardless.
           </Banner>
         </div>
       )}

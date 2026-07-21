@@ -81,7 +81,7 @@ export default async function AdminAiPage() {
           )}
           <p className="small muted" style={{ margin: 0, padding: "10px 16px 14px" }}>
             The strike is the deterministic block — it is set by the same copy-check that runs on every listing save,
-            regardless of what the AI thinks. Clearing it is an audited admin act with a ≥20-char reason (A1).
+            regardless of what the AI thinks. Clearing it is an audited admin act with a ≥20-char reason.
           </p>
         </Card>
 
@@ -112,11 +112,11 @@ export default async function AdminAiPage() {
           <ul className="small muted" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
             <li>It CAN rank listings by claims-risk — but the strike above is the deterministic copy-check that runs on every save regardless, and only a human clears it.</li>
             <li>It CAN flag fraud patterns — suspending a user still requires a human with a 20-character reason, logged.</li>
-            <li>It CANNOT approve a CoA (A2), advertise anything (A1), move money (A6) or read health data (A4). Those paths simply don&rsquo;t exist for it.</li>
+            <li>It CANNOT approve a CoA, advertise anything, move money or read health data. Those paths simply don&rsquo;t exist for it.</li>
           </ul>
           <p className="small muted vh-row" style={{ gap: 6, marginTop: 12, marginBottom: 0 }}>
             <ShieldCheck size={14} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)" }} />
-            No health data reaches this surface — the queues rank listings and behaviour signals, never a buyer&rsquo;s clinical record (§6/A4).
+            No health data reaches this surface — the queues rank listings and behaviour signals, never a buyer&rsquo;s clinical record.
           </p>
         </Card>
       </div>

@@ -138,7 +138,7 @@ export default async function AssistantPage({
         <SuggestionCard icon={<PackageSearch size={16} strokeWidth={2.2} />} title="Inventory forecast">
           <p className="small muted" style={{ marginTop: 0 }}>Batch VB-2405 · CBD Wellness Balm 30g</p>
           <div className="small">Projected stockout in <strong>9 days</strong> at current sell-through.</div>
-          <div className="small muted" style={{ marginTop: 6 }}>Suggest reordering 150 units to maintain 30 days of cover. A new batch needs its own approved CoA before it can sell (A2).</div>
+          <div className="small muted" style={{ marginTop: 6 }}>Suggest reordering 150 units to maintain 30 days of cover. A new batch needs its own approved CoA before it can sell.</div>
           <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/inventory" style={{ marginTop: 12, display: "inline-block" }}>Review inventory →</Link>
         </SuggestionCard>
 
@@ -170,7 +170,7 @@ export default async function AssistantPage({
           <ul className="small muted" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 4 }}>
             <li>Top praise: packaging (34 mentions), delivery speed (28), CoA link on invoice (19)</li>
             <li>Top complaint: 30g balm sells out (9 mentions) — matches the inventory forecast</li>
-            <li>2 reviews mention symptoms — auto-redacted before reaching this console (A4)</li>
+            <li>2 reviews mention symptoms — auto-redacted before reaching this console</li>
           </ul>
         </SuggestionCard>
       </div>

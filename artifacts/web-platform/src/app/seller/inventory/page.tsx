@@ -182,7 +182,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
             <button type="submit" className="vh-btn vh-btn-primary">Add units</button>
             <span className="vh-help" style={{ flexBasis: "100%" }}>
               Adding stock never changes sellability — a batch blocked on its CoA stays blocked until the
-              report is approved (A2). A brand-new batch is added from the product page with its own CoA.
+              report is approved. A brand-new batch is added from the product page with its own CoA.
             </span>
           </form>
         </Card>

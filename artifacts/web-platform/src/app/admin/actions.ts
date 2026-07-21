@@ -1009,7 +1009,7 @@ export async function decideCoaReview(formData: FormData): Promise<void> {
   // (§7). The role is checked before anything else.
   const { sensitiveViewerRole } = await import("@/lib/roles");
   if (!sensitiveViewerRole(who)) {
-    await writeAudit({ actor: who, action, target: id, outcome: "DENIED", note: "role: only Pharmacist/Compliance may decide a batch CoA (A2/§7)" });
+    await writeAudit({ actor: who, action, target: id, outcome: "DENIED", note: "role: only Pharmacist/Compliance may decide a batch CoA" });
     redirect(`/admin/catalogue?coa=role#coa-queue`);
   }
 

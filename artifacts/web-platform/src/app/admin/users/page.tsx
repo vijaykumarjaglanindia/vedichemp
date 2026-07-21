@@ -40,17 +40,17 @@ const OP_LABELS: Record<string, string> = {
 const DONE_MSG: Record<string, string> = {
   restrict: "Restriction applied with your reason on the audit trail. It takes effect on the user's next request.",
   unrestrict: "Restriction lifted, with your reason on the audit trail.",
-  "suspend-requested": "Suspension requested. It does NOT take effect yet — a second admin must approve it from the maker–checker inbox below (A6).",
-  "reinstate-requested": "Reinstatement requested. A second admin must approve it from the inbox below (A6).",
+  "suspend-requested": "Suspension requested. It does NOT take effect yet — a second admin must approve it from the maker–checker inbox below.",
+  "reinstate-requested": "Reinstatement requested. A second admin must approve it from the inbox below.",
   suspended: "Suspension approved by you as checker and applied. The maker and checker are both on the audit trail.",
   reinstated: "Reinstatement approved by you as checker and applied.",
   rejected: "Request rejected. No change was made to the account; the rejection is logged.",
-  impersonate: "A read-only impersonation session was issued. It is logged with your reason, and the buyer is notified (A4).",
+  impersonate: "A read-only impersonation session was issued. It is logged with your reason, and the buyer is notified.",
 };
 
 const ERR_MSG: Record<string, string> = {
   reason: "A reason of at least 20 characters is required — the attempt was rejected and logged.",
-  maker: "You raised this request — a different admin must approve it (A6). The self-approval was refused and logged.",
+  maker: "You raised this request — a different admin must approve it. The self-approval was refused and logged.",
   state: "That action doesn't apply to the account's current state.",
   duplicate: "There is already an open request for this account. Clear it from the inbox first.",
 };
@@ -120,7 +120,7 @@ export default async function AdminUsersPage({
               {(act === "suspend" || act === "reinstate") && (
                 <div style={{ marginBottom: 12 }}>
                   <Banner severity="info">
-                    This raises a request only. A second admin — not you — approves it from the maker–checker inbox (A6).
+                    This raises a request only. A second admin — not you — approves it from the maker–checker inbox.
                   </Banner>
                 </div>
               )}
@@ -141,9 +141,9 @@ export default async function AdminUsersPage({
           </div>
         )}
 
-        {/* Maker–checker inbox (A6) — a DIFFERENT admin approves each request */}
+        {/* Maker–checker inbox — a DIFFERENT admin approves each request */}
         <div id="inbox" style={{ scrollMarginTop: 90 }}>
-          <Card title={<span className="vh-row" style={{ gap: 8 }}><Inbox {...I} aria-hidden /> Maker–checker inbox · suspend / reinstate (A6)</span>}>
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><Inbox {...I} aria-hidden /> Maker–checker inbox · suspend / reinstate</span>}>
             {pending.length === 0 ? (
               <p className="small muted" style={{ margin: 0 }}>No open requests. A suspend or reinstate raised above lands here for a second admin to approve.</p>
             ) : (
@@ -307,7 +307,7 @@ export default async function AdminUsersPage({
         <Card title={<span className="vh-row" style={{ gap: 8 }}><LockKeyhole {...I} aria-hidden /> Reveal personal data</span>}>
           <p className="small muted" style={{ marginTop: 0 }}>
             Full contact details, addresses and payment instrument fingerprints are behind the same reason-code flow
-            as health data (A4-adjacent): choose a controlled reason, write ≥20 characters of justification, and the
+            as health data: choose a controlled reason, write ≥20 characters of justification, and the
             subject is notified. There is no &quot;reveal&quot; button that returns data without that flow — clicking below
             opens the reason prompt, it does not fetch anything itself.
           </p>

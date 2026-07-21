@@ -282,7 +282,7 @@ export default async function ProfilePage({
             Deletion is blocked while any of the following are true: an order is in transit, a return or
             dispute is open, a settlement involving you is unresolved, or a regulatory hold (e.g. an
             active audit trail reference) applies. Health data (prescriptions, access logs) is retained
-            per the statutory record-keeping period even after deletion is otherwise approved (A3).
+            per the statutory record-keeping period even after deletion is otherwise approved.
           </Banner>
           <form action={deleteAccount} className="vh-row" style={{ gap: 8, marginTop: 16, flexWrap: "wrap" }}>
             <input

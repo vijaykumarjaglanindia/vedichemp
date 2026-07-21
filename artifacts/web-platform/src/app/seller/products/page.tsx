@@ -108,7 +108,7 @@ export default async function SellerProductsPage({
           <Banner severity="ok" title={submitted === "draft" ? "Draft saved" : "Submitted for review"}>
             {submitted === "draft"
               ? "The listing is saved as DRAFT — finish it any time from this list."
-              : "Compliance reviews new listings within a few business days. A regulated listing also needs an approved, batch-matched CoA before it can go live (A2)."}
+              : "Compliance reviews new listings within a few business days. A regulated listing also needs an approved, batch-matched CoA before it can go live."}
           </Banner>
         </div>
       )}
@@ -179,14 +179,14 @@ export default async function SellerProductsPage({
       </Card>
       <p className="small muted" style={{ margin: "8px 0 var(--sp-4)" }}>
         Regulated classes (CBD Wellness, Medical Cannabis) display CoA status per batch. A batch without an APPROVED,
-        batch-matched Certificate of Analysis cannot be published — see each product for the batch breakdown (A2).
+        batch-matched Certificate of Analysis cannot be published — see each product for the batch breakdown.
       </p>
 
       <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
         <Card title="Listing quality" action={<span className="small muted">Across {listings.length} listings</span>}>
           <BarList items={LISTING_QUALITY} />
           <p className="small muted" style={{ marginBottom: 0, marginTop: 12 }}>
-            Better images and complete attributes lift search rank; CoA coverage is a hard publish gate, not a score (A2).
+            Better images and complete attributes lift search rank; CoA coverage is a hard publish gate, not a score.
           </p>
         </Card>
         <Card title="Bulk upload (CSV)">
@@ -204,7 +204,7 @@ export default async function SellerProductsPage({
             <p className="small muted" style={{ margin: 0 }}>
               Every row passes the same server-side checks as the form — <strong>rows with medical-claims copy are
               rejected</strong> (no listing may make medical claims), and regulated rows still need an approved batch
-              CoA before they can ever go live (A2).
+              CoA before they can ever go live.
             </p>
           </form>
         </Card>

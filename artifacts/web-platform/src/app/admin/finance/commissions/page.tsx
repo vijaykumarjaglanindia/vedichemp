@@ -26,7 +26,7 @@ const NOTES: Record<string, { sev: "ok" | "danger"; text: string }> = {
   rate: { sev: "danger", text: "Rate must be between 0 and 40 percent." },
   cls: { sev: "danger", text: "Pick a compliance class." },
   target: { sev: "danger", text: "Seller- and product-level schedules need a target (seller name or product slug)." },
-  role: { sev: "danger", text: "Blocked — changing a fee schedule needs the ADMIN_FINANCE role (§7/A6). The owner appoints finance; it cannot set fees itself. Ask an owner to grant the role on Settings → Roles. The attempt was logged." },
+  role: { sev: "danger", text: "Blocked — changing a fee schedule needs the ADMIN_FINANCE role. The owner appoints finance; it cannot set fees itself. Ask an owner to grant the role on Settings → Roles. The attempt was logged." },
 };
 
 export default async function CommissionsPage({
@@ -55,7 +55,7 @@ export default async function CommissionsPage({
           <p className="small muted" style={{ marginTop: 0 }}>
             Global default today: <strong style={{ color: "var(--vh-ink)" }}>10% — Early Adopter Program</strong>.
             The most specific schedule wins: product &gt; brand &gt; category &gt; global.
-            Increases need 30 days&rsquo; notice (A5); decreases may apply immediately.
+            Increases need 30 days&rsquo; notice; decreases may apply immediately.
           </p>
           <form action={saveCommissionSchedule} className="vh-grid" style={{ gap: 14 }}>
             <div className="vh-field">
@@ -87,7 +87,7 @@ export default async function CommissionsPage({
             <div className="vh-field">
               <label className="vh-label" htmlFor="cs-from">Effective from <span className="req">*</span></label>
               <input className="vh-input" id="cs-from" name="effectiveFrom" type="date" required />
-              <span className="vh-help">Earliest permitted: {minDate} — notice goes to sellers today; 30 days must pass (A5).</span>
+              <span className="vh-help">Earliest permitted: {minDate} — notice goes to sellers today; 30 days must pass.</span>
             </div>
             <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>
               Send notice & schedule

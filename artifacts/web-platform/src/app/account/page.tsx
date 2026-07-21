@@ -341,7 +341,7 @@ export default async function AccountHomePage() {
               )}
               <p className="small muted" style={{ margin: "8px 0 0" }}>
                 Campaign offers only ever cover Hemp Food, Ayurveda and CBD Wellness. Medical Cannabis is
-                never promoted, to anyone (A1).
+                never promoted, to anyone.
               </p>
             </>
           ) : (

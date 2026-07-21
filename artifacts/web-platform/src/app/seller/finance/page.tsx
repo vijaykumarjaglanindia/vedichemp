@@ -82,8 +82,8 @@ export default async function FinancePage() {
         <DataTable columns={settlementColumns} rows={myRuns} empty={<div className="vh-empty">No settlements yet.</div>} />
       </Card>
       <p className="small muted" style={{ margin: "8px 0 var(--sp-4)" }}>
-        Settlements are posted by the marketplace under maker–checker (A6) — no single admin moves money. Once posted,
-        a statement is immutable (A3); a correction is a new row that references the old one, never an edit.
+        Settlements are posted by the marketplace under maker–checker — no single admin moves money. Once posted,
+        a statement is immutable; a correction is a new row that references the old one, never an edit.
       </p>
 
       <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
@@ -119,7 +119,7 @@ export default async function FinancePage() {
             <DataTable columns={payoutColumns} rows={PAYOUT_HISTORY} empty={<div className="vh-empty">No payouts yet.</div>} />
           </Card>
 
-          <Banner severity={feeNoticeDays >= 30 ? "info" : "warn"} title="Upcoming fee change (A5)">
+          <Banner severity={feeNoticeDays >= 30 ? "info" : "warn"} title="Upcoming fee change">
             <span className="small">
               {NEXT_FEE_CHANGE.summary} Notice sent {NEXT_FEE_CHANGE.noticeSentAt}, effective {NEXT_FEE_CHANGE.effectiveFrom}
               {" "}({feeNoticeDays} days&rsquo; notice). Fee increases are never retroactive — <span className="mono">effectiveFrom</span> is always at

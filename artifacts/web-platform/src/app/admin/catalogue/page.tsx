@@ -27,7 +27,7 @@ const MOD_MESSAGES: Record<string, { severity: "ok" | "danger" | "warn"; title: 
   rejected: { severity: "ok", title: "Listing rejected back to DRAFT", body: "The seller sees your note on the listing." },
   suspended: { severity: "ok", title: "Listing suspended", body: "It is absent from every public surface; the seller sees your reason." },
   restored: { severity: "ok", title: "Listing restored to LIVE", body: "The A2 gate was re-checked before restoring." },
-  coa: { severity: "danger", title: "Blocked by the CoA gate (A2)", body: "This regulated listing has no APPROVED, batch-matched CoA. The denied attempt is in the audit trail. Approve the batch CoA first — there is no override." },
+  coa: { severity: "danger", title: "Blocked by the CoA gate", body: "This regulated listing has no APPROVED, batch-matched CoA. The denied attempt is in the audit trail. Approve the batch CoA first — there is no override." },
   note: { severity: "danger", title: "A written note is required", body: "Rejections, suspensions and CoA decisions need a reviewer note of at least 20 characters. The attempt was logged." },
   state: { severity: "warn", title: "Nothing to do", body: "The listing is no longer in a state where that action applies — the queue below is current." },
 };
@@ -36,7 +36,7 @@ const COA_MESSAGES: Record<string, { severity: "ok" | "danger" | "warn"; title: 
   approved: { severity: "ok", title: "Batch CoA approved", body: "The batch is sellable; the listing can now pass review (A2 gate open for this batch)." },
   rejected: { severity: "ok", title: "Batch CoA rejected", body: "If the listing was LIVE it is now suspended — an unverified batch cannot stay sellable (A2 fails closed)." },
   note: { severity: "danger", title: "A reviewer note is required", body: "CoA decisions are per-batch legal assertions: write what you checked (≥ 20 characters). The attempt was logged." },
-  role: { severity: "danger", title: "Blocked — deciding a CoA needs Pharmacist/Compliance (A2/§7)", body: "A batch CoA is the A2 gate that lets a regulated product sell, so only an admin holding the Pharmacist or Compliance role may decide it — the owner, who appoints them, cannot. Ask an owner to grant the role on Settings → Roles. The attempt was logged." },
+  role: { severity: "danger", title: "Blocked — deciding a CoA needs Pharmacist/Compliance", body: "A batch CoA is the A2 gate that lets a regulated product sell, so only an admin holding the Pharmacist or Compliance role may decide it — the owner, who appoints them, cannot. Ask an owner to grant the role on Settings → Roles. The attempt was logged." },
   state: { severity: "warn", title: "Nothing pending on that batch", body: "The CoA is no longer PENDING_REVIEW." },
 };
 
@@ -68,7 +68,7 @@ export default async function AdminCataloguePage({
     { key: "price", header: "Price", align: "right", render: (p) => <MoneyText paise={p.pricePaise} /> },
     { key: "lab", header: "Lab status", render: (p) => {
         if (p.coaState === "APPROVED") return <StatusPill tone="ok">CoA approved</StatusPill>;
-        if (REGULATED_CLASSES.includes(p.cls)) return <StatusPill tone="warn">CoA required (A2)</StatusPill>;
+        if (REGULATED_CLASSES.includes(p.cls)) return <StatusPill tone="warn">CoA required</StatusPill>;
         return <StatusPill tone="neutral">Not regulated</StatusPill>;
       } },
     { key: "state", header: "Listing", render: (p) => <StatusPill tone={toneForStatus(p.status)}>{p.status.replace(/_/g, " ")}</StatusPill> },
@@ -118,7 +118,7 @@ export default async function AdminCataloguePage({
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
         <div id="coa-queue">
           <Card
-            title={<span className="vh-row" style={{ gap: 8 }}><FlaskConical {...I} aria-hidden /> CoA verification queue (A2)</span>}
+            title={<span className="vh-row" style={{ gap: 8 }}><FlaskConical {...I} aria-hidden /> CoA verification queue</span>}
             action={<StatusPill tone={coaQueue.length ? "warn" : "ok"}>{coaQueue.length} pending</StatusPill>}
           >
             <p className="small muted" style={{ marginTop: 0 }}>
@@ -189,7 +189,7 @@ export default async function AdminCataloguePage({
                         <span className="small muted">{p.seller}</span>
                         {gateBlocked && (
                           <StatusPill tone="danger">
-                            <ShieldAlert size={12} strokeWidth={2.2} aria-hidden /> CoA gate closed (A2)
+                            <ShieldAlert size={12} strokeWidth={2.2} aria-hidden /> CoA gate closed
                           </StatusPill>
                         )}
                       </div>
@@ -199,7 +199,7 @@ export default async function AdminCataloguePage({
                           placeholder="Rejection note the seller will see (≥ 20 chars; not needed to approve)" aria-label={`Reviewer note for ${p.title}`} />
                         <div className="vh-row" style={{ gap: 8 }}>
                           <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit" name="decision" value="approve"
-                            title={gateBlocked ? "The store will refuse this — the CoA gate is closed (A2)" : "Approve and go LIVE"}>
+                            title={gateBlocked ? "The store will refuse this — the CoA gate is closed" : "Approve and go LIVE"}>
                             Approve → LIVE
                           </button>
                           <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit" name="decision" value="reject">Reject to draft</button>
@@ -230,7 +230,7 @@ export default async function AdminCataloguePage({
           <p className="small muted" style={{ marginTop: 0 }}>
             Categories are editorial; compliance class is not. Moving a product between categories never changes its
             compliance class — that field is immutable after first approval, and no category may target the medical
-            catalogue (A1).
+            catalogue.
           </p>
           <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
             {categories.map((c) => (

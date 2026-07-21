@@ -108,7 +108,7 @@ export default async function VerifyPage({
       <p className="small muted" style={{ marginTop: "var(--sp-4)" }}>
         Verification covers publicly listed products only. A regulated batch can only appear here
         if its Certificate of Analysis was approved before the listing went live — there is no
-        override (A2).
+        override.
       </p>
     </div>
   );

@@ -139,7 +139,7 @@ export default async function AdminCmsPage({
             <p className="small muted" style={{ marginTop: 0 }}>2 active homepage banners · 1 scheduled for the next festival sale.</p>
             <p className="small muted" style={{ margin: 0 }}>
               Banners advertising CBD Wellness still pass through the same copy-check as CBD ad creatives — no
-              disease claims. Banners cannot reference MED_CANNABIS at all (A1). Paid banner slots are configured in{" "}
+              disease claims. Banners cannot reference MED_CANNABIS at all. Paid banner slots are configured in{" "}
               <Link href="/admin/ads">Admin → Ads</Link> and always render through <code>AdSlot</code>.
             </p>
           </Card>

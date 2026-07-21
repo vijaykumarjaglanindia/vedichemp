@@ -178,7 +178,7 @@ export default async function HomePage() {
               );
             })}
 
-            {/* MED_CANNABIS: informational only, never a shopping tile (A1) */}
+            {/* MED_CANNABIS: informational only, never a shopping tile */}
             <div className="vh-card" style={{ background: "var(--vh-bg)", borderStyle: "dashed" }}>
               <div style={{ fontSize: "2rem", marginBottom: 8 }} aria-hidden>{CLASS_META.MED_CANNABIS.emoji}</div>
               <h3 style={{ marginBottom: 4 }}>{CLASS_META.MED_CANNABIS.label}</h3>

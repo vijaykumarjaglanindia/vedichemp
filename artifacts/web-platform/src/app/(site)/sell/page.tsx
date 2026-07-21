@@ -124,7 +124,7 @@ export default async function SellPage({
           </Card>
         </section>
 
-        {/* ── Commission transparency (A5) ───────────────── */}
+        {/* ── Commission transparency ───────────────── */}
         <section id="commission" className="vh-section" style={{ paddingBottom: 0, scrollMarginTop: 90 }}>
           <SectionHead
             eyebrow="Fees"
@@ -153,7 +153,7 @@ export default async function SellPage({
             <div className="vh-card" style={{ background: "var(--vh-green-50)" }}>
               <div className="vh-row" style={{ gap: 10, marginBottom: 8 }}>
                 <Percent size={17} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-accent)" }} />
-                <h3 style={{ margin: 0, fontSize: ".98rem" }}>The 30-day rule (A5)</h3>
+                <h3 style={{ margin: 0, fontSize: ".98rem" }}>The 30-day rule</h3>
               </div>
               <p className="small muted" style={{ marginBottom: 8 }}>
                 No commission change can take effect until at least 30 days after written notice
@@ -213,7 +213,7 @@ export default async function SellPage({
                 Once you&apos;re live, book labelled placements on home, listings and product pages
                 from the seller console. Every creative is reviewed before it runs, every
                 placement is visibly marked &quot;Sponsored&quot;, and prescription-only (medical cannabis)
-                products are never eligible for any placement (A1).
+                products are never eligible for any placement.
               </p>
             </div>
             <Link href="/seller" className="vh-btn vh-btn-outline">Open ad manager</Link>

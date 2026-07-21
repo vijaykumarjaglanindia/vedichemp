@@ -139,7 +139,7 @@ export default function AdminHomePage() {
             <div className="vh-banner vh-banner-info">
               <FlaskConical {...I} aria-hidden />
               <div>
-                <strong>{KPIS.coaPendingSla} lab reports</strong> awaiting CoA verification before their batch can go sellable (A2).{" "}
+                <strong>{KPIS.coaPendingSla} lab reports</strong> awaiting CoA verification before their batch can go sellable.{" "}
                 <Link href="/admin/catalogue">Open CoA queue →</Link>
               </div>
             </div>
@@ -189,13 +189,13 @@ export default function AdminHomePage() {
           )}
         </Card>
 
-        {/* Maker–checker inbox (A6) */}
+        {/* Maker–checker inbox */}
         <Card
           title={<span className="vh-row" style={{ gap: 8 }}><ScrollText {...I} aria-hidden /> Maker–checker inbox</span>}
           action={<StatusPill tone={PENDING_APPROVALS.length ? "warn" : "ok"}>{PENDING_APPROVALS.length} pending</StatusPill>}
         >
           <p className="small muted" style={{ marginTop: 0 }}>
-            No single admin moves money, suspends a seller or closes a recall alone (A6). Every row below needs a
+            No single admin moves money, suspends a seller or closes a recall alone. Every row below needs a
             second, different human. The checker action is <strong>rejected server-side with a 403</strong> if the
             checker id equals the maker id — this UI mirrors that rule, it does not enforce it.
           </p>
@@ -257,7 +257,7 @@ export default function AdminHomePage() {
               Emergency access to a sensitive record (e.g. a prescription during a live adverse-event triage) requires{" "}
               <strong>dual WebAuthn approval</strong> — two distinct passkey holders, neither of whom can be the
               requester. The access is logged before the object key resolves, and the subject is notified regardless
-              of urgency (A4).
+              of urgency.
             </p>
             <Link className="vh-btn vh-btn-sm vh-btn-danger" href="/admin/compliance">Initiate break-glass →</Link>
           </Card>
@@ -306,7 +306,7 @@ export default function AdminHomePage() {
                 <CheckCircle2 {...I} aria-hidden />
                 <div>
                   Ad-class violations monitor: <strong>0 leaks</strong> in the last 24h. Every blocked MED_CANNABIS
-                  auction candidate logged <code>blocked=true</code> (A1).
+                  auction candidate logged <code>blocked=true</code>.
                 </div>
               </li>
               <li className="vh-banner vh-banner-warn">

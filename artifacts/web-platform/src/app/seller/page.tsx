@@ -229,7 +229,7 @@ export default async function SellerHomePage({
               icon={b.coaState === "PENDING_REVIEW" ? <Hourglass {...I} /> : <FileWarning {...I} />}
               severity={b.coaState === "PENDING_REVIEW" ? "info" : "danger"}
               title={b.coaState === "PENDING_REVIEW" ? `Batch ${b.batchCode} awaiting CoA review` : `CoA required for “${b.title}”`}
-              body={`${b.title} — ${coaLabel[b.coaState] ?? "no approved CoA"}. This regulated listing cannot go live without an APPROVED, batch-matched Certificate of Analysis (A2). There is no override.`}
+              body={`${b.title} — ${coaLabel[b.coaState] ?? "no approved CoA"}. This regulated listing cannot go live without an APPROVED, batch-matched Certificate of Analysis. There is no override.`}
               remediation={b.coaState === "PENDING_REVIEW" ? undefined : { label: "Upload CoA", href: `/seller/products/${b.productId}#coa-upload` }}
             />
           ))}
@@ -272,7 +272,7 @@ export default async function SellerHomePage({
           <div className="vh-grid cols-2">
             <Card title="Settlements due">
               <Stat label="Awaiting posting" value={<MoneyText paise={settlementDuePaise} />} />
-              <div className="small muted" style={{ marginTop: 8 }}>Posted only after maker–checker sign-off (A6). Statements are immutable once posted (A3).</div>
+              <div className="small muted" style={{ marginTop: 8 }}>Posted only after maker–checker sign-off. Statements are immutable once posted.</div>
               <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/finance" style={{ marginTop: 8, display: "inline-block" }}>View finance →</Link>
             </Card>
             <Card title="Vedic Ads">

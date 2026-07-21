@@ -40,7 +40,7 @@ const ERRORS: Record<string, string> = {
   headline: "Headline should be 8–90 characters.",
   claims: "The headline failed the claims copy-check (no cure/treat/prevent). Nothing with claims language serves — from anyone.",
   strike: "That listing is barred from advertising (attempted claims copy) until compliance clears it.",
-  a1: "That class can never be advertised (A1). The attempt was logged.",
+  a1: "That class can never be advertised. The attempt was logged.",
   product: "That product can't be advertised right now (must be LIVE, CoA approved for regulated classes).",
   review: "The campaign needs at least one APPROVED creative before it can serve.",
 };
@@ -323,7 +323,7 @@ export default async function CampaignDetailPage({
 
       <p className="small muted" style={{ marginTop: "var(--sp-3)" }}>
         AI-generated copy is subject to the platform&rsquo;s rules: everything passes the claims copy-check
-        before it can serve, and Medical Cannabis can never be advertised by anyone (A1).
+        before it can serve, and Medical Cannabis can never be advertised by anyone.
       </p>
     </Shell>
   );

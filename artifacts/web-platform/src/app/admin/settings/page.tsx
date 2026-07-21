@@ -39,10 +39,10 @@ const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> 
   target: { sev: "danger", text: "Enter a valid admin email." },
   missing: { sev: "warn", text: "Nothing to change — that role isn't held (or the item no longer exists)." },
   lastowner: { sev: "danger", text: "Refused: the last ADMIN_OWNER cannot be revoked — the organisation can never be ownerless." },
-  proposed: { sev: "ok", text: "Change proposed. It applies only after a SECOND admin confirms it (A6)." },
+  proposed: { sev: "ok", text: "Change proposed. It applies only after a SECOND admin confirms it." },
   confirmed: { sev: "ok", text: "Change confirmed by a second admin — the flag has now flipped." },
   rejected: { sev: "ok", text: "Proposal rejected — the flag is unchanged. The decision is logged." },
-  maker: { sev: "danger", text: "Refused (A6): the admin who proposed a change cannot also confirm it. A different admin must decide. The attempt is audited." },
+  maker: { sev: "danger", text: "Refused: the admin who proposed a change cannot also confirm it. A different admin must decide. The attempt is audited." },
   pending: { sev: "warn", text: "That flag already has a pending proposal awaiting a checker." },
 };
 
@@ -148,7 +148,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
           <Card title={<span className="vh-row" style={{ gap: 8 }}><ReceiptText {...I} aria-hidden /> Tax rules</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>GST slabs by HSN code, TCS/TDS thresholds by seller turnover — computed server-side at checkout, editable here with a change log.</p>
           </Card>
-          <Card title={<span className="vh-row" style={{ gap: 8 }}><Percent {...I} aria-hidden /> Commission rules (A5)</span>}>
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><Percent {...I} aria-hidden /> Commission rules</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>
               A rate <strong>increase</strong> cannot take effect before 30 days&rsquo; notice elapses —
               <code> CHECK (effectiveFrom &gt;= noticeSentAt + interval &apos;30 days&apos;)</code>, mirrored by the
@@ -221,7 +221,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
           </table>
           <div className="small muted" style={{ padding: "12px 18px 16px", display: "grid", gap: 6 }}>
             <span>
-              A flag never flips directly: one admin proposes, a <strong>different</strong> admin confirms (A6). The
+              A flag never flips directly: one admin proposes, a <strong>different</strong> admin confirms. The
               maker confirming their own proposal is refused and the attempt audited.
             </span>
             <span>Feature flags never gate a prohibition (A1–A6) — those are compile-time absences, not runtime toggles.</span>
@@ -251,7 +251,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
           </table>
           <p className="small muted" style={{ margin: 0, padding: "12px 18px 16px" }}>
             Service-account API keys are scoped and rotatable, and are structurally barred from being a maker or
-            checker on any money-moving action (A6). Full key material is shown once at creation, never again.
+            checker on any money-moving action. Full key material is shown once at creation, never again.
           </p>
         </Card>
 
@@ -259,7 +259,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
           <p className="small muted" style={{ marginTop: 0 }}>
             The audit trail is readable only by <code>ADMIN_AUDITOR</code> and <code>ADMIN_SECURITY</code> —
             enforced on the page itself against held roles, not just described here; other accounts get a
-            restricted notice with the next step. The table is append-only for everyone (A3).
+            restricted notice with the next step. The table is append-only for everyone.
           </p>
           <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/audit">Open the audit trail →</Link>
         </Card>

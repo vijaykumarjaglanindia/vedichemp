@@ -42,7 +42,7 @@ const ERRORS: Record<string, string> = {
   batch: "Batch code should be 4–20 characters (letters, digits, hyphens).",
   state: "That action isn't available in the listing's current state.",
   fixture: "Launch listings can be archived but not permanently deleted.",
-  coa: "Blocked by the CoA gate (A2) — the batch needs an APPROVED, batch-matched lab report first.",
+  coa: "Blocked by the CoA gate — the batch needs an APPROVED, batch-matched lab report first.",
   shortdesc: "The short summary should be 160 characters or fewer.",
   weight: "Weight should be a whole number of grams.",
   fssai: "An FSSAI licence number is exactly 14 digits.",
@@ -61,7 +61,7 @@ const ERRORS: Record<string, string> = {
 };
 
 const DONE: Record<string, { title: string; body: string }> = {
-  submit: { title: "Submitted for review", body: "A human reviewer approves every listing before it goes live. Regulated classes also need the batch CoA approved (A2)." },
+  submit: { title: "Submitted for review", body: "A human reviewer approves every listing before it goes live. Regulated classes also need the batch CoA approved." },
   unpublish: { title: "Listing unpublished", body: "It's back in DRAFT and no longer visible to buyers. Submit it for review to relist." },
   archive: { title: "Listing archived", body: "It is absent from the catalogue, search and the sitemap. Restore it any time." },
   restore: { title: "Listing restored to DRAFT", body: "Edit it and submit for review to make it sellable again." },
@@ -154,7 +154,7 @@ export default async function ProductEditorPage({
       {coa === "submitted" && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="ok" title="CoA submitted for this batch">
-            Compliance reviews every lab report (SLA ~4h). The batch cannot sell until it is APPROVED — no bulk approval, no override (A2).
+            Compliance reviews every lab report (SLA ~4h). The batch cannot sell until it is APPROVED — no bulk approval, no override.
           </Banner>
         </div>
       )}
@@ -461,7 +461,7 @@ export default async function ProductEditorPage({
             </div>
             {regulated && (
               <div className="vh-row-between" style={{ marginBottom: 12 }}>
-                <span className="small muted">CoA gate (A2)</span>
+                <span className="small muted">CoA gate</span>
                 <StatusPill tone={product!.coaState === "APPROVED" ? "ok" : "danger"}>
                   {product!.coaState === "APPROVED" ? `Open — batch ${product!.batchCode}` : `Closed — ${product!.coaState.replace(/_/g, " ").toLowerCase()}`}
                 </StatusPill>
@@ -472,7 +472,7 @@ export default async function ProductEditorPage({
               {product!.status === "DRAFT" && lifecycleBtn("submit", "Submit for review", Send, "vh-btn-primary")}
               {product!.status === "UNDER_REVIEW" && (
                 <p className="small muted" style={{ margin: 0 }}>
-                  In the review queue. A human reviewer approves every listing — regulated classes only pass once the batch CoA is APPROVED (A2).
+                  In the review queue. A human reviewer approves every listing — regulated classes only pass once the batch CoA is APPROVED.
                 </p>
               )}
               {product!.status === "LIVE" && lifecycleBtn("unpublish", "Unpublish (back to draft)", EyeOff)}
@@ -508,7 +508,7 @@ export default async function ProductEditorPage({
                     <FileUp size={20} strokeWidth={2.2} aria-hidden style={{ marginBottom: 8 }} />
                     <div style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--vh-ink)" }}>Drop the lab report PDF here</div>
                     <div className="small" style={{ marginTop: 4 }}>
-                      Must state the exact batch code. Compliance reviews every submission (SLA ~4h) — no bulk approval, no override (A2).
+                      Must state the exact batch code. Compliance reviews every submission (SLA ~4h) — no bulk approval, no override.
                     </div>
                   </div>
                   <div className="vh-field">

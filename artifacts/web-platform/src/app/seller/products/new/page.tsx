@@ -138,7 +138,7 @@ export default async function NewProductPage({
                         </span>
                         <span className="small muted" style={{ display: "block", marginTop: 2 }}>
                           Requires a State Drug licence plus a registered pharmacist and Rx dispensing infrastructure.
-                          Prescription-only if ever listed — and never advertisable or promotable, by anyone, ever (A1),
+                          Prescription-only if ever listed — and never advertisable or promotable, by anyone, ever,
                           regardless of licence.
                         </span>
                       </span>
@@ -243,7 +243,7 @@ export default async function NewProductPage({
               <FileUp size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)", marginTop: 2, flexShrink: 0 }} />
               <p className="small muted" style={{ margin: 0 }}>
                 A regulated product is created in DRAFT. It stays invisible to buyers until you add at least one batch
-                with an APPROVED, batch-matched Certificate of Analysis — there is no way to skip this step (A2), no
+                with an APPROVED, batch-matched Certificate of Analysis — there is no way to skip this step, no
                 bulk approval, and no override.
               </p>
             </div>
@@ -257,7 +257,7 @@ export default async function NewProductPage({
           </div>
           <p className="small muted" style={{ margin: 0 }}>
             Validation runs server-side. Submitted listings appear in Products as UNDER_REVIEW;
-            regulated classes still need an approved, batch-matched CoA before they can go live (A2).
+            regulated classes still need an approved, batch-matched CoA before they can go live.
           </p>
         </div>
       </form>

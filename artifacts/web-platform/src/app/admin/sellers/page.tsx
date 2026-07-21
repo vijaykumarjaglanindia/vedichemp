@@ -193,9 +193,9 @@ export default async function AdminSellersPage({
               immediately locks new listings and pauses payouts; existing orders still ship (buyers are never
               collateral).
             </p>
-            <StatusPill tone="info">Maker ≠ checker — 403 on self-approval (A6)</StatusPill>
+            <StatusPill tone="info">Maker ≠ checker — 403 on self-approval</StatusPill>
           </Card>
-          <Card title={<span className="vh-row" style={{ gap: 8 }}><CalendarClock {...I} aria-hidden /> Commission plan changes (A5)</span>}>
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><CalendarClock {...I} aria-hidden /> Commission plan changes</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>
               Assigning or changing a seller&apos;s commission plan is maker–checker AND time-gated: the database
               constraint <code>CHECK (effectiveFrom &gt;= noticeSentAt + interval &apos;30 days&apos;)</code> rejects

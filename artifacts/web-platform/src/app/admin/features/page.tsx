@@ -52,7 +52,7 @@ export default async function FeaturesPage({
               <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Save features</button>
             </form>
             <p className="small muted" style={{ margin: "12px 0 0" }}>
-              No compliance gate appears here. The CoA gate (A2), the 21+ age gate, the claims
+              No compliance gate appears here. The CoA gate, the 21+ age gate, the claims
               copy-check and prescription rules have no off switch, for anyone.
             </p>
           </Card>

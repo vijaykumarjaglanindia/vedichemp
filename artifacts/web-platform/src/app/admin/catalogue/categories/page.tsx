@@ -27,7 +27,7 @@ const MESSAGES: Record<string, { severity: "ok" | "danger" | "warn"; title: stri
   name: { severity: "danger", title: "Name should be 3–40 characters", body: "Short, buyer-facing collection names work best." },
   blurb: { severity: "danger", title: "Blurb too long", body: "Keep the description under 140 characters." },
   claims: { severity: "danger", title: "Claims language rejected", body: "Category copy is public marketing copy — the same copy-check applies (no cure/treat/prevent). The attempt was logged." },
-  a1: { severity: "danger", title: "Refused: no medical collection (A1)", body: "A public collection page is promotion, and MED_CANNABIS may never be promoted — by anyone. The attempt is in the audit trail." },
+  a1: { severity: "danger", title: "Refused: no medical collection", body: "A public collection page is promotion, and MED_CANNABIS may never be promoted — by anyone. The attempt is in the audit trail." },
   fixture: { severity: "warn", title: "Launch categories can't be deleted", body: "Hide it instead — printed links to its URL keep resolving." },
   state: { severity: "warn", title: "Nothing to change", body: "That category no longer exists." },
 };
@@ -85,7 +85,7 @@ export default async function AdminCategoriesPage({
                     <option key={c} value={c}>{CLASS_META[c].label}</option>
                   ))}
                 </select>
-                <span className="vh-help">MED_CANNABIS is not offered and is refused server-side (A1).</span>
+                <span className="vh-help">MED_CANNABIS is not offered and is refused server-side.</span>
               </div>
             </div>
             <div className="vh-field">

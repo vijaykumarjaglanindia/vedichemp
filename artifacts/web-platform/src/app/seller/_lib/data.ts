@@ -48,7 +48,7 @@ const BATCHES_BY_PRODUCT: Record<string, Batch[]> = {
   ],
   p8: [
     { code: "VB-2401", mfgDate: "2025-08-01", expiryDate: "2027-08-01", qty: 41, reserved: 6, coaStatus: "APPROVED", labReportId: "LR-4390" },
-    { code: "VB-2410", mfgDate: "2026-07-01", expiryDate: "2027-07-01", qty: 150, reserved: 0, coaStatus: "MISSING", note: "No lab report uploaded — batch cannot be published (A2)" },
+    { code: "VB-2410", mfgDate: "2026-07-01", expiryDate: "2027-07-01", qty: 150, reserved: 0, coaStatus: "MISSING", note: "No lab report uploaded — batch cannot be published" },
   ],
 };
 
@@ -164,8 +164,8 @@ export const CAPABILITY_MATRIX: {
 }[] = [
   { cls: "HEMP_FOOD", requiredLicence: "FSSAI", capability: "LOCKED", note: "Apply for an FSSAI licence to unlock Hemp Food listings." },
   { cls: "AYURVEDA", requiredLicence: "AYUSH", capability: "ACTIVE_RENEW", note: "Unlocked by AYUSH licence — expiring soon, renew to avoid delisting." },
-  { cls: "CBD_WELLNESS", requiredLicence: "AYUSH", capability: "ACTIVE_RENEW", note: "Unlocked by AYUSH licence + per-batch CoA (A2). Licence expiring soon." },
-  { cls: "MED_CANNABIS", requiredLicence: "STATE_DRUG", capability: "LOCKED", note: "Requires a State Drug licence and Rx dispensing infrastructure. Never advertisable (A1), regardless of licence." },
+  { cls: "CBD_WELLNESS", requiredLicence: "AYUSH", capability: "ACTIVE_RENEW", note: "Unlocked by AYUSH licence + per-batch CoA. Licence expiring soon." },
+  { cls: "MED_CANNABIS", requiredLicence: "STATE_DRUG", capability: "LOCKED", note: "Requires a State Drug licence and Rx dispensing infrastructure. Never advertisable, regardless of licence." },
 ];
 
 /* ── Finance / settlements (A6 / A3 / A5) ─────────────────── */

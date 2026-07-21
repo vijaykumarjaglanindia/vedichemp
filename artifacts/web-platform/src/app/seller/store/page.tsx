@@ -367,7 +367,7 @@ export default async function StorePage({
                 <button type="submit" className="vh-btn vh-btn-primary">Submit for verification</button>
                 <span className="vh-help" style={{ flexBasis: "100%" }}>
                   State Drug (Medical Cannabis) licensing is handled in a separate manual review — it never
-                  unlocks through this form, and the class it gates is never advertisable regardless (A1).
+                  unlocks through this form, and the class it gates is never advertisable regardless.
                 </span>
               </form>
             </>
@@ -378,7 +378,7 @@ export default async function StorePage({
       <Card title="Capability matrix (derived from licences)">
         <p className="small muted" style={{ marginTop: 0 }}>
           A licence unlocks a compliance class; an expired or missing licence blocks it. Regulated classes additionally
-          require an APPROVED, batch-matched CoA per batch before that batch can sell (A2).
+          require an APPROVED, batch-matched CoA per batch before that batch can sell.
         </p>
         <div className="vh-grid" style={{ gap: 8 }}>
           {CAPABILITY_MATRIX.map((row) => {
@@ -400,7 +400,7 @@ export default async function StorePage({
         {CAPABILITY_MATRIX.some((r) => r.cls === "MED_CANNABIS") && (
           <Banner severity="info" title="Medical Cannabis" icon="⚕️">
             <span className="small">Even if this store obtains a State Drug licence in future, Medical Cannabis can never be advertised or
-            promoted (A1) — that prohibition is independent of any licence held.</span>
+            promoted — that prohibition is independent of any licence held.</span>
           </Banner>
         )}
       </Card>
@@ -427,7 +427,7 @@ export default async function StorePage({
           </ul>
           <p className="small muted" style={{ marginTop: 10 }}>
             Separation of duties: the user who edits payout bank details can never be the same user who approves a
-            settlement touching this store — that check runs on the marketplace side (A6).
+            settlement touching this store — that check runs on the marketplace side.
           </p>
         </Card>
       </div>

@@ -34,7 +34,7 @@ export default async function AuditPage() {
           <a href="/admin/settings#roles">Roles &amp; permissions</a> page — grants are audited and SoD-checked.
         </Banner>
         <p className="small muted vh-row" style={{ gap: 6, marginTop: "var(--sp-3)" }}>
-          <Lock size={14} strokeWidth={2.2} aria-hidden /> The trail itself is append-only for everyone (A3) — this
+          <Lock size={14} strokeWidth={2.2} aria-hidden /> The trail itself is append-only for everyone — this
           gate controls reading it, not changing it. Nothing can change it.
         </p>
       </Shell>
@@ -72,7 +72,7 @@ export default async function AuditPage() {
       </Card>
       <p className="small muted" style={{ marginTop: "var(--sp-3)" }}>
         Corrections are new rows referencing the old — there is no edit and no delete on this
-        table, for anyone (A3). Health data never appears in a log line.
+        table, for anyone. Health data never appears in a log line.
       </p>
     </Shell>
   );

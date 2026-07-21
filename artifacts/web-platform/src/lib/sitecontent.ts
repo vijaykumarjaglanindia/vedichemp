@@ -164,7 +164,7 @@ export const SITE_FIELDS: SiteField[] = [
   },
   {
     key: "ctaAdvertiserBody", group: "Homepage sections", label: "Advertiser CTA — body", kind: "text", max: 260,
-    def: "Labelled, reviewed placements across home, listings and product pages. Prescription-only (medical cannabis) products are never eligible — for anyone (A1).",
+    def: "Labelled, reviewed placements across home, listings and product pages. Prescription-only (medical cannabis) products are never eligible — for anyone.",
   },
 
   {

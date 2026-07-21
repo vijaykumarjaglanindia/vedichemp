@@ -30,8 +30,8 @@ const ORDER_MSG: Record<string, { severity: "ok" | "danger" | "warn"; title: str
 
 /** Reason-specific error copy (overrides the generic `err` banner). */
 const ERR_MSG: Record<string, { severity: "ok" | "danger" | "warn"; title: string; body: string }> = {
-  maker_checker: { severity: "danger", title: "Blocked — maker cannot be checker (A6)", body: "You initiated this return, so you cannot also issue its refund. A different admin must refund. The denied attempt has been logged." },
-  role: { severity: "danger", title: "Blocked — issuing a refund needs ADMIN_FINANCE (§7/A6)", body: "Refunds move money, so only an admin holding the finance role may issue one — the owner, who appoints finance, cannot. Ask an owner to grant the role on Settings → Roles. The attempt was logged." },
+  maker_checker: { severity: "danger", title: "Blocked — maker cannot be checker", body: "You initiated this return, so you cannot also issue its refund. A different admin must refund. The denied attempt has been logged." },
+  role: { severity: "danger", title: "Blocked — issuing a refund needs ADMIN_FINANCE", body: "Refunds move money, so only an admin holding the finance role may issue one — the owner, who appoints finance, cannot. Ask an owner to grant the role on Settings → Roles. The attempt was logged." },
 };
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
@@ -152,7 +152,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
           </div>
         )}
 
-        <Card title={<span className="vh-row" style={{ gap: 8 }}><UsersRound {...I} aria-hidden /> Refund rules (A6)</span>}>
+        <Card title={<span className="vh-row" style={{ gap: 8 }}><UsersRound {...I} aria-hidden /> Refund rules</span>}>
           <p className="small muted" style={{ marginTop: 0 }}>
             Refunds under ₹5,000 can post on a single admin&apos;s action (still logged, still reason-coded).
             Refunds at or above ₹5,000 — or whose maker has already made ₹5,000+ of unchecked movements in the

@@ -31,9 +31,9 @@ export const metadata: Metadata = { title: "Compliance · Admin" };
 const I = { size: 18, strokeWidth: 2.2 } as const;
 
 const SUB_CARDS: { id: string; icon: ReactNode; title: string; href: string; desc: string }[] = [
-  { id: "rx", icon: <Stethoscope {...I} aria-hidden />, title: "Prescription verification", href: "#rx", desc: "Pharmacist-only. Logged reason. Buyer notified on every view (A4)." },
-  { id: "coa", icon: <FlaskConical {...I} aria-hidden />, title: "Lab report verification", href: "/admin/catalogue", desc: "Batch-matched CoA required before a regulated batch is sellable (A2)." },
-  { id: "recall", icon: <Siren {...I} aria-hidden />, title: "Product recall", href: "#recall", desc: "Maker–checker to initiate AND to close. Recall records are immutable (A3)." },
+  { id: "rx", icon: <Stethoscope {...I} aria-hidden />, title: "Prescription verification", href: "#rx", desc: "Pharmacist-only. Logged reason. Buyer notified on every view." },
+  { id: "coa", icon: <FlaskConical {...I} aria-hidden />, title: "Lab report verification", href: "/admin/catalogue", desc: "Batch-matched CoA required before a regulated batch is sellable." },
+  { id: "recall", icon: <Siren {...I} aria-hidden />, title: "Product recall", href: "#recall", desc: "Maker–checker to initiate AND to close. Recall records are immutable." },
   { id: "restricted", icon: <Lock {...I} aria-hidden />, title: "Restricted products", href: "#restricted", desc: "MED_CANNABIS eligibility and Rx-gated visibility rules." },
   { id: "moderation", icon: <Brush {...I} aria-hidden />, title: "Content moderation", href: "#moderation", desc: "Reviews, seller storefront copy, product images." },
   { id: "ads", icon: <Megaphone {...I} aria-hidden />, title: "Advertisement review", href: "/admin/ads", desc: "Three-layer A1 enforcement — see the Ads console." },
@@ -42,9 +42,9 @@ const SUB_CARDS: { id: string; icon: ReactNode; title: string; href: string; des
 ];
 
 const RECALL_NOTES: Record<string, { sev: "ok" | "danger" | "warn"; title: string; body: string }> = {
-  initiated: { sev: "ok", title: "Recall initiated (maker)", body: "Affected batches are frozen from sale immediately; a second, different compliance officer must review before the recall can ever be closed. The record is append-only (A3)." },
-  denied: { sev: "danger", title: "Close denied — maker cannot be checker (A6)", body: "You initiated this recall, so you cannot also close it. The denied attempt has been logged. A different compliance officer must close it." },
-  closed: { sev: "ok", title: "Recall closed (checker)", body: "A second, different compliance officer reviewed and closed the recall. Both the initiation and the close are in the audit trail — the record itself is append-only (A3)." },
+  initiated: { sev: "ok", title: "Recall initiated (maker)", body: "Affected batches are frozen from sale immediately; a second, different compliance officer must review before the recall can ever be closed. The record is append-only." },
+  denied: { sev: "danger", title: "Close denied — maker cannot be checker", body: "You initiated this recall, so you cannot also close it. The denied attempt has been logged. A different compliance officer must close it." },
+  closed: { sev: "ok", title: "Recall closed (checker)", body: "A second, different compliance officer reviewed and closed the recall. Both the initiation and the close are in the audit trail — the record itself is append-only." },
   none: { sev: "warn", title: "No open recall", body: "There is no open recall with that reference to close." },
   open: { sev: "warn", title: "Recall already open", body: "That reference already has an open recall." },
   reason: { sev: "warn", title: "Reason required", body: "Initiating a recall needs at least 20 characters of free-text reason — it is written into the immutable recall record." },
@@ -66,7 +66,7 @@ export default async function AdminCompliancePage({
   const AE_MSG: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {
     acknowledged: { sev: "ok", text: "Report acknowledged — the reporter's concern is on the pharmacovigilance record." },
     triaged: { sev: "ok", text: "Report triaged — clinical assessment recorded." },
-    closed: { sev: "ok", text: "Report closed. The record stays on file permanently (A3)." },
+    closed: { sev: "ok", text: "Report closed. The record stays on file permanently." },
     state: { sev: "warn", text: "That status change isn't valid from the current state." },
     missing: { sev: "warn", text: "That report no longer exists." },
   };
@@ -87,7 +87,7 @@ export default async function AdminCompliancePage({
     reasoncode: { sev: "danger", text: "Choose a reason from the controlled list — the access was denied and logged." },
     reasontext: { sev: "danger", text: "State why this must be viewed now (at least 20 characters) — the denied attempt was logged." },
     scope: { sev: "danger", text: "Only Pharmacist/Compliance may view health data — the attempt was denied and logged." },
-    role: { sev: "danger", text: "Only Pharmacist/Compliance may verify a prescription (§7/A4) — the owner appoints these roles but cannot adjudicate health records itself. The attempt was denied and logged." },
+    role: { sev: "danger", text: "Only Pharmacist/Compliance may verify a prescription — the owner appoints these roles but cannot adjudicate health records itself. The attempt was denied and logged." },
     missing: { sev: "warn", text: "That prescription no longer exists." },
     state: { sev: "warn", text: "That prescription was already reviewed." },
   };
@@ -146,7 +146,7 @@ export default async function AdminCompliancePage({
         <div id="rx" style={{ scrollMarginTop: 90 }}>
           {rxMsg && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity={rxMsg.sev}>{rxMsg.text}</Banner></div>}
           <Card
-            title={<span className="vh-row" style={{ gap: 8 }}><Stethoscope size={16} strokeWidth={2.2} aria-hidden /> Prescription verification (A4)</span>}
+            title={<span className="vh-row" style={{ gap: 8 }}><Stethoscope size={16} strokeWidth={2.2} aria-hidden /> Prescription verification</span>}
             action={<StatusPill tone={rxPending.length ? "warn" : "ok"}>{rxPending.length} to verify</StatusPill>}
           >
             <p className="small muted" style={{ marginTop: 0 }}>
@@ -222,7 +222,7 @@ export default async function AdminCompliancePage({
 
         <Card
           title={<span className="vh-row" style={{ gap: 8 }}><Eye size={16} strokeWidth={2.2} aria-hidden /> Sensitive access — last 24h</span>}
-          action={<span className="small muted">SensitiveAccessLog mirror · append-only (A3)</span>}
+          action={<span className="small muted">SensitiveAccessLog mirror · append-only</span>}
           pad0
         >
           <div style={{ overflowX: "auto" }}>
@@ -274,7 +274,7 @@ export default async function AdminCompliancePage({
           <p className="small muted" style={{ marginTop: 0 }}>
             Initiating a recall and closing a recall are both maker–checker actions — a single compliance officer
             cannot both declare and clear a safety incident. Recall records, like all safety records, cannot be
-            deleted or altered once written (A3); a correction is a new row referencing the original.
+            deleted or altered once written; a correction is a new row referencing the original.
           </p>
           <div id="recall" style={{ scrollMarginTop: 90 }}>
             {recall && RECALL_NOTES[recall] && (
@@ -299,7 +299,7 @@ export default async function AdminCompliancePage({
               </div>
             </form>
 
-            {/* Open recalls — each closed by a DIFFERENT admin (A6) */}
+            {/* Open recalls — each closed by a DIFFERENT admin */}
             {openRecs.length > 0 && (
               <div className="vh-grid" style={{ gap: 8, marginBottom: 12 }}>
                 {openRecs.map((r) => (

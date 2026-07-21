@@ -59,7 +59,7 @@ const STATUS_LABEL: Record<CampaignStatus, string> = {
 
 const REASON_TEXT: Record<ScreenReason, string> = {
   claims: "Blocked: the copy claims to cure / treat / prevent / diagnose — barred by the Drugs & Magic Remedies Act.",
-  health: "Blocked (§6): the copy carries a diagnosis, symptom or named condition. Health data never rides out in a send.",
+  health: "Blocked: the copy carries a diagnosis, symptom or named condition. Health data never rides out in a send.",
   cbd: "Mentions a CBD Wellness product — held until a reviewer confirms it makes no medical-benefit claim.",
   clean: "Cleared automatically — no CBD mention, no claim, no health data.",
 };
@@ -71,7 +71,7 @@ const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> 
   sent: { sev: "ok", text: "Campaign sent. The send gate confirmed it was APPROVED first." },
   blocked: { sev: "danger", text: "Campaign BLOCKED — its copy tripped the claims or §6 health-data guard. It is stored as a flagged attempt and can never be sent." },
   claims: { sev: "danger", text: "Blocked on re-screen: the copy claims to cure / treat / prevent / diagnose. It cannot be approved." },
-  health: { sev: "danger", text: "Blocked on re-screen (§6): the copy carries health data. It cannot be approved." },
+  health: { sev: "danger", text: "Blocked on re-screen: the copy carries health data. It cannot be approved." },
   reason: { sev: "danger", text: "Approval needs a reason of at least 20 characters — a copy-check sign-off is an accountable action." },
   state: { sev: "warn", text: "That campaign isn't awaiting a copy-check." },
   send_not_approved: { sev: "danger", text: "Send refused: the campaign is not APPROVED. Fail closed — only a cleared campaign goes out." },
@@ -253,7 +253,7 @@ export default async function AdminMarketingPage({ searchParams }: { searchParam
           </div>
           <p className="small muted" style={{ margin: 0, padding: "12px 18px 16px" }}>
             No audience is ever built from health data — prescription status, medical notes and MED_CANNABIS purchase
-            history are structurally unavailable to the segmentation service (A1/A4).
+            history are structurally unavailable to the segmentation service.
           </p>
         </Card>
 

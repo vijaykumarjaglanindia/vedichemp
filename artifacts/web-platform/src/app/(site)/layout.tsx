@@ -247,7 +247,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
                     );
                   })}
                 </div>
-                {/* MED_CANNABIS: informational line only — never a shop link (A1) */}
+                {/* MED_CANNABIS: informational line only — never a shop link */}
                 <div style={{ borderTop: "1px solid var(--vh-line)", marginTop: "var(--sp-2)", paddingTop: "var(--sp-2)" }}>
                   <p className="small muted" style={{ margin: 0, fontSize: ".76rem" }}>
                     Medical Cannabis is prescription-only and never advertised or browsable here.{" "}

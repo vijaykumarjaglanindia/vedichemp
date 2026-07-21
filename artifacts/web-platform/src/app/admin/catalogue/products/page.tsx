@@ -31,7 +31,7 @@ const ERRORS: Record<string, string> = {
   mrp: "MRP must be an integer in paise, at or above the selling price.",
   hsn: "HSN code should be 4–8 digits.",
   seller: "Pick the seller this listing belongs to.",
-  cls: "That class can't be created from any console — MED_CANNABIS listings are never conjured by an admin (A1).",
+  cls: "That class can't be created from any console — MED_CANNABIS listings are never conjured by an admin.",
 };
 
 export default async function AdminAllListingsPage({
@@ -149,7 +149,7 @@ export default async function AdminAllListingsPage({
           <p className="small muted" style={{ marginTop: 0 }}>
             For sellers who onboard by phone or email. The listing is created in DRAFT under the seller&apos;s
             storefront, goes LIVE only through review, and a regulated class still needs its batch CoA
-            approved first (A2) — creating for someone is not approving for them.
+            approved first — creating for someone is not approving for them.
           </p>
           <form action={adminSaveListing} className="vh-grid" style={{ gap: 14 }}>
             <div className="vh-grid cols-2" style={{ gap: 14 }}>
@@ -170,7 +170,7 @@ export default async function AdminAllListingsPage({
                     <option key={c} value={c}>{CLASS_META[c].label}</option>
                   ))}
                 </select>
-                <span className="vh-help">MED_CANNABIS is not offered here and is refused server-side (A1).</span>
+                <span className="vh-help">MED_CANNABIS is not offered here and is refused server-side.</span>
               </div>
             </div>
             <div className="vh-field">

@@ -56,7 +56,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
   return (
     <Shell active="/seller/earnings" breadcrumb={["Seller Central", "Earnings"]} title="Earnings & Withdrawals">
       {saved === "account" && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="ok" title="Payout account saved">New withdrawals will be paid to this account.</Banner></div>}
-      {requested && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="ok" title="Withdrawal requested">An admin reviews and approves payouts — a payout of ₹10,000 or more needs a second admin to confirm (A6).</Banner></div>}
+      {requested && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="ok" title="Withdrawal requested">An admin reviews and approves payouts — a payout of ₹10,000 or more needs a second admin to confirm.</Banner></div>}
       {err && ERRORS[err] && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="danger" title="Couldn't do that">{ERRORS[err]}</Banner></div>}
 
       {/* Balance cards */}

@@ -56,7 +56,7 @@ export interface ActivityEvent {
 export const ACTIVITY: ActivityEvent[] = [
   { label: "Order VH2026070912 is out for delivery", at: "Today · 09:40", state: "current" },
   {
-    label: "Your prescription was viewed by pharmacist.das — reason PRESCRIPTION_VERIFICATION logged, and you were notified (A4)",
+    label: "Your prescription was viewed by pharmacist.das — reason PRESCRIPTION_VERIFICATION logged, and you were notified",
     at: "Yesterday · 14:22",
     actor: "Pharmacist",
     state: "done",
@@ -161,7 +161,7 @@ export const SUPPRESSION_MATRIX: {
   category: string; kind: "Transactional" | "Promotional"; suppressible: boolean; note: string;
 }[] = [
   { category: "Order status", kind: "Transactional", suppressible: false, note: "Always delivered — required for delivery coordination." },
-  { category: "Prescription access (A4)", kind: "Transactional", suppressible: false, note: "Buyer notice on sensitive reads is mandatory, not a preference." },
+  { category: "Prescription access", kind: "Transactional", suppressible: false, note: "Buyer notice on sensitive reads is mandatory, not a preference." },
   { category: "Payment / wallet", kind: "Transactional", suppressible: false, note: "Money movement must always be confirmed to the buyer." },
   { category: "Subscription reminders", kind: "Transactional", suppressible: true, note: "Can be muted; skip/pause still applies silently." },
   { category: "Offers & recommendations", kind: "Promotional", suppressible: true, note: "Gated on the personalisation/marketing consent toggle." },

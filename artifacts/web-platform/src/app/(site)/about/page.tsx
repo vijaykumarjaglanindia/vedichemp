@@ -50,7 +50,7 @@ const VERTICAL_COLUMNS: Column<ClassMeta>[] = [
   {
     key: "ads",
     header: "Advertisable",
-    render: (row) => <span className="small">{row.advertisable ? "Yes" : "Never (A1)"}</span>,
+    render: (row) => <span className="small">{row.advertisable ? "Yes" : "Never"}</span>,
   },
 ];
 

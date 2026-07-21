@@ -47,14 +47,14 @@ const columns: Column<SettlementRun>[] = [
 const closeDone = PERIOD_CLOSE_CHECKLIST.filter((c) => c.done).length;
 
 const CLOSE_NOTES: Record<string, { sev: "ok" | "danger" | "warn"; title: string; body: string }> = {
-  initiated: { sev: "ok", title: "Period close initiated (maker)", body: "A second, different admin must now sign off before the period actually closes (A6)." },
+  initiated: { sev: "ok", title: "Period close initiated (maker)", body: "A second, different admin must now sign off before the period actually closes." },
   blocked: { sev: "danger", title: "Close blocked — checklist incomplete", body: "Open checklist items block initiation server-side. The denied attempt is logged with your reason." },
   reason: { sev: "warn", title: "Reason required", body: "Period close is high-impact — it needs at least 20 characters of free-text reason." },
 };
 
 const ST_MSG: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {
   created: { sev: "ok", text: "Settlement run created (you are its maker). A DIFFERENT admin must post it — you cannot." },
-  posted: { sev: "ok", text: "Settlement posted by a second admin. The statement is now immutable (A3) and the seller is notified." },
+  posted: { sev: "ok", text: "Settlement posted by a second admin. The statement is now immutable and the seller is notified." },
   makerdenied: { sev: "danger", text: "Blocked — you created this run, so you cannot also post it (A6 maker ≠ checker). The denied attempt is logged." },
   role: { sev: "danger", text: "Blocked — money actions check the roles you actually hold: preparing a run needs ADMIN_FINANCE, posting one needs ADMIN_FINANCE_APPROVER (no account can hold both). Ask an owner to grant the role on Settings → Roles. The denied attempt is logged." },
   pending: { sev: "warn", text: "That seller already has a run awaiting its checker." },
@@ -103,7 +103,7 @@ export default async function AdminFinancePage({
 
         <div id="settlements" style={{ scrollMarginTop: 90 }}>
           {stMsg && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity={stMsg.sev}>{stMsg.text}</Banner></div>}
-          <Card title="Seller settlements" action={<span className="small muted">Maker ≠ checker · both human · service accounts barred (A6)</span>} pad0>
+          <Card title="Seller settlements" action={<span className="small muted">Maker ≠ checker · both human · service accounts barred</span>} pad0>
             <DataTable columns={columns} rows={runs} />
             <div style={{ padding: "12px 16px", borderTop: "1px solid var(--vh-line)" }}>
               <form action={createSettlementRun} className="vh-row" style={{ gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
@@ -122,7 +122,7 @@ export default async function AdminFinancePage({
           </Card>
         </div>
 
-        <Banner severity="ok" title="Immutable once posted (A3)">
+        <Banner severity="ok" title="Immutable once posted">
           A posted settlement statement cannot be edited or deleted — the database role backing this table has
           <code> DELETE</code> and <code>UPDATE</code> revoked. A correction after posting is a new, linked
           settlement row referencing the original, never an edit to it.
