@@ -12,7 +12,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { Heart, ShoppingCart, UserRound } from "lucide-react";
+import { Heart, ShoppingCart, UserRound, LogOut } from "lucide-react";
+import { signOut } from "../signin/actions";
 
 function readCookie(name: string): string | null {
   const m = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
@@ -41,10 +42,25 @@ export function HeaderBits() {
         {count > 0 && <span className="vhx-cart-badge" aria-hidden>{count > 9 ? "9+" : count}</span>}
       </Link>
       {user ? (
-        <Link href="/account" className="vh-btn vh-btn-ghost vh-btn-sm vhx-hide-sm" style={{ gap: 7 }}>
-          <UserRound size={14} aria-hidden />
-          {user.split(" ")[0]}
-        </Link>
+        <details className="vhx-signin vhx-hide-sm">
+          <summary
+            className="vh-btn vh-btn-ghost vh-btn-sm"
+            style={{ listStyle: "none", cursor: "pointer", width: "auto", height: "auto", border: "1px solid var(--vh-line)", gap: 7 }}
+          >
+            <UserRound size={14} aria-hidden />
+            {user.split(" ")[0]} <span aria-hidden style={{ fontSize: ".7em" }}>▾</span>
+          </summary>
+          <nav className="vhx-signin-panel" aria-label="Your account">
+            <Link href="/account">My account</Link>
+            <Link href="/account/orders">Orders</Link>
+            <Link href="/account/wallet">Wallet</Link>
+            <form action={signOut} style={{ display: "contents" }}>
+              <button type="submit" style={{ display: "flex", alignItems: "center", gap: 8, width: "100%", background: "none", border: "none", cursor: "pointer", font: "inherit", color: "var(--vh-accent)", padding: "8px 12px", textAlign: "left" }}>
+                <LogOut size={14} aria-hidden /> Sign out
+              </button>
+            </form>
+          </nav>
+        </details>
       ) : (
         <details className="vhx-signin vhx-hide-sm">
           <summary

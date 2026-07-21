@@ -12,7 +12,8 @@
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { Menu, Search, Bell } from "lucide-react";
+import { Menu, Search, Bell, LogOut } from "lucide-react";
+import { signOut } from "@/app/(site)/signin/actions";
 
 export interface NavItem { href: string; label: string; icon: ReactNode }
 export interface NavGroup { group?: string; items: NavItem[] }
@@ -63,10 +64,15 @@ export function ConsoleShell({
         ))}
         <div className="vh-rail-user">
           <span className="vh-avatar" aria-hidden>{initials(brand)}</span>
-          <div style={{ minWidth: 0 }}>
+          <div style={{ minWidth: 0, flex: 1 }}>
             <div style={{ color: "var(--vh-ink)", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Signed in</div>
             <div className="small muted">Session · secured</div>
           </div>
+          <form action={signOut}>
+            <button type="submit" className="vh-iconbtn" title="Sign out" aria-label="Sign out">
+              <LogOut size={15} strokeWidth={2.2} aria-hidden />
+            </button>
+          </form>
         </div>
       </nav>
 

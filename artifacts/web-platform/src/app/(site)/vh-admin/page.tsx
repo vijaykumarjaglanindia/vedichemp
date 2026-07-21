@@ -11,16 +11,23 @@
 import type { Metadata } from "next";
 import { ShieldCheck } from "lucide-react";
 import { Banner } from "@/components/ui";
-import { signIn } from "../signin/actions";
+import { EmailSignInForm } from "../_lib/EmailSignInForm";
 
 export const metadata: Metadata = { title: "Operator sign-in", robots: { index: false, follow: false } };
+
+const ADMIN_ERRORS: Record<string, string> = {
+  email: "That email doesn't look right.",
+  role: "This door is for operators only.",
+  "otp-expired": "That code expired — request a new one.",
+  "otp-wrong": "That code doesn't match — check your email and try again.",
+};
 
 export default async function AdminDoorPage({
   searchParams,
 }: {
-  searchParams: Promise<{ err?: string; next?: string }>;
+  searchParams: Promise<{ err?: string; next?: string; eotp?: string }>;
 }) {
-  const { err, next } = await searchParams;
+  const { err, next, eotp } = await searchParams;
   return (
     <div className="vh-container" style={{ paddingTop: "var(--sp-7)", paddingBottom: "var(--sp-8)", maxWidth: 400 }}>
       <div style={{ textAlign: "center", marginBottom: "var(--sp-4)" }}>
@@ -31,28 +38,25 @@ export default async function AdminDoorPage({
         <p className="muted small" style={{ margin: 0 }}>Marketplace operations console. Passkey-gated in production.</p>
       </div>
 
-      {err === "email" && (
+      {err && ADMIN_ERRORS[err] && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
-          <Banner severity="danger">That email doesn&rsquo;t look right.</Banner>
+          <Banner severity="danger">{ADMIN_ERRORS[err]}</Banner>
         </div>
       )}
 
-      <form action={signIn} className="vh-card" style={{ display: "grid", gap: 14 }}>
-        <input type="hidden" name="role" value="ADMIN" />
-        <input type="hidden" name="gate" value="vh-admin" />
-        {next && <input type="hidden" name="next" value={next} />}
-        <div className="vh-field">
-          <label htmlFor="si-email" className="vh-label">Operator email <span className="req">*</span></label>
-          <input id="si-email" name="email" type="email" className="vh-input" placeholder="you@vedichemp.com" autoComplete="email" required autoFocus />
-          <span className="vh-help">In production this step is a passkey ceremony — SMS OTP is never accepted for admin.</span>
-        </div>
-        <button type="submit" className="vh-btn vh-btn-primary vh-btn-lg" style={{ width: "100%" }}>
-          Continue
-        </button>
-        <p className="small muted" style={{ margin: 0, textAlign: "center" }}>
-          Every sign-in and every admin action is logged. Not an operator? Close this page.
-        </p>
-      </form>
+      <EmailSignInForm
+        role="ADMIN"
+        back="/vh-admin"
+        gate="vh-admin"
+        next={next}
+        otpSent={eotp === "sent"}
+        emailLabel="Operator email"
+        emailPlaceholder="you@vedichemp.com"
+        help="In production this step is a passkey ceremony — SMS OTP is never accepted for admin."
+      />
+      <p className="small muted" style={{ margin: "10px 0 0", textAlign: "center" }}>
+        Every sign-in and every admin action is logged. Not an operator? Close this page.
+      </p>
     </div>
   );
 }

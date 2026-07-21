@@ -11,7 +11,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Banner } from "@/components/ui";
 import { withBase } from "@/lib/base";
-import { pendingOtpPreview, requestOtp, signIn, verifyOtp } from "../signin/actions";
+import { pendingOtpPreview, requestOtp, verifyOtp } from "../signin/actions";
+import { EmailSignInForm } from "../_lib/EmailSignInForm";
 
 export const metadata: Metadata = { title: "Seller sign in" };
 
@@ -24,8 +25,8 @@ const ERRORS: Record<string, string> = {
   "otp-wrong": "That code doesn't match — check the SMS and try again.",
 };
 
-export default async function SellerLoginPage({ searchParams }: { searchParams: Promise<{ err?: string; next?: string; bye?: string; otp?: string }> }) {
-  const { err, next, bye, otp } = await searchParams;
+export default async function SellerLoginPage({ searchParams }: { searchParams: Promise<{ err?: string; next?: string; bye?: string; otp?: string; eotp?: string }> }) {
+  const { err, next, bye, otp, eotp } = await searchParams;
   const otpPreview = otp === "sent" ? await pendingOtpPreview() : null;
 
   return (
@@ -52,24 +53,11 @@ export default async function SellerLoginPage({ searchParams }: { searchParams: 
         </div>
       )}
 
-      <form action={signIn} className="vh-card" style={{ display: "grid", gap: 14 }}>
-        {next && <input type="hidden" name="next" value={next} />}
-        <div className="vh-field">
-          <label htmlFor="si-email" className="vh-label">Email <span className="req">*</span></label>
-          <input id="si-email" name="email" type="email" className="vh-input" placeholder="you@example.com" autoComplete="email" required autoFocus />
-          <span className="vh-help">We&rsquo;ll send a one-time code here once OTP delivery is connected.</span>
-        </div>
-
-        <input type="hidden" name="role" value="SELLER" />
-
-        <button type="submit" className="vh-btn vh-btn-primary vh-btn-lg" style={{ width: "100%" }}>
-          Continue
-        </button>
-        <p className="small muted" style={{ margin: 0, textAlign: "center" }}>
-          New to selling here? <Link href="/sell" style={{ fontWeight: 700 }}>Start onboarding &amp; licence submission</Link>.{" "}
-          Shopping instead? <Link href="/signin">Buyer sign in →</Link>
-        </p>
-      </form>
+      <EmailSignInForm role="SELLER" back="/seller-login" next={next} otpSent={eotp === "sent"} />
+      <p className="small muted" style={{ margin: "10px 0 0", textAlign: "center" }}>
+        New to selling here? <Link href="/sell" style={{ fontWeight: 700 }}>Start onboarding &amp; licence submission</Link>.{" "}
+        Shopping instead? <Link href="/signin">Buyer sign in →</Link>
+      </p>
 
       {/* ── Or continue with a provider ─────────────────── */}
       <div className="vh-row" style={{ gap: 10, margin: "var(--sp-3) 0", alignItems: "center" }}>
