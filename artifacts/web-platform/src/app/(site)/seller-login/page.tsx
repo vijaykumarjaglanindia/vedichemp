@@ -20,6 +20,8 @@ const ERRORS: Record<string, string> = {
   email: "That email doesn't look right — check it and try again.",
   role: "Choose which console you're signing in to.",
   phone: "Enter a 10-digit Indian mobile number.",
+  creds: "Incorrect email or password.",
+  wrongdoor: "That's not a seller account. Shopping? Use Buyer sign in. New seller? Start onboarding.",
   "admin-otp": "Admin sign-in uses passkeys (or email here in the demo) — SMS OTP is not accepted for admin, by policy.",
   "otp-expired": "That code expired — request a new one.",
   "otp-wrong": "That code doesn't match — check the SMS and try again.",

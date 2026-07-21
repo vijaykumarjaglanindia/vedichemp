@@ -18,6 +18,8 @@ export const metadata: Metadata = { title: "Operator sign-in", robots: { index: 
 const ADMIN_ERRORS: Record<string, string> = {
   email: "That email doesn't look right.",
   role: "This door is for operators only.",
+  creds: "Incorrect operator email or password.",
+  wrongdoor: "That account is not an operator account.",
   "otp-expired": "That code expired — request a new one.",
   "otp-wrong": "That code doesn't match — check your email and try again.",
 };

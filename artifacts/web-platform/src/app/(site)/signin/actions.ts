@@ -13,8 +13,54 @@ import { createHmac, randomInt } from "node:crypto";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { createSession, destroySession } from "@/lib/auth-lite";
+import { authenticate, ensureAccount, findAccount, register, type AccountRole } from "@/lib/accounts";
 
 const HOME: Record<string, string> = { BUYER: "/account", SELLER: "/seller", ADMIN: "/admin" };
+
+/**
+ * Real credential login. The password is verified against the account
+ * directory, and the role is taken from the ACCOUNT — never a form field — so a
+ * buyer credential can never open the seller or operator console. The door still
+ * scopes which role may complete here (the admin door additionally requires the
+ * unlisted gate), and a mismatch is reported plainly since the caller already
+ * proved the password.
+ */
+export async function login(formData: FormData): Promise<void> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const expected = String(formData.get("role") ?? "BUYER") as AccountRole;
+  const gate = String(formData.get("gate") ?? "");
+  const back = backFor(String(formData.get("back") ?? "/signin"));
+  const next = String(formData.get("next") ?? "");
+  const nextQ = next ? `&next=${encodeURIComponent(next)}` : "";
+
+  if (expected === "ADMIN" && gate !== "vh-admin") redirect(`${back}?err=role`);
+
+  const result = authenticate(email, password);
+  if (!result.ok) redirect(`${back}?err=creds${nextQ}`);
+  const account = result.account;
+  if (account.role !== expected) redirect(`${back}?err=wrongdoor${nextQ}`);
+
+  await createSession({ email: account.email, name: account.name, role: account.role, provider: "password" });
+  redirect(next && next.startsWith("/") && !next.startsWith("//") ? next : (HOME[account.role] ?? "/account"));
+}
+
+/** Buyer self-registration. Sellers onboard via /sell; admins are provisioned. */
+export async function registerAccount(formData: FormData): Promise<void> {
+  const email = String(formData.get("email") ?? "").trim().toLowerCase();
+  const password = String(formData.get("password") ?? "");
+  const name = String(formData.get("name") ?? "").trim();
+  const next = String(formData.get("next") ?? "");
+  const nextQ = next ? `&next=${encodeURIComponent(next)}` : "";
+
+  const result = register({ email, password, name });
+  if (!result.ok) {
+    const code = result.reason === "EXISTS" ? "exists" : result.reason === "WEAK_PASSWORD" ? "weak" : "email";
+    redirect(`/signin?mode=register&err=${code}${nextQ}`);
+  }
+  await createSession({ email: result.account.email, name: result.account.name, role: "BUYER", provider: "password" });
+  redirect(next && next.startsWith("/") && !next.startsWith("//") ? next : "/account");
+}
 
 /**
  * Whether the email sign-in requires a one-time code. It activates when an email
@@ -25,27 +71,6 @@ const HOME: Record<string, string> = { BUYER: "/account", SELLER: "/seller", ADM
  */
 export async function emailOtpEnabled(): Promise<boolean> {
   return Boolean(process.env.EMAIL_OTP || process.env.EMAIL_API_KEY);
-}
-
-export async function signIn(formData: FormData): Promise<void> {
-  const email = String(formData.get("email") ?? "").trim().toLowerCase();
-  const role = String(formData.get("role") ?? "BUYER") as "BUYER" | "SELLER" | "ADMIN";
-  const next = String(formData.get("next") ?? "");
-
-  if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email) || email.length > 254) {
-    redirect(`/signin?err=email${next ? `&next=${encodeURIComponent(next)}` : ""}`);
-  }
-  if (!["BUYER", "SELLER", "ADMIN"].includes(role)) redirect("/signin?err=role");
-  // The public sign-in page has no admin option at all (WordPress-style:
-  // operators use the unlisted /vh-admin door). Real protection is the
-  // passkey ceremony that replaces this issuer; the gate keeps the public
-  // form from ever minting an admin session.
-  if (role === "ADMIN" && String(formData.get("gate")) !== "vh-admin") redirect("/signin?err=role");
-
-  const name = (email.split("@")[0] ?? "there").replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
-  await createSession({ email, name, role, provider: "email" });
-
-  redirect(next && next.startsWith("/") && !next.startsWith("//") ? next : (HOME[role] ?? "/account"));
 }
 
 export async function signOut(): Promise<void> {
@@ -105,8 +130,19 @@ export async function verifyEmailOtp(formData: FormData): Promise<void> {
   // Admin code only completes through the admin door (defence in depth).
   if (pending!.r === "ADMIN" && pending!.g !== "vh-admin") redirect(`${back}?err=role`);
 
+  // A verified email is not authorisation: an ADMIN (or SELLER) session is only
+  // ever issued to a PROVISIONED account of that role. A code proves the mailbox,
+  // never the privilege — so email-OTP can create a buyer but can never mint an
+  // operator for an address that isn't already an admin.
+  const existing = findAccount(pending!.e);
+  if (pending!.r !== "BUYER" && (!existing || existing.role !== pending!.r)) {
+    jar.delete(EMAIL_OTP_COOKIE);
+    redirect(`${back}?err=creds${nextQ}`);
+  }
+
   jar.delete(EMAIL_OTP_COOKIE);
-  const name = (pending!.e.split("@")[0] ?? "there").replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const name = existing?.name ?? (pending!.e.split("@")[0] ?? "there").replace(/[._-]+/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  ensureAccount({ email: pending!.e, name, role: pending!.r, provider: "email" });
   await createSession({ email: pending!.e, name, role: pending!.r, provider: "email" });
   redirect(next && next.startsWith("/") && !next.startsWith("//") ? next : (EMAIL_HOMES[pending!.r] ?? "/account"));
 }
@@ -168,7 +204,9 @@ export async function verifyOtp(formData: FormData): Promise<void> {
   jar.delete("vh-otp");
   const role = pending!.r as "BUYER" | "SELLER";
   // A separate account per phone identity — same account on every sign-in.
-  await createSession({ email: `+91${pending!.p}@phone.vedichemp.in`, name, role, provider: "phone" });
+  const phoneEmail = `+91${pending!.p}@phone.vedichemp.in`;
+  ensureAccount({ email: phoneEmail, name, role, provider: "phone" });
+  await createSession({ email: phoneEmail, name, role, provider: "phone" });
   redirect(HOME[role] ?? "/account");
 }
 
@@ -195,6 +233,8 @@ export async function oauthComplete(formData: FormData): Promise<void> {
   if (!["google", "facebook"].includes(provider)) redirect("/signin");
   if (!["BUYER", "SELLER"].includes(role)) redirect("/signin?err=role");
   if (!/^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/.test(email)) redirect(`/signin/sandbox?provider=${provider}&err=email`);
-  await createSession({ email, name, role, provider });
+  const prov = provider as "google" | "facebook";
+  ensureAccount({ email, name, role, provider: prov });
+  await createSession({ email, name, role, provider: prov });
   redirect(HOME[role] ?? "/account");
 }

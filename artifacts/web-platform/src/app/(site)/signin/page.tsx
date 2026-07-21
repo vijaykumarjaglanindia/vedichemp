@@ -20,13 +20,17 @@ const ERRORS: Record<string, string> = {
   email: "That email doesn't look right — check it and try again.",
   role: "Choose which console you're signing in to.",
   phone: "Enter a 10-digit Indian mobile number.",
+  creds: "Incorrect email or password.",
+  wrongdoor: "That's not a buyer account. Sellers sign in at Seller sign in; operators at their own door.",
+  exists: "An account with that email already exists — sign in instead.",
+  weak: "Choose a stronger password: 8+ characters, upper- and lower-case, and a number.",
   "admin-otp": "Admin sign-in uses passkeys (or email here in the demo) — SMS OTP is not accepted for admin, by policy.",
   "otp-expired": "That code expired — request a new one.",
   "otp-wrong": "That code doesn't match — check the SMS and try again.",
 };
 
-export default async function SignInPage({ searchParams }: { searchParams: Promise<{ err?: string; next?: string; bye?: string; otp?: string; eotp?: string }> }) {
-  const { err, next, bye, otp, eotp } = await searchParams;
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ err?: string; next?: string; bye?: string; otp?: string; eotp?: string; mode?: string }> }) {
+  const { err, next, bye, otp, eotp, mode } = await searchParams;
   const otpPreview = otp === "sent" ? await pendingOtpPreview() : null;
 
   return (
@@ -53,9 +57,8 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
         </div>
       )}
 
-      <EmailSignInForm role="BUYER" back="/signin" next={next} otpSent={eotp === "sent"} />
+      <EmailSignInForm role="BUYER" back="/signin" next={next} otpSent={eotp === "sent"} mode={mode === "register" ? "register" : "login"} showRegister />
       <p className="small muted" style={{ margin: "10px 0 0", textAlign: "center" }}>
-        New here? The same form creates your buyer account.{" "}
         Selling on the marketplace? <Link href="/seller-login" style={{ fontWeight: 700 }}>Seller sign in →</Link>
       </p>
 
