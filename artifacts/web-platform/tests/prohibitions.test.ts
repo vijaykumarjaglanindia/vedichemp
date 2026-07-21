@@ -151,6 +151,29 @@ describe("A3 — safety and audit records are append-only", () => {
     );
   });
 
+  it("test_a3_recall_delete_grant: app role cannot DELETE Recall", async () => {
+    // A Recall is legitimately UPDATEd once (the checker closes it), so unlike
+    // the fully-immutable tables above only DELETE is revoked from the app role.
+    const grants = await db.$queryRawUnsafe<{ privilege_type: string }[]>(
+      `SELECT privilege_type FROM information_schema.role_table_grants
+       WHERE table_name = 'Recall' AND grantee = 'vedichemp_app'`
+    );
+    expect(grants.map((g) => g.privilege_type)).not.toContain("DELETE");
+  });
+
+  it("test_a3_worm_recall: deleting a recall raises, even as owner", async () => {
+    // The a3_recall_no_delete trigger (migration 0002) is belt-and-braces beyond
+    // the role REVOKE: a recall record cannot be erased by anyone, superuser
+    // included. A correction is a new recall row, never a delete.
+    const recall = await db.recall.create({
+      data: { batchId: `batch-${crypto.randomUUID()}`, reason: "WORM check", buyersAffected: 0, makerId: seed.adminOwner },
+    });
+    await expectRejection(
+      () => db.recall.delete({ where: { id: recall.id } }),
+      /append-only/
+    );
+  });
+
   it("test_a3_correction_is_a_new_row: corrections reference the original", async () => {
     const correction = await db.adverseEvent.create({
       data: {

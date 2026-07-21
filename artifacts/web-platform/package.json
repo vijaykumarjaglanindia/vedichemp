@@ -13,7 +13,7 @@
     "typecheck": "tsc --noEmit",
     "db:roles": "psql \"$MIGRATE_DATABASE_URL\" -f prisma/roles.sql",
     "db:migrate": "prisma migrate dev",
-    "db:prohibitions": "psql \"$MIGRATE_DATABASE_URL\" -f prisma/migrations/0001_prohibitions/migration.sql",
+    "db:prohibitions": "psql \"$MIGRATE_DATABASE_URL\" -f prisma/migrations/0001_prohibitions/migration.sql && psql \"$MIGRATE_DATABASE_URL\" -f prisma/migrations/0002_recall_delete_immutable/migration.sql",
     "db:verify": "psql \"$DATABASE_URL\" -c 'SELECT * FROM prohibition_status'",
     "db:fixture": "tsx scripts/fixture.ts",
     "test": "vitest run",
