@@ -57,6 +57,13 @@ export async function approveSettlement(args: {
   const run = await db.settlement.findUnique({ where: { id: args.settlementId } });
   if (!run) throw new ProhibitionError("SETTLEMENT_NOT_FOUND", "No such settlement run.");
 
+  // A posted statement is immutable (A3). Re-posting — a retried request, a
+  // double click — must fail cleanly here, not by tripping the DB immutability
+  // trigger on the UPDATE below. A correction is a new adjustment row.
+  if (run.status === SettlementStatus.POSTED) {
+    throw new ProhibitionError("SETTLEMENT_ALREADY_POSTED", "This settlement is already posted and is immutable; record a correcting adjustment instead.");
+  }
+
   const checker = await resolveAdmin(args.checker);
 
   // A service account may be neither maker nor checker.

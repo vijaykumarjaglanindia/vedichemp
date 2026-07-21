@@ -26,6 +26,7 @@ const db = new PrismaClient();
 interface Seed {
   sellerId: string;
   orderId: string;
+  postedSettlementId: string;
   adminOwner: string;
   adminFinance: string;
   adminSupport: string;
@@ -150,5 +151,39 @@ describe("A1 — the auction resolves the product's true class, not the caller's
       candidates: [{ productId: hemp.id, complianceClass: ComplianceClass.HEMP_FOOD, bidPaise: 50_00 }],
     });
     expect(result.winners.map((w) => w.productId)).toContain(hemp.id);
+  });
+});
+
+describe("§4 — a money-moving POST requires a well-formed Idempotency-Key", () => {
+  const withKey = (key?: string) =>
+    new Request("https://x/api/v1/money/settlements/s/approve", {
+      method: "POST",
+      headers: key ? { "Idempotency-Key": key } : {},
+    });
+
+  it("rejects a missing Idempotency-Key", async () => {
+    const { requireIdempotencyKey } = await import("../src/server/http");
+    expect(() => requireIdempotencyKey(withKey())).toThrow(/IDEMPOTENCY_KEY_REQUIRED/);
+  });
+
+  it("rejects a malformed (non-UUID) key", async () => {
+    const { requireIdempotencyKey } = await import("../src/server/http");
+    expect(() => requireIdempotencyKey(withKey("not-a-uuid"))).toThrow(/IDEMPOTENCY_KEY_REQUIRED/);
+  });
+
+  it("accepts a UUIDv4 key and echoes it back", async () => {
+    const { requireIdempotencyKey } = await import("../src/server/http");
+    const key = crypto.randomUUID();
+    expect(requireIdempotencyKey(withKey(key))).toBe(key);
+  });
+});
+
+describe("A3 — a posted settlement cannot be re-posted (idempotent, immutable)", () => {
+  it("rejects re-posting an already-POSTED run with a clean guard, not a DB trigger error", async () => {
+    const { approveSettlement } = await import("../src/server/money/settlements");
+    await expectRejection(
+      () => approveSettlement({ settlementId: seed().postedSettlementId, checker: seed().adminOwner, note: "x".repeat(25) }),
+      /SETTLEMENT_ALREADY_POSTED/,
+    );
   });
 });
