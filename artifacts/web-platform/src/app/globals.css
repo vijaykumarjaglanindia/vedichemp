@@ -118,6 +118,9 @@ body {
 }
 a { color: var(--vh-accent); text-decoration: none; transition: color .12s; }
 a:hover { color: color-mix(in srgb, var(--vh-accent) 80%, var(--vh-ink)); }
+/* Links inside running text are underlined — never distinguishable by colour
+   alone (WCAG 1.4.1). Nav, buttons and card links are unaffected. */
+p a:not(.vh-btn) { text-decoration: underline; text-underline-offset: 2px; text-decoration-thickness: 1px; }
 h1, h2, h3, h4 { color: var(--vh-ink); font-family: var(--vh-display); line-height: 1.22; margin: 0 0 0.4em; font-weight: 700; letter-spacing: -0.02em; text-wrap: balance; }
 h1 { font-size: clamp(1.5rem, 1.15rem + 1.3vw, 1.9rem); }
 h2 { font-size: 1.4rem; }
@@ -234,10 +237,13 @@ a.vh-card:hover { border-color: color-mix(in srgb, var(--vh-accent) 34%, var(--v
 .vh-cbadge-rx { background: var(--vh-danger-bg); color: var(--vh-danger); }
 .vh-cbadge-age { background: var(--vh-warn-bg); color: var(--vh-warn); }
 
-/* Sponsored / campaign surfaces are always visibly labelled */
-.vh-ad-label { display: inline-flex; align-items: center; gap: 5px; font-size: .64rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--vh-ad); background: var(--vh-ad-bg); border-radius: 5px; padding: 2px 7px; }
+/* Sponsored / campaign surfaces are always visibly labelled. The label text is
+   mixed toward ink so it meets WCAG AA contrast on its tinted chip — an ad
+   label that is hard to read would undermine the A1 disclosure, not just fail
+   an audit. */
+.vh-ad-label { display: inline-flex; align-items: center; gap: 5px; font-size: .64rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, var(--vh-ad) 62%, var(--vh-ink)); background: var(--vh-ad-bg); border-radius: 5px; padding: 2px 7px; }
 .vh-adslot { position: relative; border: 1px dashed color-mix(in srgb, var(--vh-ad) 34%, transparent); border-radius: var(--vh-radius); padding: 16px; background: color-mix(in srgb, var(--vh-ad-bg) 40%, var(--vh-surface)); }
-.vh-campaign-badge { display: inline-flex; align-items: center; gap: 5px; font-size: .64rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: var(--vh-campaign); background: var(--vh-campaign-bg); border-radius: 5px; padding: 2px 7px; }
+.vh-campaign-badge { display: inline-flex; align-items: center; gap: 5px; font-size: .64rem; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; color: color-mix(in srgb, var(--vh-campaign) 68%, var(--vh-ink)); background: var(--vh-campaign-bg); border-radius: 5px; padding: 2px 7px; }
 
 /* ── Banner ──────────────────────────────────────────────────── */
 .vh-banner {
@@ -245,6 +251,9 @@ a.vh-card:hover { border-color: color-mix(in srgb, var(--vh-accent) 34%, var(--v
   padding: 13px 16px; border-radius: var(--vh-radius-sm); border: 1px solid;
   font-size: 0.9rem; line-height: 1.5;
 }
+/* Links inside a banner's tinted body are underlined — colour alone can't
+   separate them from the surrounding message text (WCAG 1.4.1). */
+.vh-banner a { text-decoration: underline; text-underline-offset: 2px; }
 .vh-banner-info { background: var(--vh-info-bg); border-color: color-mix(in srgb, var(--vh-info) 24%, transparent); color: color-mix(in srgb, var(--vh-info) 80%, var(--vh-ink)); }
 .vh-banner-warn { background: var(--vh-warn-bg); border-color: color-mix(in srgb, var(--vh-warn) 28%, transparent); color: color-mix(in srgb, var(--vh-warn) 82%, var(--vh-ink)); }
 .vh-banner-danger { background: var(--vh-danger-bg); border-color: color-mix(in srgb, var(--vh-danger) 26%, transparent); color: color-mix(in srgb, var(--vh-danger) 82%, var(--vh-ink)); }
@@ -368,7 +377,7 @@ a.vh-card:hover { border-color: color-mix(in srgb, var(--vh-accent) 34%, var(--v
   margin-top: auto; padding: 12px; border-top: 1px solid var(--vh-line);
   display: flex; align-items: center; gap: 10px; color: var(--vh-rail-fg); font-size: 0.82rem;
 }
-.vh-rail-user .vh-avatar { background: var(--vh-green-500); color: #fff; }
+.vh-rail-user .vh-avatar { background: var(--vh-green-600); color: #fff; }
 
 .vh-main { min-width: 0; display: flex; flex-direction: column; }
 .vh-topbar {
