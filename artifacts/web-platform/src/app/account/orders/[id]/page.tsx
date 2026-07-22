@@ -299,6 +299,8 @@ export default async function OrderDetailPage({
 
   const { ret } = sp;
   const returnRequest = (await readReturns())[id];
+  // A buyer reaches order detail only via the live-<ref> path above (their own
+  // real orders). A bare non-live id isn't linked anywhere in the console.
   const order: SampleOrder | undefined = ORDERS.find((o) => o.id === id);
   if (!order) notFound();
 

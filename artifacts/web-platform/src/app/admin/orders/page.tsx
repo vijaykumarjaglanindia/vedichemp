@@ -166,7 +166,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
 
         <Card
           title={<span className="vh-row" style={{ gap: 8 }}><Truck {...I} aria-hidden /> Courier scorecard</span>}
-          action={<span className="small muted">on-time delivery, trailing 30 days</span>}
+          action={<span className="small muted">Illustrative — live once courier tracking is connected</span>}
         >
           <BarList items={COURIER_SCORECARD} color="var(--vh-ok)" />
         </Card>

@@ -305,15 +305,14 @@ export default function AdminHomePage() {
               <li className="vh-banner vh-banner-ok">
                 <CheckCircle2 {...I} aria-hidden />
                 <div>
-                  Ad-class violations monitor: <strong>0 leaks</strong> in the last 24h. Every blocked MED_CANNABIS
-                  auction candidate logged <code>blocked=true</code>.
+                  Ad-class violations monitor active — every blocked MED_CANNABIS auction candidate is logged
+                  <code>blocked=true</code> (A1).
                 </div>
               </li>
               <li className="vh-banner vh-banner-warn">
                 <AlertTriangle {...I} aria-hidden />
                 <div>
-                  Seller <strong>Ananda Foods</strong> health score dropped to 58 (AT_RISK) — 3 late shipments this
-                  week. <Link href="/admin/sellers">Review →</Link>
+                  Seller <strong>Ananda Foods</strong> is AT_RISK (health score 58). <Link href="/admin/sellers">Review →</Link>
                 </div>
               </li>
               <li className="vh-banner vh-banner-info">

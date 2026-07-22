@@ -108,12 +108,12 @@ export const SITE_FIELDS: SiteField[] = [
   {
     key: "heroStats", group: "Homepage hero", label: "Hero stats strip", kind: "text", max: 140,
     help: "Separate stats with a middle dot (·).",
-    def: "★ 4.6 average rating · 10,000+ products · 300+ licensed sellers",
+    def: "Lab-tested every batch · Licensed sellers only · Buyer-first returns",
   },
   {
     key: "heroUsps", group: "Homepage hero", label: "USP tiles", kind: "rich", max: 480,
     help: "One bullet per tile: bold title, then a pipe (|), then the support line.",
-    def: "- **Free shipping above ₹5,000** | ₹100 flat below — across 19,000+ PIN codes\n- **Secure prepaid checkout** | UPI, cards & netbanking\n- **Easy returns** | Buyer refunded first\n- **Fulfilled by sellers** | Packed & shipped by the seller who lists it",
+    def: "- **Free shipping above ₹5,000** | ₹100 flat below — to serviceable PIN codes\n- **Secure prepaid checkout** | UPI, cards & netbanking\n- **Easy returns** | Buyer refunded first\n- **Fulfilled by sellers** | Packed & shipped by the seller who lists it",
   },
 
   {
@@ -186,8 +186,8 @@ export const SITE_FIELDS: SiteField[] = [
   },
   {
     key: "testimonials", group: "Voices & FAQ", label: "Buyer testimonials", kind: "rich", max: 1600,
-    help: "Each testimonial: a heading of \"Name · City · rating (1–5)\", then the quote beneath it.",
-    def: "## Priya M. · Pune · 5\n\nThe batch CoA link printed on the invoice is what converted me. I checked the lab report against the batch number on the jar — it matched. That's a first for any Indian marketplace I've used.\n\n## Arjun T. · Bengaluru · 5\n\nOrdered hemp protein and hearts for my morning routine. Delivery in two days, clean packaging, and the seller's FSSAI licence is right there on the storefront.\n\n## Meera K. · Jaipur · 4\n\nReturned a tincture that arrived with a damaged seal — refund hit my account before the pickup was even complete. Buyer-first returns are real here.",
+    help: "Each testimonial: a heading of \"Name · City · rating (1–5)\", then the quote beneath it. Only add real, consented buyer quotes — the section stays hidden until you do.",
+    def: "",
   },
 
   /* ── Trust & About ─────────────────────────────────────────────── */

@@ -67,14 +67,18 @@ export default async function FinancePage() {
     label: f.label,
   }));
   const totalFeesPaise = FEE_BREAKDOWN_SEGMENTS.reduce((s, f) => s + f.paise, 0);
+  // Trend direction read from the store's own series — not a fixed "up".
+  const sparkFirst = REVENUE_SPARK[0] ?? 0;
+  const sparkLast = REVENUE_SPARK[REVENUE_SPARK.length - 1] ?? 0;
+  const trendDelta = sparkLast === sparkFirst ? undefined : ({ dir: sparkLast > sparkFirst ? "up" : "down", text: sparkLast > sparkFirst ? "trending up" : "trending down" } as const);
 
   return (
     <Shell active="/seller/finance" breadcrumb={["Seller Central", "Finance"]} title="Finance">
       <div className="vh-grid cols-4" style={{ marginBottom: "var(--sp-4)" }}>
         <Card>
-          <Stat label="Revenue (posted)" value={<MoneyText paise={totalNetPosted} />} delta={{ dir: "up", text: "12 weeks trending up" }} />
+          <Stat label="Revenue (posted)" value={<MoneyText paise={totalNetPosted} />} delta={trendDelta} />
           <div style={{ marginTop: 8 }}>
-            <Sparkline points={REVENUE_SPARK} width={180} height={40} label="Weekly net revenue, 12 weeks" />
+            <Sparkline points={REVENUE_SPARK} width={180} height={40} label="Net revenue trend" />
           </div>
         </Card>
         <Card><Stat label="Wallet balance" value={<MoneyText paise={WALLET.balancePaise} />} /></Card>

@@ -19,10 +19,6 @@ import { addToCart } from "../cart/actions";
 import { toggleWishlist } from "../actions";
 import { discountPct } from "./data";
 
-export function reviewCountFor(p: SampleProduct): number {
-  return 40 + Math.round(p.rating * 37);
-}
-
 /** The card renders sample products and live catalogue products alike; the
  *  merchandising fields (image, sale price) are optional and simply absent on
  *  the older sample shape. */
@@ -81,7 +77,7 @@ export function ProductCard({
           {p.title}
         </Link>
         <ComplianceBadge cls={p.cls} />
-        <Rating value={p.rating} count={reviewCountFor(p)} />
+        {p.rating > 0 && <Rating value={p.rating} />}
         <div className="vh-row" style={{ gap: 8, alignItems: "baseline" }}>
           <strong style={{ color: "var(--vh-ink)", fontSize: "1.02rem" }}>
             <MoneyText paise={price} />

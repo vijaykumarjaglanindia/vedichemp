@@ -26,7 +26,6 @@ import {
   ShoppingCart,
   Store,
   Truck,
-  Users,
 } from "lucide-react";
 import { Banner, Card, ComplianceBadge, EmptyState, MoneyText, Rating } from "@/components/ui";
 import { AdBanner, AdSlot } from "@/components/ui/ads";
@@ -52,7 +51,7 @@ import {
   similarProducts,
   specsFor,
 } from "../../_lib/data";
-import { ProductCard, reviewCountFor } from "../../_lib/ProductCard";
+import { ProductCard } from "../../_lib/ProductCard";
 
 type Params = { slug: string };
 
@@ -143,7 +142,9 @@ export default async function ProductDetailPage({
   const agg = await aggregate(product.id);
   const reviews = await approvedFor(product.id);
   const questions = await questionsFor(product.id);
-  const reviewCount = agg.count > 0 ? agg.count : reviewCountFor(product);
+  // Real review count from APPROVED reviews only — no fabricated fallback. A
+  // product with no reviews shows its rating with no count (or "New").
+  const reviewCount = agg.count;
   const ratingValue = agg.count > 0 ? agg.avg : product.rating;
   // Variant selection: the chosen option drives the price, stock and the
   // add-to-cart, all server-resolved (never a client price).
@@ -322,7 +323,7 @@ export default async function ProductDetailPage({
           <section id="reviews" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
             <Card
               title="Reviews"
-              action={<Rating value={ratingValue} count={reviewCount} />}
+              action={<Rating value={ratingValue} count={reviewCount || undefined} />}
             >
               {rr && (
                 <div style={{ marginBottom: "var(--sp-3)" }}>
@@ -408,16 +409,19 @@ export default async function ProductDetailPage({
                 <p className="small muted" style={{ margin: 0 }}>No reviews yet — be the first to review this after your purchase.</p>
               )}
               <div style={{ marginTop: "var(--sp-3)", borderTop: "1px solid var(--vh-line)", paddingTop: "var(--sp-3)" }}>
-                {/* AI review summary — provider seam in lib/ai.ts; labelled, never a claim */}
+                {/* AI review summary — provider seam in lib/ai.ts; labelled, never a
+                    claim, and only shown once there are real approved reviews to summarise. */}
+                {reviewCount > 0 && (
                 <div id="ai-summary" style={{ background: "var(--vh-green-50)", border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "12px 14px", marginBottom: "var(--sp-3)" }}>
                   <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}>
                     <span className="vh-pill vh-pill-info">AI summary</span>
                     <span className="small muted">from verified-purchase reviews · engine: {aiProviderName()}</span>
                   </div>
                   <p className="small" style={{ margin: 0 }}>
-                    {summarizeReviews({ title: product.title, rating: product.rating, reviewCount, labVerified: product.labVerified })}
+                    {summarizeReviews({ title: product.title, rating: ratingValue, reviewCount, labVerified: product.labVerified })}
                   </p>
                 </div>
+                )}
                 {myReview ? (
                   <div>
                     <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
@@ -604,7 +608,7 @@ export default async function ProductDetailPage({
             <h1 style={{ fontSize: "1.35rem", margin: product.brand ? "0 0 6px" : "10px 0 6px" }}>{product.title}</h1>
             {product.shortDesc && <p className="small muted" style={{ margin: "0 0 8px" }}>{product.shortDesc}</p>}
             <div className="vh-row" style={{ gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-              <a href="#reviews" style={{ textDecoration: "none" }}><Rating value={ratingValue} count={reviewCount} /></a>
+              <a href="#reviews" style={{ textDecoration: "none" }}><Rating value={ratingValue} count={reviewCount || undefined} /></a>
               <Link href={`/store/${sellerSlug(product.seller)}`} className="small" style={{ fontWeight: 700 }}>
                 {product.seller}
               </Link>
@@ -660,8 +664,8 @@ export default async function ProductDetailPage({
               </div>
             )}
             <div className="vh-row small muted" style={{ gap: 6, marginBottom: 12 }}>
-              <Users size={13} aria-hidden />
-              <span><b className="tabular" style={{ color: "var(--vh-ink)" }}>24</b> people bought this in the last 7 days · ships in 24h</span>
+              <Truck size={13} aria-hidden />
+              <span>Dispatched in 24–48h from a licensed seller · tracked delivery</span>
             </div>
 
             {/* Bank & platform offers */}

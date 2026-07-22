@@ -258,7 +258,7 @@ export default async function HomePage() {
             <span className="vh-spacer" />
             <span className="vh-pill vh-pill-warn">
               <Timer size={13} strokeWidth={2.2} aria-hidden />
-              Ends in 06:12:44
+              While stocks last
             </span>
           </div>
           <div className="vh-grid cols-4">
@@ -433,7 +433,7 @@ export default async function HomePage() {
       </section>
 
       {/* ── Testimonials (switchable in Features) ────────── */}
-      {flags.testimonials && <section className="vh-section">
+      {flags.testimonials && testimonials.length > 0 && <section className="vh-section">
         <div className="vh-container">
           <SectionHead eyebrow="Buyers" title={content.headTestimonials ?? ""} />
           <div className="vh-grid cols-3">
@@ -446,7 +446,6 @@ export default async function HomePage() {
                 <figcaption className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
                   <strong className="small" style={{ color: "var(--vh-ink)" }}>{t.name}</strong>
                   <span className="small muted">{t.city}</span>
-                  <span className="vh-pill vh-pill-ok">Verified purchase</span>
                 </figcaption>
               </figure>
             ))}

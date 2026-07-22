@@ -94,8 +94,9 @@ export default async function StorePage({ params, searchParams }: { params: Prom
   // sample profile only when a store has no reviews yet.
   const storeAgg = await storeAggregate(slug);
   const storeReviews = await approvedStoreReviews(slug);
-  const headlineRating = storeAgg.count ? storeAgg.avg : profile.rating;
-  const headlineCount = storeAgg.count ? storeAgg.count : profile.reviewCount;
+  // Real rating/count from approved store reviews only — no invented fallback.
+  const headlineRating = storeAgg.count ? storeAgg.avg : 0;
+  const headlineCount = storeAgg.count;
   const session = await getSession();
 
   // Seller-published social links — each built on a known domain from a
@@ -172,7 +173,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
               <p style={{ color: "var(--vh-body)", margin: "0 0 10px", fontSize: ".95rem" }}>{tagline}</p>
               <div className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
                 <a href="#reviews" style={{ background: "var(--vh-surface)", border: "1px solid var(--vh-line)", borderRadius: 999, padding: "3px 10px", display: "inline-flex", textDecoration: "none" }}>
-                  <Rating value={headlineRating} count={headlineCount} />
+                  {headlineCount > 0 ? <Rating value={headlineRating} count={headlineCount} /> : <span className="small muted">New store · no reviews yet</span>}
                 </a>
                 {kycApproved(seller.name) && (
                   <span className="vh-pill vh-pill-ok">

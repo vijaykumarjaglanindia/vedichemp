@@ -188,7 +188,7 @@ export default async function AdminFinancePage({
 
         <Card
           title={<span className="vh-row" style={{ gap: 8 }}><CalendarCheck2 {...I} aria-hidden /> Period close</span>}
-          action={<StatusPill tone={closeDone === PERIOD_CLOSE_CHECKLIST.length ? "ok" : "warn"}>{closeDone}/{PERIOD_CLOSE_CHECKLIST.length} complete</StatusPill>}
+          action={<span className="vh-row" style={{ gap: 8 }}><span className="small muted">Illustrative checklist</span><StatusPill tone={closeDone === PERIOD_CLOSE_CHECKLIST.length ? "ok" : "warn"}>{closeDone}/{PERIOD_CLOSE_CHECKLIST.length}</StatusPill></span>}
         >
           <p className="small muted" style={{ marginTop: 0 }}>
             Closing a settlement period locks every posted statement in it against further linkage and generates the

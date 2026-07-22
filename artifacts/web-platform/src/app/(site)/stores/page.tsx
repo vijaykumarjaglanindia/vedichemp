@@ -53,10 +53,11 @@ async function directory(): Promise<DirEntry[]> {
       tagline: profile.tagline,
       location: profile.location,
       liveCount: live.length,
-      // Real rating from approved store reviews; fall back to the profile figure
+      // Real rating/count from approved store reviews only — a store with none
+      // shows "New store", never an invented rating or review tally.
       // only when there are no reviews yet.
-      rating: agg.count ? agg.avg : profile.rating,
-      reviewCount: agg.count || profile.reviewCount,
+      rating: agg.count ? agg.avg : 0,
+      reviewCount: agg.count,
     });
   }
   return out.sort((a, b) => b.rating - a.rating);
@@ -105,7 +106,7 @@ export default async function StoresDirectoryPage() {
                 </div>
                 <p className="small" style={{ margin: "0 0 10px", color: "var(--vh-ink)" }}>{s.tagline}</p>
                 <div className="vh-row-between small muted">
-                  <span>★ {s.rating.toFixed(1)} · {s.reviewCount.toLocaleString("en-IN")} reviews</span>
+                  <span>{s.reviewCount > 0 ? `★ ${s.rating.toFixed(1)} · ${s.reviewCount.toLocaleString("en-IN")} reviews` : "New store"}</span>
                   <span>{s.liveCount} product{s.liveCount === 1 ? "" : "s"}</span>
                 </div>
               </Link>

@@ -236,7 +236,7 @@ export default async function AdminMarketingPage({ searchParams }: { searchParam
           </Card>
         </div>
 
-        <Card title={<span className="vh-row" style={{ gap: 8 }}><UsersRound {...I} aria-hidden /> Audiences</span>} pad0>
+        <Card title={<span className="vh-row" style={{ gap: 8 }}><UsersRound {...I} aria-hidden /> Audiences</span>} action={<span className="small muted">Illustrative segments — sizes are live once analytics is connected</span>} pad0>
           <div style={{ overflowX: "auto" }}>
             <table className="vh-table">
               <thead><tr><th>Segment</th><th style={{ textAlign: "right" }}>Size</th><th>Basis</th></tr></thead>
@@ -266,11 +266,11 @@ export default async function AdminMarketingPage({ searchParams }: { searchParam
 
         <div className="vh-grid cols-2">
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Sprout {...I} aria-hidden /> Loyalty</span>}>
-            <p className="small muted" style={{ marginTop: 0 }}>Sprout → Leaf → Bloom → Vedic Prime. 41,200 members in Leaf or above.</p>
+            <p className="small muted" style={{ marginTop: 0 }}>Sprout → Leaf → Bloom → Vedic Prime — tiers earned on delivered orders. Member counts appear here once the loyalty store is connected.</p>
           </Card>
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Gift {...I} aria-hidden /> Referrals</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>
-              <MoneyText paise={250_00} /> wallet credit per successful referral · 3,140 referrals this quarter.
+              <MoneyText paise={250_00} /> wallet credit per successful referral. Redemption totals appear here once the referral ledger is connected.
             </p>
           </Card>
         </div>

@@ -399,7 +399,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                             {adWin.headline}
                           </a>
                           <div className="small muted">{adWin.product.title} · {adWin.seller}</div>
-                          <Rating value={adWin.product.rating} count={Math.round(adWin.product.rating * 47)} />
+                          {adWin.product.rating > 0 && <Rating value={adWin.product.rating} />}
                           <div className="vh-row" style={{ gap: 6 }}>
                             <MoneyText paise={adWin.product.pricePaise} className="vh-product-title" />
                             <span className="small muted" style={{ textDecoration: "line-through" }}><MoneyText paise={adWin.product.mrpPaise} /></span>

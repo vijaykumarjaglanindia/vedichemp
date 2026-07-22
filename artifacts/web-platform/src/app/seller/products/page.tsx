@@ -15,8 +15,26 @@ import { BarList } from "@/components/ui/charts";
 import { getSession } from "@/lib/auth-lite";
 import { REGULATED_CLASSES, sellerListings, type CatalogProduct } from "@/lib/catalog";
 import { bulkUploadListings } from "../actions";
-import { LISTING_QUALITY } from "../_lib/data";
 import { actingStore } from "../_lib/store";
+
+/** Listing-quality bars computed from THIS store's real listings, not a fixed
+ *  sample — image coverage, attribute completeness, SEO fields, and the CoA
+ *  coverage across regulated listings. */
+function listingQuality(listings: CatalogProduct[]): { label: string; value: number; display: string }[] {
+  const n = listings.length;
+  const pct = (c: number, d: number) => (d ? Math.round((c / d) * 100) : 0);
+  const withImages = listings.filter((p) => (p.images?.length ?? 0) >= 3).length;
+  const withAttrs = listings.filter((p) => Boolean(p.brand && p.sku)).length;
+  const withSeo = listings.filter((p) => Boolean(p.metaTitle && p.metaDescription)).length;
+  const regulated = listings.filter((p) => REGULATED_CLASSES.includes(p.cls));
+  const coaOk = regulated.filter((p) => p.coaState === "APPROVED").length;
+  return [
+    { label: "Images (3+ per listing)", value: pct(withImages, n), display: `${pct(withImages, n)}%` },
+    { label: "Attributes complete (brand + SKU)", value: pct(withAttrs, n), display: `${pct(withAttrs, n)}%` },
+    { label: "SEO title & description", value: pct(withSeo, n), display: `${pct(withSeo, n)}%` },
+    { label: "CoA coverage (approved batches)", value: regulated.length ? pct(coaOk, regulated.length) : 100, display: regulated.length ? `${pct(coaOk, regulated.length)}%` : "n/a" },
+  ];
+}
 
 export const metadata: Metadata = { title: "Products" };
 
@@ -185,7 +203,7 @@ export default async function SellerProductsPage({
 
       <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
         <Card title="Listing quality" action={<span className="small muted">Across {listings.length} listings</span>}>
-          <BarList items={LISTING_QUALITY} />
+          <BarList items={listingQuality(listings)} />
           <p className="small muted" style={{ marginBottom: 0, marginTop: 12 }}>
             Better images and complete attributes lift search rank; CoA coverage is a hard publish gate, not a score.
           </p>

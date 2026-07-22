@@ -11,7 +11,7 @@ import Link from "next/link";
 import { Eye, FileDown, MapPin } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
-import { ORDERS, type SampleOrder } from "@/lib/sample";
+import { type SampleOrder } from "@/lib/sample";
 import { readReturns } from "@/lib/engage";
 import { getSession } from "@/lib/auth-lite";
 import { ordersForBuyer } from "@/lib/orders";
@@ -51,7 +51,9 @@ export default async function OrdersPage({
   }));
 
   const returns = await readReturns();
-  const rows = [...placed, ...ORDERS]
+  // Only THIS buyer's real orders — never the shared sample orders (which
+  // belong to placeholder people and would inflate the buyer's own list).
+  const rows = [...placed]
     .map((o) => (returns[o.id] ? { ...o, status: "RETURN_REQUESTED" } : o))
     .filter((o) => {
     if (filter === "open") return OPEN_STATUSES.has(o.status);

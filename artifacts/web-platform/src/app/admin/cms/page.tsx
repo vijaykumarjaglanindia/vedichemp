@@ -133,10 +133,10 @@ export default async function AdminCmsPage({
 
         <div className="vh-grid cols-2">
           <Card title={<span className="vh-row" style={{ gap: 8 }}><HelpCircle {...I} aria-hidden /> FAQ</span>}>
-            <p className="small muted" style={{ marginTop: 0 }}>18 entries across 5 categories — Orders, Shipping, Returns, CBD & Hemp basics, Prescriptions.</p>
+            <p className="small muted" style={{ marginTop: 0 }}>Help-centre questions are edited under Site content — grouped by Orders, Shipping, Returns, CBD &amp; Hemp basics and Prescriptions.</p>
           </Card>
           <Card title={<span className="vh-row" style={{ gap: 8 }}><GalleryHorizontal {...I} aria-hidden /> Banners</span>}>
-            <p className="small muted" style={{ marginTop: 0 }}>2 active homepage banners · 1 scheduled for the next festival sale.</p>
+            <p className="small muted" style={{ marginTop: 0 }}>Homepage banners are managed under Site content and can be scheduled for a date window.</p>
             <p className="small muted" style={{ margin: 0 }}>
               Banners advertising CBD Wellness still pass through the same copy-check as CBD ad creatives — no
               disease claims. Banners cannot reference MED_CANNABIS at all. Paid banner slots are configured in{" "}

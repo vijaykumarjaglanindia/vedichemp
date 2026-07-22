@@ -88,6 +88,13 @@ export default async function ProfilePage({
   // the mobile as not-yet-added rather than a fabricated masked number. (A
   // phone-OTP identity would populate this once numbers are persisted.)
   const mobile = "";
+  // DOB is not captured at email/OAuth signup, so it is genuinely unset here
+  // rather than a fabricated value. The delivery pincode comes from the buyer's
+  // real default address, if they have saved one.
+  const dob = "";
+  const { readAddresses } = await import("@/lib/engage");
+  const addrs = await readAddresses();
+  const pincode = (addrs.find((a) => a.isDefault) ?? addrs[0])?.pincode ?? "";
   // Mask the real email for display (identity is verified, not editable here).
   const maskedEmail = (() => {
     const [u = "", d = ""] = consentEmail.split("@");
@@ -128,7 +135,7 @@ export default async function ProfilePage({
                 Date of birth
                 <StatusPill tone="neutral">Write-once</StatusPill>
               </span>
-              <input className="vh-input" id="pf-dob" aria-label="Date of birth" defaultValue="14 Mar 1994" readOnly />
+              <input className="vh-input" id="pf-dob" aria-label="Date of birth" defaultValue={dob} placeholder="Not set" readOnly />
               <span className="vh-help">
                 Set once at signup and never editable — it backs the age gate for CBD Wellness and Medical
                 Cannabis products (21+) and cannot be reset from this screen.
@@ -148,7 +155,7 @@ export default async function ProfilePage({
                 <KeyRound size={18} strokeWidth={2.2} />
               </span>
               <div className="small" style={{ fontWeight: 700, marginBottom: 4 }}>Password</div>
-              <p className="small muted" style={{ margin: "0 0 8px" }}>Last changed 4 months ago.</p>
+              <p className="small muted" style={{ margin: "0 0 8px" }}>Reset your password anytime with an emailed link.</p>
               <form action={sendPasswordReset}>
                 <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">Email me a reset link</button>
               </form>
@@ -216,7 +223,7 @@ export default async function ProfilePage({
             </div>
             <div className="vh-field">
               <label className="vh-label" htmlFor="pf-pin">Delivery pincode</label>
-              <input className="vh-input" id="pf-pin" defaultValue="560034" readOnly />
+              <input className="vh-input" id="pf-pin" defaultValue={pincode} placeholder="Not set" readOnly />
             </div>
             <div className="vh-field">
               <label className="vh-label" htmlFor="pf-tier">Membership tier</label>
