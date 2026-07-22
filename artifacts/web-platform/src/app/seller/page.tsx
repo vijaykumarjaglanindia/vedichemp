@@ -277,7 +277,7 @@ export default async function SellerHomePage({
               <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/finance" style={{ marginTop: 8, display: "inline-block" }}>View finance →</Link>
             </Card>
             <Card title="Vedic Ads">
-              <Stat label="ROAS (7d)" value={`${ADS_SUMMARY.roas7d}x`} delta={{ dir: "up", text: "0.3x vs prior" }} />
+              <Stat label="ROAS (7d)" value={`${ADS_SUMMARY.roas7d}x`} delta={ADS_SUMMARY.roas7d > 0 ? { dir: "up", text: "0.3x vs prior" } : undefined} />
               <div className="small muted" style={{ marginTop: 8 }}>{AD_CAMPAIGNS.filter((c) => c.status === "ACTIVE").length} active campaign(s) · ACOS {ADS_SUMMARY.acos7d}%</div>
               <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/ads" style={{ marginTop: 8, display: "inline-block" }}>View Vedic Ads →</Link>
             </Card>
