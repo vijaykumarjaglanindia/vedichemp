@@ -11,7 +11,8 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Printer } from "lucide-react";
 import { readSellerOrderOverrides } from "@/lib/engage";
-import { SELLER_ORDERS } from "../../_lib/data";
+import { sellerData } from "../../_lib/data";
+import { actingStore } from "../../_lib/store";
 
 export const metadata: Metadata = { title: "Shipping labels" };
 
@@ -38,6 +39,7 @@ const printCss = `
 
 export default async function ShippingLabelsPage() {
   const overrides = await readSellerOrderOverrides();
+  const { SELLER_ORDERS } = sellerData(await actingStore());
   const printable = SELLER_ORDERS
     .map((o) => ({ ...o, status: overrides[o.id] ?? o.status }))
     .filter((o) => o.status === "ACCEPTED" || o.status === "PACKED");

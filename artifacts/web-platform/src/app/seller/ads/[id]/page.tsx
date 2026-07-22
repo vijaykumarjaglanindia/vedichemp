@@ -15,6 +15,7 @@ import { ArrowLeft, Pause, Play, Plus, Sparkles } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Banner, Card, MoneyText, StatusPill, toneForStatus } from "@/components/ui";
 import { getSession } from "@/lib/auth-lite";
+import { actingStore } from "../../_lib/store";
 import { aiProviderName } from "@/lib/ai";
 import { adEligibility, AD_LOCATIONS, BID_STRATEGIES, campaignResults, findCampaign, PLACEMENTS, qualityScore } from "@/lib/ads";
 import { sellerListings } from "@/lib/catalog";
@@ -58,7 +59,7 @@ export default async function CampaignDetailPage({
   if (!c) notFound();
 
   const session = await getSession();
-  const listings = await sellerListings(session?.email ?? "seller@example.in", "Vedic Botanicals");
+  const listings = await sellerListings(session?.email ?? "seller@example.in", await actingStore());
   const eligible = listings.filter((p) => adEligibility(p).ok);
   const avgCpc = c!.clicks ? Math.round(c!.spentPaise / c!.clicks) : 0;
   const results = campaignResults(c!);

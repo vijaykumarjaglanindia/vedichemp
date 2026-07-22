@@ -17,11 +17,11 @@ import { getSession } from "@/lib/auth-lite";
 import { reviewsForSlugs } from "@/lib/reviews";
 import { storeReviewsBySlug } from "@/lib/store-reviews";
 import { replySellerReview, replyStoreReviewAction } from "../actions";
+import { actingStore } from "../_lib/store";
 
 export const metadata: Metadata = { title: "Reviews" };
 export const dynamic = "force-dynamic";
 
-const STORE = "Vedic Botanicals";
 
 function Stars({ n }: { n: number }) {
   return (
@@ -34,6 +34,7 @@ function Stars({ n }: { n: number }) {
 const STORE_SLUG = "vedic-botanicals";
 
 export default async function SellerReviewsPage({ searchParams }: { searchParams: Promise<{ replied?: string; err?: string; sreplied?: string; serr?: string }> }) {
+  const STORE = await actingStore();
   const { replied, err, sreplied, serr } = await searchParams;
   const session = await getSession();
   const listings = await sellerListings(session?.email ?? "seller@example.in", STORE);

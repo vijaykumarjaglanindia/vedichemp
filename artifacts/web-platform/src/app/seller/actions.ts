@@ -40,7 +40,8 @@ import {
   writeSellerOrderOverrides,
   writeStockAdds,
 } from "@/lib/engage";
-import { SELLER_ORDERS } from "./_lib/data";
+import { sellerData } from "./_lib/data";
+import { actingStore } from "./_lib/store";
 
 /** Disease-claim vocabulary the copy-check rejects (Drugs & Magic Remedies Act). */
 const CLAIM_WORDS = CLAIMS_LANGUAGE;
@@ -60,6 +61,7 @@ async function backPath(fallback: string): Promise<string> {
 /** Server-side permission gate: redirect (and log) if the acting staff member
  *  lacks a permission. Every gated seller action calls this first. */
 async function requirePerm(perm: import("@/lib/staff").Permission, _back: string): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const { actingCan, currentStaff } = await import("@/lib/staff");
   if (!(await actingCan(perm))) {
     const me = await currentStaff();
@@ -72,6 +74,7 @@ async function requirePerm(perm: import("@/lib/staff").Permission, _back: string
 const STAFF_ROLES = ["MANAGER", "CATALOGUE", "ORDERS", "MARKETING", "FINANCE", "SUPPORT"];
 
 export async function inviteStaffMember(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   await requirePerm("staff", "/seller/staff");
   const name = String(formData.get("name") ?? "").trim().slice(0, 60);
   const email = String(formData.get("email") ?? "").trim().toLowerCase();
@@ -87,6 +90,7 @@ export async function inviteStaffMember(formData: FormData): Promise<void> {
 }
 
 export async function changeStaffRole(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   await requirePerm("staff", "/seller/staff");
   const id = String(formData.get("staffId") ?? "");
   const role = String(formData.get("role") ?? "");
@@ -99,6 +103,7 @@ export async function changeStaffRole(formData: FormData): Promise<void> {
 }
 
 export async function setStaffMemberStatus(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   await requirePerm("staff", "/seller/staff");
   const id = String(formData.get("staffId") ?? "");
   const status = String(formData.get("status") ?? "");
@@ -113,6 +118,7 @@ export async function setStaffMemberStatus(formData: FormData): Promise<void> {
 }
 
 export async function removeStaffMember(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   await requirePerm("staff", "/seller/staff");
   const id = String(formData.get("staffId") ?? "");
   const { removeStaff, actAs } = await import("@/lib/staff");
@@ -148,6 +154,7 @@ export async function sellerOrderAction(formData: FormData): Promise<void> {
   const op = String(formData.get("op") ?? "");
   const back = await backPath("/seller/orders");
 
+  const { SELLER_ORDERS } = sellerData(await actingStore());
   const rule = ORDER_OPS[op];
   const order = SELLER_ORDERS.find((o) => o.id === orderId);
   if (!rule || !order) redirect(back);
@@ -166,7 +173,6 @@ export async function sellerOrderAction(formData: FormData): Promise<void> {
 /* ── Products: create / edit / lifecycle (the catalog store) ── */
 
 const SELLABLE_CLASSES = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
-const DEMO_STORE = "Vedic Botanicals"; // this session's storefront, per CONTRACT
 
 /**
  * KYC gate (CLAUDE.md §0 — server is the only authority). A listing can only
@@ -175,6 +181,7 @@ const DEMO_STORE = "Vedic Botanicals"; // this session's storefront, per CONTRAC
  * verification page with a remediation, never a bare 403.
  */
 async function assertVerified(action: string, target: string): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const { kycApproved } = await import("@/lib/vendor");
   if (kycApproved(DEMO_STORE)) return;
   await writeAudit({ actor: DEMO_STORE, action, target, outcome: "DENIED", note: "store not verified — go-live blocked" });
@@ -201,6 +208,7 @@ function readListingFields(formData: FormData): { err: string } | { fields: List
 }
 
 export async function submitProduct(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const cls = String(formData.get("cls") ?? "");
   const intent = String(formData.get("intent") ?? "submit");
 
@@ -431,6 +439,7 @@ const IMG_TYPES = ["image/jpeg", "image/png", "image/webp", "image/gif", "image/
 
 /** Upload one gallery image (stored as a data URL — the object-storage seam). */
 export async function uploadProductImage(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const id = String(formData.get("productId") ?? "");
   const file = formData.get("image");
   const product = await findProduct(id);
@@ -446,6 +455,7 @@ export async function uploadProductImage(formData: FormData): Promise<void> {
 }
 
 export async function deleteProductImage(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const id = String(formData.get("productId") ?? "");
   const index = parseInt(String(formData.get("index") ?? ""), 10);
   const product = await findProduct(id);
@@ -456,6 +466,7 @@ export async function deleteProductImage(formData: FormData): Promise<void> {
 }
 
 export async function setMainProductImage(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const id = String(formData.get("productId") ?? "");
   const index = parseInt(String(formData.get("index") ?? ""), 10);
   const product = await findProduct(id);
@@ -468,6 +479,7 @@ export async function setMainProductImage(formData: FormData): Promise<void> {
 /* ── Wholesale / B2B price breaks ─────────────────────────── */
 
 export async function addWholesaleTierAction(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const id = String(formData.get("productId") ?? "");
   await requirePerm("catalogue", `/seller/products/${id}`);
   const minQty = parseInt(String(formData.get("minQty") ?? ""), 10);
@@ -482,6 +494,7 @@ export async function addWholesaleTierAction(formData: FormData): Promise<void> 
 }
 
 export async function removeWholesaleTierAction(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const id = String(formData.get("productId") ?? "");
   await requirePerm("catalogue", `/seller/products/${id}`);
   const minQty = parseInt(String(formData.get("minQty") ?? ""), 10);
@@ -495,6 +508,7 @@ export async function removeWholesaleTierAction(formData: FormData): Promise<voi
 /* ── Duplicate a listing ──────────────────────────────────── */
 
 export async function duplicateProduct(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const id = String(formData.get("productId") ?? "");
   const product = await findProduct(id);
   if (!product || product.seller !== DEMO_STORE) redirect("/seller/products");
@@ -536,6 +550,7 @@ export async function productLifecycle(formData: FormData): Promise<void> {
 /* ── Products: batch CoA submission (A2) ──────────────────── */
 
 export async function submitCoaForBatch(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const id = String(formData.get("productId") ?? "");
   const batchCode = String(formData.get("batchCode") ?? "").trim().toUpperCase();
   if (!/^[A-Z0-9-]{4,20}$/.test(batchCode)) redirect(`/seller/products/${id}?err=batch`);
@@ -557,6 +572,7 @@ export async function submitCoaForBatch(formData: FormData): Promise<void> {
 /* ── Store reviews: public seller reply ───────────────────── */
 
 export async function replyStoreReviewAction(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const reviewId = String(formData.get("reviewId") ?? "").slice(0, 20);
   const reply = String(formData.get("reply") ?? "").trim();
   const { findStoreReview, replyStoreReview } = await import("@/lib/store-reviews");
@@ -578,6 +594,7 @@ export async function replyStoreReviewAction(formData: FormData): Promise<void> 
  *  server-authoritative (a regulated class needs a valid, unexpired licence);
  *  a pass moves the store into review and pings the compliance queue. */
 export async function submitVendorKyc(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   await requirePerm("staff", "/seller/verification");
   const { submitKyc } = await import("@/lib/vendor");
   const session = await getSession();
@@ -616,6 +633,7 @@ export async function submitVendorKyc(formData: FormData): Promise<void> {
 
 /** Seller answers a product question (copy-checked; only their own products). */
 export async function answerProductQuestion(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const questionId = String(formData.get("questionId") ?? "").slice(0, 20);
   const answer = String(formData.get("answer") ?? "").trim();
   const { findQuestion, answerQuestion } = await import("@/lib/qa");
@@ -635,6 +653,7 @@ export async function answerProductQuestion(formData: FormData): Promise<void> {
 /* ── Support tickets (RBAC: "support") ────────────────────── */
 
 export async function sellerReplyTicket(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   await requirePerm("support", "/seller/support");
   const id = String(formData.get("ticketId") ?? "");
   const body = String(formData.get("body") ?? "").trim();
@@ -652,6 +671,7 @@ export async function sellerReplyTicket(formData: FormData): Promise<void> {
 }
 
 export async function sellerSetTicketStatus(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   await requirePerm("support", "/seller/support");
   const id = String(formData.get("ticketId") ?? "");
   const status = String(formData.get("status") ?? "");
@@ -665,6 +685,7 @@ export async function sellerSetTicketStatus(formData: FormData): Promise<void> {
 }
 
 export async function sellerEscalateTicket(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   await requirePerm("support", "/seller/support");
   const id = String(formData.get("ticketId") ?? "");
   const { findTicket, escalate } = await import("@/lib/support");
@@ -679,6 +700,7 @@ export async function sellerEscalateTicket(formData: FormData): Promise<void> {
 
 /** Seller's public reply to an approved review on their product (copy-checked). */
 export async function replySellerReview(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const reviewId = String(formData.get("reviewId") ?? "").slice(0, 20);
   const reply = String(formData.get("reply") ?? "").trim();
   const { findReview, replyToReview } = await import("@/lib/reviews");
@@ -712,6 +734,7 @@ const OBJECTIVE_BY_TYPE: Record<string, "SPONSORED_PRODUCTS" | "BANNER" | "VIDEO
  * then adds keywords, negatives, more groups and more ads.
  */
 export async function createCampaign(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const name = String(formData.get("name") ?? "").trim();
   const type = String(formData.get("type") ?? "Sponsored Product");
   const productId = String(formData.get("productId") ?? "");
@@ -927,6 +950,7 @@ declare global {
 }
 
 export async function bulkUploadListings(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const file = formData.get("csv");
   if (!(file instanceof File) || file.size === 0) redirect("/seller/products?bulkerr=file");
   if (file.size > 200_000) redirect("/seller/products?bulkerr=size");
@@ -972,6 +996,7 @@ export async function bulkUploadListings(formData: FormData): Promise<void> {
 const SELLER_COUPON_CLASSES = ["", "HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
 
 export async function createCoupon(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   await requirePerm("marketing", "/seller/marketing");
   const code = String(formData.get("code") ?? "").trim().toUpperCase();
   const kind = String(formData.get("kind") ?? "PERCENT"); // PERCENT | FIXED
@@ -1108,6 +1133,7 @@ export async function addStock(formData: FormData): Promise<void> {
 /* ── Fulfilment on real orders (order store) ──────────────── */
 
 export async function fulfilOrder(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   await requirePerm("orders", "/seller/orders");
   const reference = String(formData.get("reference") ?? "").slice(0, 30);
   const op = String(formData.get("op") ?? "");
@@ -1169,6 +1195,7 @@ export async function fulfilOrder(formData: FormData): Promise<void> {
 
 /** Seller approves a return (buyer keeps the buyer-first refund path). */
 export async function sellerApproveReturn(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const reference = String(formData.get("reference") ?? "").slice(0, 30);
   const { approveReturn, findOrder } = await import("@/lib/orders");
   const order = await findOrder(reference);
@@ -1189,6 +1216,7 @@ export async function sellerApproveReturn(formData: FormData): Promise<void> {
 /* ── Inventory management ─────────────────────────────────── */
 
 export async function saveStock(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const id = String(formData.get("productId") ?? "");
   const qty = parseInt(String(formData.get("stockQty") ?? ""), 10);
   const lowAt = parseInt(String(formData.get("lowStockAt") ?? ""), 10);
@@ -1203,6 +1231,7 @@ export async function saveStock(formData: FormData): Promise<void> {
 /* ── Earnings & Withdrawals (Dokan-style money flow) ──────── */
 
 export async function saveWithdrawAccount(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const method = String(formData.get("method") ?? "");
   const raw = String(formData.get("destination") ?? "");
   const { savePayoutAccount } = await import("@/lib/earnings");
@@ -1212,6 +1241,7 @@ export async function saveWithdrawAccount(formData: FormData): Promise<void> {
 }
 
 export async function submitWithdraw(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   await requirePerm("finance", "/seller/earnings");
   const rupees = parseInt(String(formData.get("amount") ?? ""), 10);
   const { requestWithdraw } = await import("@/lib/earnings");
@@ -1244,6 +1274,7 @@ export async function saveStoreAvailability(formData: FormData): Promise<void> {
 /** Post (or update) a time-boxed storefront announcement. Promotional copy —
  *  fail closed on the claims check; an empty message clears it. */
 export async function saveStoreAnnouncement(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const message = String(formData.get("message") ?? "").trim().slice(0, 200);
   const toneRaw = String(formData.get("tone") ?? "info");
   const tone = (["info", "sale", "warn"] as const).includes(toneRaw as never) ? (toneRaw as "info" | "sale" | "warn") : "info";
@@ -1285,6 +1316,7 @@ export async function saveOptionName(formData: FormData): Promise<void> {
 }
 
 export async function addProductVariant(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const id = String(formData.get("productId") ?? "");
   const label = String(formData.get("label") ?? "").trim();
   const sku = String(formData.get("sku") ?? "").trim();
@@ -1314,6 +1346,7 @@ export async function updateProductVariant(formData: FormData): Promise<void> {
 }
 
 export async function removeProductVariant(formData: FormData): Promise<void> {
+  const DEMO_STORE = await actingStore();
   const id = String(formData.get("productId") ?? "");
   const variantId = String(formData.get("variantId") ?? "");
   const { removeVariant } = await import("@/lib/catalog");

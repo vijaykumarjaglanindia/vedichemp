@@ -10,10 +10,9 @@ import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } fr
 import type { SampleOrder } from "@/lib/sample";
 import { readSellerOrderOverrides } from "@/lib/engage";
 import { ORDER_TONE, ordersForSeller } from "@/lib/orders";
-import { SELLER_ORDERS, ORDER_STATUS_TABS } from "../_lib/data";
+import { sellerData, ORDER_STATUS_TABS } from "../_lib/data";
+import { actingStore } from "../_lib/store";
 import { fulfilOrder, sellerApproveReturn, sellerOrderAction } from "../actions";
-
-const DEMO_STORE = "Vedic Botanicals";
 
 export const metadata: Metadata = { title: "Orders" };
 
@@ -45,11 +44,14 @@ export default async function SellerOrdersPage({
     : "ALL";
 
   // Demo state: Accept/Pack/Ship transitions live in a server-written cookie
-  // until the DB is attached; the sample rows are the baseline.
+  // until the DB is attached; the sample rows are the baseline — for the
+  // signed-in seller's OWN store.
+  const store = await actingStore();
+  const { SELLER_ORDERS } = sellerData(store);
   const overrides = await readSellerOrderOverrides();
   const orders = SELLER_ORDERS.map((o) => ({ ...o, status: overrides[o.id] ?? o.status }));
   const rows = status === "ALL" ? orders : orders.filter((o) => o.status === status);
-  const realOrders = await ordersForSeller(DEMO_STORE);
+  const realOrders = await ordersForSeller(store);
 
   const columns: Column<SampleOrder>[] = [
     { key: "reference", header: "Order", render: (o) => <div><div style={{ fontWeight: 600 }}>{o.reference}</div><div className="small muted">{o.placedAt}</div></div> },
@@ -117,7 +119,7 @@ export default async function SellerOrdersPage({
           ) : (
             <div style={{ display: "grid", gap: 0 }}>
               {realOrders.map((o) => {
-                const myItems = o.items.filter((it) => it.seller === DEMO_STORE);
+                const myItems = o.items.filter((it) => it.seller === store);
                 const myTotal = myItems.reduce((n, it) => n + it.linePaise, 0);
                 const nextOp = o.status === "PLACED" ? "accept" : o.status === "ACCEPTED" ? "pack" : o.status === "PACKED" ? "ship" : o.status === "SHIPPED" ? "deliver" : null;
                 const nextLabel = nextOp === "accept" ? "Accept" : nextOp === "pack" ? "Pack" : nextOp === "ship" ? "Mark shipped" : nextOp === "deliver" ? "Mark delivered" : null;

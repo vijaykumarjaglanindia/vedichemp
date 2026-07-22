@@ -14,13 +14,12 @@ import { Shell } from "../Shell";
 import { Banner, Card, StatusPill, toneForStatus, MoneyText } from "@/components/ui";
 import { CampaignLabel } from "@/components/ui/ads";
 import { couponLive, readCoupons as readCommerceCoupons } from "@/lib/commerce";
-import { BUNDLES, FLASH_SALES } from "../_lib/data";
+import { sellerData } from "../_lib/data";
+import { actingStore } from "../_lib/store";
 import { createCoupon } from "../actions";
 
 export const metadata: Metadata = { title: "Marketing" };
 export const dynamic = "force-dynamic";
-
-const STORE = "Vedic Botanicals";
 
 const COUPON_ERRORS: Record<string, string> = {
   code: "Coupon code should be 4–12 letters/digits (e.g. VEDIC10).",
@@ -37,9 +36,11 @@ export default async function MarketingPage({
   searchParams: Promise<{ created?: string; err?: string }>;
 }) {
   const { created, err } = await searchParams;
+  const store = await actingStore();
+  const { BUNDLES, FLASH_SALES } = sellerData(store);
   const all = await readCommerceCoupons();
   // This store's own promotions (owner-tagged) — real, cart-honoured coupons.
-  const mine = Object.entries(all).filter(([, c]) => c.owner === STORE).map(([code, c]) => ({ code, ...c }));
+  const mine = Object.entries(all).filter(([, c]) => c.owner === store).map(([code, c]) => ({ code, ...c }));
   return (
     <Shell
       active="/seller/marketing"

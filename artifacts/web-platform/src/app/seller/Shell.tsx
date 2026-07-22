@@ -15,6 +15,7 @@ import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
 import { unreadCount } from "@/lib/notify";
 import { currentStaff } from "@/lib/staff";
 import { ROLE_DEFS } from "@/lib/staff";
+import { actingStore } from "./_lib/store";
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
 
@@ -67,7 +68,6 @@ const SELLER_NAV: NavGroup[] = [
   },
 ];
 
-const STORE = "Vedic Botanicals";
 
 export async function Shell({
   active, title, breadcrumb, actions, children,
@@ -78,6 +78,7 @@ export async function Shell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  const STORE = await actingStore();
   const me = await currentStaff();
   const roleLabel = ROLE_DEFS.find((r) => r.role === me.role)?.label ?? me.role;
   return (
@@ -87,6 +88,8 @@ export async function Shell({
       active={active}
       bellHref="/seller/notifications"
       bellCount={await unreadCount("seller", STORE)}
+      userLabel={STORE}
+      userSub={me.role === "OWNER" ? "Owner" : `${me.name} · ${roleLabel}`}
       topbarExtra={me.role !== "OWNER" ? (
         <a href="/seller/staff" className="vh-pill vh-pill-warn" style={{ textDecoration: "none" }}>Acting as {me.name} · {roleLabel}</a>
       ) : undefined}

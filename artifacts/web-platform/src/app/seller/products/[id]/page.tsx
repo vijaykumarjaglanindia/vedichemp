@@ -18,7 +18,8 @@ import { Banner, Card, StatusPill, toneForStatus, ComplianceBadge, MoneyText, ty
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { findProduct, hasVariants, REGULATED_CLASSES, saleActive } from "@/lib/catalog";
 import { readCategories } from "@/lib/categories";
-import { findSellerProduct, type Batch } from "../../_lib/data";
+import { sellerData, type Batch } from "../../_lib/data";
+import { actingStore } from "../../_lib/store";
 import { CLASS_META } from "@/lib/compliance";
 import {
   addProductVariant, productLifecycle, removeProductVariant, saveOptionName,
@@ -87,7 +88,7 @@ export default async function ProductEditorPage({
 
   const meta = CLASS_META[product!.cls];
   const regulated = REGULATED_CLASSES.includes(product!.cls);
-  const legacyBatches = findSellerProduct(id)?.batches ?? [];
+  const legacyBatches = sellerData(await actingStore()).findSellerProduct(id)?.batches ?? [];
   const doneMsg = done ? DONE[done] : undefined;
   const images = product!.images ?? [];
   const categories = (await readCategories({ includeHidden: true })).filter((c) => !c.cls || c.cls === product!.cls);

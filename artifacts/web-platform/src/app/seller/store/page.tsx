@@ -14,7 +14,8 @@ import { ExternalLink, Plus, BadgeCheck } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, toneForStatus, Banner, Rating } from "@/components/ui";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
-import { SELLER, LICENCES, CAPABILITY_MATRIX, STORE_PREVIEW, daysUntil } from "../_lib/data";
+import { sellerData, daysUntil } from "../_lib/data";
+import { actingStore } from "../_lib/store";
 import { CLASS_META } from "@/lib/compliance";
 import { addLicence, requestOwnerTransfer, saveStoreAnnouncement, saveStoreAvailability, updateStorefront } from "../actions";
 import { readStoreAnnouncement, readStoreAvailability, readStoreCopy } from "@/lib/engage";
@@ -34,6 +35,8 @@ export default async function StorePage({
 }) {
   const { transfer, err, licence, avail, ann } = await searchParams;
   const copyParam = (await searchParams).copy;
+  const store = await actingStore();
+  const { SELLER, PROFILE, LICENCES, CAPABILITY_MATRIX, STORE_PREVIEW } = sellerData(store);
   const storeCopy = await readStoreCopy();
   const availability = await readStoreAvailability();
   const announcement = await readStoreAnnouncement();
@@ -175,7 +178,7 @@ export default async function StorePage({
               </div>
               <div className="vh-field">
                 <label className="vh-label" htmlFor="regState">Registered state</label>
-                <input className="vh-input" id="regState" name="regState" type="text" defaultValue="Karnataka" readOnly />
+                <input className="vh-input" id="regState" name="regState" type="text" defaultValue={PROFILE.regState} readOnly />
                 <span className="vh-help">Changing state re-runs KYC.</span>
               </div>
             </div>
@@ -188,11 +191,11 @@ export default async function StorePage({
           <Card title="Business & tax details">
             <div className="vh-grid" style={{ gap: 8 }}>
               <div className="vh-row-between"><span className="small muted">GSTIN</span><span className="mono small">{SELLER.gstin}</span></div>
-              <div className="vh-row-between"><span className="small muted">PAN</span><span className="mono small">AABCV1234M</span></div>
-              <div className="vh-row-between"><span className="small muted">Bank account</span><span className="mono small">••••••4821</span></div>
+              <div className="vh-row-between"><span className="small muted">PAN</span><span className="mono small">{PROFILE.pan}</span></div>
+              <div className="vh-row-between"><span className="small muted">Bank account</span><span className="mono small">{PROFILE.bankMasked}</span></div>
               <div className="vh-row-between">
                 <span className="small muted">Penny-drop verification</span>
-                <StatusPill tone="ok">Verified — Kotak Mahindra Bank</StatusPill>
+                <StatusPill tone="ok">Verified — {PROFILE.bankName}</StatusPill>
               </div>
             </div>
           </Card>

@@ -13,16 +13,15 @@ import { notFound } from "next/navigation";
 import { Download, Printer, Undo2 } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Card, StatusPill, toneForStatus, MoneyText, Timeline } from "@/components/ui";
-import { findSellerOrder } from "../../_lib/data";
+import { sellerData } from "../../_lib/data";
+import { actingStore } from "../../_lib/store";
 import { findOrder, ORDER_TONE } from "@/lib/orders";
 import { fulfilOrder, sellerApproveReturn } from "../../actions";
-
-const DEMO_STORE = "Vedic Botanicals";
 
 export async function generateMetadata({ params }: { params: Promise<{ id: string }> }): Promise<Metadata> {
   const { id } = await params;
   if (id.startsWith("live-")) return { title: `Order ${id.slice("live-".length)}` };
-  const order = findSellerOrder(id);
+  const order = sellerData(await actingStore()).findSellerOrder(id);
   return { title: order ? `Order ${order.reference}` : "Order" };
 }
 
@@ -46,7 +45,8 @@ function maskAddress(buyer: string | undefined): string {
 async function RealSellerOrderDetail(reference: string) {
   const order = await findOrder(reference);
   if (!order) notFound();
-  const myItems = order!.items.filter((it) => it.seller === DEMO_STORE);
+  const store = await actingStore();
+  const myItems = order!.items.filter((it) => it.seller === store);
   if (myItems.length === 0) notFound(); // not this store's order — absent, not 403
   const myTotal = myItems.reduce((n, it) => n + it.linePaise, 0);
   const revealed = ["PACKED", "SHIPPED", "DELIVERED"].includes(order!.status);
@@ -166,7 +166,7 @@ export default async function SellerOrderDetailPage({ params }: { params: Promis
   // Real order from the order store (routed live-<reference>).
   if (id.startsWith("live-")) return RealSellerOrderDetail(id.slice("live-".length));
 
-  const order = findSellerOrder(id);
+  const order = sellerData(await actingStore()).findSellerOrder(id);
   if (!order) notFound();
 
   const taxPaise = Math.round(order.totalPaise * 0.05);

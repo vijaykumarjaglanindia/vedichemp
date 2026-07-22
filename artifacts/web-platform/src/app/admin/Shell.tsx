@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
 import { unreadCount } from "@/lib/notify";
+import { getSession } from "@/lib/auth-lite";
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
 
@@ -90,6 +91,9 @@ export async function Shell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
+  // Who is signed in — the real admin identity (audit and maker–checker attribute
+  // every action to this account server-side; the rail just shows it).
+  const session = await getSession();
   return (
     <ConsoleShell
       brand="🛡️ Admin Console"
@@ -97,6 +101,8 @@ export async function Shell({
       active={active}
       bellHref="/admin/notifications"
       bellCount={await unreadCount("admin", "admin")}
+      userLabel={session?.name || "Administrator"}
+      userSub={session?.email ?? "Admin session"}
       breadcrumb={breadcrumb}
       title={title}
       actions={actions}

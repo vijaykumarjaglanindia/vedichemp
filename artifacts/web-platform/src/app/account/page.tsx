@@ -18,10 +18,11 @@ import {
 import { Shell } from "./Shell";
 import { Card, Stat, StatusPill, toneForStatus, MoneyText, Banner, ProgressRing, EmptyState, Timeline } from "@/components/ui";
 import { CampaignLabel, assertCreativeClassRenderable } from "@/components/ui/ads";
-import { currentBuyer } from "@/lib/session";
+import { resolveBuyer } from "@/lib/session";
 import { readLiveProducts } from "@/lib/catalog";
 import { daysUntil, type ActivityEvent } from "./_lib/data";
 import { readLiveCoupons, LAUNCH_COUPONS } from "@/lib/commerce";
+import { readAddresses } from "@/lib/engage";
 import { applyCoupon } from "../(site)/cart/actions";
 import { getSession } from "@/lib/auth-lite";
 import { ordersForBuyer, type OrderStatus } from "@/lib/orders";
@@ -53,10 +54,10 @@ const QUICK_ACTIONS = [
 ];
 
 export default async function AccountHomePage() {
-  const viewer = currentBuyer();
+  const viewer = await resolveBuyer();
   const session = await getSession();
   const email = session?.email ?? "buyer@example.in";
-  const firstName = (session?.name || viewer.firstName).split(" ")[0] || viewer.firstName;
+  const firstName = viewer.firstName;
 
   // ── Real buyer-specific data (server stores, this buyer only) ──────────
   const allOrders = await ordersForBuyer(email);
@@ -67,8 +68,17 @@ export default async function AccountHomePage() {
   const notes = (await notificationsFor("buyer", email)).slice(0, 6);
   const subCount = await subscriptionCount(email);
 
-  // Profile completeness — presentation estimate; the server owns the real %.
-  const profileCompletePct = 72;
+  // Profile completeness — derived from this buyer's REAL state, not a fixed
+  // estimate: each facet is a signal the server actually holds.
+  const addresses = await readAddresses();
+  const facets = [
+    { ok: Boolean(session?.name), label: "your name" },
+    { ok: allOrders.length > 0, label: "a first order" },
+    { ok: addresses.length > 0, label: "a delivery address" },
+    { ok: viewer.consents.marketing || viewer.consents.personalisation || viewer.hasRx, label: "your preferences" },
+  ];
+  const profileCompletePct = Math.round((facets.filter((f) => f.ok).length / facets.length) * 100);
+  const missingFacets = facets.filter((f) => !f.ok).map((f) => f.label);
 
   // Rx expiry (W1): computed from the buyer's real prescriptions.
   const approvedRx = rx.find((r) => r.status === "APPROVED");
@@ -172,7 +182,7 @@ export default async function AccountHomePage() {
                   {viewer.roles.includes("ROLE_BUYER_VERIFIED") && <StatusPill tone="ok">Verified</StatusPill>}
                 </div>
                 <p className="muted small" style={{ margin: 0 }}>
-                  Profile {profileCompletePct}% complete — add your date of birth and a delivery address to reach 100%.
+                  Profile {profileCompletePct}% complete{missingFacets.length > 0 ? ` — add ${missingFacets.slice(0, 2).join(" and ")} to reach 100%.` : " — everything's set."}
                 </p>
                 <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/account/profile" style={{ marginTop: 8, display: "inline-flex" }}>
                   Complete profile

@@ -25,7 +25,7 @@ function initials(brand: string): string {
 }
 
 export function ConsoleShell({
-  brand, nav, active, topbar, topbarExtra, bellHref, bellCount, breadcrumb, title, actions, impersonation, children,
+  brand, nav, active, topbar, topbarExtra, bellHref, bellCount, breadcrumb, title, actions, impersonation, userLabel, userSub, children,
 }: {
   brand: string;
   nav: NavGroup[];
@@ -42,8 +42,14 @@ export function ConsoleShell({
   title?: string;
   actions?: ReactNode;
   impersonation?: string | null;
+  /** Who is signed in — the real account name/store. Falls back to "Signed in". */
+  userLabel?: string;
+  /** Secondary line under the name (e.g. the account email or role). */
+  userSub?: string;
   children: ReactNode;
 }) {
+  // The rail avatar reflects the signed-in person when known, else the brand.
+  const railInitials = userLabel ? initials(userLabel) : initials(brand);
   return (
     <div className="vh-shell">
       {/* CSS-only mobile drawer toggle — must precede .vh-rail and .vh-scrim */}
@@ -63,10 +69,10 @@ export function ConsoleShell({
           </div>
         ))}
         <div className="vh-rail-user">
-          <span className="vh-avatar" aria-hidden>{initials(brand)}</span>
+          <span className="vh-avatar" aria-hidden>{railInitials}</span>
           <div style={{ minWidth: 0, flex: 1 }}>
-            <div style={{ color: "var(--vh-ink)", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>Signed in</div>
-            <div className="small muted">Session · secured</div>
+            <div style={{ color: "var(--vh-ink)", fontWeight: 700, whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{userLabel ?? "Signed in"}</div>
+            <div className="small muted" style={{ whiteSpace: "nowrap", overflow: "hidden", textOverflow: "ellipsis" }}>{userSub ?? "Session · secured"}</div>
           </div>
           <form action={signOut}>
             <button type="submit" className="vh-iconbtn" title="Sign out" aria-label="Sign out">

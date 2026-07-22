@@ -3,10 +3,11 @@
  * Computed server-side from the live orders/ads stores; nothing is client-fed.
  */
 import { sellerReport, toCsv } from "@/lib/analytics";
+import { actingStore } from "../../_lib/store";
 
-const STORE = "Vedic Botanicals";
 
 export async function GET(): Promise<Response> {
+  const STORE = await actingStore();
   const r = await sellerReport(STORE, 14);
   const rupees = (p: number) => (p / 100).toFixed(2);
   const parts: string[] = [];

@@ -14,11 +14,11 @@ import { Shell } from "../Shell";
 import { Banner, Card, StatusPill } from "@/components/ui";
 import { kycFor, statusLabel, licenceExpired, type KycStatus } from "@/lib/vendor";
 import { submitVendorKyc } from "../actions";
+import { actingStore } from "../_lib/store";
 
 export const metadata: Metadata = { title: "Store verification" };
 export const dynamic = "force-dynamic";
 
-const STORE = "Vedic Botanicals";
 
 const ERRORS: Record<string, string> = {
   name: "Enter your registered legal business name (at least 3 characters).",
@@ -45,6 +45,7 @@ const CLASSES: { value: string; label: string; regulated?: boolean }[] = [
 ];
 
 export default async function SellerVerificationPage({ searchParams }: { searchParams: Promise<{ done?: string; err?: string; blocked?: string }> }) {
+  const STORE = await actingStore();
   const { done, err, blocked } = await searchParams;
   const rec = kycFor(STORE);
   const status = rec?.status ?? "NOT_STARTED";

@@ -79,7 +79,8 @@ export async function Shell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
-  const email = (await getSession())?.email ?? "guest@vedichemp.in";
+  const session = await getSession();
+  const email = session?.email ?? "guest@vedichemp.in";
   return (
     <ConsoleShell
       brand="🌿 My Account"
@@ -91,6 +92,8 @@ export async function Shell({
       topbarExtra={await RxChip()}
       bellHref="/account/notifications"
       bellCount={await unreadCount("buyer", email)}
+      userLabel={session?.name || "My account"}
+      userSub={session?.email ?? "Guest session"}
     >
       {children}
     </ConsoleShell>

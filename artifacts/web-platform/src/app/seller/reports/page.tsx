@@ -15,13 +15,14 @@ import { Card, MoneyText, StatusPill } from "@/components/ui";
 import { Columns, BarList } from "@/components/ui/charts";
 import { sellerReport } from "@/lib/analytics";
 import { formatPaise } from "@/lib/money";
+import { actingStore } from "../_lib/store";
 
 export const metadata: Metadata = { title: "Reports" };
 export const dynamic = "force-dynamic";
 
-const STORE = "Vedic Botanicals";
 
 export default async function SellerReportsPage() {
+  const STORE = await actingStore();
   const r = await sellerReport(STORE, 14);
   const last7 = r.series.slice(-7).reduce((n, d) => n + d.paise, 0);
   const prev7 = r.series.slice(0, 7).reduce((n, d) => n + d.paise, 0);
