@@ -18,6 +18,8 @@ import { Shell } from "./Shell";
 import { Card, Stat, StatusPill, MoneyText, EmptyState } from "@/components/ui";
 import { Sparkline, Columns } from "@/components/ui/charts";
 import { KPIS, COMPLIANCE_QUEUE, SETTLEMENTS, AUDIT } from "@/lib/sample";
+import { pendingPrescriptions } from "@/lib/prescriptions";
+import { readCatalog } from "@/lib/catalog";
 
 // The console chrome shows a live unread-notification badge (request-time
 // state), so the admin home must render per request, not at build time.
@@ -92,9 +94,15 @@ function KpiTile({
   );
 }
 
-export default function AdminHomePage() {
+export default async function AdminHomePage() {
   const queueGroups = groupQueue();
   const totalQueueItems = COMPLIANCE_QUEUE.length;
+
+  // Statutory clocks read the real stores: prescriptions awaiting pharmacist
+  // review, and regulated listings whose CoA has not yet been verified. Both
+  // start empty by design and climb only as real work arrives.
+  const rxPending = (await pendingPrescriptions()).length;
+  const coaPending = (await readCatalog()).filter((p) => p.coaState === "PENDING_REVIEW").length;
 
   return (
     <Shell active="/admin" breadcrumb={["Admin"]} title="Marketplace operations">
@@ -102,7 +110,7 @@ export default function AdminHomePage() {
         {/* KPI row — each stat carries its 14-day trend */}
         <Card
           title={<span className="vh-row" style={{ gap: 8 }}><Gauge {...I} aria-hidden /> Marketplace today</span>}
-          action={<span className="small muted">14-day trend under each figure</span>}
+          action={<span className="small muted">Illustrative platform metrics — live once real order volume flows</span>}
         >
           <div className="vh-grid cols-4">
             <KpiTile label="GMV today" value={<MoneyText paise={KPIS.gmvTodayPaise} />} delta={dod(GMV_14D_PAISE)} points={GMV_14D_PAISE} spark="GMV, last 14 days" />
@@ -129,17 +137,25 @@ export default function AdminHomePage() {
           action={<span className="small muted">SLA breach escalates to Compliance automatically — no admin has to notice it</span>}
         >
           <div className="vh-grid cols-2">
-            <div className="vh-banner vh-banner-warn">
+            <div className={`vh-banner ${rxPending > 0 ? "vh-banner-warn" : "vh-banner-ok"}`}>
               <Stethoscope {...I} aria-hidden />
               <div>
-                <strong>{KPIS.rxPendingSla} prescriptions</strong> pending pharmacist verification within the 4-hour SLA.{" "}
+                {rxPending > 0 ? (
+                  <><strong>{rxPending} prescription{rxPending === 1 ? "" : "s"}</strong> pending pharmacist verification within the 4-hour SLA.{" "}</>
+                ) : (
+                  <><strong>No prescriptions</strong> awaiting verification — the Rx queue is clear.{" "}</>
+                )}
                 <Link href="/admin/compliance">Open Rx queue →</Link>
               </div>
             </div>
-            <div className="vh-banner vh-banner-info">
+            <div className={`vh-banner ${coaPending > 0 ? "vh-banner-info" : "vh-banner-ok"}`}>
               <FlaskConical {...I} aria-hidden />
               <div>
-                <strong>{KPIS.coaPendingSla} lab reports</strong> awaiting CoA verification before their batch can go sellable.{" "}
+                {coaPending > 0 ? (
+                  <><strong>{coaPending} lab report{coaPending === 1 ? "" : "s"}</strong> awaiting CoA verification before their batch can go sellable.{" "}</>
+                ) : (
+                  <><strong>No lab reports</strong> awaiting CoA verification — no regulated batch is blocked.{" "}</>
+                )}
                 <Link href="/admin/catalogue">Open CoA queue →</Link>
               </div>
             </div>
