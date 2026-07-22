@@ -24,27 +24,6 @@ export interface CampaignOffer {
   minSpendPaise: number | null;
 }
 
-export const CAMPAIGN_OFFERS: CampaignOffer[] = [
-  {
-    id: "off1",
-    code: "FLAT15",
-    headline: "15% off CBD Wellness",
-    detail: "Vedic Botanicals balms, tinctures and roll-ons — AYUSH-licensed, batch CoA on every unit.",
-    cls: "CBD_WELLNESS",
-    endsOn: "2026-07-31",
-    minSpendPaise: 99900,
-  },
-  {
-    id: "off2",
-    code: "FREESHIP499",
-    headline: "Free shipping on Hemp Food",
-    detail: "Cold-pressed oils, protein and hearts from FSSAI-licensed sellers, delivered free.",
-    cls: "HEMP_FOOD",
-    endsOn: "2026-07-20",
-    minSpendPaise: 49900,
-  },
-];
-
 /* ── Activity timeline (dashboard) ──────────────────────────────────────── */
 export interface ActivityEvent {
   label: string;
@@ -53,43 +32,12 @@ export interface ActivityEvent {
   state: "done" | "current" | "pending" | "failed";
 }
 
-export const ACTIVITY: ActivityEvent[] = [
-  { label: "Order VH2026070912 is out for delivery", at: "Today · 09:40", state: "current" },
-  {
-    label: "Your prescription was viewed by pharmacist.das — reason PRESCRIPTION_VERIFICATION logged, and you were notified",
-    at: "Yesterday · 14:22",
-    actor: "Pharmacist",
-    state: "done",
-  },
-  { label: "Coupon FLAT15 applied at checkout", at: "2026-07-07", state: "done" },
-  { label: "Order VH2026070845 shipped by Himalayan Hemp Co.", at: "2026-07-06", state: "done" },
-];
-
 /* ── Wallet ─────────────────────────────────────────────────────────────── */
 export interface LedgerRow {
   id: string; at: string; kind: string; note: string; amountPaise: number; status: string;
 }
 
-export const LEDGER: LedgerRow[] = [
-  { id: "tx1", at: "2026-07-08", kind: "CASHBACK", note: "Order VH2026070912 · 2% cashback", amountPaise: 3538, status: "POSTED" },
-  { id: "tx2", at: "2026-07-02", kind: "REFUND", note: "Return · order VH2026062810", amountPaise: 249900, status: "POSTED" },
-  { id: "tx3", at: "2026-06-30", kind: "PROMO", note: "Welcome bonus", amountPaise: 10000, status: "POSTED" },
-  { id: "tx4", at: "2026-06-28", kind: "DEBIT", note: "Applied to order VH2026062810", amountPaise: -50000, status: "POSTED" },
-  { id: "tx5", at: "2026-06-20", kind: "WITHDRAWAL", note: "Payout to bank ····4471", amountPaise: -100000, status: "PROCESSING" },
-];
-
-export const WALLET_SPLIT = {
-  cashbackPaise: 68450,
-  promoPaise: 10000,
-  refundsPaise: 50000,
-} as const;
-
-export const WALLET_BALANCE_PAISE =
-  WALLET_SPLIT.cashbackPaise + WALLET_SPLIT.promoPaise + WALLET_SPLIT.refundsPaise;
-
 /** Weekly wallet balance points (paise) for the trend sparkline. */
-export const WALLET_TREND = [82000, 88450, 84950, 104950, 101412, 125312, 128450];
-
 /* ── Prescriptions & access log (A4 surface) ────────────────────────────── */
 export interface SamplePrescription {
   id: string; doctor: string; regNo: string; issuedAt: string; validTill: string; status: string;
@@ -109,11 +57,6 @@ export const PRESCRIPTIONS: SamplePrescription[] = [
 export interface AccessLogRow {
   id: string; at: string; actor: string; role: string; reasonCode: string; notified: boolean;
 }
-
-export const ACCESS_LOG: AccessLogRow[] = [
-  { id: "al1", at: "2026-06-18 14:22", actor: "pharmacist.das", role: "Pharmacist", reasonCode: "PRESCRIPTION_VERIFICATION", notified: true },
-  { id: "al2", at: "2026-05-30 09:47", actor: "compliance.nair", role: "Compliance", reasonCode: "ROUTINE_AUDIT", notified: true },
-];
 
 /* ── Subscriptions ──────────────────────────────────────────────────────── */
 export interface SampleSubscription {
@@ -149,13 +92,6 @@ export interface NotificationRow {
   id: string; category: string; kind: "Transactional" | "Promotional";
   title: string; body: string; at: string; unread: boolean;
 }
-
-export const NOTIFICATIONS: NotificationRow[] = [
-  { id: "n1", category: "Orders", kind: "Transactional", title: "Your order is out for delivery", body: "VH2026070912 arrives today by 7 PM.", at: "2h ago", unread: true },
-  { id: "n2", category: "Medical", kind: "Transactional", title: "Your prescription was viewed", body: "pharmacist.das viewed your Rx for verification.", at: "Yesterday", unread: true },
-  { id: "n3", category: "Wallet", kind: "Transactional", title: "Refund credited", body: "₹2,499.00 credited to your Wallet.", at: "3 days ago", unread: false },
-  { id: "n4", category: "Offers", kind: "Promotional", title: "15% off Ayurveda essentials", body: "Picked for you based on your recent browsing.", at: "5 days ago", unread: false },
-];
 
 export const SUPPRESSION_MATRIX: {
   category: string; kind: "Transactional" | "Promotional"; suppressible: boolean; note: string;

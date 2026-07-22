@@ -62,15 +62,6 @@ export interface HealthGoal {
   href: string;
 }
 
-export const HEALTH_GOALS: HealthGoal[] = [
-  { icon: Moon, title: "Sleep & calm", blurb: "Evening rituals built on Ashwagandha and traditional calming herbs.", href: "/catalogue?class=AYURVEDA" },
-  { icon: Wheat, title: "Daily nutrition", blurb: "Hemp hearts and protein — complete plant protein with omega 3 & 6.", href: "/catalogue?class=HEMP_FOOD" },
-  { icon: Dumbbell, title: "Muscle recovery", blurb: "Topical CBD balms and roll-ons used in post-workout massage routines.", href: "/catalogue?class=CBD_WELLNESS" },
-  { icon: Sparkles, title: "Skin & body", blurb: "Cold-pressed hemp seed oil, traditionally used in skin and hair care.", href: "/catalogue?class=HEMP_FOOD" },
-  { icon: Soup, title: "Digestive care", blurb: "Triphala and classical churnas from the Ayurvedic tradition.", href: "/catalogue?class=AYURVEDA" },
-  { icon: Brain, title: "Focus", blurb: "Adaptogen formulations used in daily study and work routines.", href: "/catalogue?class=AYURVEDA" },
-];
-
 /* ── Hemp education ─────────────────────────────────────────────── */
 
 export interface EducationCard {
@@ -81,30 +72,6 @@ export interface EducationCard {
   href: string;
 }
 
-export const EDUCATION_ARTICLES: EducationCard[] = [
-  {
-    emoji: "🌾",
-    title: "Hemp vs. marijuana: what Indian law actually says",
-    minutes: 4,
-    teaser: "Hemp is cannabis bred for fibre and seed with THC at or below 0.3% — and Indian regulation treats the two very differently.",
-    href: "/trust",
-  },
-  {
-    emoji: "🧪",
-    title: "How to read a Certificate of Analysis",
-    minutes: 5,
-    teaser: "Batch number, cannabinoid profile, contaminant panel, issuing lab — the four things to check before you buy any CBD product.",
-    href: "/trust#coa",
-  },
-  {
-    emoji: "🥗",
-    title: "Cooking with hemp hearts, oil and protein",
-    minutes: 3,
-    teaser: "Hemp seed is a food, not a supplement: how to fold hearts, oil and protein into everyday Indian meals.",
-    href: "/catalogue?class=HEMP_FOOD",
-  },
-];
-
 /* ── Testimonials ───────────────────────────────────────────────── */
 
 export interface Testimonial {
@@ -114,60 +81,9 @@ export interface Testimonial {
   text: string;
 }
 
-export const TESTIMONIALS: Testimonial[] = [
-  {
-    name: "Priya M.",
-    city: "Pune",
-    rating: 5,
-    text: "The batch CoA link printed on the invoice is what converted me. I checked the lab report against the batch number on the jar — it matched. That's a first for any Indian marketplace I've used.",
-  },
-  {
-    name: "Arjun T.",
-    city: "Bengaluru",
-    rating: 5,
-    text: "Ordered hemp protein and hearts for my morning routine. Delivery in two days, clean packaging, and the seller's FSSAI licence is right there on the storefront.",
-  },
-  {
-    name: "Meera K.",
-    city: "Jaipur",
-    rating: 4,
-    text: "Returned a tincture that arrived with a damaged seal — refund hit my account before the pickup was even complete. Buyer-first returns are real here.",
-  },
-];
-
 /* ── Homepage FAQ ───────────────────────────────────────────────── */
 
-export const HOME_FAQS: { q: string; a: string }[] = [
-  {
-    q: "Is hemp legal to buy in India?",
-    a: "Yes. Hemp seed products (oil, protein, hearts) are FSSAI-approved foods. CBD wellness products are sold under AYUSH licensing with a batch lab report confirming THC at or below 0.3%, and are age-gated 21+.",
-  },
-  {
-    q: "How do I know a product is genuinely lab-tested?",
-    a: "Every regulated product page shows its batch-matched Certificate of Analysis from an independent accredited lab. A regulated listing cannot go live on Vedic Hemp without an approved CoA — there is no override.",
-  },
-  {
-    q: "Do you sell medical cannabis?",
-    a: "Medical cannabis exists on the platform but is prescription-only. It is never advertised, searchable or recommended. It becomes visible only to a signed-in buyer whose prescription a licensed pharmacist has verified.",
-  },
-  {
-    q: "Is Cash on Delivery available?",
-    a: "Yes, COD is available on most orders. Age-gated categories (CBD wellness) additionally require an ID check on handover, whatever the payment method.",
-  },
-  {
-    q: "Where is my personal data stored?",
-    a: "All personal data and payment data are held in Indian data centres (ap-south-1 / ap-south-2). Health data such as prescriptions is encrypted with a separate key and every access is logged and disclosed to you.",
-  },
-];
-
 /* ── Industry stats band ────────────────────────────────────────── */
-
-export const INDUSTRY_STATS: { value: string; label: string; sub: string }[] = [
-  { value: "10,000+", label: "Products listed by sellers", sub: "Across hemp food, Ayurveda and CBD wellness" },
-  { value: "300+", label: "Independent sellers", sub: "Licences submitted at account creation" },
-  { value: "4.6 ★", label: "Average product rating", sub: "From verified purchases only" },
-  { value: "28", label: "States & UTs served", sub: "Shipped directly by sellers" },
-];
 
 /* ── Seller storefronts ─────────────────────────────────────────── */
 

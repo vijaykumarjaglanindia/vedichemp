@@ -62,36 +62,7 @@ export interface AdPlacement {
  * <AdSlot> (src/components/ui/ads.tsx), so it is always visibly labelled and
  * the A1 render guard runs before anything paints.
  */
-export const AD_PLACEMENTS: AdPlacement[] = [
-  { id: "pl1", placement: "home-hero-banner", surface: "Public home", format: "Hero carousel slide", pricing: "flat/day", floorPaise: 12_000_00, status: "LIVE" },
-  { id: "pl2", placement: "home-mid-banner", surface: "Public home", format: "Mid-page banner", pricing: "flat/day", floorPaise: 6_500_00, status: "LIVE" },
-  { id: "pl2a", placement: "home-leaderboard", surface: "Public home", format: "Leaderboard banner", pricing: "flat/day", floorPaise: 8_000_00, status: "LIVE" },
-  { id: "pl2b", placement: "home-video", surface: "Public home", format: "Video (16:9, ≤60s)", pricing: "CPM", floorPaise: 320_00, status: "LIVE" },
-  { id: "pl2c", placement: "home-sponsored-products", surface: "Public home", format: "Sponsored product carousel", pricing: "CPC", floorPaise: 8_00, status: "LIVE" },
-  { id: "pl2d", placement: "listing-brand-banner", surface: "Category listing", format: "Brand banner", pricing: "flat/day", floorPaise: 4_500_00, status: "LIVE" },
-  { id: "pl2e", placement: "listing-sidebar", surface: "Category listing", format: "Sidebar banner", pricing: "CPM", floorPaise: 140_00, status: "LIVE" },
-  { id: "pl2f", placement: "pdp-inline-banner", surface: "Product detail", format: "Inline banner", pricing: "CPC", floorPaise: 6_50, status: "LIVE" },
-  { id: "pl2g", placement: "cart-upsell", surface: "Cart", format: "Sponsored upsell row", pricing: "CPC", floorPaise: 7_00, status: "LIVE" },
-  { id: "pl2h", placement: "thankyou-related", surface: "Order confirmation", format: "Related products", pricing: "CPC", floorPaise: 5_00, status: "LIVE" },
-  { id: "pl2i", placement: "store-campaign", surface: "Seller storefront", format: "Campaign banner", pricing: "flat/day", floorPaise: 3_000_00, status: "LIVE" },
-  { id: "pl3", placement: "search-sponsored", surface: "Search results", format: "Sponsored listing", pricing: "CPC", floorPaise: 9_00, status: "LIVE" },
-  { id: "pl4", placement: "listing-sponsored", surface: "Category listing", format: "Sponsored listing", pricing: "CPC", floorPaise: 7_50, status: "LIVE" },
-  { id: "pl5", placement: "pdp-related-sponsored", surface: "Product detail", format: "Related-products tile", pricing: "CPC", floorPaise: 6_00, status: "LIVE" },
-  { id: "pl6", placement: "cart-cross-sell", surface: "Cart", format: "Cross-sell tile", pricing: "CPC", floorPaise: 5_50, status: "DRAFT" },
-  { id: "pl7", placement: "checkout-coupon", surface: "Checkout", format: "Coupon slot", pricing: "flat/day", floorPaise: 4_000_00, status: "PAUSED" },
-  { id: "pl8", placement: "store-banner", surface: "Seller storefront", format: "Store hero banner", pricing: "flat/day", floorPaise: 2_500_00, status: "LIVE" },
-];
-
 /* ── Auction health (7-day series) ─────────────────────────── */
-
-export const AUCTION_HEALTH = {
-  fillRatePct: 82,
-  fillRateSpark: [76, 78, 80, 79, 81, 83, 82],
-  avgCpcPaise: 8_52,
-  cpcSparkPaise: [7_90, 8_15, 8_40, 8_20, 8_60, 8_45, 8_52],
-  violations24h: 0,
-  violationSpark: [0, 0, 0, 0, 0, 0, 0],
-};
 
 /* ── Seller health mini-series (7 weeks, per seller id) ────── */
 
@@ -108,22 +79,7 @@ export const KYC_META: Record<string, { sla: string; ageHours: number }> = {
 
 /* ── CoA queue details, keyed by queue item id (A2) ────────── */
 
-export const COA_DETAILS: Record<string, { batch: string; thc: string; lab: string }> = {
-  q1: { batch: "VB-2406", thc: "0.21%", lab: "Eurofins Analytical, Bengaluru" },
-  q3: { batch: "VB-2409", thc: "0.28%", lab: "SGS Laboratory, Mumbai" },
-};
-
 /** Listings awaiting product approval (sample; all live-catalogue rows sit in @/lib/sample). */
-export const PENDING_PRODUCTS: SampleProduct[] = [
-  { id: "pp1", title: "CBD Sleep Support Gummies 30ct", slug: "cbd-sleep-gummies-30", cls: "CBD_WELLNESS", pricePaise: 189900, mrpPaise: 219900, seller: "Vedic Botanicals", rating: 0, emoji: "🍬", labVerified: false, state: "UNDER_REVIEW" },
-  { id: "pp2", title: "Hemp Seed Butter 200g", slug: "hemp-seed-butter-200", cls: "HEMP_FOOD", pricePaise: 54900, mrpPaise: 64900, seller: "Ananda Foods", rating: 0, emoji: "🧈", labVerified: false, state: "SUBMITTED" },
-];
-
-export const TAXONOMY_CHIPS = [
-  "Hemp Foods", "Hemp Oils", "Protein & Nutrition", "Ayurvedic Herbs", "Churna & Extracts",
-  "CBD Topicals", "CBD Tinctures", "Wellness Balms", "Personal Care",
-];
-
 /* ── Sensitive access log, last 24h (A4) ───────────────────── */
 
 export interface SensitiveAccessRow {
@@ -147,24 +103,11 @@ export const COURIER_SCORECARD = [
   { label: "India Post", value: 84.2, display: "84.2% on-time" },
 ];
 
-export const FUNNEL_30D = [
-  { label: "Product views", value: 412_000 },
-  { label: "Added to cart", value: 56_300 },
-  { label: "Checkout started", value: 24_800 },
-  { label: "Purchased", value: 18_400 },
-];
-
 /**
  * GMV mix by compliance class — three classes only. MED_CANNABIS dispensing
  * volume is reported separately under Compliance, never blended into
  * commercial analytics (A1: it is not a merchandisable line of business).
  */
-export const CLASS_MIX_GMV: { cls: ComplianceClass; label: string; paise: number; color: string }[] = [
-  { cls: "CBD_WELLNESS", label: "CBD Wellness", paise: 7_32_60_000, color: "var(--vh-accent)" },
-  { cls: "HEMP_FOOD", label: "Hemp Food", paise: 6_92_00_000, color: "var(--vh-ok)" },
-  { cls: "AYURVEDA", label: "Ayurveda", paise: 4_18_00_000, color: "var(--vh-warn)" },
-];
-
 /* ── Finance: period close ─────────────────────────────────── */
 
 // Revenue, take rate and the GST/TCS/TDS position are DERIVED from the real
@@ -189,13 +132,6 @@ export const AUDIENCES = [
 
 /* ── Settings: feature flags + API keys (masked) ───────────── */
 
-export const FEATURE_FLAGS = [
-  { key: "buyer_reviews_v2", desc: "Richer review composer with photo upload", status: "ON" },
-  { key: "upi_intent_checkout", desc: "UPI intent deep-link at payment step", status: "ON" },
-  { key: "seller_analytics_beta", desc: "Cohort charts on the seller console", status: "OFF" },
-  { key: "rx_renewal_reminders", desc: "Prescription expiry reminder notifications", status: "ON" },
-];
-
 // No usage telemetry is wired, so no fabricated "last used" recency is shown.
 export const API_KEYS = [
   { id: "k1", name: "logistics-webhook", masked: "vh_live_••••••••3f9a", scope: "shipments:write" },
@@ -205,20 +141,4 @@ export const API_KEYS = [
 
 /* ── CMS media library ─────────────────────────────────────── */
 
-export const MEDIA_ITEMS = [
-  { id: "md1", name: "hero-banner-monsoon.jpg", kind: "image" as const, size: "1.2 MB" },
-  { id: "md2", name: "cbd-balm-lifestyle.jpg", kind: "image" as const, size: "860 KB" },
-  { id: "md3", name: "brand-story.mp4", kind: "video" as const, size: "24.8 MB" },
-  { id: "md4", name: "ayurveda-ingredients.jpg", kind: "image" as const, size: "1.1 MB" },
-  { id: "md5", name: "hemp-farm-uttarakhand.jpg", kind: "image" as const, size: "1.6 MB" },
-  { id: "md6", name: "festival-sale-teaser.mp4", kind: "video" as const, size: "12.3 MB" },
-];
-
 /* ── Analytics exports ─────────────────────────────────────── */
-
-export const EXPORTS = [
-  { id: "ex1", name: "GMV by day", format: "CSV" },
-  { id: "ex2", name: "Orders by seller", format: "CSV" },
-  { id: "ex3", name: "Settlement summary", format: "XLSX" },
-  { id: "ex4", name: "Compliance SLA report", format: "PDF" },
-];
