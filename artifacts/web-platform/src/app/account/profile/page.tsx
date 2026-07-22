@@ -84,6 +84,10 @@ export default async function ProfilePage({
   const consentEmail = session?.email ?? "buyer@example.in";
   const consentOverrides: Record<string, boolean> = await currentConsent(consentEmail);
   const fullName = (session?.name ?? "").trim() || viewer.firstName;
+  // No phone is stored against an email/password or OAuth account, so we show
+  // the mobile as not-yet-added rather than a fabricated masked number. (A
+  // phone-OTP identity would populate this once numbers are persisted.)
+  const mobile = "";
   // Mask the real email for display (identity is verified, not editable here).
   const maskedEmail = (() => {
     const [u = "", d = ""] = consentEmail.split("@");
@@ -110,9 +114,9 @@ export default async function ProfilePage({
               <input className="vh-input" id="pf-name" defaultValue={fullName} readOnly />
             </div>
             <div className="vh-field">
-              <FieldLabel text="Mobile number" verified />
-              <input className="vh-input" id="pf-mobile" aria-label="Mobile number" defaultValue="+91 98••••••21" readOnly />
-              <span className="vh-help">Changing this re-prompts for OTP or passkey (step-up auth).</span>
+              <FieldLabel text="Mobile number" verified={Boolean(mobile)} />
+              <input className="vh-input" id="pf-mobile" aria-label="Mobile number" defaultValue={mobile} placeholder="Not added yet" readOnly />
+              <span className="vh-help">{mobile ? "Changing this re-prompts for OTP or passkey (step-up auth)." : "Add a mobile number for delivery and order updates."}</span>
             </div>
             <div className="vh-field">
               <FieldLabel text="Email" verified />
