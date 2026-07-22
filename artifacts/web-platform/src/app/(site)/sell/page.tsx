@@ -52,7 +52,7 @@ const LICENCE_REQUIREMENTS: Record<ComplianceClass, string> = {
 };
 
 const COMMISSION_ROWS: { cls: string; rate: string; note: string }[] = [
-  { cls: "Marketplace commission", rate: "10%", note: "Early Adopter Program — the lowest marketplace commission in the category, locked in at launch" },
+  { cls: "Marketplace commission", rate: "10%", note: "Early Adopter Program rate, locked in at launch" },
   { cls: "Payment collection", rate: "Included", note: "We collect from the buyer and settle to you" },
   { cls: "Shipping", rate: "Flat & fair", note: "One flat charge on smaller orders, free above the threshold" },
   { cls: "No surprise fees", rate: "Ever", note: "No supply-chain, listing or hidden platform charges" },

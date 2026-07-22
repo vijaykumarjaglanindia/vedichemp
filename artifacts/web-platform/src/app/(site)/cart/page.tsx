@@ -25,6 +25,9 @@ export default async function CartPage({
   const reorderedN = reordered ? parseInt(reordered, 10) : 0;
   const skippedN = skipped ? parseInt(skipped, 10) : 0;
   const cart = await priceCart();
+  // Payment trust badge reflects the real admin setting, not a fixed claim.
+  const { codEnabled } = await import("@/lib/payments");
+  const codOn = await codEnabled();
 
   if (cart.lines.length === 0) {
     return (
@@ -197,7 +200,7 @@ export default async function CartPage({
             {[
               { icon: ShieldCheck, text: "Prices verified at checkout — what you see is what you pay" },
               { icon: Truck, text: "Packed & shipped by the seller who lists each item" },
-              { icon: ShoppingBag, text: "100% prepaid — UPI, cards & netbanking" },
+              { icon: ShoppingBag, text: codOn ? "UPI, cards, netbanking & Cash on Delivery" : "100% prepaid — UPI, cards & netbanking" },
             ].map(({ icon: Icon, text }) => (
               <span key={text} className="vh-row small muted" style={{ gap: 8, alignItems: "flex-start" }}>
                 <Icon size={13} aria-hidden style={{ color: "var(--vh-accent)", flexShrink: 0, marginTop: 2 }} />

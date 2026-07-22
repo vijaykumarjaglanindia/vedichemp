@@ -264,9 +264,8 @@ export default async function AdminCompliancePage({
             </table>
           </div>
           <p className="small muted" style={{ margin: 0, padding: "12px 18px 16px" }}>
-            The DENIED row is <code>support.varma</code> — the Support role does not hold the Rx-viewer scope, so the
-            server refused before any key resolved. Denied attempts are logged and the buyer is notified of the
-            attempt too.
+            A <code>DENIED</code> row means the actor&rsquo;s role did not hold the Rx-viewer scope, so the server
+            refused before any key resolved. Denied attempts are logged and the buyer is notified of the attempt too.
           </p>
         </Card>
 

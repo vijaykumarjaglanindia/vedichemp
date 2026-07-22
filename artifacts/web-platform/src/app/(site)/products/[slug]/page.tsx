@@ -146,6 +146,9 @@ export default async function ProductDetailPage({
   // product with no reviews shows its rating with no count (or "New").
   const reviewCount = agg.count;
   const ratingValue = agg.count > 0 ? agg.avg : product.rating;
+  // Payment copy reflects the real admin setting — COD is off by default.
+  const { codEnabled } = await import("@/lib/payments");
+  const codOn = await codEnabled();
   // Variant selection: the chosen option drives the price, stock and the
   // add-to-cart, all server-resolved (never a client price).
   const productHasVariants = hasVariants(product);
@@ -674,7 +677,7 @@ export default async function ProductDetailPage({
                 <BadgePercent size={14} aria-hidden style={{ color: "var(--vh-accent)" }} /> Offers
               </span>
               <span className="small" style={{ paddingLeft: 22 }}>Extra 10% off up to ₹200 on UPI · code <span className="vh-kbd">VEDIC10</span></span>
-              <span className="small" style={{ paddingLeft: 22 }}>Free shipping on orders above ₹5,000 · ₹100 flat below · COD available</span>
+              <span className="small" style={{ paddingLeft: 22 }}>Free shipping on orders above ₹5,000 · ₹100 flat below · {codOn ? "COD available" : "prepaid checkout"}</span>
             </div>
 
             {/* Stock status — the server is the authority; the button follows
