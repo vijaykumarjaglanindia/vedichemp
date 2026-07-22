@@ -107,9 +107,6 @@ export interface StoreProfile {
   location: string;
   certifications: string[];
   collections: string[];
-  followerCount: number;
-  reviewCount: number;
-  rating: number;
 }
 
 export const STORE_PROFILES: Record<string, StoreProfile> = {
@@ -121,9 +118,6 @@ export const STORE_PROFILES: Record<string, StoreProfile> = {
     location: "Pune, Maharashtra",
     certifications: ["AYUSH manufacturing licence", "GMP-certified facility", "Batch CoA on every product", "ISO 9001:2015"],
     collections: ["Topical balms", "Tinctures", "Roll-ons", "Gift sets"],
-    followerCount: 12840,
-    reviewCount: 3160,
-    rating: 4.4,
   },
   "himalayan-hemp-co": {
     tagline: "Cold-pressed hemp nutrition from Uttarakhand farms",
@@ -133,9 +127,6 @@ export const STORE_PROFILES: Record<string, StoreProfile> = {
     location: "Dehradun, Uttarakhand",
     certifications: ["FSSAI food business licence", "Farm-traceable sourcing", "Cold-pressed within 48h"],
     collections: ["Seed oils", "Protein powders", "Pantry staples"],
-    followerCount: 9210,
-    reviewCount: 2470,
-    rating: 4.5,
   },
   "ananda-foods": {
     tagline: "Classical Ayurveda and everyday hemp foods",
@@ -145,9 +136,6 @@ export const STORE_PROFILES: Record<string, StoreProfile> = {
     location: "Mysuru, Karnataka",
     certifications: ["AYUSH licence", "FSSAI food business licence", "Full ingredient disclosure"],
     collections: ["Churnas", "Extracts", "Hemp pantry"],
-    followerCount: 6875,
-    reviewCount: 1980,
-    rating: 4.6,
   },
 };
 

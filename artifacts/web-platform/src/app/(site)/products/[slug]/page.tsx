@@ -149,6 +149,14 @@ export default async function ProductDetailPage({
   // Payment copy reflects the real admin setting — COD is off by default.
   const { codEnabled } = await import("@/lib/payments");
   const codOn = await codEnabled();
+  // Offers/shipping copy is derived from the real config, never hand-typed:
+  // the free-shipping threshold is the admin-editable value the cart charges
+  // against, and the coupon line renders only while VEDIC10 is actually live.
+  const { readShipping } = await import("@/lib/shipping");
+  const { readCoupons, couponLive } = await import("@/lib/commerce");
+  const freeShipAtPaise = (await readShipping()).freeAtPaise;
+  const vedic10 = (await readCoupons())["VEDIC10"];
+  const vedic10Live = vedic10 ? couponLive(vedic10) : false;
   // Variant selection: the chosen option drives the price, stock and the
   // add-to-cart, all server-resolved (never a client price).
   const productHasVariants = hasVariants(product);
@@ -676,8 +684,10 @@ export default async function ProductDetailPage({
               <span className="vh-row small" style={{ gap: 8, fontWeight: 700, color: "var(--vh-ink)" }}>
                 <BadgePercent size={14} aria-hidden style={{ color: "var(--vh-accent)" }} /> Offers
               </span>
-              <span className="small" style={{ paddingLeft: 22 }}>Extra 10% off up to ₹200 on UPI · code <span className="vh-kbd">VEDIC10</span></span>
-              <span className="small" style={{ paddingLeft: 22 }}>Free shipping on orders above ₹5,000 · ₹100 flat below · {codOn ? "COD available" : "prepaid checkout"}</span>
+              {vedic10Live && (
+                <span className="small" style={{ paddingLeft: 22 }}>{vedic10!.label} · code <span className="vh-kbd">VEDIC10</span></span>
+              )}
+              <span className="small" style={{ paddingLeft: 22 }}>Free shipping over <MoneyText paise={freeShipAtPaise} /> · delivery below that is calculated at checkout by destination · {codOn ? "COD available" : "prepaid checkout"}</span>
             </div>
 
             {/* Stock status — the server is the authority; the button follows
