@@ -259,6 +259,10 @@ export default async function StorePage({ params, searchParams }: { params: Prom
                   </li>
                 ))}
               </ul>
+              <p className="small muted" style={{ margin: "12px 0 0" }}>
+                Declared by the seller at onboarding. Regulated categories additionally require the licence and batch
+                CoA shown on each product page — those are the platform-verified checks.
+              </p>
             </Card>
           </div>
         </section>
