@@ -38,7 +38,7 @@ const BENEFITS: { icon: typeof FileText; title: string; body: string }[] = [
 
 const ONBOARDING_STEPS: { label: string; at?: string; state: "done" | "current" | "pending" | "failed" }[] = [
   { label: "Verify your business — GSTIN, bank account, and the FSSAI / AYUSH / NDPS licences for each class you'll sell in", at: "Typically same day", state: "done" },
-  { label: "List your first product — attach a batch Certificate of Analysis for regulated classes; compliance reviews it batch-matched", at: "Review within a few business days", state: "current" },
+  { label: "List your first product — attach a lab report for lab-tested classes; our team checks it matches the batch", at: "Review within a few business days", state: "current" },
   { label: "Go live — the listing switches on the moment its checks pass, and orders start flowing to your console", at: "Automatic on approval", state: "pending" },
 ];
 
@@ -47,7 +47,7 @@ const LICENCE_CLASSES: ComplianceClass[] = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNE
 const LICENCE_REQUIREMENTS: Record<ComplianceClass, string> = {
   HEMP_FOOD: "Valid FSSAI food business licence. Standard packaged-food labelling and shelf-life documentation.",
   AYURVEDA: "AYUSH manufacturing/marketing licence for the specific formulation(s) you list.",
-  CBD_WELLNESS: "AYUSH licence plus a batch Certificate of Analysis from an accredited lab for every batch, confirming THC ≤ 0.3%.",
+  CBD_WELLNESS: "AYUSH licence plus a lab report from an accredited lab for every batch, confirming THC ≤ 0.3%.",
   MED_CANNABIS: "Licensing under the applicable NDPS/state cannabis framework. Listings are never advertised and are visible only to buyers with a pharmacist-verified prescription.",
 };
 
@@ -161,8 +161,8 @@ export default async function SellPage({
                 physically cannot post a fee schedule that starts earlier.
               </p>
               <p className="small muted" style={{ marginBottom: 0 }}>
-                Settlements are posted only after two different people sign off (maker–checker,
-                A6), and posted statements are immutable.
+                Payouts go out only after two different people approve them, and once a statement
+                is posted it can&apos;t be changed.
               </p>
             </div>
           </div>

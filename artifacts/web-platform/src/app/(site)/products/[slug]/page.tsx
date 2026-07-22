@@ -71,8 +71,8 @@ async function checkPin(pin: string, cls: string): Promise<{ ok: boolean; title:
   if (!svc.ok && svc.reason === "regulated") {
     return {
       ok: false,
-      title: `Not serviceable at ${pin} yet`,
-      body: "Sellers can't ship CBD wellness to this PIN yet — age-verified handover isn't available there. Hemp foods and Ayurveda deliver normally.",
+      title: `We can't deliver to ${pin} yet`,
+      body: "Sellers can't ship CBD wellness here yet — we can't do the age check on delivery in this area. Hemp foods and Ayurveda deliver normally.",
     };
   }
   const days = 2 + ((pin.split("").reduce((s, d) => s + Number(d), 0)) % 3);
@@ -82,7 +82,7 @@ async function checkPin(pin: string, cls: string): Promise<{ ok: boolean; title:
     title: `Delivers to ${pin} by ${eta}`,
     body: regulated
       ? "Shipped by the seller's delivery partner · ID checked on handover (21+)."
-      : "Shipped by the seller's delivery partner · prepaid checkout (UPI, cards, netbanking).",
+      : "Shipped by the seller's courier · pay securely online (UPI, cards, netbanking).",
   };
 }
 
@@ -308,7 +308,7 @@ export default async function ProductDetailPage({
 
           {/* Lab report */}
           <section id="lab-report" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
-            <Card title="Lab report / Certificate of Analysis">
+            <Card title="Lab report">
               {regulated ? (
                 <>
                   <div className="vh-row" style={{ gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
@@ -529,7 +529,7 @@ export default async function ProductDetailPage({
                     </div>
                     <div className="small muted vh-prose" style={{ margin: "6px 0 0" }} dangerouslySetInnerHTML={{ __html: mdToHtml(myQuestion) }} />
                     <p className="small muted" style={{ margin: "6px 0 0" }}>
-                      The seller answers from Seller Central; replies pass the compliance copy-check before publishing.
+                      The seller will answer here; every reply is checked before it's posted.
                     </p>
                   </div>
                 ) : (
@@ -549,7 +549,7 @@ export default async function ProductDetailPage({
                         id="qa-text"
                         maxLength={300}
                         minHeight={64}
-                        placeholder="Composition, batch, format — the seller answers, and answers are copy-checked."
+                        placeholder="Ask about ingredients, batch or size — the seller replies, and every answer is checked first."
                       />
                     </div>
                     <button type="submit" className="vh-btn vh-btn-sm vh-btn-outline" style={{ justifySelf: "start" }}>Post question</button>
@@ -676,7 +676,7 @@ export default async function ProductDetailPage({
             )}
             <div className="vh-row small muted" style={{ gap: 6, marginBottom: 12 }}>
               <Truck size={13} aria-hidden />
-              <span>Dispatched in 24–48h from a licensed seller · tracked delivery</span>
+              <span>Ships in 24–48h from a licensed seller · tracked delivery</span>
             </div>
 
             {/* Bank & platform offers */}
@@ -687,7 +687,7 @@ export default async function ProductDetailPage({
               {vedic10Live && (
                 <span className="small" style={{ paddingLeft: 22 }}>{vedic10!.label} · code <span className="vh-kbd">VEDIC10</span></span>
               )}
-              <span className="small" style={{ paddingLeft: 22 }}>Free shipping over <MoneyText paise={freeShipAtPaise} /> · delivery below that is calculated at checkout by destination · {codOn ? "COD available" : "prepaid checkout"}</span>
+              <span className="small" style={{ paddingLeft: 22 }}>Free shipping over <MoneyText paise={freeShipAtPaise} /> · delivery below that is calculated at checkout by destination · {codOn ? "COD available" : "pay online"}</span>
             </div>
 
             {/* Stock status — the server is the authority; the button follows

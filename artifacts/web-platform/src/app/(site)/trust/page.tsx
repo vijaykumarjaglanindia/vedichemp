@@ -38,10 +38,10 @@ export const metadata: Metadata = {
 };
 
 const ORDER_FLOW = [
-  { icon: CreditCard, title: "You place an order and pay", body: "Checkout totals are computed by the platform, never by the browser. Payment is captured before anything moves." },
-  { icon: Send, title: "We forward your order to the seller", body: "The seller who listed the product receives your order details in their Seller Central panel." },
-  { icon: Truck, title: "The seller packs and ships it", body: "The seller packs your order and hands it to their delivery partner (drop-ship model) — an order is marked shipped only after that handover." },
-  { icon: PackageCheck, title: "The seller updates the status you track", body: "Accepted, packed, shipped, delivered — the status in your account is the status the seller maintains in their panel." },
+  { icon: CreditCard, title: "You place an order and pay", body: "We calculate your total securely, so the price you see is the price you pay. Nothing ships until your payment goes through." },
+  { icon: Send, title: "We forward your order to the seller", body: "The seller who listed the product receives your order details in their dashboard." },
+  { icon: Truck, title: "The seller packs and ships it", body: "The seller packs your order and hands it to their courier — your order is marked shipped only after that." },
+  { icon: PackageCheck, title: "The seller updates the status you track", body: "Accepted, packed, shipped, delivered — the status in your account is the status the seller updates as your order moves." },
 ];
 
 const WHO_DOES_WHAT: { who: string; items: string[] }[] = [
@@ -194,8 +194,8 @@ export default async function HowItWorksPage() {
               <Lock size={20} aria-hidden style={{ color: "var(--vh-accent)", marginBottom: 10 }} />
               <h3>Data stays in India</h3>
               <p className="small" style={{ margin: 0 }}>
-                Personal and payment data are held in Indian data centres. Card details never touch
-                our servers — payments run through PCI-DSS processors.
+                Personal and payment data are held in data centres located in India. Card details never touch
+                our servers — payments run through secure, certified payment providers.
               </p>
             </Card>
           </div>
@@ -213,8 +213,8 @@ export default async function HowItWorksPage() {
           <Card>
             <ol style={{ margin: 0, paddingLeft: 20, display: "grid", gap: 10 }} className="small">
               <li><b>Prescription medicine is never advertised</b> — no seller can pay to promote medical cannabis, and it never appears in search, deals or recommendations.</li>
-              <li><b>Regulated listings need a batch lab report</b> — a seller cannot make a regulated batch sellable without uploading one that matches the batch.</li>
-              <li><b>Safety records cannot be deleted</b> — adverse-event reports and order records are append-only, for sellers and for us.</li>
+              <li><b>Lab-tested products need a report for each batch</b> — a seller can't put a batch on sale without uploading a lab report that matches it.</li>
+              <li><b>Safety records cannot be deleted</b> — safety reports and order records can never be edited or deleted, by sellers or by us.</li>
               <li><b>Prescriptions are read on the record</b> — pharmacist-only, reason logged, buyer notified.</li>
               <li><b>No retroactive fee changes for sellers</b> — commission changes take effect only after 30 days' notice.</li>
               <li><b>No single person moves money</b> — every payout and refund above threshold needs two different people to sign off.</li>

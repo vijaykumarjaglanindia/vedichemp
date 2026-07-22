@@ -326,7 +326,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
           </div>
 
           <div className="vh-facet">
-            <div className="vh-facet-title">Assurance</div>
+            <div className="vh-facet-title">Lab testing</div>
             <Link href={href(params, { lab: labOnly ? null : "1" })} className={labOnly ? "on" : ""}>
               <span className="box" aria-hidden>{labOnly ? <Check size={11} strokeWidth={3} /> : null}</span>
               <FlaskConical size={12} aria-hidden style={{ color: "var(--vh-info)" }} /> Lab report available

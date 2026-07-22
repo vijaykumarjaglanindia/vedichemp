@@ -17,7 +17,7 @@ import { publicProducts, specsFor } from "../_lib/data";
 
 export const metadata: Metadata = {
   title: "Verify a batch",
-  description: "Enter the batch code printed on your pack to see the exact product, seller and lab report it belongs to — provenance you can check before you open the seal.",
+  description: "Enter the batch code printed on your pack to see the exact product, seller and lab report it belongs to — the product's history, so you can check it before you open the seal.",
   alternates: { canonical: "/verify" },
 };
 
@@ -43,7 +43,7 @@ export default async function VerifyPage({
   return (
     <div className="vh-container" style={{ paddingTop: "var(--sp-5)", paddingBottom: "var(--sp-7)", maxWidth: 760 }}>
       <div className="vh-section-head">
-        <span className="vh-eyebrow">Provenance</span>
+        <span className="vh-eyebrow">Where it came from</span>
         <h1 className="vh-display" style={{ fontSize: "clamp(1.6rem, 1.2rem + 1.6vw, 2.2rem)", marginTop: 8 }}>
           Verify the batch in your hands
         </h1>
@@ -97,18 +97,17 @@ export default async function VerifyPage({
           ) : (
             <Banner severity="danger" title={`No batch found for “${code}”`}>
               Check the code against the pack — it&rsquo;s printed next to the manufacturing date. If it
-              still doesn&rsquo;t verify, do not consume the product:{" "}
-              <Link href="/account/support" style={{ fontWeight: 700 }}>report it</Link> and the seller&rsquo;s
-              listing is frozen while compliance investigates.
+              still doesn&rsquo;t verify, don&rsquo;t use the product:{" "}
+              <Link href="/account/support" style={{ fontWeight: 700 }}>report it</Link>, and we&rsquo;ll pause the seller&rsquo;s
+              listing while our team looks into it.
             </Banner>
           )}
         </div>
       )}
 
       <p className="small muted" style={{ marginTop: "var(--sp-4)" }}>
-        Verification covers publicly listed products only. A regulated batch can only appear here
-        if its Certificate of Analysis was approved before the listing went live — there is no
-        override.
+        Verification covers publicly listed products only. A lab-tested product only appears here
+        if its lab report passed before it went on sale — with no exceptions.
       </p>
     </div>
   );

@@ -181,7 +181,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
                   </span>
                 )}
                 <span className="vh-pill vh-pill-ok">
-                  <ShieldCheck size={12} strokeWidth={2.2} aria-hidden /> Health score {seller.healthScore}
+                  <ShieldCheck size={12} strokeWidth={2.2} aria-hidden /> Reliability score {seller.healthScore}
                 </span>
                 {publicClasses.map((cls) => (
                   <span key={cls} className="vh-pill vh-pill-info">
@@ -260,8 +260,8 @@ export default async function StorePage({ params, searchParams }: { params: Prom
                 ))}
               </ul>
               <p className="small muted" style={{ margin: "12px 0 0" }}>
-                Declared by the seller at onboarding. Regulated categories additionally require the licence and batch
-                CoA shown on each product page — those are the platform-verified checks.
+                Shared by the seller when they joined. For lab-tested categories, we also show the licence and each
+                batch&rsquo;s lab report on the product page — those are the checks we verify.
               </p>
             </Card>
           </div>
@@ -290,7 +290,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
             <EmptyState
               icon="📦"
               headline="No public listings right now"
-              sub="This seller's products may be between batches — a regulated listing goes offline whenever its lab report lapses."
+              sub="This seller's products may be between batches — a lab-tested product goes offline if its lab report expires."
               cta={{ label: "Browse the catalogue", href: "/catalogue" }}
             />
           ) : (

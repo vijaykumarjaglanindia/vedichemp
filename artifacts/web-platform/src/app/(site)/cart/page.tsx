@@ -200,7 +200,7 @@ export default async function CartPage({
             {[
               { icon: ShieldCheck, text: "Prices verified at checkout — what you see is what you pay" },
               { icon: Truck, text: "Packed & shipped by the seller who lists each item" },
-              { icon: ShoppingBag, text: codOn ? "UPI, cards, netbanking & Cash on Delivery" : "100% prepaid — UPI, cards & netbanking" },
+              { icon: ShoppingBag, text: codOn ? "UPI, cards, netbanking & Cash on Delivery" : "Pay securely online — UPI, cards & netbanking" },
             ].map(({ icon: Icon, text }) => (
               <span key={text} className="vh-row small muted" style={{ gap: 8, alignItems: "flex-start" }}>
                 <Icon size={13} aria-hidden style={{ color: "var(--vh-accent)", flexShrink: 0, marginTop: 2 }} />

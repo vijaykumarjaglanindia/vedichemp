@@ -48,7 +48,7 @@ export default async function ConfirmedPage() {
           <Timeline
             nodes={[
               { label: "Payment received", at: "Just now", state: "done" },
-              { label: `Order forwarded to ${order.items[0]?.seller ?? "the seller"}`, at: "Within minutes — it appears in their Seller Central panel", state: "current" },
+              { label: `Order forwarded to ${order.items[0]?.seller ?? "the seller"}`, at: "Within minutes — it lands in the seller's dashboard", state: "current" },
               { label: "Seller packs & hands to their delivery partner", at: "Marked shipped only after handover", state: "pending" },
               { label: `Delivery to ${order.city} ${order.pincode}`, at: "Track it from My Account → Orders", state: "pending" },
             ]}

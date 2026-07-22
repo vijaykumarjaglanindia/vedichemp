@@ -19,7 +19,7 @@ import { readSiteContent } from "@/lib/sitecontent";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "Vedic Hemp's mission, the four verticals we operate, and our regulatory posture.",
+  description: "Vedic Hemp's mission, the four categories we operate, and how we follow the rules.",
   alternates: { canonical: "/about" },
 };
 
@@ -104,7 +104,7 @@ export default async function AboutPage() {
         <Card>
           <div className="vh-row" style={{ gap: 10, marginBottom: 10 }}>
             <Scale size={18} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-accent)" }} />
-            <h3 style={{ margin: 0 }}>Our regulatory posture</h3>
+            <h3 style={{ margin: 0 }}>How we follow the rules</h3>
           </div>
           <ul className="small" style={{ paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8, margin: 0 }}>
             <li>
@@ -118,8 +118,8 @@ export default async function AboutPage() {
               reviewed for this before a listing goes live.
             </li>
             <li>
-              All personal data and payment data are stored in Indian data centres (ap-south-1 /
-              ap-south-2), consistent with data-localisation expectations for a platform handling
+              All personal data and payment data are stored in data centres located in India, in
+              line with India&rsquo;s data-storage rules for a platform handling
               health-adjacent information.
             </li>
             <li>
