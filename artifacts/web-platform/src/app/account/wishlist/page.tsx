@@ -39,7 +39,7 @@ export default async function WishlistPage() {
         <>
           <p className="small muted" style={{ marginTop: 0, marginBottom: "var(--sp-3)" }}>
             <span className="tabular">{items.length}</span> saved item{items.length === 1 ? "" : "s"} —
-            prices shown are live; the server recomputes every total at checkout.
+            prices are updated live and confirmed at checkout.
           </p>
           <div className="vh-grid cols-4">
             {items.map((p) => (
@@ -86,7 +86,7 @@ export default async function WishlistPage() {
           </div>
           <p className="small muted vh-row" style={{ gap: 6, marginTop: "var(--sp-3)" }}>
             <Heart size={13} aria-hidden style={{ color: "var(--vh-accent)" }} />
-            Saved items follow this browser session in demo mode; with accounts attached they sync across devices.
+            Saved items stay in your wishlist so you can come back to them later.
           </p>
         </>
       )}

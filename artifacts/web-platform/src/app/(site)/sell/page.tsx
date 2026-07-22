@@ -33,7 +33,7 @@ const BENEFITS: { icon: typeof FileText; title: string; body: string }[] = [
   { icon: FileText, title: "Built-in compliance", body: "The CoA gate, licence checks and ad filters are platform rules — you don't need your own compliance team to stay listed correctly." },
   { icon: Search, title: "Buyers who already trust the badge", body: "Lab-verified and AYUSH badges are shown automatically wherever your product qualifies — no separate marketing spend." },
   { icon: Wallet, title: "Predictable settlements", body: "Two-person sign-off on every payout run, and 30 days' notice before any commission change — so your cash flow isn't a surprise." },
-  { icon: PackageCheck, title: "One dashboard, every order", body: "Inventory, orders, returns and settlement statements in a single seller console across all your compliance classes." },
+  { icon: PackageCheck, title: "One dashboard, every order", body: "Inventory, orders, returns and settlement statements in a single seller console across all your product categories." },
 ];
 
 const ONBOARDING_STEPS: { label: string; at?: string; state: "done" | "current" | "pending" | "failed" }[] = [

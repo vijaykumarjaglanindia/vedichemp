@@ -222,7 +222,7 @@ export default async function HowItWorksPage() {
           </Card>
           <div className="vh-row" style={{ gap: 12, marginTop: "var(--sp-4)", flexWrap: "wrap" }}>
             <Link href="/catalogue" className="vh-btn vh-btn-primary">
-              Browse the catalogue <ArrowRight size={15} aria-hidden />
+              Browse Products <ArrowRight size={15} aria-hidden />
             </Link>
             <Link href="/sell" className="vh-btn vh-btn-ghost">
               <ShieldCheck size={15} aria-hidden /> Become a seller

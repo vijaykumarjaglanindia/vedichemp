@@ -42,7 +42,7 @@ export default async function HelpCentrePage() {
         </h1>
         <p className="muted" style={{ maxWidth: "56ch" }}>
           Every card below goes straight to the page that does the job. Can&rsquo;t find it?{" "}
-          <Link href="/account/support" style={{ fontWeight: 700 }}>Raise a ticket</Link> — most order
+          <Link href="/account/support" style={{ fontWeight: 700 }}>Contact support</Link> — most order
           issues get a first response within a few hours.
         </p>
       </div>

@@ -47,9 +47,9 @@ interface Params {
 
 const SORTS = [
   { key: "popular", label: "Popular" },
-  { key: "price-asc", label: "Price ↑" },
-  { key: "price-desc", label: "Price ↓" },
-  { key: "discount", label: "% Off" },
+  { key: "price-asc", label: "Price – Low to High" },
+  { key: "price-desc", label: "Price – High to Low" },
+  { key: "discount", label: "Discount" },
 ] as const;
 
 const PRICE_BUCKETS: { label: string; min?: number; max?: number }[] = [
@@ -110,7 +110,7 @@ function ProductTile({ p, sponsored }: { p: CatalogProduct; sponsored?: boolean 
           </form>
           <form action={toggleWishlist} style={{ display: "inline-flex" }}>
             <input type="hidden" name="productId" value={p.id} />
-            <button type="submit" className="vh-iconbtn" aria-label={`Toggle ${p.title} in wishlist`} title="Save to wishlist"><Heart size={15} aria-hidden /></button>
+            <button type="submit" className="vh-iconbtn" aria-label={`Save ${p.title} to wishlist`} title="Save to wishlist"><Heart size={15} aria-hidden /></button>
           </form>
         </div>
       </div>
@@ -374,7 +374,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                     <div className="vh-row" style={{ gap: 8 }}>
                       <form action={toggleWishlist} style={{ display: "inline-flex" }}>
                         <input type="hidden" name="productId" value={p.id} />
-                        <button type="submit" className="vh-iconbtn" aria-label={`Toggle ${p.title} in wishlist`} title="Save to wishlist"><Heart size={15} aria-hidden /></button>
+                        <button type="submit" className="vh-iconbtn" aria-label={`Save ${p.title} to wishlist`} title="Save to wishlist"><Heart size={15} aria-hidden /></button>
                       </form>
                       <form action={addToCart}>
                         <input type="hidden" name="productId" value={p.id} />

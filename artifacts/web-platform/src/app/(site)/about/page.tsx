@@ -28,7 +28,7 @@ const VERTICAL_ROWS: ClassMeta[] = Object.values(CLASS_META);
 const VERTICAL_COLUMNS: Column<ClassMeta>[] = [
   {
     key: "vertical",
-    header: "Vertical",
+    header: "Category",
     render: (row) => (
       <span className="vh-row" style={{ gap: 8 }}>
         <span aria-hidden>{row.emoji}</span>
@@ -44,12 +44,12 @@ const VERTICAL_COLUMNS: Column<ClassMeta>[] = [
   },
   {
     key: "age",
-    header: "Age-gated",
+    header: "Age-restricted",
     render: (row) => <span className="small">{row.ageGated ? "21+" : "No"}</span>,
   },
   {
     key: "ads",
-    header: "Advertisable",
+    header: "Advertised",
     render: (row) => <span className="small">{row.advertisable ? "Yes" : "Never"}</span>,
   },
 ];
@@ -88,7 +88,7 @@ export default async function AboutPage() {
       </section>
 
       <section className="vh-section" style={{ paddingBottom: 0 }}>
-        <SectionHead eyebrow="Structure" title="The four verticals" />
+        <SectionHead eyebrow="Structure" title="The four categories" />
         <Card pad0>
           <DataTable columns={VERTICAL_COLUMNS} rows={VERTICAL_ROWS} />
         </Card>

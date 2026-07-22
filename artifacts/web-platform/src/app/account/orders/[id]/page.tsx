@@ -72,7 +72,7 @@ function RealOrderDetail({
       {flags.reorder === "none" && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="info" title="Nothing from this order is available right now">
-            None of these items are currently live and in stock, so nothing was added to your cart. Browse the
+            None of these items are currently in stock, so nothing was added to your cart. Browse the
             catalogue for alternatives.
           </Banner>
         </div>

@@ -198,7 +198,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
             </div>
           )}
           <div className="vh-row-between small" style={{ padding: "3px 0" }}>
-            <span className="muted">Shipping</span>
+            <span className="muted">Delivery</span>
             {cart.shippingPaise === 0 ? <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Free</span> : <MoneyText paise={cart.shippingPaise} />}
           </div>
           {walletApplicable > 0 && (

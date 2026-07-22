@@ -105,7 +105,7 @@ export default async function WalletPage({
               )}
             </div>
             {balanceTrend.length >= 2 && (
-              <Sparkline points={balanceTrend} width={220} height={48} label="Wallet balance over your ledger history" />
+              <Sparkline points={balanceTrend} width={220} height={48} label="Wallet balance over your transaction history" />
             )}
           </Card>
 
@@ -147,7 +147,7 @@ export default async function WalletPage({
 
         <Card
           title={title(<ReceiptText {...I} />, "Transaction history")}
-          action={<span className="small muted">Append-only ledger — entries are never edited or deleted</span>}
+          action={<span className="small muted">Every entry is permanent — nothing is edited or deleted</span>}
           pad0
         >
           <DataTable columns={columns} rows={rows} />
@@ -155,7 +155,7 @@ export default async function WalletPage({
 
         <div id="giftcard" style={{ scrollMarginTop: 90 }}>
           <Card title="Gift cards & store credit">
-            {gift === "ok" && <div style={{ marginBottom: 10 }}><Banner severity="ok" title="Gift card redeemed">The credit is in your ledger and applies automatically at checkout.</Banner></div>}
+            {gift === "ok" && <div style={{ marginBottom: 10 }}><Banner severity="ok" title="Gift card redeemed">The credit is added to your wallet and applies automatically at checkout.</Banner></div>}
             {gift === "bad" && <div style={{ marginBottom: 10 }}><Banner severity="danger">That code doesn&rsquo;t match an active gift card — check for typos.</Banner></div>}
             {gift === "used" && <div style={{ marginBottom: 10 }}><Banner severity="warn">That gift card was already redeemed on this account.</Banner></div>}
             <div className="vh-row-between" style={{ marginBottom: 10 }}>
@@ -169,7 +169,7 @@ export default async function WalletPage({
               </div>
               <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit">Redeem</button>
             </form>
-            <p className="small muted" style={{ margin: "8px 0 0" }}>Codes redeem once per account, server-validated. Credit spends at checkout; it is never withdrawable as cash.</p>
+            <p className="small muted" style={{ margin: "8px 0 0" }}>Each code can be redeemed once per account. The credit is used at checkout and can&rsquo;t be withdrawn as cash.</p>
           </Card>
         </div>
 

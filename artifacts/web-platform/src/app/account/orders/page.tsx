@@ -86,7 +86,7 @@ export default async function OrdersPage({
       key: "status", header: "Status", render: (o) => (
         <span className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
           <StatusPill tone={toneForStatus(o.status)}>{o.status.replace(/_/g, " ")}</StatusPill>
-          {o.eta && <span className="small muted">ETA {o.eta}</span>}
+          {o.eta && <span className="small muted">Arriving in {o.eta}</span>}
         </span>
       ),
     },

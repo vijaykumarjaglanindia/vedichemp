@@ -53,7 +53,7 @@ export function ProductCard({
         <button
           type="submit"
           className="vh-iconbtn"
-          aria-label={`Toggle ${p.title} in wishlist`}
+          aria-label={`Save ${p.title} to wishlist`}
           title="Save to wishlist"
           style={{ background: "var(--vh-surface)", border: "1px solid var(--vh-line)" }}
         >

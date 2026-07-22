@@ -65,7 +65,7 @@ async function checkPin(pin: string, cls: string): Promise<{ ok: boolean; title:
   const { serviceability } = await import("@/lib/shipping");
   const svc = await serviceability(pin, cls);
   if (!svc.ok && svc.reason === "pin") {
-    return { ok: false, title: "That PIN doesn't look right", body: "Enter the 6-digit PIN code of the delivery address." };
+    return { ok: false, title: "Please enter a valid pincode", body: "Enter the 6-digit PIN code of the delivery address." };
   }
   const regulated = cls === "CBD_WELLNESS";
   if (!svc.ok && svc.reason === "regulated") {
@@ -82,7 +82,7 @@ async function checkPin(pin: string, cls: string): Promise<{ ok: boolean; title:
     title: `Delivers to ${pin} by ${eta}`,
     body: regulated
       ? "Shipped by the seller's delivery partner · ID checked on handover (21+)."
-      : "Shipped by the seller's courier · pay securely online (UPI, cards, netbanking).",
+      : "Shipped by the seller's courier · pay securely online (UPI, Cards & Net Banking).",
   };
 }
 
@@ -230,7 +230,7 @@ export default async function ProductDetailPage({
               <div className="vh-product-media" style={{ aspectRatio: "4 / 3", fontSize: "clamp(5rem, 14vw, 8rem)", borderRadius: "var(--vh-radius)" }} aria-hidden>
                 {product.emoji}
               </div>
-              <p className="small muted" style={{ marginTop: 8 }}>Illustrative product imagery.</p>
+              <p className="small muted" style={{ marginTop: 8 }}>Image is for representation only.</p>
             </>
           )}
 
@@ -438,7 +438,7 @@ export default async function ProductDetailPage({
                     <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
                       <Rating value={myReview.rating} />
                       <strong className="small" style={{ color: "var(--vh-ink)" }}>Your review</strong>
-                      <span className="vh-pill vh-pill-warn">Pending moderation</span>
+                      <span className="vh-pill vh-pill-warn">Under review</span>
                     </div>
                     <div className="small muted vh-prose" style={{ margin: "6px 0 0" }} dangerouslySetInnerHTML={{ __html: mdToHtml(myReview.text) }} />
                   </div>
@@ -676,7 +676,7 @@ export default async function ProductDetailPage({
             )}
             <div className="vh-row small muted" style={{ gap: 6, marginBottom: 12 }}>
               <Truck size={13} aria-hidden />
-              <span>Ships in 24–48h from a licensed seller · tracked delivery</span>
+              <span>Usually dispatched in 24–48 hrs from a licensed seller · Tracked delivery</span>
             </div>
 
             {/* Bank & platform offers */}
@@ -687,7 +687,7 @@ export default async function ProductDetailPage({
               {vedic10Live && (
                 <span className="small" style={{ paddingLeft: 22 }}>{vedic10!.label} · code <span className="vh-kbd">VEDIC10</span></span>
               )}
-              <span className="small" style={{ paddingLeft: 22 }}>Free shipping over <MoneyText paise={freeShipAtPaise} /> · delivery below that is calculated at checkout by destination · {codOn ? "COD available" : "pay online"}</span>
+              <span className="small" style={{ paddingLeft: 22 }}>Free Delivery over <MoneyText paise={freeShipAtPaise} /> · delivery charges are calculated at checkout · {codOn ? "COD available" : "pay online"}</span>
             </div>
 
             {/* Stock status — the server is the authority; the button follows
@@ -695,7 +695,7 @@ export default async function ProductDetailPage({
             {shownStock <= 0 ? (
               <div role="status" style={{ marginBottom: 12, padding: "12px 14px", borderRadius: "var(--vh-radius-sm)", border: "1px solid var(--vh-line)", borderLeft: "3px solid var(--vh-danger)", background: "color-mix(in srgb, var(--vh-danger-bg) 40%, var(--vh-surface))" }}>
                 <div style={{ fontWeight: 700, color: "var(--vh-danger)" }}>Out of stock{productHasVariants && selected ? ` — ${selected.label}` : ""}</div>
-                <div className="small muted">{productHasVariants ? "Pick another option above, or add it to your wishlist for when it's restocked." : "The seller has no units on hand. Add it to your wishlist and we'll show it again when it's restocked."}</div>
+                <div className="small muted">{productHasVariants ? "Pick another option above, or add it to your wishlist for when it's restocked." : "This item is currently out of stock. Add it to your wishlist and we'll show it again when it's restocked."}</div>
               </div>
             ) : maxSelectable < minQty ? (
               <div role="status" style={{ marginBottom: 12, padding: "12px 14px", borderRadius: "var(--vh-radius-sm)", border: "1px solid var(--vh-line)", borderLeft: "3px solid var(--vh-warn)", background: "color-mix(in srgb, var(--vh-warn-bg) 40%, var(--vh-surface))" }}>
@@ -768,7 +768,7 @@ export default async function ProductDetailPage({
                   <span className="muted" style={{ display: "block", fontWeight: 400 }}>{pinResult.body}</span>
                 </span>
               ) : (
-                <span className="vh-help">We&apos;ll confirm delivery availability for your PIN before you pay.</span>
+                <span className="vh-help">Enter your pincode to check delivery date &amp; availability.</span>
               )}
             </form>
 
@@ -872,7 +872,7 @@ export default async function ProductDetailPage({
             </div>
           </AdSlot>
           <p className="small muted" style={{ marginTop: 8, marginBottom: 0, fontSize: ".72rem" }}>
-            Placements configured in Admin → Ads.
+            Sponsored
           </p>
         </section>
       )}

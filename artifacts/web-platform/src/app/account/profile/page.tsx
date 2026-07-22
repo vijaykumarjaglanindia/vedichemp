@@ -61,7 +61,7 @@ const SECTIONS = [
 
 const SEC_NOTES: Record<string, { title: string; body: string }> = {
   pwd: { title: "Reset link sent", body: "Check your registered email — the link expires in 30 minutes. The password never changes inline in a session." },
-  passkey: { title: "Passkey enrolment requested", body: "Finish enrolment from the prompt on a WebAuthn-capable device. Until then, sign-in continues with email + OTP." },
+  passkey: { title: "Passkey enrolment requested", body: "Finish setup from the prompt on a supported device. Until then, sign-in continues with email + OTP." },
   "2fa": { title: "Two-factor preference updated", body: "Sensitive changes (contact details, payout info) always re-prompt regardless of this setting." },
   confirm: { title: "Deletion not confirmed", body: "Type DELETE exactly to confirm — nothing was changed." },
   deleteblocked: { title: "Deletion on hold", body: "You have an order still in flight (or a return being settled). We can't erase your account until it completes — your refund rights come first. Try again once it's delivered or resolved." },
@@ -123,17 +123,17 @@ export default async function ProfilePage({
             <div className="vh-field">
               <FieldLabel text="Mobile number" verified={Boolean(mobile)} />
               <input className="vh-input" id="pf-mobile" aria-label="Mobile number" defaultValue={mobile} placeholder="Not added yet" readOnly />
-              <span className="vh-help">{mobile ? "Changing this re-prompts for OTP or passkey (step-up auth)." : "Add a mobile number for delivery and order updates."}</span>
+              <span className="vh-help">{mobile ? "For your security, changing this asks you to confirm with an OTP or passkey." : "Add a mobile number for delivery and order updates."}</span>
             </div>
             <div className="vh-field">
               <FieldLabel text="Email" verified />
               <input className="vh-input" id="pf-email" aria-label="Email" defaultValue={maskedEmail} readOnly />
-              <span className="vh-help">Changing this re-prompts for OTP or passkey (step-up auth).</span>
+              <span className="vh-help">For your security, changing this asks you to confirm with an OTP or passkey.</span>
             </div>
             <div className="vh-field">
               <span className="vh-label vh-row" style={{ gap: 8 }}>
                 Date of birth
-                <StatusPill tone="neutral">Write-once</StatusPill>
+                <StatusPill tone="neutral">Set once</StatusPill>
               </span>
               <input className="vh-input" id="pf-dob" aria-label="Date of birth" defaultValue={dob} placeholder="Not set" readOnly />
               <span className="vh-help">
@@ -188,7 +188,7 @@ export default async function ProfilePage({
             </div>
           </div>
 
-          <Banner severity="info" title="Step-up authentication" icon="🔐">
+          <Banner severity="info" title="Extra confirmation for sensitive changes" icon="🔐">
             Changing your mobile number, email, or bank/payout details always re-prompts for OTP or
             passkey confirmation, even mid-session.
           </Banner>
@@ -205,7 +205,7 @@ export default async function ProfilePage({
               </li>
             </ul>
             <p className="small muted" style={{ margin: "8px 0 0" }}>
-              You&rsquo;re signed in on this device with a single session cookie. Signing out below ends it; sensitive
+              You&rsquo;re signed in on this device. Signing out below ends it; sensitive
               changes re-prompt for OTP or passkey regardless.
             </p>
           </div>
@@ -269,7 +269,7 @@ export default async function ProfilePage({
           </div>
           <div style={{ padding: "16px 18px" }}>
             <p className="small muted" style={{ margin: "0 0 8px" }}>
-              Every consent change is recorded in an append-only ledger with a timestamp — you can request
+              Every consent change is recorded with a timestamp — you can request
               the full history with your data export.
             </p>
             {/* Plain anchor on purpose: it's a file download from a route handler,
@@ -296,9 +296,9 @@ export default async function ProfilePage({
         </Card>
 
         <Card title={title(<Trash2 {...I} />, "Delete account", "delete")}>
-          <Banner severity="warn" title="Account deletion is high-friction, by design" icon="⚠️">
+          <Banner severity="warn" title="Deleting your account has a few safeguards" icon="⚠️">
             Deletion is blocked while any of the following are true: an order is in transit, a return or
-            dispute is open, a settlement involving you is unresolved, or a regulatory hold (e.g. an
+            dispute is open, a payment or refund involving you is still being processed, or a regulatory hold (e.g. an
             active audit trail reference) applies. Health data (prescriptions, access logs) is retained
             per the statutory record-keeping period even after deletion is otherwise approved.
           </Banner>

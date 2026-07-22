@@ -459,7 +459,7 @@ export default async function HomePage() {
           <SectionHead
             eyebrow="Sellers"
             title={content.headSellers ?? ""}
-            sub="Health scores reflect fulfilment, returns and compliance history — computed by the platform, not self-reported."
+            sub="Reliability scores reflect fulfilment, returns and compliance history — computed by the platform, not self-reported."
           />
           <div className="vh-grid cols-3">
             {featuredSellers.map((s) => (
@@ -477,7 +477,7 @@ export default async function HomePage() {
                   </span>
                   <div>
                     <div style={{ fontWeight: 800, color: "var(--vh-ink)" }}>{s.name}</div>
-                    <span className="vh-pill vh-pill-ok">Health score {s.healthScore}</span>
+                    <span className="vh-pill vh-pill-ok">Reliability score {s.healthScore}</span>
                   </div>
                 </div>
                 <div className="vh-row" style={{ gap: 6, flexWrap: "wrap", marginBottom: 12 }}>

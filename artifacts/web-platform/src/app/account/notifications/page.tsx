@@ -51,7 +51,7 @@ export default async function NotificationsPage() {
               What can be turned off
             </span>
           }
-          action={<span className="small muted">§0.9 suppression matrix</span>}
+          action={<span className="small muted">Notification settings</span>}
         >
           <div style={{ overflowX: "auto" }}>
             <table className="vh-table">
@@ -59,7 +59,7 @@ export default async function NotificationsPage() {
                 <tr>
                   <th style={{ textAlign: "left" }}>Category</th>
                   <th style={{ textAlign: "left" }}>Kind</th>
-                  <th style={{ textAlign: "left" }}>Suppressible?</th>
+                  <th style={{ textAlign: "left" }}>Can I turn it off?</th>
                   <th style={{ textAlign: "left" }}>Why</th>
                 </tr>
               </thead>

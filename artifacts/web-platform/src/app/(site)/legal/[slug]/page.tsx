@@ -92,7 +92,7 @@ export default async function LegalPage({ params }: { params: Promise<{ slug: st
         ))}
       </nav>
       <p className="small muted" style={{ marginTop: "var(--sp-3)" }}>
-        Questions about a policy? Write to {content.supportEmail} or raise a ticket from{" "}
+        Questions about a policy? Write to {content.supportEmail} or contact support from{" "}
         <Link href="/account/support">My account → Support</Link>.
       </p>
     </div>

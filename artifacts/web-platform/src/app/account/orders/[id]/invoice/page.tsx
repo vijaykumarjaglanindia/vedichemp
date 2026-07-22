@@ -200,7 +200,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         </div>
 
         <p className="small muted" style={{ margin: "var(--sp-4) 0 0" }}>
-          All amounts include applicable GST and are computed server-side in integer paise.
+          All amounts include applicable GST.
           Vedic Hemp collects payment on the seller&rsquo;s behalf; the product is sold and shipped by
           the seller named above. Support: support@vedichemp.com
         </p>

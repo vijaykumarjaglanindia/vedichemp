@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Verified stores — Vedic Hemp",
-  description: "Browse identity-verified sellers on Vedic Hemp — India's trusted, licensed hemp, CBD wellness and Ayurveda marketplace.",
+  description: "Shop from verified sellers on Vedic Hemp — India's licensed marketplace for hemp, CBD wellness and Ayurveda.",
   alternates: { canonical: "/stores" },
   openGraph: { title: "Verified stores — Vedic Hemp", description: "Browse identity-verified sellers on Vedic Hemp.", url: "/stores", type: "website", siteName: "Vedic Hemp" },
 };
@@ -77,12 +77,12 @@ export default async function StoresDirectoryPage() {
         <SectionHead
           eyebrow="Marketplace"
           title="Verified stores"
-          sub="Every store here is a verified seller that's currently selling. A seller appears only while their verification holds and they have live products."
+          sub="Every store here is a verified seller with products in stock. A store appears only while its verification is active and it has products available."
         />
 
         {stores.length === 0 ? (
           <Card>
-            <EmptyState icon="🏪" headline="No stores to show yet" sub="Verified sellers with live products appear here." cta={{ label: "Browse all products", href: "/catalogue" }} />
+            <EmptyState icon="🏪" headline="No stores to show yet" sub="Verified sellers with products in stock appear here." cta={{ label: "Browse all products", href: "/catalogue" }} />
           </Card>
         ) : (
           <div className="vh-grid cols-3">

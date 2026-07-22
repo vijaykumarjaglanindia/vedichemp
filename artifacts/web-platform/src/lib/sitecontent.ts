@@ -81,7 +81,7 @@ export const SITE_FIELDS: SiteField[] = [
   },
   {
     key: "footerTrust", group: "Menus", label: "Footer — Trust column", kind: "rich", max: 500,
-    def: "- How it works | /trust\n- Lab test reports | /trust#coa\n- How prescriptions work | /trust#prescriptions\n- Our six prohibitions | /trust#prohibitions",
+    def: "- How it works | /trust\n- Lab test reports | /trust#coa\n- How prescriptions work | /trust#prescriptions\n- Safety & compliance | /trust#prohibitions",
   },
   {
     key: "footerCompany", group: "Menus", label: "Footer — Company column", kind: "rich", max: 500,
@@ -118,7 +118,7 @@ export const SITE_FIELDS: SiteField[] = [
 
   {
     key: "heroCtaPrimary", group: "Homepage hero", label: "Hero — primary button label", kind: "text", max: 40,
-    def: "Shop the catalogue",
+    def: "Shop Now",
   },
   {
     key: "heroCtaSecondary", group: "Homepage hero", label: "Hero — secondary button label", kind: "text", max: 50,
@@ -126,14 +126,14 @@ export const SITE_FIELDS: SiteField[] = [
   },
 
   /* ── Homepage headings (every section title) ───────────────────── */
-  { key: "headCategories", group: "Homepage headings", label: "Categories section", kind: "text", max: 90, def: "Three ways in — hemp, Ayurveda, CBD" },
+  { key: "headCategories", group: "Homepage headings", label: "Categories section", kind: "text", max: 90, def: "Shop hemp, Ayurveda & CBD" },
   { key: "headDeals", group: "Homepage headings", label: "Deals section", kind: "text", max: 90, def: "Today's deals from sellers" },
   { key: "headSponsored", group: "Homepage headings", label: "Sponsored section", kind: "text", max: 90, def: "Sponsored picks" },
   { key: "headBestsellers", group: "Homepage headings", label: "Bestsellers section", kind: "text", max: 90, def: "What buyers keep reordering" },
   { key: "headGoals", group: "Homepage headings", label: "Goals section", kind: "text", max: 90, def: "Built around your routine" },
   { key: "headLearn", group: "Homepage headings", label: "Learn section", kind: "text", max: 90, def: "New to hemp? Start here" },
   { key: "headWhy", group: "Homepage headings", label: "Why-us section", kind: "text", max: 90, def: "How the marketplace works" },
-  { key: "headSellers", group: "Homepage headings", label: "Sellers section", kind: "text", max: 90, def: "Storefronts with their licences showing" },
+  { key: "headSellers", group: "Homepage headings", label: "Sellers section", kind: "text", max: 90, def: "Verified sellers with licences on display" },
   { key: "headTestimonials", group: "Homepage headings", label: "Testimonials section", kind: "text", max: 90, def: "What buyers say" },
   { key: "headFaq", group: "Homepage headings", label: "FAQ section", kind: "text", max: 90, def: "Common questions, straight answers" },
 

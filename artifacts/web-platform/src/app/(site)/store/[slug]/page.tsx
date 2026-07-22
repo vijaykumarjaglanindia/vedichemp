@@ -71,7 +71,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
           icon="🏪"
           headline="This store isn't available"
           sub="The store may have closed, changed its name, or not completed verification yet."
-          cta={{ label: "Browse the catalogue", href: "/catalogue" }}
+          cta={{ label: "Browse Products", href: "/catalogue" }}
         />
       </div>
     );
@@ -242,7 +242,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
             <AdBanner
               cls="CBD_WELLNESS" placement="store-campaign" brand={seller.name}
               headline="Monsoon wellness: seller-funded 20% off on the recovery range"
-              cta="See campaign items" href="/catalogue?class=CBD_WELLNESS"
+              cta="Shop the offer" href="/catalogue?class=CBD_WELLNESS"
             />
           </div>
 
@@ -289,9 +289,9 @@ export default async function StorePage({ params, searchParams }: { params: Prom
           {products.length === 0 ? (
             <EmptyState
               icon="📦"
-              headline="No public listings right now"
+              headline="No products available right now"
               sub="This seller's products may be between batches — a lab-tested product goes offline if its lab report expires."
-              cta={{ label: "Browse the catalogue", href: "/catalogue" }}
+              cta={{ label: "Browse Products", href: "/catalogue" }}
             />
           ) : (
             <div className="vh-grid cols-4">
@@ -383,7 +383,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
                   <div className="vh-field">
                     <label className="vh-label" htmlFor="rvw-body">Your review</label>
                     <textarea className="vh-input" id="rvw-body" name="body" rows={3} minLength={12} maxLength={600} required placeholder="How was the packaging, dispatch and service?" />
-                    <span className="vh-help">Composition and service, not health claims — the copy-check runs on submit.</span>
+                    <span className="vh-help">Write about the product and service, not health claims.</span>
                   </div>
                   <button type="submit" className="vh-btn vh-btn-primary" style={{ justifySelf: "start" }}>Submit review</button>
                 </form>
