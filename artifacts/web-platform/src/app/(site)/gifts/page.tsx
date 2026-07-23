@@ -37,7 +37,7 @@ export default async function GiftFinderPage({
   if (!flags.giftFinder) {
     return (
       <div className="vh-container" style={{ paddingTop: "var(--sp-5)", paddingBottom: "var(--sp-7)" }}>
-        <EmptyState icon="🎁" headline="The gift finder is taking a break" sub="This feature is currently switched off." cta={{ label: "Browse the catalogue", href: "/catalogue" }} />
+        <EmptyState icon="🎁" headline="The gift finder is taking a break" sub="This feature is currently switched off." cta={{ label: "Browse Products", href: "/catalogue" }} />
       </div>
     );
   }

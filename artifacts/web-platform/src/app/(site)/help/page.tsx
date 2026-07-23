@@ -51,7 +51,7 @@ export default async function HelpCentrePage() {
       <Card>
         <div className="vh-grid cols-3">
           {[
-            ["1. Add to cart", "Browse the catalogue or search — every regulated listing shows its lab report before you buy."],
+            ["1. Add to cart", "Browse products or search — every lab-tested listing shows its lab report before you buy."],
             ["2. Pay securely", "UPI, cards or netbanking at a one-page checkout. Your address book prefills everything."],
             ["3. Track to your door", "The seller packs and ships; you follow the same status they update, order to doorstep."],
           ].map(([t, b]) => (

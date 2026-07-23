@@ -94,7 +94,7 @@ export default async function SellerLoginPage({ searchParams }: { searchParams: 
             </div>
             <input type="hidden" name="otprole" value="SELLER" />
             <input type="hidden" name="back" value="/seller-login" />
-            <button className="vh-btn vh-btn-outline" type="submit">Send one-time code</button>
+            <button className="vh-btn vh-btn-outline" type="submit">Send OTP</button>
           </form>
         ) : (
           <form action={verifyOtp} className="vh-card" style={{ display: "grid", gap: 12 }}>

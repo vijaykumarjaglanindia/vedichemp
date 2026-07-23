@@ -17,7 +17,7 @@ export default function SiteNotFound() {
         icon="🌿"
         headline="This page doesn't exist"
         sub="The link may be old, mistyped, or the page may have moved. The catalogue is the best place to start."
-        cta={{ label: "Browse the catalogue", href: "/catalogue" }}
+        cta={{ label: "Browse Products", href: "/catalogue" }}
       />
       <p className="small muted" style={{ textAlign: "center", marginTop: "var(--sp-3)" }}>
         Or go back to the <Link href="/">homepage</Link> · read about{" "}
