@@ -25,8 +25,9 @@ import type {
 } from "./types";
 import { applyRules } from "./rules";
 import { detectDuplicates, type ExistingListing } from "./dedupe";
+import { demoProductsFor, methodMeta } from "./connectors";
 import * as db from "./store";
-import { readCatalog, createListing, REGULATED_CLASSES } from "@/lib/catalog";
+import { readCatalog, createListing, updateListing, setStock, findProduct, REGULATED_CLASSES } from "@/lib/catalog";
 import { violatesClaimsCopy } from "@/lib/claims";
 import { writeAudit } from "@/lib/audit";
 import type { ComplianceClass } from "@prisma/client";
@@ -161,9 +162,46 @@ export async function runImport(input: {
     if (dec.action === "skip") { skipped++; await log("info", `Skipped: ${dec.reason}`, p.sku || p.title); continue; }
 
     if (dec.action === "update") {
-      updated++;
-      changes.push({ kind: "price", productRef: p.sku || p.title, to: `₹${(p.pricing.pricePaise / 100).toFixed(2)}` });
-      await log("info", `Matched existing "${dec.matchedTitle}" — updated from source.`, p.sku || p.title);
+      // Apply the source's price/stock/copy onto the matched listing for real.
+      // An update never changes status: a DRAFT stays DRAFT and a regulated
+      // product stays behind the CoA publish gate (A2). We only ever move
+      // price, stock and descriptive fields — never eligibility.
+      const listingId = dupes.get(p.sourceId)?.matchedListingId;
+      const current = listingId ? await findProduct(listingId) : null;
+      if (!current) {
+        // The match vanished between preview and run — treat as unchanged.
+        await log("info", `Matched "${dec.matchedTitle}" but it is no longer in the catalogue — skipped.`, p.sku || p.title);
+        skipped++;
+        continue;
+      }
+
+      const patch: Parameters<typeof updateListing>[1] = {};
+      const changed: string[] = [];
+      if (p.pricing.pricePaise !== current.pricePaise) {
+        patch.pricePaise = p.pricing.pricePaise;
+        changes.push({ kind: "price", productRef: p.sku || p.title, from: `₹${(current.pricePaise / 100).toFixed(2)}`, to: `₹${(p.pricing.pricePaise / 100).toFixed(2)}` });
+        changed.push("price");
+      }
+      const srcMrp = p.pricing.compareAtPaise ?? p.pricing.msrpPaise;
+      if (srcMrp != null && srcMrp !== current.mrpPaise) { patch.mrpPaise = srcMrp; changed.push("mrp"); }
+      const srcDesc = (p.description ?? p.shortDescription ?? "").replace(/<[^>]+>/g, "").slice(0, 4000);
+      if (srcDesc && srcDesc !== current.desc) { patch.desc = srcDesc; changes.push({ kind: "description", productRef: p.sku || p.title }); changed.push("description"); }
+
+      if (Object.keys(patch).length > 0) await updateListing(current.id, patch);
+
+      const srcQty = p.inventory.quantity;
+      if (typeof srcQty === "number" && srcQty !== current.stockQty) {
+        await setStock(current.id, Math.max(0, srcQty));
+        changes.push({ kind: "stock", productRef: p.sku || p.title, from: String(current.stockQty), to: String(srcQty) });
+        changed.push("stock");
+      }
+
+      if (changed.length === 0) {
+        await log("info", `Matched "${dec.matchedTitle}" — no changes since last sync.`, p.sku || p.title);
+      } else {
+        updated++;
+        await log("info", `Updated "${dec.matchedTitle}" from source (${changed.join(", ")}).`, p.sku || p.title);
+      }
       continue;
     }
 
@@ -222,4 +260,70 @@ export async function runImport(input: {
   });
 
   return { historyId, imported, updated, skipped, failed, warnings, gatedRegulated, blockedMedical, changes, failures };
+}
+
+/* ─────────────────────────── Synchronization ─────────────────────────── */
+
+/**
+ * Re-sync one connected store: re-fetch its catalogue, then run the same
+ * gated pipeline as a first import. New products are created as DRAFT; products
+ * that already exist are updated in place (price/stock/copy only — never
+ * eligibility). Medical Cannabis is refused on every sync (A1) and regulated
+ * products stay behind the CoA gate (A2). Returns null if the store is gone.
+ *
+ * The connector seam is demo-backed in this environment (no outbound network to
+ * arbitrary seller stores), so the re-fetch is the store's own deterministic
+ * catalogue keyed by its endpoint. Swapping in a live HTTP client changes only
+ * where `products` comes from — every gate below is unchanged.
+ */
+export async function syncStore(input: {
+  storeId: string;
+  actor: string;
+  trigger?: "manual" | "scheduled" | "webhook";
+}): Promise<ImportSummary | null> {
+  const store = await db.findStore(input.storeId);
+  if (!store) return null;
+
+  const seed = store.endpoint || `${methodMeta(store.method).name}-demo`;
+  const products = demoProductsFor(seed);
+  const rules = await db.getRules();
+  const options: ImportOptions = { mode: "everything", duplicateStrategy: "update", deleteRemoved: false };
+
+  return runImport({ store, products, rules, options, actor: input.actor, trigger: input.trigger ?? "scheduled" });
+}
+
+const CADENCE_MS: Record<string, number> = {
+  hourly: 3_600_000,
+  daily: 86_400_000,
+  weekly: 604_800_000,
+  monthly: 2_592_000_000, // 30 days
+};
+
+/**
+ * Is a store due for an automatic re-sync now? Only the time-based cadences are
+ * ever "due": `manual` never runs on its own and `realtime` is webhook-driven
+ * (the store pushes to us), so neither is polled. A store that has never synced
+ * on a time-based cadence is due immediately.
+ */
+export function isDue(store: { schedule?: string; lastSyncAt?: string }, now: number = Date.now()): boolean {
+  const interval = store.schedule ? CADENCE_MS[store.schedule] : undefined;
+  if (!interval) return false;
+  if (!store.lastSyncAt) return true;
+  return now - new Date(store.lastSyncAt).getTime() >= interval;
+}
+
+/** The connected stores that are due for an automatic re-sync right now. */
+export function dueStores<T extends { schedule?: string; lastSyncAt?: string }>(stores: T[], now: number = Date.now()): T[] {
+  return stores.filter((s) => isDue(s, now));
+}
+
+/** Run every store whose cadence is currently due. Returns one summary per store synced. */
+export async function runDueSyncs(actor: string, now: number = Date.now()): Promise<ImportSummary[]> {
+  const due = dueStores(await db.listStores(), now);
+  const out: ImportSummary[] = [];
+  for (const s of due) {
+    const summary = await syncStore({ storeId: s.id, actor, trigger: "scheduled" });
+    if (summary) out.push(summary);
+  }
+  return out;
 }

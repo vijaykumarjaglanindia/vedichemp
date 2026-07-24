@@ -14,7 +14,7 @@ import { Card, EmptyState, StatusPill } from "@/components/ui";
 import { ImpShell, ImpHero, HealthPill, CapabilityChips, MethodGlyph } from "../_ui";
 import { listStores } from "@/lib/import/store";
 import { methodMeta } from "@/lib/import/connectors";
-import { removeStoreAction } from "../actions";
+import { removeStoreAction, syncStoreAction } from "../actions";
 
 export const metadata: Metadata = { title: "Connected Stores" };
 export const dynamic = "force-dynamic";
@@ -58,7 +58,10 @@ export default async function ConnectedStoresPage() {
                     </div>
                   )}
                   <div className="vh-row" style={{ gap: 8, marginTop: 12 }}>
-                    <Link href="/admin/import/wizard" className="vh-btn vh-btn-sm vh-btn-ghost"><RefreshCw size={13} aria-hidden /> Sync now</Link>
+                    <form action={syncStoreAction}>
+                      <input type="hidden" name="id" value={s.id} />
+                      <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost"><RefreshCw size={13} aria-hidden /> Sync now</button>
+                    </form>
                     <Link href="/admin/import/scheduler" className="vh-btn vh-btn-sm vh-btn-ghost">Schedule</Link>
                     <form action={removeStoreAction} style={{ marginLeft: "auto" }}>
                       <input type="hidden" name="id" value={s.id} />

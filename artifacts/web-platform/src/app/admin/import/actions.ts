@@ -13,7 +13,7 @@ import { revalidatePath } from "next/cache";
 import { getSession } from "@/lib/auth-lite";
 import { writeAudit } from "@/lib/audit";
 import { connectorFor, methodMeta } from "@/lib/import/connectors";
-import { previewImport, runImport } from "@/lib/import/service";
+import { previewImport, runImport, syncStore, runDueSyncs } from "@/lib/import/service";
 import * as db from "@/lib/import/store";
 import type {
   ConnectionMethod, NormalizedProduct, ImportRules, ImportOptions, ImportSummary,
@@ -77,6 +77,29 @@ export async function removeStoreAction(formData: FormData): Promise<void> {
     await writeAudit({ actor: await actor(), action: "IMPORT_STORE_DISCONNECT", target: store.label, outcome: "OK" });
   }
   revalidatePath("/admin/import/stores");
+}
+
+/** Re-sync one connected store now (button on Connected Stores / Scheduler). */
+export async function syncStoreAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("id") ?? "");
+  const store = await db.findStore(id);
+  if (store) {
+    await syncStore({ storeId: id, actor: await actor(), trigger: "manual" });
+    // syncStore audits its own IMPORT_RUN; the store's lastSyncAt/health are patched inside.
+  }
+  revalidatePath("/admin/import/stores");
+  revalidatePath("/admin/import/scheduler");
+  revalidatePath("/admin/import/history");
+  revalidatePath("/admin/import");
+}
+
+/** Run every store whose cadence is currently due (manual trigger of the scheduled path). */
+export async function runDueSyncsAction(): Promise<void> {
+  const summaries = await runDueSyncs(await actor());
+  await writeAudit({ actor: await actor(), action: "IMPORT_DUE_SYNCS_RUN", target: "scheduler", outcome: "OK", note: `${summaries.length} store(s) synced.` });
+  revalidatePath("/admin/import/scheduler");
+  revalidatePath("/admin/import/history");
+  revalidatePath("/admin/import");
 }
 
 export async function setScheduleAction(formData: FormData): Promise<void> {
