@@ -63,7 +63,7 @@ export default async function SubscriptionsPage({
         {done && DONE_NOTES[done] && <Banner severity="ok">{DONE_NOTES[done]}</Banner>}
         {err && ERR_NOTES[err] && <Banner severity="danger" title="Not applied">{ERR_NOTES[err]}</Banner>}
         <Banner severity="info" title="Skip and pause are safe to undo" icon="🔁">
-          Skipping a delivery is idempotent (repeated taps never double-skip) and can be undone before it
+          Skipping a delivery is safe to repeat — tapping more than once never double-skips and can be undone before it
           ships. If a subscription's prescription requirement lapses, the subscription is automatically
           <strong> paused</strong> — never cancelled or silently shipped — until you renew.
         </Banner>
@@ -118,12 +118,12 @@ export default async function SubscriptionsPage({
                     </div>
                   )}
                   <div className="vh-row-between" style={{ marginBottom: 8 }}>
-                    <span className="small muted">Cadence</span>
+                    <span className="small muted">Frequency</span>
                     <span className="small">{cadenceLabel(s.cadenceDays)}</span>
                   </div>
                   <div className="vh-row-between" style={{ marginBottom: 8 }}>
                     <span className="small muted">Next delivery</span>
-                    <span className="small">{autoPaused ? "Paused — awaiting valid Rx" : cancelled ? "—" : s.nextDeliveryAt}</span>
+                    <span className="small">{autoPaused ? "Paused — awaiting a valid prescription" : cancelled ? "—" : s.nextDeliveryAt}</span>
                   </div>
                   <div className="vh-row-between" style={{ marginBottom: 8 }}>
                     <span className="small muted">Price per delivery</span>
@@ -133,7 +133,7 @@ export default async function SubscriptionsPage({
                   {autoPaused && (
                     <Banner severity="warn" icon="⏳">
                       Auto-paused: this product requires a verified, unexpired prescription.{" "}
-                      <Link href="/account/medical">Renew your Rx →</Link>
+                      <Link href="/account/medical">Renew your prescription →</Link>
                     </Banner>
                   )}
 
@@ -170,7 +170,7 @@ export default async function SubscriptionsPage({
                     </div>
                   )}
                   <p className="small muted" style={{ margin: "8px 0 0" }}>
-                    Skip is idempotent and undoable before the delivery ships.
+                    You can skip safely — tapping more than once never double-skips — and undo it before the delivery ships.
                   </p>
                 </Card>
               );

@@ -74,7 +74,7 @@ export async function EmailSignInForm({
         <div className="vh-field">
           <label htmlFor="si-email" className="vh-label">{emailLabel} <span className="req">*</span></label>
           <input id="si-email" name="email" type="email" className="vh-input" placeholder={emailPlaceholder} autoComplete="email" required autoFocus />
-          <span className="vh-help">{help ?? "We'll email you a one-time code to sign in."}</span>
+          <span className="vh-help">{help ?? "We'll email you an OTP to sign in."}</span>
         </div>
         <button type="submit" className="vh-btn vh-btn-primary vh-btn-lg" style={{ width: "100%" }}>Email me a code</button>
       </form>

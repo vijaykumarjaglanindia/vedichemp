@@ -94,8 +94,8 @@ export default async function AdminAdsPage({
             <p className="small muted" style={{ marginTop: 0 }}>
               Every creative is reviewed by a human before it can serve. The reviewer checks the headline
               against the claims rule (no cure/treat/prevent — the same check the API already ran), the
-              landing listing, and the Sponsored-label rendering. MED_CANNABIS cannot reach this queue
-              (A1, layer 1) and would be dropped at auction regardless (layer 3).
+              landing listing, and the Sponsored-label rendering. Medical Cannabis ads can never reach this queue
+              (Prohibition A1, layer 1) and would be dropped at auction regardless (layer 3).
             </p>
             {queue.length === 0 ? (
               <p className="small muted">Queue is empty.</p>

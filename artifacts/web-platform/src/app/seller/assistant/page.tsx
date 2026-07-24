@@ -85,6 +85,29 @@ export default async function AssistantPage({
   // Live copy-check: scan the ACTUAL output, don't assert a hardcoded "passed".
   const claimsClean = !!gen.text && !CLAIMS_LANGUAGE.test(gen.text);
 
+  // Inventory forecast — the store's own LIVE listing closest to stockout.
+  const lowStockTarget = listings
+    .filter((p) => p.status === "LIVE" && p.stockQty > 0)
+    .sort((a, b) => a.stockQty - b.stockQty)[0];
+  // Sales-forecast delta from the store's own forecast series — not a fixed %.
+  const fcVals = FORECAST_4W.valuesPaise;
+  const fcFirst = fcVals[0] ?? 0;
+  const fcLast = fcVals[fcVals.length - 1] ?? 0;
+  const fcDeltaPct = fcFirst > 0 ? Math.round(((fcLast - fcFirst) / fcFirst) * 100) : 0;
+  // SEO keywords derived from the seller's own product title (claims-free by
+  // construction — plain product words only).
+  const seoKeywords = descTarget
+    ? [...new Set(descTarget.title.toLowerCase().replace(/[^a-z0-9\s]/g, " ").split(/\s+/).filter((w) => w.length > 2))].slice(0, 6)
+    : [];
+  // Review analyzer — real sentiment from THIS store's APPROVED reviews.
+  const { reviewsForSlugs } = await import("@/lib/reviews");
+  const storeReviews = await reviewsForSlugs(listings.map((p) => p.slug), { status: "APPROVED" });
+  const rvTotal = storeReviews.length;
+  const rvPct = (n: number) => (rvTotal ? Math.round((n / rvTotal) * 100) : 0);
+  const rvPos = rvPct(storeReviews.filter((r) => r.rating >= 4).length);
+  const rvNeu = rvPct(storeReviews.filter((r) => r.rating === 3).length);
+  const rvNeg = rvPct(storeReviews.filter((r) => r.rating <= 2).length);
+
   return (
     <Shell active="/seller/assistant" breadcrumb={["Seller Central", "AI Assistant"]} title="AI Seller Assistant">
       {/* Disclaimer — outputs pass compliance copy-check */}
@@ -93,7 +116,7 @@ export default async function AssistantPage({
         <div className="small">
           <strong>Suggestions, not decisions.</strong> Every panel below produces a suggestion for you to review and
           edit. Generated copy for regulated classes still passes the compliance copy-check before it can publish —
-          the assistant cannot bypass the A2 CoA gate or the A1 advertising prohibition. Engine: <strong>{gen.provider}</strong>.
+          the assistant can't get around the lab-report requirement or the advertising ban on Medical Cannabis. Engine: <strong>{gen.provider}</strong>.
         </div>
       </div>
 
@@ -106,7 +129,7 @@ export default async function AssistantPage({
                 &ldquo;{gen.text}&rdquo;
               </div>
               <div className="small" style={{ marginTop: 8, color: claimsClean ? "var(--vh-ok)" : "var(--vh-danger)", fontWeight: 600 }}>
-                {claimsClean ? "Copy-check: no disease claims detected · passed" : "Copy-check: claims language detected · blocked (not usable)"}
+                {claimsClean ? "Claims check: no disease claims found · passed" : "Claims check: claims wording found · blocked (can't be used)"}
               </div>
               <div className="vh-row" style={{ gap: 8, marginTop: 12 }}>
                 <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/seller/products/${descTarget.id}`} title="Open the listing editor to paste and save this draft">Use this draft</Link>
@@ -130,7 +153,7 @@ export default async function AssistantPage({
                 <span className="small muted">Suggested price</span>
                 <MoneyText paise={suggestPricePaise(priceTarget.pricePaise)} />
               </div>
-              <div className="small muted">Based on category demand and comparable buy-box winners. Final price is always seller-set — this is a suggestion, never applied automatically.</div>
+              <div className="small muted">Based on category demand and comparable top-selling listings. Final price is always seller-set — this is a suggestion, never applied automatically.</div>
               <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/seller/products/${priceTarget.id}`} style={{ marginTop: 12, display: "inline-block" }} title="Open the listing editor — price stays seller-set">Apply to listing</Link>
             </>
           ) : (
@@ -139,42 +162,57 @@ export default async function AssistantPage({
         </SuggestionCard>
 
         <SuggestionCard icon={<PackageSearch size={16} strokeWidth={2.2} />} title="Inventory forecast">
-          <p className="small muted" style={{ marginTop: 0 }}>Batch VB-2405 · CBD Wellness Balm 30g</p>
-          <div className="small">Projected stockout in <strong>9 days</strong> at current sell-through.</div>
-          <div className="small muted" style={{ marginTop: 6 }}>Suggest reordering 150 units to maintain 30 days of cover. A new batch needs its own approved CoA before it can sell.</div>
-          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/inventory" style={{ marginTop: 12, display: "inline-block" }}>Review inventory →</Link>
+          {lowStockTarget ? (
+            <>
+              <p className="small muted" style={{ marginTop: 0 }}>{lowStockTarget.title}</p>
+              <div className="small">Lowest stock in your catalogue: <strong>{lowStockTarget.stockQty} in stock</strong>{lowStockTarget.stockQty <= lowStockTarget.lowStockAt ? " — below your low-stock threshold" : ""}.</div>
+              <div className="small muted" style={{ marginTop: 6 }}>Reorder before it sells out to avoid a stockout. A new batch needs its own approved CoA before it can sell.</div>
+              <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/inventory" style={{ marginTop: 12, display: "inline-block" }}>Review inventory →</Link>
+            </>
+          ) : (
+            <p className="small muted" style={{ margin: 0 }}>No live stock to forecast yet — add a listing with on-hand stock.</p>
+          )}
         </SuggestionCard>
 
         <SuggestionCard icon={<TrendingUp size={16} strokeWidth={2.2} />} title="Sales forecast">
           <p className="small muted" style={{ marginTop: 0 }}>Next 4 weeks, all listings</p>
           <Columns values={FORECAST_4W.valuesPaise} labels={FORECAST_4W.labels} height={96} />
           <div className="small" style={{ marginTop: 12 }}>
-            Projected GMV: <strong><MoneyText paise={FORECAST_4W.valuesPaise.reduce((s, val) => s + val, 0)} /></strong> (+6% vs trailing 30 days)
+            Projected sales: <strong><MoneyText paise={FORECAST_4W.valuesPaise.reduce((s, val) => s + val, 0)} /></strong>
+            {fcDeltaPct !== 0 && <> ({fcDeltaPct > 0 ? "+" : ""}{fcDeltaPct}% week 1 → week 4)</>}
           </div>
-          <div className="small muted" style={{ marginTop: 4 }}>Driven mainly by CBD Wellness Balm and Roll-On seasonal demand.</div>
+          <div className="small muted" style={{ marginTop: 4 }}>A projection from your recent order run — a planning aid, never a guarantee.</div>
         </SuggestionCard>
         <SuggestionCard icon={<PenLine size={16} strokeWidth={2.2} />} title="SEO & keywords">
-          <p className="small muted" style={{ marginTop: 0 }}>CBD Wellness Balm 30g</p>
-          <div className="vh-row" style={{ gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
-            {["cbd balm india", "hemp balm 30g", "muscle balm lab tested", "ayush licensed cbd", "post workout balm", "batch coa balm"].map((k) => (
-              <span key={k} className="vh-pill vh-pill-neutral">{k}</span>
-            ))}
-          </div>
-          <div className="small muted">Suggested meta title: &ldquo;CBD Wellness Balm 30g — batch lab report linked · Vedic Botanicals&rdquo;</div>
-          <div className="small" style={{ marginTop: 8, color: "var(--vh-ok)", fontWeight: 600 }}>Copy-check: keyword set contains no claims language · passed</div>
+          {descTarget ? (
+            <>
+              <p className="small muted" style={{ marginTop: 0 }}>{descTarget.title}</p>
+              <div className="vh-row" style={{ gap: 6, flexWrap: "wrap", marginBottom: 10 }}>
+                {seoKeywords.map((k) => (
+                  <span key={k} className="vh-pill vh-pill-neutral">{k}</span>
+                ))}
+              </div>
+              <div className="small muted">Suggested meta title: &ldquo;{descTarget.title} — batch lab report linked · {store}&rdquo;</div>
+              <div className="small" style={{ marginTop: 8, color: "var(--vh-ok)", fontWeight: 600 }}>Keywords are plain product words — no claims language.</div>
+            </>
+          ) : (
+            <p className="small muted" style={{ margin: 0 }}>Add a listing to get keyword suggestions.</p>
+          )}
         </SuggestionCard>
 
         <SuggestionCard icon={<TrendingUp size={16} strokeWidth={2.2} />} title="Review analyzer">
-          <p className="small muted" style={{ marginTop: 0 }}>Last 90 days · all listings</p>
-          <div className="vh-row-between" style={{ marginBottom: 6 }}>
-            <span className="small muted">Sentiment</span>
-            <span className="small"><strong>82% positive</strong> · 11% neutral · 7% negative</span>
-          </div>
-          <ul className="small muted" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 4 }}>
-            <li>Top praise: packaging (34 mentions), delivery speed (28), CoA link on invoice (19)</li>
-            <li>Top complaint: 30g balm sells out (9 mentions) — matches the inventory forecast</li>
-            <li>2 reviews mention symptoms — auto-redacted before reaching this console</li>
-          </ul>
+          {rvTotal > 0 ? (
+            <>
+              <p className="small muted" style={{ marginTop: 0 }}>Across {rvTotal} approved review{rvTotal === 1 ? "" : "s"} on your listings</p>
+              <div className="vh-row-between" style={{ marginBottom: 6 }}>
+                <span className="small muted">Sentiment (by rating)</span>
+                <span className="small"><strong>{rvPos}% positive</strong> · {rvNeu}% neutral · {rvNeg}% negative</span>
+              </div>
+              <div className="small muted">Computed from your real approved reviews (4–5★ positive, 3★ neutral, 1–2★ negative). Any health symptom a buyer mentions is removed before it reaches you.</div>
+            </>
+          ) : (
+            <p className="small muted" style={{ margin: 0 }}>Not enough approved reviews to analyse yet — sentiment appears here once buyers review your listings.</p>
+          )}
         </SuggestionCard>
       </div>
     </Shell>

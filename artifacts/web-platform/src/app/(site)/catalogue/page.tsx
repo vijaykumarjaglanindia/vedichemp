@@ -47,9 +47,9 @@ interface Params {
 
 const SORTS = [
   { key: "popular", label: "Popular" },
-  { key: "price-asc", label: "Price ↑" },
-  { key: "price-desc", label: "Price ↓" },
-  { key: "discount", label: "% Off" },
+  { key: "price-asc", label: "Price – Low to High" },
+  { key: "price-desc", label: "Price – High to Low" },
+  { key: "discount", label: "Discount" },
 ] as const;
 
 const PRICE_BUCKETS: { label: string; min?: number; max?: number }[] = [
@@ -110,7 +110,7 @@ function ProductTile({ p, sponsored }: { p: CatalogProduct; sponsored?: boolean 
           </form>
           <form action={toggleWishlist} style={{ display: "inline-flex" }}>
             <input type="hidden" name="productId" value={p.id} />
-            <button type="submit" className="vh-iconbtn" aria-label={`Toggle ${p.title} in wishlist`} title="Save to wishlist"><Heart size={15} aria-hidden /></button>
+            <button type="submit" className="vh-iconbtn" aria-label={`Save ${p.title} to wishlist`} title="Save to wishlist"><Heart size={15} aria-hidden /></button>
           </form>
         </div>
       </div>
@@ -326,7 +326,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
           </div>
 
           <div className="vh-facet">
-            <div className="vh-facet-title">Assurance</div>
+            <div className="vh-facet-title">Lab testing</div>
             <Link href={href(params, { lab: labOnly ? null : "1" })} className={labOnly ? "on" : ""}>
               <span className="box" aria-hidden>{labOnly ? <Check size={11} strokeWidth={3} /> : null}</span>
               <FlaskConical size={12} aria-hidden style={{ color: "var(--vh-info)" }} /> Lab report available
@@ -374,7 +374,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                     <div className="vh-row" style={{ gap: 8 }}>
                       <form action={toggleWishlist} style={{ display: "inline-flex" }}>
                         <input type="hidden" name="productId" value={p.id} />
-                        <button type="submit" className="vh-iconbtn" aria-label={`Toggle ${p.title} in wishlist`} title="Save to wishlist"><Heart size={15} aria-hidden /></button>
+                        <button type="submit" className="vh-iconbtn" aria-label={`Save ${p.title} to wishlist`} title="Save to wishlist"><Heart size={15} aria-hidden /></button>
                       </form>
                       <form action={addToCart}>
                         <input type="hidden" name="productId" value={p.id} />
@@ -399,7 +399,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                             {adWin.headline}
                           </a>
                           <div className="small muted">{adWin.product.title} · {adWin.seller}</div>
-                          <Rating value={adWin.product.rating} count={Math.round(adWin.product.rating * 47)} />
+                          {adWin.product.rating > 0 && <Rating value={adWin.product.rating} />}
                           <div className="vh-row" style={{ gap: 6 }}>
                             <MoneyText paise={adWin.product.pricePaise} className="vh-product-title" />
                             <span className="small muted" style={{ textDecoration: "line-through" }}><MoneyText paise={adWin.product.mrpPaise} /></span>

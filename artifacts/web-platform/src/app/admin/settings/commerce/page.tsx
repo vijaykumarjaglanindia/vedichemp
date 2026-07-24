@@ -62,7 +62,7 @@ export default async function CommercePage({
               <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Save economics</button>
             </form>
             <p className="small muted" style={{ margin: "10px 0 0" }}>
-              All amounts store as integer paise; totals stay server-computed.
+              All amounts are stored in paise; totals are always calculated on our servers.
             </p>
             <p className="small muted vh-row" style={{ gap: 6, margin: "10px 0 0", alignItems: "center" }}>
               <Truck size={13} aria-hidden />

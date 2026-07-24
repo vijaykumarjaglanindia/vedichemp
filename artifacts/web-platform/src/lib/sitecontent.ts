@@ -52,11 +52,11 @@ export const SITE_FIELDS: SiteField[] = [
   {
     key: "announcement", group: "Global chrome", label: "Announcement bar", kind: "text", max: 200,
     help: "Separate segments with a middle dot (·).",
-    def: "Free shipping on orders above ₹5,000 · Products listed & shipped by licensed sellers · 100% prepaid, secure checkout",
+    def: "Free shipping on orders above ₹5,000 · Products listed & shipped by licensed sellers · Secure online payment",
   },
   {
     key: "footerAbout", group: "Global chrome", label: "Footer — about blurb", kind: "text", max: 260,
-    def: "A regulated multi-vendor marketplace for hemp, CBD wellness, Ayurveda and medical cannabis in India.",
+    def: "An online marketplace where trusted, licensed sellers offer hemp, CBD wellness, Ayurveda and medical cannabis across India.",
   },
   {
     key: "footerLegal", group: "Global chrome", label: "Footer — marketplace disclosure", kind: "rich", max: 900,
@@ -81,7 +81,7 @@ export const SITE_FIELDS: SiteField[] = [
   },
   {
     key: "footerTrust", group: "Menus", label: "Footer — Trust column", kind: "rich", max: 500,
-    def: "- How it works | /trust\n- Certificate of Analysis | /trust#coa\n- How prescriptions work | /trust#prescriptions\n- Our six prohibitions | /trust#prohibitions",
+    def: "- How it works | /trust\n- Lab test reports | /trust#coa\n- How prescriptions work | /trust#prescriptions\n- Safety & compliance | /trust#prohibitions",
   },
   {
     key: "footerCompany", group: "Menus", label: "Footer — Company column", kind: "rich", max: 500,
@@ -108,17 +108,17 @@ export const SITE_FIELDS: SiteField[] = [
   {
     key: "heroStats", group: "Homepage hero", label: "Hero stats strip", kind: "text", max: 140,
     help: "Separate stats with a middle dot (·).",
-    def: "★ 4.6 average rating · 10,000+ products · 300+ licensed sellers",
+    def: "Lab-tested every batch · Licensed sellers only · Buyer-first returns",
   },
   {
     key: "heroUsps", group: "Homepage hero", label: "USP tiles", kind: "rich", max: 480,
     help: "One bullet per tile: bold title, then a pipe (|), then the support line.",
-    def: "- **Free shipping above ₹5,000** | ₹100 flat below — across 19,000+ PIN codes\n- **Secure prepaid checkout** | UPI, cards & netbanking\n- **Easy returns** | Buyer refunded first\n- **Fulfilled by sellers** | Packed & shipped by the seller who lists it",
+    def: "- **Free shipping above ₹5,000** | Calculated at checkout for pincodes we deliver to\n- **Secure online payment** | UPI, cards & netbanking\n- **Easy returns** | Buyer refunded first\n- **Fulfilled by sellers** | Packed & shipped by the seller who lists it",
   },
 
   {
     key: "heroCtaPrimary", group: "Homepage hero", label: "Hero — primary button label", kind: "text", max: 40,
-    def: "Shop the catalogue",
+    def: "Shop Now",
   },
   {
     key: "heroCtaSecondary", group: "Homepage hero", label: "Hero — secondary button label", kind: "text", max: 50,
@@ -126,14 +126,14 @@ export const SITE_FIELDS: SiteField[] = [
   },
 
   /* ── Homepage headings (every section title) ───────────────────── */
-  { key: "headCategories", group: "Homepage headings", label: "Categories section", kind: "text", max: 90, def: "Three ways in — hemp, Ayurveda, CBD" },
+  { key: "headCategories", group: "Homepage headings", label: "Categories section", kind: "text", max: 90, def: "Shop hemp, Ayurveda & CBD" },
   { key: "headDeals", group: "Homepage headings", label: "Deals section", kind: "text", max: 90, def: "Today's deals from sellers" },
   { key: "headSponsored", group: "Homepage headings", label: "Sponsored section", kind: "text", max: 90, def: "Sponsored picks" },
   { key: "headBestsellers", group: "Homepage headings", label: "Bestsellers section", kind: "text", max: 90, def: "What buyers keep reordering" },
   { key: "headGoals", group: "Homepage headings", label: "Goals section", kind: "text", max: 90, def: "Built around your routine" },
   { key: "headLearn", group: "Homepage headings", label: "Learn section", kind: "text", max: 90, def: "New to hemp? Start here" },
   { key: "headWhy", group: "Homepage headings", label: "Why-us section", kind: "text", max: 90, def: "How the marketplace works" },
-  { key: "headSellers", group: "Homepage headings", label: "Sellers section", kind: "text", max: 90, def: "Storefronts with their licences showing" },
+  { key: "headSellers", group: "Homepage headings", label: "Sellers section", kind: "text", max: 90, def: "Verified sellers with licences on display" },
   { key: "headTestimonials", group: "Homepage headings", label: "Testimonials section", kind: "text", max: 90, def: "What buyers say" },
   { key: "headFaq", group: "Homepage headings", label: "FAQ section", kind: "text", max: 90, def: "Common questions, straight answers" },
 
@@ -144,11 +144,11 @@ export const SITE_FIELDS: SiteField[] = [
   },
   {
     key: "explainerTitle", group: "Homepage sections", label: "Education explainer — title", kind: "text", max: 90,
-    def: "Why hemp seed is FSSAI-approved food",
+    def: "Why hemp seed is an approved food in India (FSSAI)",
   },
   {
     key: "explainerBody", group: "Homepage sections", label: "Education explainer — body", kind: "rich", max: 900,
-    def: "In 2021, FSSAI notified hemp seed, hemp seed oil and hemp seed flour as food under the Food Safety and Standards regulations. Hemp seed contains no meaningful THC — it's valued for complete plant protein and an omega 3:6 ratio close to what nutritionists recommend.\n\nThat's why hemp hearts and seed oil sit on Vedic Hemp under a standard food licence, while CBD products carry AYUSH licensing and a batch lab report.",
+    def: "In 2021, India's food regulator (FSSAI) officially approved hemp seed, hemp seed oil and hemp seed flour as food. Hemp seed contains no meaningful THC — it's valued for complete plant protein and an omega 3:6 ratio close to what nutritionists recommend.\n\nThat's why hemp hearts and seed oil sit on Vedic Hemp under a standard food licence, while CBD products carry AYUSH licensing and a lab report for each batch.",
   },
   {
     key: "ctaSellerTitle", group: "Homepage sections", label: "Seller CTA — title", kind: "text", max: 60,
@@ -156,7 +156,7 @@ export const SITE_FIELDS: SiteField[] = [
   },
   {
     key: "ctaSellerBody", group: "Homepage sections", label: "Seller CTA — body", kind: "text", max: 260,
-    def: "Licence checks, the CoA gate and settlement controls are built into the platform — you bring the product, we bring the compliance machinery.",
+    def: "Licence checks, lab-report requirements and secure payouts are built in — you bring the product, we handle the rules.",
   },
   {
     key: "ctaAdvertiserTitle", group: "Homepage sections", label: "Advertiser CTA — title", kind: "text", max: 60,
@@ -182,12 +182,12 @@ export const SITE_FIELDS: SiteField[] = [
   {
     key: "homeFaqs", group: "Voices & FAQ", label: "Homepage FAQ", kind: "rich", max: 2200,
     help: "Each question is a heading; the paragraphs beneath it are the answer. Also feeds the FAQPage structured data (SEO).",
-    def: "## Is hemp legal to buy in India?\n\nYes. Hemp seed products (oil, protein, hearts) are FSSAI-approved foods. CBD wellness products are sold under AYUSH licensing with a batch lab report confirming THC at or below 0.3%, and are age-gated 21+.\n\n## How do I know a product is genuinely lab-tested?\n\nEvery regulated product page shows its batch-matched Certificate of Analysis from an independent accredited lab. A regulated listing cannot go live on Vedic Hemp without an approved CoA — there is no override.\n\n## Do you sell medical cannabis?\n\nMedical cannabis exists on the platform but is prescription-only. It is never advertised, searchable or recommended. It becomes visible only to a signed-in buyer whose prescription a licensed pharmacist has verified.\n\n## How do I pay?\n\nAll orders are prepaid — UPI, cards and netbanking. Cash on Delivery is not offered: your order is forwarded to the seller only after payment is captured. Age-gated categories (CBD wellness) additionally require an ID check on handover.\n\n## Where is my personal data stored?\n\nAll personal data and payment data are held in Indian data centres (ap-south-1 / ap-south-2). Health data such as prescriptions is encrypted with a separate key and every access is logged and disclosed to you.",
+    def: "## Is hemp legal to buy in India?\n\nYes. Hemp seed products (oil, protein, hearts) are FSSAI-approved foods. CBD wellness products are sold under AYUSH licensing with a lab report for each batch confirming THC at or below 0.3%, and are for ages 21 and over.\n\n## How do I know a product is genuinely lab-tested?\n\nEvery lab-tested product page shows its lab report for that exact batch, from an independent accredited lab. These products can't go on sale on Vedic Hemp without a passing report — there are no exceptions.\n\n## Do you sell medical cannabis?\n\nMedical cannabis exists on the platform but is prescription-only. It is never advertised, searchable or recommended. It becomes visible only to a signed-in buyer whose prescription a licensed pharmacist has verified.\n\n## How do I pay?\n\nAll orders are paid online — UPI, cards and netbanking. Cash on Delivery is not offered: your order reaches the seller only after your payment goes through. Age-restricted categories (CBD wellness) also require an ID check on delivery.\n\n## Where is my personal data stored?\n\nAll personal data and payment data are held in data centres located in India. Health data such as prescriptions is encrypted separately, and every access is logged and disclosed to you.",
   },
   {
     key: "testimonials", group: "Voices & FAQ", label: "Buyer testimonials", kind: "rich", max: 1600,
-    help: "Each testimonial: a heading of \"Name · City · rating (1–5)\", then the quote beneath it.",
-    def: "## Priya M. · Pune · 5\n\nThe batch CoA link printed on the invoice is what converted me. I checked the lab report against the batch number on the jar — it matched. That's a first for any Indian marketplace I've used.\n\n## Arjun T. · Bengaluru · 5\n\nOrdered hemp protein and hearts for my morning routine. Delivery in two days, clean packaging, and the seller's FSSAI licence is right there on the storefront.\n\n## Meera K. · Jaipur · 4\n\nReturned a tincture that arrived with a damaged seal — refund hit my account before the pickup was even complete. Buyer-first returns are real here.",
+    help: "Each testimonial: a heading of \"Name · City · rating (1–5)\", then the quote beneath it. Only add real, consented buyer quotes — the section stays hidden until you do.",
+    def: "",
   },
 
   /* ── Trust & About ─────────────────────────────────────────────── */
@@ -197,7 +197,7 @@ export const SITE_FIELDS: SiteField[] = [
   },
   {
     key: "aboutIntro", group: "Trust & About", label: "About page — intro", kind: "rich", max: 500,
-    def: "Vedic Hemp is a regulated multi-vendor marketplace for hemp, CBD wellness, Ayurveda and medical cannabis in India — built so that compliance is a property of the platform, not a policy someone has to remember to follow.",
+    def: "Vedic Hemp is an online marketplace for hemp, CBD wellness, Ayurveda and medical cannabis in India — built so the rules are handled by the platform itself, not left to someone to remember to follow.",
   },
 
   /* ── Legal & policies (documents, not product copy) ────────────── */
@@ -213,7 +213,7 @@ export const SITE_FIELDS: SiteField[] = [
   {
     key: "legalPrivacy", group: "Legal & policies", label: "Privacy Policy", kind: "rich", max: 8000,
     allowClaimVerbs: true,
-    def: "Last updated: 13 July 2026\n\n## What we collect\n\nAccount details (name, email, phone), delivery addresses, order history, and — only if you buy prescription-gated products — the prescription you upload. Payment card details go directly to the payment provider; we never see or store a full card number.\n\n## Where your data lives\n\nAll personal data and payment data are held in Indian data centres (ap-south-1 / ap-south-2). Health data such as prescriptions is encrypted with a separate key, in a separate bucket, with object lock.\n\n## Who can see health data\n\nOnly a licensed pharmacist or compliance officer can open a prescription, only with a logged reason — and you are notified every time it happens. That access log cannot be edited or deleted, by anyone.\n\n## What we never do\n\nWe do not sell personal data. We do not use health data for advertising, recommendations or analytics. Health information never appears in emails, push notifications or marketing of any kind.\n\n## Cookies\n\nWe use strictly necessary cookies only: your session, your cart and your sign-in state. There are no third-party advertising trackers on this site.\n\n## Your rights\n\nYou can access and correct your account data from your profile, and request deletion of your account by writing to the support address in the footer. Records we are legally required to retain (dispensing registers, audit logs) are retained in anonymised-where-possible form for the statutory period.",
+    def: "Last updated: 13 July 2026\n\n## What we collect\n\nAccount details (name, email, phone), delivery addresses, order history, and — only if you buy prescription-gated products — the prescription you upload. Payment card details go directly to the payment provider; we never see or store a full card number.\n\n## Where your data lives\n\nAll personal data and payment data are held in data centres located in India. Health data such as prescriptions is encrypted separately and stored so it can't be altered or deleted.\n\n## Who can see health data\n\nOnly a licensed pharmacist or compliance officer can open a prescription, only with a logged reason — and you are notified every time it happens. That access log cannot be edited or deleted, by anyone.\n\n## What we never do\n\nWe do not sell personal data. We do not use health data for advertising, recommendations or analytics. Health information never appears in emails, push notifications or marketing of any kind.\n\n## Cookies\n\nWe use strictly necessary cookies only: your session, your cart and your sign-in state. There are no third-party advertising trackers on this site.\n\n## Your rights\n\nYou can access and correct your account data from your profile, and request deletion of your account by writing to the support address in the footer. Records we are legally required to keep (dispensing registers, audit logs) are kept in anonymised-where-possible form for the period the law requires.",
   },
   {
     key: "legalReturns", group: "Legal & policies", label: "Returns & Refunds Policy", kind: "rich", max: 6000,
@@ -223,13 +223,13 @@ export const SITE_FIELDS: SiteField[] = [
   {
     key: "legalShipping", group: "Legal & policies", label: "Shipping Policy", kind: "rich", max: 6000,
     allowClaimVerbs: true,
-    def: "Last updated: 13 July 2026\n\n## Who ships your order\n\nEvery order is packed and shipped by the seller who lists the product, through the seller's delivery partner. After payment is captured we forward your order to the seller; the tracking status you see is the same status the seller updates.\n\n## Costs & timelines\n\nShipping charges and any free-shipping threshold are always shown in your cart before you pay — the cart is authoritative. Most sellers dispatch within 24–48 hours; delivery estimates by PIN code appear on each product page.\n\n## Age check on delivery\n\nAge-gated categories (CBD wellness, 21+) require an ID check at handover. The courier is instructed not to complete delivery without it. Prescription-gated items are dispensed and shipped only after pharmacist verification.\n\n## Coverage\n\nSellers ship across India wherever their delivery partners reach. If your PIN code is not serviceable for an item, the product page and checkout will tell you before payment, never after.",
+    def: "Last updated: 13 July 2026\n\n## Who ships your order\n\nEvery order is packed and shipped by the seller who lists the product, through the seller's delivery partner. After payment is captured we forward your order to the seller; the tracking status you see is the same status the seller updates.\n\n## Costs & timelines\n\nShipping charges and any free-shipping threshold are always shown in your cart before you pay — the cart is authoritative. Most sellers send your order out within 24–48 hours; delivery estimates by pincode appear on each product page.\n\n## Age check on delivery\n\nAge-gated categories (CBD wellness, 21+) require an ID check at handover. The courier is instructed not to complete delivery without it. Prescription-gated items are dispensed and shipped only after pharmacist verification.\n\n## Coverage\n\nSellers ship across India wherever their delivery partners reach. If we can't deliver to your pincode for an item, the product page and checkout will tell you before payment, never after.",
   },
 
   /* ── SEO & metadata ────────────────────────────────────────────── */
   {
     key: "seoSiteTitle", group: "SEO & metadata", label: "Site title (default <title>)", kind: "text", max: 90,
-    def: "Vedic Hemp — India's regulated hemp & wellness marketplace",
+    def: "Vedic Hemp — India's trusted, licensed hemp & wellness marketplace",
   },
   {
     key: "seoSiteDesc", group: "SEO & metadata", label: "Site meta description (default)", kind: "text", max: 220,
@@ -242,7 +242,7 @@ export const SITE_FIELDS: SiteField[] = [
   },
   {
     key: "seoHomeDesc", group: "SEO & metadata", label: "Homepage meta description", kind: "text", max: 220,
-    def: "Shop hemp food, Ayurveda and CBD wellness listed by independent licensed sellers across India. Sellers submit licences at onboarding and ship directly to you.",
+    def: "Shop hemp food, Ayurveda and CBD wellness listed by independent licensed sellers across India. Sellers share their licences when they join and ship directly to you.",
   },
   {
     key: "seoCatalogueDesc", group: "SEO & metadata", label: "Catalogue meta description", kind: "text", max: 220,

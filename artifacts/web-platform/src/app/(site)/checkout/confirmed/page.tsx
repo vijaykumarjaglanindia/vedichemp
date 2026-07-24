@@ -26,7 +26,7 @@ export default async function ConfirmedPage() {
   if (!order) {
     return (
       <div className="vh-container" style={{ paddingTop: "var(--sp-5)", paddingBottom: "var(--sp-7)" }}>
-        <EmptyState icon="🧾" headline="No recent order found" sub="Your confirmation may have expired — check your orders in My Account." cta={{ label: "Go to My Account", href: "/account/orders" }} />
+        <EmptyState icon="🧾" headline="No recent order found" sub="Your confirmation may have expired — check your orders in My Account." cta={{ label: "View My Orders", href: "/account/orders" }} />
       </div>
     );
   }
@@ -37,7 +37,7 @@ export default async function ConfirmedPage() {
         <CheckCircle2 size={44} aria-hidden style={{ color: "var(--vh-ok)", marginBottom: 10 }} />
         <h1 style={{ marginBottom: 6 }}>Order placed</h1>
         <p className="muted" style={{ margin: 0 }}>
-          Reference <b className="mono" style={{ color: "var(--vh-ink)" }}>{order.reference}</b> ·
+          Order ID <b className="mono" style={{ color: "var(--vh-ink)" }}>{order.reference}</b> ·
           confirmation sent to your registered contact
         </p>
       </div>
@@ -48,8 +48,8 @@ export default async function ConfirmedPage() {
           <Timeline
             nodes={[
               { label: "Payment received", at: "Just now", state: "done" },
-              { label: `Order forwarded to ${order.items[0]?.seller ?? "the seller"}`, at: "Within minutes — it appears in their Seller Central panel", state: "current" },
-              { label: "Seller packs & hands to their delivery partner", at: "Marked shipped only after handover", state: "pending" },
+              { label: `Order forwarded to ${order.items[0]?.seller ?? "the seller"}`, at: "Within minutes — the seller is notified to pack your order", state: "current" },
+              { label: "Seller packs & hands to their delivery partner", at: "Marked as shipped once handed to the delivery partner", state: "pending" },
               { label: `Delivery to ${order.city} ${order.pincode}`, at: "Track it from My Account → Orders", state: "pending" },
             ]}
           />
@@ -83,7 +83,7 @@ export default async function ConfirmedPage() {
             </div>
           )}
           <div className="vh-row-between small" style={{ padding: "3px 0" }}>
-            <span className="muted">Shipping</span>
+            <span className="muted">Delivery</span>
             {order.shippingPaise === 0 ? <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Free</span> : <MoneyText paise={order.shippingPaise} />}
           </div>
           {(order.walletAppliedPaise ?? 0) > 0 && (
@@ -116,7 +116,7 @@ export default async function ConfirmedPage() {
         <AdSlot cls="AYURVEDA" placement="thankyou-related" unstyled>
           <div className="vh-row" style={{ gap: 8, marginBottom: 10 }}>
             <SponsoredLabel />
-            <span className="small muted" style={{ fontWeight: 600 }}>People also ordered</span>
+            <span className="small muted" style={{ fontWeight: 600 }}>People also bought</span>
           </div>
           <div className="vh-grid cols-3">
             {liveCatalogue.filter((sp) => sp.cls !== "MED_CANNABIS").slice(5, 8).map((sp) => (

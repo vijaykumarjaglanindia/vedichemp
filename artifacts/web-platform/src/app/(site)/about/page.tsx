@@ -19,7 +19,7 @@ import { readSiteContent } from "@/lib/sitecontent";
 
 export const metadata: Metadata = {
   title: "About",
-  description: "Vedic Hemp's mission, the four verticals we operate, and our regulatory posture.",
+  description: "Vedic Hemp's mission, the four categories we operate, and how we follow the rules.",
   alternates: { canonical: "/about" },
 };
 
@@ -28,7 +28,7 @@ const VERTICAL_ROWS: ClassMeta[] = Object.values(CLASS_META);
 const VERTICAL_COLUMNS: Column<ClassMeta>[] = [
   {
     key: "vertical",
-    header: "Vertical",
+    header: "Category",
     render: (row) => (
       <span className="vh-row" style={{ gap: 8 }}>
         <span aria-hidden>{row.emoji}</span>
@@ -44,12 +44,12 @@ const VERTICAL_COLUMNS: Column<ClassMeta>[] = [
   },
   {
     key: "age",
-    header: "Age-gated",
+    header: "Age-restricted",
     render: (row) => <span className="small">{row.ageGated ? "21+" : "No"}</span>,
   },
   {
     key: "ads",
-    header: "Advertisable",
+    header: "Advertised",
     render: (row) => <span className="small">{row.advertisable ? "Yes" : "Never"}</span>,
   },
 ];
@@ -88,7 +88,7 @@ export default async function AboutPage() {
       </section>
 
       <section className="vh-section" style={{ paddingBottom: 0 }}>
-        <SectionHead eyebrow="Structure" title="The four verticals" />
+        <SectionHead eyebrow="Structure" title="The four categories" />
         <Card pad0>
           <DataTable columns={VERTICAL_COLUMNS} rows={VERTICAL_ROWS} />
         </Card>
@@ -104,7 +104,7 @@ export default async function AboutPage() {
         <Card>
           <div className="vh-row" style={{ gap: 10, marginBottom: 10 }}>
             <Scale size={18} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-accent)" }} />
-            <h3 style={{ margin: 0 }}>Our regulatory posture</h3>
+            <h3 style={{ margin: 0 }}>How we follow the rules</h3>
           </div>
           <ul className="small" style={{ paddingLeft: 18, display: "flex", flexDirection: "column", gap: 8, margin: 0 }}>
             <li>
@@ -118,8 +118,8 @@ export default async function AboutPage() {
               reviewed for this before a listing goes live.
             </li>
             <li>
-              All personal data and payment data are stored in Indian data centres (ap-south-1 /
-              ap-south-2), consistent with data-localisation expectations for a platform handling
+              All personal data and payment data are stored in data centres located in India, in
+              line with India&rsquo;s data-storage rules for a platform handling
               health-adjacent information.
             </li>
             <li>

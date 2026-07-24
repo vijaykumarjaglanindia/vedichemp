@@ -56,7 +56,7 @@ export default async function AddressesPage({
           <EmptyState
             icon="📍"
             headline="No saved addresses yet"
-            sub="Add one below — checkout prefills from your default address, and CBD wellness serviceability is checked against its PIN."
+            sub="Add one below — checkout prefills from your default address, and CBD wellness delivery is checked against its pincode."
           />
         ) : (
           <div className="vh-grid cols-3">

@@ -31,7 +31,7 @@ const PERIODS = ["7d", "30d", "90d"] as const;
 
 const QUICK_ACTIONS = [
   { label: "Add product", href: "/seller/products/new", icon: <PackagePlus {...I} /> },
-  { label: "Upload CoA", href: "/seller/products/p8#coa-upload", icon: <FileUp {...I} /> },
+  { label: "Upload CoA", href: "/seller/products", icon: <FileUp {...I} /> },
   { label: "Print labels", href: "/seller/orders?status=PACKED", icon: <Printer {...I} /> },
   { label: "View payouts", href: "/seller/finance", icon: <Wallet {...I} /> },
 ];
@@ -230,7 +230,7 @@ export default async function SellerHomePage({
               icon={b.coaState === "PENDING_REVIEW" ? <Hourglass {...I} /> : <FileWarning {...I} />}
               severity={b.coaState === "PENDING_REVIEW" ? "info" : "danger"}
               title={b.coaState === "PENDING_REVIEW" ? `Batch ${b.batchCode} awaiting CoA review` : `CoA required for “${b.title}”`}
-              body={`${b.title} — ${coaLabel[b.coaState] ?? "no approved CoA"}. This regulated listing cannot go live without an APPROVED, batch-matched Certificate of Analysis. There is no override.`}
+              body={`${b.title} — ${coaLabel[b.coaState] ?? "no approved CoA"}. This regulated listing can't go live until it has an approved lab report matching the batch. This can't be skipped.`}
               remediation={b.coaState === "PENDING_REVIEW" ? undefined : { label: "Upload CoA", href: `/seller/products/${b.productId}#coa-upload` }}
             />
           ))}
@@ -273,12 +273,18 @@ export default async function SellerHomePage({
           <div className="vh-grid cols-2">
             <Card title="Settlements due">
               <Stat label="Awaiting posting" value={<MoneyText paise={settlementDuePaise} />} />
-              <div className="small muted" style={{ marginTop: 8 }}>Posted only after maker–checker sign-off. Statements are immutable once posted.</div>
+              <div className="small muted" style={{ marginTop: 8 }}>Paid out only after two-person sign-off. Once posted, a statement can&rsquo;t be changed.</div>
               <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/finance" style={{ marginTop: 8, display: "inline-block" }}>View finance →</Link>
             </Card>
             <Card title="Vedic Ads">
-              <Stat label="ROAS (7d)" value={`${ADS_SUMMARY.roas7d}x`} delta={ADS_SUMMARY.roas7d > 0 ? { dir: "up", text: "0.3x vs prior" } : undefined} />
-              <div className="small muted" style={{ marginTop: 8 }}>{AD_CAMPAIGNS.filter((c) => c.status === "ACTIVE").length} active campaign(s) · ACOS {ADS_SUMMARY.acos7d}%</div>
+              {ADS_SUMMARY.clicks7d > 0 ? (
+                <>
+                  <Stat label="ROAS (7d)" value={`${ADS_SUMMARY.roas7d}x`} />
+                  <div className="small muted" style={{ marginTop: 8 }}>{AD_CAMPAIGNS.filter((c) => c.status === "ACTIVE").length} active campaign(s) · ACOS {ADS_SUMMARY.acos7d}% · {ADS_SUMMARY.clicks7d.toLocaleString("en-IN")} clicks / 7d</div>
+                </>
+              ) : (
+                <div className="small muted">No ad activity in the last 7 days. Launch a campaign to put your listings in front of buyers searching your category.</div>
+              )}
               <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/ads" style={{ marginTop: 8, display: "inline-block" }}>View Vedic Ads →</Link>
             </Card>
           </div>

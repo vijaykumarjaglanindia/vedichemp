@@ -305,7 +305,7 @@ export default async function AdsPage({
           </div>
           <p className="small" style={{ margin: "0 0 8px" }}>
             Prohibited under the <strong>Drugs &amp; Magic Remedies (Objectionable Advertisements) Act, 1954</strong>{" "}
-            and platform prohibition <strong>A1</strong>. No licence, spend level or account tier changes this.
+            and our advertising policy. No licence, spend level or account tier changes this.
           </p>
           <p className="small" style={{ margin: "0 0 8px" }}>
             Enforced at three independent layers: <strong>(1)</strong> this builder and its API reject the class,{" "}

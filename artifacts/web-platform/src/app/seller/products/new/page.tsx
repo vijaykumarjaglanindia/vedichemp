@@ -177,12 +177,12 @@ export default async function NewProductPage({
                 <div className="vh-field">
                   <label className="vh-label" htmlFor="price">Selling price (paise) <span className="req">*</span></label>
                   <input className="vh-input" id="price" name="pricePaise" type="number" min={0} step={1} placeholder="149900" />
-                  <span className="vh-help">Integer paise — never floats. ₹1,499.00 = 149900.</span>
+                  <span className="vh-help">Enter in paise: ₹1,499 = 149900.</span>
                 </div>
                 <div className="vh-field">
                   <label className="vh-label" htmlFor="mrp">MRP (paise) <span className="req">*</span></label>
                   <input className="vh-input" id="mrp" name="mrpPaise" type="number" min={0} step={1} placeholder="199900" />
-                  <span className="vh-help">Price must not exceed MRP — validated server-side.</span>
+                  <span className="vh-help">Price can&rsquo;t be higher than MRP.</span>
                 </div>
               </div>
               <div className="vh-field">
@@ -245,7 +245,7 @@ export default async function NewProductPage({
               <FileUp size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)", marginTop: 2, flexShrink: 0 }} />
               <p className="small muted" style={{ margin: 0 }}>
                 A regulated product is created in DRAFT. It stays invisible to buyers until you add at least one batch
-                with an APPROVED, batch-matched Certificate of Analysis — there is no way to skip this step, no
+                with an approved lab report matching the batch — there is no way to skip this step, no
                 bulk approval, and no override.
               </p>
             </div>
@@ -258,7 +258,7 @@ export default async function NewProductPage({
             <button className="vh-btn vh-btn-ghost" type="submit" name="intent" value="draft">Save as draft</button>
           </div>
           <p className="small muted" style={{ margin: 0 }}>
-            Validation runs server-side. Submitted listings appear in Products as UNDER_REVIEW;
+            We check everything when you submit. Submitted listings show as Under review;
             regulated classes still need an approved, batch-matched CoA before they can go live.
           </p>
         </div>

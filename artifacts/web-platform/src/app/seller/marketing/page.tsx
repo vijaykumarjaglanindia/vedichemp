@@ -54,7 +54,7 @@ export default async function MarketingPage({
     >
       {created && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
-          <Banner severity="ok" title="Coupon created">It&rsquo;s active immediately and always applied server-side at checkout.</Banner>
+          <Banner severity="ok" title="Coupon created">It&rsquo;s active immediately and applied automatically at checkout.</Banner>
         </div>
       )}
       {err && COUPON_ERRORS[err] && (
@@ -162,7 +162,7 @@ export default async function MarketingPage({
               </div>
             </div>
             <span className="vh-help">
-              Applied server-side at checkout — a stale client price never wins. Expiry and usage limits are
+              Applied automatically at checkout, so the discount is always correct. Expiry and usage limits are
               enforced by the server every time the code is used.
             </span>
           </form>
@@ -190,7 +190,7 @@ export default async function MarketingPage({
             <div style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--vh-ink)" }}>Build your next bundle</div>
             <div className="small" style={{ marginTop: 4 }}>
               Pair a hero product with a companion SKU — bundles ship with one label and settle as one line. Only
-              sellable batches (approved CoA, A2) can join a bundle.
+              batches with an approved lab report can join a bundle.
             </div>
           </div>
         </Card>
@@ -217,7 +217,7 @@ export default async function MarketingPage({
             </ul>
           )}
           <p className="small muted" style={{ margin: "12px 0 0" }}>
-            Flash-sale pricing is still server-computed at checkout — a stale client price never wins.
+            Flash-sale prices are always calculated at checkout, so the price is always correct.
           </p>
         </Card>
       </div>

@@ -250,7 +250,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
                 {/* MED_CANNABIS: informational line only — never a shop link */}
                 <div style={{ borderTop: "1px solid var(--vh-line)", marginTop: "var(--sp-2)", paddingTop: "var(--sp-2)" }}>
                   <p className="small muted" style={{ margin: 0, fontSize: ".76rem" }}>
-                    Medical Cannabis is prescription-only and never advertised or browsable here.{" "}
+                    Medical Cannabis is prescription-only and can&rsquo;t be browsed here.{" "}
                     <Link href="/trust#prescriptions">How prescriptions work</Link>
                   </p>
                 </div>
@@ -343,7 +343,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
           >
             <div style={{ minWidth: 220 }}>
               <div className="small" style={{ fontWeight: 800, color: "var(--vh-ink)" }}>Wellness notes, monthly</div>
-              <div className="small">Lab-report explainers and new-arrival digests. No health claims, ever.</div>
+              <div className="small">Lab-report explainers and new arrivals. No health claims, ever.</div>
             </div>
             <span className="vh-spacer" />
             <NewsletterForm />
@@ -352,8 +352,8 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
           {/* Payment & trust row */}
           <div className="vh-row" style={{ flexWrap: "wrap", gap: "var(--sp-4)", padding: "var(--sp-3) 0" }}>
             {[
-              { icon: CreditCard, label: "UPI · Cards · Netbanking" },
-              { icon: Banknote, label: cod ? "Cash on Delivery available" : "Simple, secure payment" },
+              { icon: CreditCard, label: "UPI, Cards & Net Banking" },
+              { icon: Banknote, label: cod ? "Cash on Delivery available" : "Secure Payments" },
               { icon: ShieldCheck, label: "Secure checkout" },
               { icon: RotateCcw, label: "Easy refunds — you're paid back first" },
               { icon: Landmark, label: "Licensed sellers only" },

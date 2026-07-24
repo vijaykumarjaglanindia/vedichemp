@@ -35,7 +35,7 @@ const LEGAL_PAGES: Record<string, { key: string; title: string; desc: string }> 
   shipping: {
     key: "legalShipping",
     title: "Shipping Policy",
-    desc: "Sellers pack and ship every order. Costs, timelines, PIN-code coverage and the age check on delivery for 21+ categories.",
+    desc: "Sellers pack and ship every order. Costs, timelines, pincode coverage and the age check on delivery for 21+ categories.",
   },
 };
 
@@ -92,7 +92,7 @@ export default async function LegalPage({ params }: { params: Promise<{ slug: st
         ))}
       </nav>
       <p className="small muted" style={{ marginTop: "var(--sp-3)" }}>
-        Questions about a policy? Write to {content.supportEmail} or raise a ticket from{" "}
+        Questions about a policy? Write to {content.supportEmail} or contact support from{" "}
         <Link href="/account/support">My account → Support</Link>.
       </p>
     </div>

@@ -195,7 +195,9 @@ export default async function StorePage({
               <div className="vh-row-between"><span className="small muted">Bank account</span><span className="mono small">{PROFILE.bankMasked}</span></div>
               <div className="vh-row-between">
                 <span className="small muted">Penny-drop verification</span>
-                <StatusPill tone="ok">Verified — {PROFILE.bankName}</StatusPill>
+                {PROFILE.bankMasked !== "—"
+                  ? <StatusPill tone="ok">Verified — {PROFILE.bankName}</StatusPill>
+                  : <StatusPill tone="neutral">Not on file — add payout bank</StatusPill>}
               </div>
             </div>
           </Card>
@@ -416,7 +418,7 @@ export default async function StorePage({
             <span className="small muted">Overall KYC</span>
             <StatusPill tone={toneForStatus(SELLER.kycState)}>{SELLER.kycState.replace(/_/g, " ")}</StatusPill>
           </div>
-          <div className="small muted">Re-verification due annually. Next check: 1 Apr 2027.</div>
+          <div className="small muted">KYC is re-verified annually and whenever your registered details change.</div>
         </Card>
 
         <Card title="Users & roles" action={<Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/staff">Manage staff</Link>}>

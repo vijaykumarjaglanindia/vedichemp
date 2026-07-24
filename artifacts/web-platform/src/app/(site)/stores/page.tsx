@@ -22,9 +22,9 @@ export const dynamic = "force-dynamic";
 
 export const metadata: Metadata = {
   title: "Verified stores — Vedic Hemp",
-  description: "Browse KYC-verified sellers on Vedic Hemp — India's regulated hemp, CBD wellness and Ayurveda marketplace.",
+  description: "Shop from verified sellers on Vedic Hemp — India's licensed marketplace for hemp, CBD wellness and Ayurveda.",
   alternates: { canonical: "/stores" },
-  openGraph: { title: "Verified stores — Vedic Hemp", description: "Browse KYC-verified sellers on Vedic Hemp.", url: "/stores", type: "website", siteName: "Vedic Hemp" },
+  openGraph: { title: "Verified stores — Vedic Hemp", description: "Browse identity-verified sellers on Vedic Hemp.", url: "/stores", type: "website", siteName: "Vedic Hemp" },
 };
 
 interface DirEntry {
@@ -53,10 +53,11 @@ async function directory(): Promise<DirEntry[]> {
       tagline: profile.tagline,
       location: profile.location,
       liveCount: live.length,
-      // Real rating from approved store reviews; fall back to the profile figure
+      // Real rating/count from approved store reviews only — a store with none
+      // shows "New store", never an invented rating or review tally.
       // only when there are no reviews yet.
-      rating: agg.count ? agg.avg : profile.rating,
-      reviewCount: agg.count || profile.reviewCount,
+      rating: agg.count ? agg.avg : 0,
+      reviewCount: agg.count,
     });
   }
   return out.sort((a, b) => b.rating - a.rating);
@@ -76,12 +77,12 @@ export default async function StoresDirectoryPage() {
         <SectionHead
           eyebrow="Marketplace"
           title="Verified stores"
-          sub="Every store here is KYC-verified and currently selling. A seller appears only while their verification holds and they have live products."
+          sub="Every store here is a verified seller with products in stock. A store appears only while its verification is active and it has products available."
         />
 
         {stores.length === 0 ? (
           <Card>
-            <EmptyState icon="🏪" headline="No stores to show yet" sub="Verified sellers with live products appear here." cta={{ label: "Browse all products", href: "/catalogue" }} />
+            <EmptyState icon="🏪" headline="No stores to show yet" sub="Verified sellers with products in stock appear here." cta={{ label: "Browse all products", href: "/catalogue" }} />
           </Card>
         ) : (
           <div className="vh-grid cols-3">
@@ -105,7 +106,7 @@ export default async function StoresDirectoryPage() {
                 </div>
                 <p className="small" style={{ margin: "0 0 10px", color: "var(--vh-ink)" }}>{s.tagline}</p>
                 <div className="vh-row-between small muted">
-                  <span>★ {s.rating.toFixed(1)} · {s.reviewCount.toLocaleString("en-IN")} reviews</span>
+                  <span>{s.reviewCount > 0 ? `★ ${s.rating.toFixed(1)} · ${s.reviewCount.toLocaleString("en-IN")} reviews` : "New store"}</span>
                   <span>{s.liveCount} product{s.liveCount === 1 ? "" : "s"}</span>
                 </div>
               </Link>

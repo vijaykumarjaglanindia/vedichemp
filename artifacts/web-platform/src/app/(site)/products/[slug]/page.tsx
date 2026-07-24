@@ -26,7 +26,6 @@ import {
   ShoppingCart,
   Store,
   Truck,
-  Users,
 } from "lucide-react";
 import { Banner, Card, ComplianceBadge, EmptyState, MoneyText, Rating } from "@/components/ui";
 import { AdBanner, AdSlot } from "@/components/ui/ads";
@@ -52,7 +51,7 @@ import {
   similarProducts,
   specsFor,
 } from "../../_lib/data";
-import { ProductCard, reviewCountFor } from "../../_lib/ProductCard";
+import { ProductCard } from "../../_lib/ProductCard";
 
 type Params = { slug: string };
 
@@ -66,14 +65,14 @@ async function checkPin(pin: string, cls: string): Promise<{ ok: boolean; title:
   const { serviceability } = await import("@/lib/shipping");
   const svc = await serviceability(pin, cls);
   if (!svc.ok && svc.reason === "pin") {
-    return { ok: false, title: "That PIN doesn't look right", body: "Enter the 6-digit PIN code of the delivery address." };
+    return { ok: false, title: "Please enter a valid pincode", body: "Enter the 6-digit pincode of the delivery address." };
   }
   const regulated = cls === "CBD_WELLNESS";
   if (!svc.ok && svc.reason === "regulated") {
     return {
       ok: false,
-      title: `Not serviceable at ${pin} yet`,
-      body: "Sellers can't ship CBD wellness to this PIN yet — age-verified handover isn't available there. Hemp foods and Ayurveda deliver normally.",
+      title: `We can't deliver to ${pin} yet`,
+      body: "Sellers can't ship CBD wellness here yet — we can't do the age check on delivery in this area. Hemp foods and Ayurveda deliver normally.",
     };
   }
   const days = 2 + ((pin.split("").reduce((s, d) => s + Number(d), 0)) % 3);
@@ -83,7 +82,7 @@ async function checkPin(pin: string, cls: string): Promise<{ ok: boolean; title:
     title: `Delivers to ${pin} by ${eta}`,
     body: regulated
       ? "Shipped by the seller's delivery partner · ID checked on handover (21+)."
-      : "Shipped by the seller's delivery partner · prepaid checkout (UPI, cards, netbanking).",
+      : "Shipped by the seller's courier · pay securely online (UPI, Cards & Net Banking).",
   };
 }
 
@@ -143,8 +142,21 @@ export default async function ProductDetailPage({
   const agg = await aggregate(product.id);
   const reviews = await approvedFor(product.id);
   const questions = await questionsFor(product.id);
-  const reviewCount = agg.count > 0 ? agg.count : reviewCountFor(product);
+  // Real review count from APPROVED reviews only — no fabricated fallback. A
+  // product with no reviews shows its rating with no count (or "New").
+  const reviewCount = agg.count;
   const ratingValue = agg.count > 0 ? agg.avg : product.rating;
+  // Payment copy reflects the real admin setting — COD is off by default.
+  const { codEnabled } = await import("@/lib/payments");
+  const codOn = await codEnabled();
+  // Offers/shipping copy is derived from the real config, never hand-typed:
+  // the free-shipping threshold is the admin-editable value the cart charges
+  // against, and the coupon line renders only while VEDIC10 is actually live.
+  const { readShipping } = await import("@/lib/shipping");
+  const { readCoupons, couponLive } = await import("@/lib/commerce");
+  const freeShipAtPaise = (await readShipping()).freeAtPaise;
+  const vedic10 = (await readCoupons())["VEDIC10"];
+  const vedic10Live = vedic10 ? couponLive(vedic10) : false;
   // Variant selection: the chosen option drives the price, stock and the
   // add-to-cart, all server-resolved (never a client price).
   const productHasVariants = hasVariants(product);
@@ -218,7 +230,7 @@ export default async function ProductDetailPage({
               <div className="vh-product-media" style={{ aspectRatio: "4 / 3", fontSize: "clamp(5rem, 14vw, 8rem)", borderRadius: "var(--vh-radius)" }} aria-hidden>
                 {product.emoji}
               </div>
-              <p className="small muted" style={{ marginTop: 8 }}>Illustrative product imagery.</p>
+              <p className="small muted" style={{ marginTop: 8 }}>Image is for representation only.</p>
             </>
           )}
 
@@ -296,7 +308,7 @@ export default async function ProductDetailPage({
 
           {/* Lab report */}
           <section id="lab-report" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
-            <Card title="Lab report / Certificate of Analysis">
+            <Card title="Lab report">
               {regulated ? (
                 <>
                   <div className="vh-row" style={{ gap: 8, flexWrap: "wrap", marginBottom: 10 }}>
@@ -322,7 +334,7 @@ export default async function ProductDetailPage({
           <section id="reviews" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
             <Card
               title="Reviews"
-              action={<Rating value={ratingValue} count={reviewCount} />}
+              action={<Rating value={ratingValue} count={reviewCount || undefined} />}
             >
               {rr && (
                 <div style={{ marginBottom: "var(--sp-3)" }}>
@@ -408,22 +420,25 @@ export default async function ProductDetailPage({
                 <p className="small muted" style={{ margin: 0 }}>No reviews yet — be the first to review this after your purchase.</p>
               )}
               <div style={{ marginTop: "var(--sp-3)", borderTop: "1px solid var(--vh-line)", paddingTop: "var(--sp-3)" }}>
-                {/* AI review summary — provider seam in lib/ai.ts; labelled, never a claim */}
+                {/* AI review summary — provider seam in lib/ai.ts; labelled, never a
+                    claim, and only shown once there are real approved reviews to summarise. */}
+                {reviewCount > 0 && (
                 <div id="ai-summary" style={{ background: "var(--vh-green-50)", border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "12px 14px", marginBottom: "var(--sp-3)" }}>
                   <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}>
                     <span className="vh-pill vh-pill-info">AI summary</span>
                     <span className="small muted">from verified-purchase reviews · engine: {aiProviderName()}</span>
                   </div>
                   <p className="small" style={{ margin: 0 }}>
-                    {summarizeReviews({ title: product.title, rating: product.rating, reviewCount, labVerified: product.labVerified })}
+                    {summarizeReviews({ title: product.title, rating: ratingValue, reviewCount, labVerified: product.labVerified })}
                   </p>
                 </div>
+                )}
                 {myReview ? (
                   <div>
                     <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
                       <Rating value={myReview.rating} />
                       <strong className="small" style={{ color: "var(--vh-ink)" }}>Your review</strong>
-                      <span className="vh-pill vh-pill-warn">Pending moderation</span>
+                      <span className="vh-pill vh-pill-warn">Under review</span>
                     </div>
                     <div className="small muted vh-prose" style={{ margin: "6px 0 0" }} dangerouslySetInnerHTML={{ __html: mdToHtml(myReview.text) }} />
                   </div>
@@ -514,7 +529,7 @@ export default async function ProductDetailPage({
                     </div>
                     <div className="small muted vh-prose" style={{ margin: "6px 0 0" }} dangerouslySetInnerHTML={{ __html: mdToHtml(myQuestion) }} />
                     <p className="small muted" style={{ margin: "6px 0 0" }}>
-                      The seller answers from Seller Central; replies pass the compliance copy-check before publishing.
+                      The seller will answer here; every reply is checked before it's posted.
                     </p>
                   </div>
                 ) : (
@@ -534,7 +549,7 @@ export default async function ProductDetailPage({
                         id="qa-text"
                         maxLength={300}
                         minHeight={64}
-                        placeholder="Composition, batch, format — the seller answers, and answers are copy-checked."
+                        placeholder="Ask about ingredients, batch or size — the seller replies, and every answer is checked first."
                       />
                     </div>
                     <button type="submit" className="vh-btn vh-btn-sm vh-btn-outline" style={{ justifySelf: "start" }}>Post question</button>
@@ -604,7 +619,7 @@ export default async function ProductDetailPage({
             <h1 style={{ fontSize: "1.35rem", margin: product.brand ? "0 0 6px" : "10px 0 6px" }}>{product.title}</h1>
             {product.shortDesc && <p className="small muted" style={{ margin: "0 0 8px" }}>{product.shortDesc}</p>}
             <div className="vh-row" style={{ gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-              <a href="#reviews" style={{ textDecoration: "none" }}><Rating value={ratingValue} count={reviewCount} /></a>
+              <a href="#reviews" style={{ textDecoration: "none" }}><Rating value={ratingValue} count={reviewCount || undefined} /></a>
               <Link href={`/store/${sellerSlug(product.seller)}`} className="small" style={{ fontWeight: 700 }}>
                 {product.seller}
               </Link>
@@ -660,8 +675,8 @@ export default async function ProductDetailPage({
               </div>
             )}
             <div className="vh-row small muted" style={{ gap: 6, marginBottom: 12 }}>
-              <Users size={13} aria-hidden />
-              <span><b className="tabular" style={{ color: "var(--vh-ink)" }}>24</b> people bought this in the last 7 days · ships in 24h</span>
+              <Truck size={13} aria-hidden />
+              <span>Usually dispatched in 24–48 hrs from a licensed seller · Tracked delivery</span>
             </div>
 
             {/* Bank & platform offers */}
@@ -669,8 +684,10 @@ export default async function ProductDetailPage({
               <span className="vh-row small" style={{ gap: 8, fontWeight: 700, color: "var(--vh-ink)" }}>
                 <BadgePercent size={14} aria-hidden style={{ color: "var(--vh-accent)" }} /> Offers
               </span>
-              <span className="small" style={{ paddingLeft: 22 }}>Extra 10% off up to ₹200 on UPI · code <span className="vh-kbd">VEDIC10</span></span>
-              <span className="small" style={{ paddingLeft: 22 }}>Free shipping on orders above ₹5,000 · ₹100 flat below · COD available</span>
+              {vedic10Live && (
+                <span className="small" style={{ paddingLeft: 22 }}>{vedic10!.label} · code <span className="vh-kbd">VEDIC10</span></span>
+              )}
+              <span className="small" style={{ paddingLeft: 22 }}>Free Delivery over <MoneyText paise={freeShipAtPaise} /> · delivery charges are calculated at checkout · {codOn ? "COD available" : "pay online"}</span>
             </div>
 
             {/* Stock status — the server is the authority; the button follows
@@ -678,7 +695,7 @@ export default async function ProductDetailPage({
             {shownStock <= 0 ? (
               <div role="status" style={{ marginBottom: 12, padding: "12px 14px", borderRadius: "var(--vh-radius-sm)", border: "1px solid var(--vh-line)", borderLeft: "3px solid var(--vh-danger)", background: "color-mix(in srgb, var(--vh-danger-bg) 40%, var(--vh-surface))" }}>
                 <div style={{ fontWeight: 700, color: "var(--vh-danger)" }}>Out of stock{productHasVariants && selected ? ` — ${selected.label}` : ""}</div>
-                <div className="small muted">{productHasVariants ? "Pick another option above, or add it to your wishlist for when it's restocked." : "The seller has no units on hand. Add it to your wishlist and we'll show it again when it's restocked."}</div>
+                <div className="small muted">{productHasVariants ? "Pick another option above, or add it to your wishlist for when it's restocked." : "This item is currently out of stock. Add it to your wishlist and we'll show it again when it's restocked."}</div>
               </div>
             ) : maxSelectable < minQty ? (
               <div role="status" style={{ marginBottom: 12, padding: "12px 14px", borderRadius: "var(--vh-radius-sm)", border: "1px solid var(--vh-line)", borderLeft: "3px solid var(--vh-warn)", background: "color-mix(in srgb, var(--vh-warn-bg) 40%, var(--vh-surface))" }}>
@@ -733,12 +750,12 @@ export default async function ProductDetailPage({
             </form>
 
             {/* Delivery estimate by PIN — serviceability is decided server-side */}
-            <form method="GET" className="vh-field" style={{ marginBottom: "var(--sp-3)" }} aria-label="Check delivery by PIN code">
+            <form method="GET" className="vh-field" style={{ marginBottom: "var(--sp-3)" }} aria-label="Check delivery by pincode">
               <label htmlFor="pdp-pin" className="vh-label vh-row" style={{ gap: 6 }}>
                 <MapPin size={13} aria-hidden style={{ color: "var(--vh-accent)" }} /> Deliver to
               </label>
               <div className="vh-row" style={{ gap: 8 }}>
-                <input id="pdp-pin" name="pin" defaultValue={pin ?? ""} className="vh-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="Enter 6-digit PIN code" style={{ maxWidth: 200 }} />
+                <input id="pdp-pin" name="pin" defaultValue={pin ?? ""} className="vh-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="Enter 6-digit pincode" style={{ maxWidth: 200 }} />
                 <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm">Check</button>
               </div>
               {pinResult ? (
@@ -751,7 +768,7 @@ export default async function ProductDetailPage({
                   <span className="muted" style={{ display: "block", fontWeight: 400 }}>{pinResult.body}</span>
                 </span>
               ) : (
-                <span className="vh-help">We&apos;ll confirm delivery availability for your PIN before you pay.</span>
+                <span className="vh-help">Enter your pincode to check delivery date &amp; availability.</span>
               )}
             </form>
 
@@ -855,7 +872,7 @@ export default async function ProductDetailPage({
             </div>
           </AdSlot>
           <p className="small muted" style={{ marginTop: 8, marginBottom: 0, fontSize: ".72rem" }}>
-            Placements configured in Admin → Ads.
+            Sponsored
           </p>
         </section>
       )}

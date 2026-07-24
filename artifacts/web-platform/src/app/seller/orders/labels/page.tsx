@@ -55,6 +55,10 @@ export default async function ShippingLabelsPage() {
             {printable.length} label{printable.length === 1 ? "" : "s"} ready — accepted &amp; packed orders only.
             Use your browser&rsquo;s print dialog (Ctrl/Cmd+P).
           </p>
+          <p className="small muted" style={{ margin: "4px 0 0" }}>
+            Ship-to addresses on these sample labels are illustrative; a live order prints the buyer&rsquo;s real
+            delivery address, revealed at label time.
+          </p>
         </div>
         <span className="vh-row" style={{ gap: 8 }}>
           <Link href="/seller/orders" className="vh-btn vh-btn-sm vh-btn-ghost">

@@ -25,6 +25,9 @@ export default async function CartPage({
   const reorderedN = reordered ? parseInt(reordered, 10) : 0;
   const skippedN = skipped ? parseInt(skipped, 10) : 0;
   const cart = await priceCart();
+  // Payment trust badge reflects the real admin setting, not a fixed claim.
+  const { codEnabled } = await import("@/lib/payments");
+  const codOn = await codEnabled();
 
   if (cart.lines.length === 0) {
     return (
@@ -32,8 +35,8 @@ export default async function CartPage({
         <EmptyState
           icon="🛒"
           headline="Your cart is empty"
-          sub="Everything here is listed by licensed sellers — find something worth reordering."
-          cta={{ label: "Browse the catalogue", href: "/catalogue" }}
+          sub="Everything here is listed by licensed sellers — add items to get started."
+          cta={{ label: "Shop Now", href: "/catalogue" }}
         />
       </div>
     );
@@ -43,7 +46,7 @@ export default async function CartPage({
     <div className="vh-container" style={{ paddingTop: "var(--sp-4)", paddingBottom: "var(--sp-7)" }}>
       <h1 style={{ marginBottom: 4 }}>Your cart</h1>
       <p className="small muted" style={{ marginBottom: "var(--sp-4)" }}>
-        <span className="tabular">{cart.count}</span> item{cart.count === 1 ? "" : "s"} · prices include all taxes
+        <span className="tabular">{cart.count}</span> item{cart.count === 1 ? "" : "s"} · inclusive of all taxes
       </p>
 
       {reorderedN > 0 && (
@@ -106,7 +109,7 @@ export default async function CartPage({
           {cart.ageGated && (
             <Banner severity="warn" title="Age-restricted item in cart">
               Your cart contains a 21+ CBD wellness product. You&rsquo;ll confirm your age at
-              checkout, and it is verified again on delivery handover.
+              checkout, and it is verified again at the time of delivery.
             </Banner>
           )}
 
@@ -116,7 +119,7 @@ export default async function CartPage({
               <span className="vh-product-media" style={{ fontSize: "1.6rem" }} aria-hidden>🌾</span>
               <span style={{ minWidth: 0 }}>
                 <span className="vh-product-title" style={{ display: "block" }}>Add Hemp Hearts 400g — pairs with your order</span>
-                <span className="small muted">Ananda Foods · ships with the same courier window</span>
+                <span className="small muted">Ananda Foods · ships with your order</span>
               </span>
               <MoneyText paise={64900} className="vh-product-title" />
             </Link>
@@ -171,13 +174,13 @@ export default async function CartPage({
           )}
 
           <div className="vh-row-between small" style={{ padding: "6px 0" }}>
-            <span className="muted">Shipping{cart.shippingEstimated ? " (est.)" : ""}</span>
+            <span className="muted">Delivery{cart.shippingEstimated ? " (est.)" : ""}</span>
             {cart.shippingPaise === 0 ? <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Free</span> : <MoneyText paise={cart.shippingPaise} />}
           </div>
           <p className="small muted" style={{ margin: "2px 0 0" }}>
             {cart.shippingFree
               ? <>Free delivery · arrives in {cart.shippingEta} ({cart.shippingZone}).</>
-              : <>{cart.shippingZone} · arrives in {cart.shippingEta}. Free over <MoneyText paise={cart.shippingFreeAtPaise} />. Exact charge is set from your delivery state at checkout.</>}
+              : <>{cart.shippingZone} · arrives in {cart.shippingEta}. Free over <MoneyText paise={cart.shippingFreeAtPaise} />. Final delivery charge is shown at checkout, based on your address.</>}
           </p>
           <hr className="vh-divider" />
           <div className="vh-row-between" style={{ marginBottom: 4 }}>
@@ -195,9 +198,9 @@ export default async function CartPage({
           </Link>
           <div style={{ display: "grid", gap: 8, marginTop: 14 }}>
             {[
-              { icon: ShieldCheck, text: "Prices verified at checkout — what you see is what you pay" },
+              { icon: ShieldCheck, text: "No hidden charges — what you see is what you pay" },
               { icon: Truck, text: "Packed & shipped by the seller who lists each item" },
-              { icon: ShoppingBag, text: "100% prepaid — UPI, cards & netbanking" },
+              { icon: ShoppingBag, text: codOn ? "UPI, Cards, Net Banking & Cash on Delivery" : "Pay securely online — UPI, Cards & Net Banking" },
             ].map(({ icon: Icon, text }) => (
               <span key={text} className="vh-row small muted" style={{ gap: 8, alignItems: "flex-start" }}>
                 <Icon size={13} aria-hidden style={{ color: "var(--vh-accent)", flexShrink: 0, marginTop: 2 }} />

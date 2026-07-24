@@ -37,7 +37,7 @@ export default async function GiftFinderPage({
   if (!flags.giftFinder) {
     return (
       <div className="vh-container" style={{ paddingTop: "var(--sp-5)", paddingBottom: "var(--sp-7)" }}>
-        <EmptyState icon="🎁" headline="The gift finder is taking a break" sub="This feature is currently switched off." cta={{ label: "Browse the catalogue", href: "/catalogue" }} />
+        <EmptyState icon="🎁" headline="The gift finder is taking a break" sub="This feature is currently switched off." cta={{ label: "Browse Products", href: "/catalogue" }} />
       </div>
     );
   }
@@ -65,7 +65,7 @@ export default async function GiftFinderPage({
         <span className="vh-eyebrow">Gifting</span>
         <h1 className="vh-display" style={{ fontSize: "clamp(1.6rem, 1.2rem + 1.6vw, 2.2rem)", marginTop: 8 }}>AI Gift Finder</h1>
         <p className="muted" style={{ maxWidth: "56ch" }}>
-          Tell it a budget and a routine — it picks lab-tested, licence-backed gifts. CBD wellness
+          Tell it a budget and a routine — it picks lab-tested gifts from licensed sellers. CBD wellness
           gifts are 21+ with ID checked on delivery.
         </p>
       </div>
@@ -90,7 +90,7 @@ export default async function GiftFinderPage({
         <span className="vh-pill vh-pill-info" style={{ marginRight: 8 }}>AI picks</span>
         <span className="small">
           {overBudget
-            ? `Nothing fits ₹${Number(budget).toLocaleString("en-IN")} in that lane yet — here are the closest options just above budget.`
+            ? `Nothing fits ₹${Number(budget).toLocaleString("en-IN")} in that range yet — here are the closest options just above budget.`
             : `Under ₹${Number(budget).toLocaleString("en-IN")} for someone who ${g.label.toLowerCase()}: ${g.note}. Ranked by verified-purchase rating.`}
           <span className="muted"> · engine: {aiProviderName()}</span>
         </span>

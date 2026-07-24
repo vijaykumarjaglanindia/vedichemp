@@ -103,13 +103,13 @@ export default async function CategoryPage({ params }: { params: Promise<Params>
 
         {products.length === 0 ? (
           <Card>
-            <EmptyState icon="🗂️" headline="Nothing here yet" sub="This collection has no live products right now. Check back soon or browse the full catalogue." cta={{ label: "Browse all products", href: "/catalogue" }} />
+            <EmptyState icon="🗂️" headline="Nothing here yet" sub="This collection has no products right now. Check back soon or browse the full catalogue." cta={{ label: "Browse all products", href: "/catalogue" }} />
           </Card>
         ) : (
           <>
             <div className="vh-row-between" style={{ marginBottom: "var(--sp-3)" }}>
               <span className="small muted">{products.length} product{products.length === 1 ? "" : "s"}</span>
-              <Link className="small" href={`/catalogue?cat=${slug}`}>Open in catalogue with filters →</Link>
+              <Link className="small" href={`/catalogue?cat=${slug}`}>View all products →</Link>
             </div>
             <div className="vh-grid cols-4">
               {products.map((p) => <ProductCard key={p.id} p={p} actions />)}

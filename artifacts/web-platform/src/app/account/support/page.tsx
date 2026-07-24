@@ -107,7 +107,7 @@ export default async function SupportPage({
               </button>
               <p className="small muted" style={{ margin: 0 }}>
                 Prescription-related tickets are routed to Pharmacist/Compliance only; support agents cannot
-                view your Rx image without a logged reason.
+                view your prescription image without a logged reason.
               </p>
             </form>
           </Card>

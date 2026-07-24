@@ -31,7 +31,7 @@ const ERRORS: Record<string, string> = {
   pincode: "PIN code must be exactly 6 digits.",
   payment: "Choose a payment method.",
   age: "Please confirm you are 21 or older — your cart contains an age-restricted item.",
-  serviceable: "A CBD wellness item in your cart can't be delivered to that PIN code yet. Remove it, or ship to a different address.",
+  serviceable: "A CBD wellness item in your cart can't be delivered to that pincode yet. Remove it, or ship to a different address.",
 };
 
 const PAY_ICONS: Record<string, typeof Banknote> = {
@@ -121,7 +121,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
                 <input id="co-state" name="state" className="vh-input" defaultValue={draft.state} autoComplete="address-level1" required />
               </div>
               <div className={field("pincode")}>
-                <label htmlFor="co-pin" className="vh-label">PIN code <span className="req">*</span></label>
+                <label htmlFor="co-pin" className="vh-label">Pincode <span className="req">*</span></label>
                 <input id="co-pin" name="pincode" className="vh-input" defaultValue={draft.pincode} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required />
               </div>
             </div>
@@ -137,8 +137,8 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
             <h3 style={{ marginBottom: 6 }}>Payment</h3>
             <p className="small muted" style={{ margin: "0 0 14px" }}>
               {hasCod
-                ? "Prepaid orders are forwarded to sellers after payment capture; COD orders are confirmed instantly and paid to the courier — with an ID check on age-gated items."
-                : "Vedic Hemp is currently 100% prepaid — orders are forwarded to sellers only after payment is captured."}
+                ? "Orders paid online reach the seller once your payment goes through; Cash on Delivery orders are confirmed right away and paid to the courier — with an ID check on age-restricted items."
+                : "Right now, Vedic Hemp takes online payment only — your order reaches the seller once your payment goes through."}
             </p>
             <div style={{ display: "grid", gap: 8 }}>
               {methods.map(({ key: value, label, sub }) => {
@@ -198,7 +198,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
             </div>
           )}
           <div className="vh-row-between small" style={{ padding: "3px 0" }}>
-            <span className="muted">Shipping</span>
+            <span className="muted">Delivery</span>
             {cart.shippingPaise === 0 ? <span style={{ color: "var(--vh-ok)", fontWeight: 600 }}>Free</span> : <MoneyText paise={cart.shippingPaise} />}
           </div>
           {walletApplicable > 0 && (

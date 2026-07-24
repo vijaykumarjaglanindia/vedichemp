@@ -71,7 +71,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
           icon="🏪"
           headline="This store isn't available"
           sub="The store may have closed, changed its name, or not completed verification yet."
-          cta={{ label: "Browse the catalogue", href: "/catalogue" }}
+          cta={{ label: "Browse Products", href: "/catalogue" }}
         />
       </div>
     );
@@ -94,8 +94,9 @@ export default async function StorePage({ params, searchParams }: { params: Prom
   // sample profile only when a store has no reviews yet.
   const storeAgg = await storeAggregate(slug);
   const storeReviews = await approvedStoreReviews(slug);
-  const headlineRating = storeAgg.count ? storeAgg.avg : profile.rating;
-  const headlineCount = storeAgg.count ? storeAgg.count : profile.reviewCount;
+  // Real rating/count from approved store reviews only — no invented fallback.
+  const headlineRating = storeAgg.count ? storeAgg.avg : 0;
+  const headlineCount = storeAgg.count;
   const session = await getSession();
 
   // Seller-published social links — each built on a known domain from a
@@ -172,7 +173,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
               <p style={{ color: "var(--vh-body)", margin: "0 0 10px", fontSize: ".95rem" }}>{tagline}</p>
               <div className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
                 <a href="#reviews" style={{ background: "var(--vh-surface)", border: "1px solid var(--vh-line)", borderRadius: 999, padding: "3px 10px", display: "inline-flex", textDecoration: "none" }}>
-                  <Rating value={headlineRating} count={headlineCount} />
+                  {headlineCount > 0 ? <Rating value={headlineRating} count={headlineCount} /> : <span className="small muted">New store · no reviews yet</span>}
                 </a>
                 {kycApproved(seller.name) && (
                   <span className="vh-pill vh-pill-ok">
@@ -180,7 +181,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
                   </span>
                 )}
                 <span className="vh-pill vh-pill-ok">
-                  <ShieldCheck size={12} strokeWidth={2.2} aria-hidden /> Health score {seller.healthScore}
+                  <ShieldCheck size={12} strokeWidth={2.2} aria-hidden /> Reliability score {seller.healthScore}
                 </span>
                 {publicClasses.map((cls) => (
                   <span key={cls} className="vh-pill vh-pill-info">
@@ -241,7 +242,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
             <AdBanner
               cls="CBD_WELLNESS" placement="store-campaign" brand={seller.name}
               headline="Monsoon wellness: seller-funded 20% off on the recovery range"
-              cta="See campaign items" href="/catalogue?class=CBD_WELLNESS"
+              cta="Shop the offer" href="/catalogue?class=CBD_WELLNESS"
             />
           </div>
 
@@ -258,6 +259,10 @@ export default async function StorePage({ params, searchParams }: { params: Prom
                   </li>
                 ))}
               </ul>
+              <p className="small muted" style={{ margin: "12px 0 0" }}>
+                Shared by the seller when they joined. For lab-tested categories, we also show the licence and each
+                batch&rsquo;s lab report on the product page — those are the checks we verify.
+              </p>
             </Card>
           </div>
         </section>
@@ -284,9 +289,9 @@ export default async function StorePage({ params, searchParams }: { params: Prom
           {products.length === 0 ? (
             <EmptyState
               icon="📦"
-              headline="No public listings right now"
-              sub="This seller's products may be between batches — a regulated listing goes offline whenever its lab report lapses."
-              cta={{ label: "Browse the catalogue", href: "/catalogue" }}
+              headline="No products available right now"
+              sub="This seller's products may be between batches — a lab-tested product goes offline if its lab report expires."
+              cta={{ label: "Browse Products", href: "/catalogue" }}
             />
           ) : (
             <div className="vh-grid cols-4">
@@ -378,7 +383,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
                   <div className="vh-field">
                     <label className="vh-label" htmlFor="rvw-body">Your review</label>
                     <textarea className="vh-input" id="rvw-body" name="body" rows={3} minLength={12} maxLength={600} required placeholder="How was the packaging, dispatch and service?" />
-                    <span className="vh-help">Composition and service, not health claims — the copy-check runs on submit.</span>
+                    <span className="vh-help">Write about the product and service, not health claims.</span>
                   </div>
                   <button type="submit" className="vh-btn vh-btn-primary" style={{ justifySelf: "start" }}>Submit review</button>
                 </form>

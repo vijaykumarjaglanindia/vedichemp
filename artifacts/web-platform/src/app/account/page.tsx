@@ -48,7 +48,7 @@ function TitleIcon({ icon, children }: { icon: ReactNode; children: ReactNode })
 
 const QUICK_ACTIONS = [
   { href: "/account/orders", label: "Track order", icon: <Truck size={18} strokeWidth={2.2} /> },
-  { href: "/account/medical", label: "Upload Rx", icon: <FileUp size={18} strokeWidth={2.2} /> },
+  { href: "/account/medical", label: "Upload prescription", icon: <FileUp size={18} strokeWidth={2.2} /> },
   { href: "/account/subscriptions", label: "Manage subscription", icon: <RefreshCw size={18} strokeWidth={2.2} /> },
   { href: "/account/support", label: "Get support", icon: <LifeBuoy size={18} strokeWidth={2.2} /> },
 ];
@@ -273,7 +273,7 @@ export default async function AccountHomePage() {
             </div>
             <Link className="small" href="/account/wallet" style={{ display: "inline-block", marginTop: 8 }}>Open wallet →</Link>
           </Card>
-          <Stat label="Orders in flight" value={String(inFlightCount)} delta={{ dir: "up", text: `${allOrders.length} lifetime` }} />
+          <Stat label="Open orders" value={String(inFlightCount)} delta={{ dir: "up", text: `${allOrders.length} lifetime` }} />
         </div>
 
         {/* Activity timeline — companion to the ranked widgets, placed after wallet */}
@@ -287,7 +287,7 @@ export default async function AccountHomePage() {
         {/* Widget rank 8: recommendations — A1: MED_CANNABIS is structurally absent, never filtered client-side */}
         <Card
           title={<TitleIcon icon={<Sparkles {...I} />}>Recommended for you</TitleIcon>}
-          action={<Link className="small" href="/">Browse catalogue →</Link>}
+          action={<Link className="small" href="/">Browse products →</Link>}
         >
           <div className="vh-grid cols-4">
             {recommended.map((p) => (
@@ -308,7 +308,7 @@ export default async function AccountHomePage() {
               {showPersonalisedOffers ? "Offers for you" : "Best sellers"}
             </TitleIcon>
           }
-          action={<span className="small muted">Placements configured in Admin → Ads</span>}
+          action={<span className="small muted">Sponsored</span>}
         >
           {showPersonalisedOffers ? (
             <>
@@ -324,7 +324,7 @@ export default async function AccountHomePage() {
                   return (
                     <div key={offer.id} className="vh-card" style={{ padding: 16 }}>
                       <div className="vh-row-between" style={{ marginBottom: 8 }}>
-                        <CampaignLabel>Campaign</CampaignLabel>
+                        <CampaignLabel>Sponsored</CampaignLabel>
                         <span className="small muted">{offer.endsOn ? `Ends ${offer.endsOn}` : "Ongoing"}</span>
                       </div>
                       <div className="vh-row" style={{ gap: 8, marginBottom: 8 }}>
@@ -350,7 +350,7 @@ export default async function AccountHomePage() {
               </div>
               )}
               <p className="small muted" style={{ margin: "8px 0 0" }}>
-                Campaign offers only ever cover Hemp Food, Ayurveda and CBD Wellness. Medical Cannabis is
+                Promotional offers only ever cover Hemp Food, Ayurveda and CBD Wellness. Medical Cannabis is
                 never promoted, to anyone.
               </p>
             </>

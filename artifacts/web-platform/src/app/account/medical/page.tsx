@@ -39,12 +39,12 @@ const PROTECTIONS = [
   {
     icon: <KeyRound size={18} strokeWidth={2.2} />,
     head: "Encrypted with a separate key",
-    body: "Prescription images live in a dedicated bucket, encrypted at rest with their own KMS key and protected by object lock.",
+    body: "Prescription images are stored on their own, encrypted with a separate key, and locked so they can't be changed or deleted.",
   },
   {
     icon: <Timer size={18} strokeWidth={2.2} />,
-    head: "5-minute signed links",
-    body: "You view your own prescription through a signed URL that expires after 5 minutes. This page never links directly to the stored image.",
+    head: "Links expire in 5 minutes",
+    body: "You view your own prescription through a secure link that expires after 5 minutes. This page never links directly to the stored image.",
   },
   {
     icon: <Eye size={18} strokeWidth={2.2} />,
@@ -111,7 +111,7 @@ export default async function MedicalPage({
           <Banner severity="warn" title="Your prescription has expired" icon="⏳">
             Any Medical Cannabis order or subscription requires a verified, unexpired prescription. Your
             current prescription expired on {expiredRx?.validTill}. Upload a renewed prescription to
-            resume MED_CANNABIS purchases — a pharmacist must re-verify it before it becomes active.
+            resume Medical Cannabis purchases — a pharmacist must re-verify it before it becomes active.
           </Banner>
         )}
 
@@ -161,7 +161,7 @@ export default async function MedicalPage({
         >
           {viewlink && (
             <div style={{ marginBottom: 12 }}>
-              <Banner severity="ok" title="Signed link issued — valid for 5 minutes" icon="🔗">
+              <Banner severity="ok" title="Secure link created — valid for 5 minutes" icon="🔗">
                 For your safety, even you opening your own prescription is recorded in the
                 access history below.
               </Banner>
@@ -189,7 +189,7 @@ export default async function MedicalPage({
                           <form action={requestRxViewLink} style={{ display: "inline-flex" }}>
                             <input type="hidden" name="rxId" value={rx.id} />
                             <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost">
-                              View (signed link, 5 min)
+                              View (secure link, 5 min)
                             </button>
                           </form>
                         ) : (
@@ -226,7 +226,7 @@ export default async function MedicalPage({
             <div style={{ marginBottom: 12 }}>
               <Banner severity="ok" title="Prescription received — under review">
                 A licensed pharmacist verifies it within 4 business hours. It becomes active only
-                after that verification — there is no self-serve override.
+                after that verification — it can&rsquo;t be skipped.
               </Banner>
             </div>
           )}
@@ -287,7 +287,7 @@ export default async function MedicalPage({
             </span>
             <p className="small muted" style={{ margin: 0 }}>
               A licensed pharmacist reviews every upload <strong>within 4 business hours</strong>. Your
-              prescription becomes active only after that verification — there is no self-serve override.
+              prescription becomes active only after that verification — it can&rsquo;t be skipped.
               You&apos;ll be notified the moment review completes.
             </p>
           </div>

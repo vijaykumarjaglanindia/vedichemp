@@ -72,7 +72,7 @@ function RealOrderDetail({
       {flags.reorder === "none" && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="info" title="Nothing from this order is available right now">
-            None of these items are currently live and in stock, so nothing was added to your cart. Browse the
+            None of these items are currently in stock, so nothing was added to your cart. Browse the
             catalogue for alternatives.
           </Banner>
         </div>
@@ -299,6 +299,8 @@ export default async function OrderDetailPage({
 
   const { ret } = sp;
   const returnRequest = (await readReturns())[id];
+  // A buyer reaches order detail only via the live-<ref> path above (their own
+  // real orders). A bare non-live id isn't linked anywhere in the console.
   const order: SampleOrder | undefined = ORDERS.find((o) => o.id === id);
   if (!order) notFound();
 

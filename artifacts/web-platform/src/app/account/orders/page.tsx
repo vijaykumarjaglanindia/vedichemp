@@ -51,6 +51,9 @@ export default async function OrdersPage({
   }));
 
   const returns = await readReturns();
+  // The buyer's real checkout orders, prepended to the illustrative sample
+  // history (src/lib/sample.ts — the documented demo seam that lets the console
+  // be reviewed with realistic content until a live order DB is attached).
   const rows = [...placed, ...ORDERS]
     .map((o) => (returns[o.id] ? { ...o, status: "RETURN_REQUESTED" } : o))
     .filter((o) => {
@@ -83,7 +86,7 @@ export default async function OrdersPage({
       key: "status", header: "Status", render: (o) => (
         <span className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
           <StatusPill tone={toneForStatus(o.status)}>{o.status.replace(/_/g, " ")}</StatusPill>
-          {o.eta && <span className="small muted">ETA {o.eta}</span>}
+          {o.eta && <span className="small muted">Arriving in {o.eta}</span>}
         </span>
       ),
     },

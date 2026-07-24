@@ -67,14 +67,18 @@ export default async function FinancePage() {
     label: f.label,
   }));
   const totalFeesPaise = FEE_BREAKDOWN_SEGMENTS.reduce((s, f) => s + f.paise, 0);
+  // Trend direction read from the store's own series — not a fixed "up".
+  const sparkFirst = REVENUE_SPARK[0] ?? 0;
+  const sparkLast = REVENUE_SPARK[REVENUE_SPARK.length - 1] ?? 0;
+  const trendDelta = sparkLast === sparkFirst ? undefined : ({ dir: sparkLast > sparkFirst ? "up" : "down", text: sparkLast > sparkFirst ? "trending up" : "trending down" } as const);
 
   return (
     <Shell active="/seller/finance" breadcrumb={["Seller Central", "Finance"]} title="Finance">
       <div className="vh-grid cols-4" style={{ marginBottom: "var(--sp-4)" }}>
         <Card>
-          <Stat label="Revenue (posted)" value={<MoneyText paise={totalNetPosted} />} delta={{ dir: "up", text: "12 weeks trending up" }} />
+          <Stat label="Revenue (posted)" value={<MoneyText paise={totalNetPosted} />} delta={trendDelta} />
           <div style={{ marginTop: 8 }}>
-            <Sparkline points={REVENUE_SPARK} width={180} height={40} label="Weekly net revenue, 12 weeks" />
+            <Sparkline points={REVENUE_SPARK} width={180} height={40} label="Net revenue trend" />
           </div>
         </Card>
         <Card><Stat label="Wallet balance" value={<MoneyText paise={WALLET.balancePaise} />} /></Card>
@@ -82,11 +86,11 @@ export default async function FinancePage() {
         <Card><Stat label="Next payout" value={<span className="tabular">{WALLET.nextPayoutDate}</span>} /></Card>
       </div>
 
-      <Card title="Settlement reports" action={<a className="vh-btn vh-btn-sm vh-btn-ghost" href={withBase("/seller/finance/statement")} download><Download size={13} strokeWidth={2.2} aria-hidden /> Statement CSV</a>} pad0>
+      <Card title="Payout statements" action={<a className="vh-btn vh-btn-sm vh-btn-ghost" href={withBase("/seller/finance/statement")} download><Download size={13} strokeWidth={2.2} aria-hidden /> Statement CSV</a>} pad0>
         <DataTable columns={settlementColumns} rows={myRuns} empty={<div className="vh-empty">No settlements yet.</div>} />
       </Card>
       <p className="small muted" style={{ margin: "8px 0 var(--sp-4)" }}>
-        Settlements are posted by the marketplace under maker–checker — no single admin moves money. Once posted,
+        Payouts are posted by us with two-person sign-off — no single person can move money. Once posted,
         a statement is immutable; a correction is a new row that references the old one, never an edit.
       </p>
 

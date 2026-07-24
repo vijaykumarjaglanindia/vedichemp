@@ -14,9 +14,22 @@ import { Banner, Card, DataTable, StatusPill, toneForStatus, MoneyText, type Col
 import { readCommerce } from "@/lib/commerce";
 import { readGiftCredit, redeemGiftCard } from "./actions";
 import { Sparkline, Donut } from "@/components/ui/charts";
-import { type LedgerRow, WALLET_TREND } from "../_lib/data";
+import { type LedgerRow } from "../_lib/data";
 import { getSession } from "@/lib/auth-lite";
 import { balancePaise, ledger, creditBreakdown } from "@/lib/wallet";
+import { ordersForBuyer } from "@/lib/orders";
+
+/** Whole days between an ISO date and today (>= 0 for past dates). */
+function daysAgo(iso: string): number {
+  const then = new Date(`${iso}T00:00:00Z`).getTime();
+  return Math.floor((Date.now() - then) / 86_400_000);
+}
+/** Deterministic 2-digit suffix so a buyer's referral code is stable + unique. */
+function codeSuffix(seed: string): number {
+  let h = 0;
+  for (let i = 0; i < seed.length; i++) h = (h * 31 + seed.charCodeAt(i)) >>> 0;
+  return (h % 90) + 10;
+}
 
 export const metadata: Metadata = { title: "Wallet" };
 
@@ -49,6 +62,22 @@ export default async function WalletPage({
   const segments = splitSegments(await creditBreakdown(email));
   const giftCredit = await readGiftCredit();
   const commerce = await readCommerce();
+
+  // Loyalty points — earned only on this buyer's DELIVERED orders, at the
+  // configured rate. No fabricated balance.
+  const delivered = (await ordersForBuyer(email)).filter((o) => o.status === "DELIVERED");
+  const loyaltyPoints = delivered.reduce((n, o) => n + Math.floor(o.totalPaise / 10000) * commerce.loyaltyPtsPer100, 0);
+  // Cashback credited in the last 7 days, from the real ledger (0 → no badge).
+  const cashbackWeekPaise = rows
+    .filter((r) => r.kind === "CASHBACK" && r.status === "POSTED" && daysAgo(r.at) >= 0 && daysAgo(r.at) <= 7)
+    .reduce((n, r) => n + r.amountPaise, 0);
+  // Running-balance trend built from the ledger itself (oldest → newest),
+  // not a fixed demo series. Shown only when there's enough history.
+  const chron = [...rows].filter((r) => r.status === "POSTED").reverse();
+  let run = 0;
+  const balanceTrend = chron.map((r) => (run += r.amountPaise));
+  // Referral code derived from the account — stable and unique per buyer.
+  const refCode = `VEDIC-${(email.split("@")[0] || "you").toUpperCase().replace(/[^A-Z0-9]/g, "").slice(0, 8) || "YOU"}-${codeSuffix(email)}`;
   const columns: Column<LedgerRow>[] = [
     { key: "at", header: "Date", render: (r) => <span className="tabular">{r.at}</span> },
     {
@@ -71,9 +100,13 @@ export default async function WalletPage({
             <div className="vh-stat" style={{ marginBottom: 8 }}>
               <span className="vh-stat-label">Total balance</span>
               <span className="vh-stat-value tabular"><MoneyText paise={balance} /></span>
-              <span className="vh-stat-delta-up">▲ ₹35.38 cashback this week</span>
+              {cashbackWeekPaise > 0 && (
+                <span className="vh-stat-delta-up">▲ <MoneyText paise={cashbackWeekPaise} /> cashback this week</span>
+              )}
             </div>
-            <Sparkline points={WALLET_TREND} width={220} height={48} label="Wallet balance trend, last 7 weeks" />
+            {balanceTrend.length >= 2 && (
+              <Sparkline points={balanceTrend} width={220} height={48} label="Wallet balance over your transaction history" />
+            )}
           </Card>
 
           {/* Split donut */}
@@ -114,7 +147,7 @@ export default async function WalletPage({
 
         <Card
           title={title(<ReceiptText {...I} />, "Transaction history")}
-          action={<span className="small muted">Append-only ledger — entries are never edited or deleted</span>}
+          action={<span className="small muted">Every entry is permanent — nothing is edited or deleted</span>}
           pad0
         >
           <DataTable columns={columns} rows={rows} />
@@ -122,7 +155,7 @@ export default async function WalletPage({
 
         <div id="giftcard" style={{ scrollMarginTop: 90 }}>
           <Card title="Gift cards & store credit">
-            {gift === "ok" && <div style={{ marginBottom: 10 }}><Banner severity="ok" title="Gift card redeemed">The credit is in your ledger and applies automatically at checkout.</Banner></div>}
+            {gift === "ok" && <div style={{ marginBottom: 10 }}><Banner severity="ok" title="Gift card redeemed">The credit is added to your wallet and applies automatically at checkout.</Banner></div>}
             {gift === "bad" && <div style={{ marginBottom: 10 }}><Banner severity="danger">That code doesn&rsquo;t match an active gift card — check for typos.</Banner></div>}
             {gift === "used" && <div style={{ marginBottom: 10 }}><Banner severity="warn">That gift card was already redeemed on this account.</Banner></div>}
             <div className="vh-row-between" style={{ marginBottom: 10 }}>
@@ -136,13 +169,13 @@ export default async function WalletPage({
               </div>
               <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit">Redeem</button>
             </form>
-            <p className="small muted" style={{ margin: "8px 0 0" }}>Codes redeem once per account, server-validated. Credit spends at checkout; it is never withdrawable as cash.</p>
+            <p className="small muted" style={{ margin: "8px 0 0" }}>Each code can be redeemed once per account. The credit is used at checkout and can&rsquo;t be withdrawn as cash.</p>
           </Card>
         </div>
 
         <div className="vh-grid cols-2">
           <Card title="Vedic Points — loyalty">
-            <div className="vh-stat-value tabular" style={{ marginBottom: 4 }}>1,240 pts</div>
+            <div className="vh-stat-value tabular" style={{ marginBottom: 4 }}>{loyaltyPoints.toLocaleString("en-IN")} pts</div>
             <p className="small muted" style={{ margin: 0 }}>
               {commerce.loyaltyPtsPer100} points per ₹100 on delivered orders; 100 points = ₹{Math.round(commerce.loyaltyPtsValuePaise / 100)} wallet credit at checkout.
               Points post when the return window closes, and they never expire while your account
@@ -151,7 +184,7 @@ export default async function WalletPage({
           </Card>
           <Card title="Refer & earn">
             <p className="small" style={{ marginTop: 0 }}>
-              Your code: <strong className="mono" style={{ color: "var(--vh-ink)" }}>VEDIC-ASHA-21</strong>
+              Your code: <strong className="mono" style={{ color: "var(--vh-ink)" }}>{refCode}</strong>
             </p>
             <p className="small muted" style={{ margin: 0 }}>
               Friends get ₹{Math.round(commerce.referralCreditPaise / 100)} off their first order above ₹999; you get the same

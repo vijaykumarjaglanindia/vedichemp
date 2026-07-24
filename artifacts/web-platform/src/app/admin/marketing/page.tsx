@@ -66,15 +66,15 @@ const REASON_TEXT: Record<ScreenReason, string> = {
 
 const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {
   approved: { sev: "ok", text: "Campaign cleared automatically — no claim, no health data. It's ready to send." },
-  pending: { sev: "warn", text: "Campaign held at PENDING_COPY_CHECK — it mentions a CBD Wellness product. A reviewer must clear it before it can send." },
+  pending: { sev: "warn", text: "Campaign held for copy-check — it mentions a CBD Wellness product. A reviewer must clear it before it can send." },
   cleared: { sev: "ok", text: "Copy-check cleared. The campaign is APPROVED and can now be sent." },
   sent: { sev: "ok", text: "Campaign sent. The send gate confirmed it was APPROVED first." },
-  blocked: { sev: "danger", text: "Campaign BLOCKED — its copy tripped the claims or §6 health-data guard. It is stored as a flagged attempt and can never be sent." },
+  blocked: { sev: "danger", text: "Campaign BLOCKED — its copy tripped the claims or health-data check. It is stored as a flagged attempt and can never be sent." },
   claims: { sev: "danger", text: "Blocked on re-screen: the copy claims to cure / treat / prevent / diagnose. It cannot be approved." },
   health: { sev: "danger", text: "Blocked on re-screen: the copy carries health data. It cannot be approved." },
   reason: { sev: "danger", text: "Approval needs a reason of at least 20 characters — a copy-check sign-off is an accountable action." },
   state: { sev: "warn", text: "That campaign isn't awaiting a copy-check." },
-  send_not_approved: { sev: "danger", text: "Send refused: the campaign is not APPROVED. Fail closed — only a cleared campaign goes out." },
+  send_not_approved: { sev: "danger", text: "Send refused: the campaign isn't Approved. Only a cleared campaign can go out." },
   send_already_sent: { sev: "warn", text: "That campaign was already sent." },
   send_missing: { sev: "danger", text: "No such campaign." },
   channel: { sev: "danger", text: "Pick a valid channel (Email / SMS / WhatsApp / Push)." },
@@ -145,7 +145,7 @@ export default async function AdminMarketingPage({ searchParams }: { searchParam
             <span className="vh-row small" style={{ gap: 8 }}>
               {pendingN > 0 && <StatusPill tone="warn">{pendingN} pending copy-check</StatusPill>}
               {blockedN > 0 && <StatusPill tone="danger">{blockedN} blocked</StatusPill>}
-              <span className="muted">every send is claim- and §6-checked server-side</span>
+              <span className="muted">every send is checked for claims and health data on our servers</span>
             </span>
           }
         >
@@ -236,7 +236,7 @@ export default async function AdminMarketingPage({ searchParams }: { searchParam
           </Card>
         </div>
 
-        <Card title={<span className="vh-row" style={{ gap: 8 }}><UsersRound {...I} aria-hidden /> Audiences</span>} pad0>
+        <Card title={<span className="vh-row" style={{ gap: 8 }}><UsersRound {...I} aria-hidden /> Audiences</span>} action={<span className="small muted">Illustrative segments — sizes are live once analytics is connected</span>} pad0>
           <div style={{ overflowX: "auto" }}>
             <table className="vh-table">
               <thead><tr><th>Segment</th><th style={{ textAlign: "right" }}>Size</th><th>Basis</th></tr></thead>
@@ -266,11 +266,11 @@ export default async function AdminMarketingPage({ searchParams }: { searchParam
 
         <div className="vh-grid cols-2">
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Sprout {...I} aria-hidden /> Loyalty</span>}>
-            <p className="small muted" style={{ marginTop: 0 }}>Sprout → Leaf → Bloom → Vedic Prime. 41,200 members in Leaf or above.</p>
+            <p className="small muted" style={{ marginTop: 0 }}>Sprout → Leaf → Bloom → Vedic Prime — tiers earned on delivered orders. Member counts appear here once the loyalty store is connected.</p>
           </Card>
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Gift {...I} aria-hidden /> Referrals</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>
-              <MoneyText paise={250_00} /> wallet credit per successful referral · 3,140 referrals this quarter.
+              <MoneyText paise={250_00} /> wallet credit per successful referral. Redemption totals appear here once the referral ledger is connected.
             </p>
           </Card>
         </div>

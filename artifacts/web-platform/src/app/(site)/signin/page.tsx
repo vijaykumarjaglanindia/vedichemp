@@ -50,9 +50,9 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
       {bye && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="ok" title="Deletion request received">
-            Your session has ended. The account service checks the deletion gates (orders in
-            transit, open disputes, settlement or statutory holds) and emails you the outcome —
-            health records are retained for the statutory period regardless.
+            Your session has ended. We check a few things first (orders on the way, open disputes,
+            or any legal holds) and email you the result — health records are kept for the period
+            the law requires.
           </Banner>
         </div>
       )}
@@ -95,7 +95,7 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
             </div>
             <input type="hidden" name="otprole" value="BUYER" />
             <input type="hidden" name="back" value="/signin" />
-            <button className="vh-btn vh-btn-outline" type="submit">Send one-time code</button>
+            <button className="vh-btn vh-btn-outline" type="submit">Send OTP</button>
           </form>
         ) : (
           <form action={verifyOtp} className="vh-card" style={{ display: "grid", gap: 12 }}>
