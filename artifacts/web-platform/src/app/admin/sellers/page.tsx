@@ -149,7 +149,7 @@ export default async function AdminSellersPage({
           For CBD Wellness and Medical Cannabis classes, KYC approval requires (1) an automated lookup against the
           state drug-licence registry and (2) a named pharmacist sign-off recorded against the licence number. If the
           registry is unreachable, the queue item stays pending rather than auto-approving — a registry outage must
-          not manufacture an approval, but it also must not block a patient&apos;s own prescription elsewhere in the
+          not manufacture an approval, but it also must not block a buyer&apos;s own prescription elsewhere in the
           platform (fail closed on compliance, fail open on convenience).
         </Banner>
 

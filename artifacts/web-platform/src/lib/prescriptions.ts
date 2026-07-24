@@ -222,7 +222,7 @@ export async function revealPrescription(args: {
 
 /**
  * A4 SELF-ACCESS. A buyer viewing their OWN prescription is a RIGHT, not a
- * staff reveal — §2 fail-open: "a registry outage must not block a patient
+ * staff reveal — §2 fail-open: "a registry outage must not block a buyer
  * from viewing their own prescription." So this path:
  *   - requires no reasonCode and no 20-char justification (that gate is for
  *     someone looking at data that isn't theirs),
