@@ -89,9 +89,9 @@ const chromeCss = `
 .vhx-mega { position: relative; }
 .vhx-mega-panel {
   position: absolute; top: calc(100% + 8px); left: 0;
-  width: min(760px, calc(100vw - 40px));
+  width: min(680px, calc(100vw - 40px));
   background: var(--vh-bg-raised); border: 1px solid var(--vh-line);
-  border-radius: calc(var(--vh-radius) + 2px); box-shadow: var(--vh-shadow-lg); padding: var(--sp-2);
+  border-radius: calc(var(--vh-radius) + 2px); box-shadow: var(--vh-shadow-lg); padding: 16px 18px;
   opacity: 0; visibility: hidden; transform: translateY(6px);
   transition: opacity .16s ease, transform .16s ease, visibility 0s linear .16s; z-index: 60;
 }
@@ -100,33 +100,23 @@ const chromeCss = `
   opacity: 1; visibility: visible; transform: translateY(0);
   transition: opacity .16s ease, transform .16s ease, visibility 0s;
 }
-/* Dynamic two-pane flyout: department rail (left) + hovered department's sub-categories (right) */
-.vhx-flyout { position: relative; display: grid; grid-template-columns: 232px 1fr; min-height: 288px; }
-.vhx-flyout-rail { list-style: none; margin: 0; padding: 0 8px 0 0; border-right: 1px solid var(--vh-line); display: flex; flex-direction: column; gap: 1px; }
-.vhx-dept-link {
-  display: flex; align-items: center; justify-content: space-between; gap: 8px;
-  padding: 9px 12px; border-radius: 9px; font-weight: 700; font-size: .88rem; color: var(--vh-ink);
+/* Category mega-menu: one column per department, all sub-categories always shown */
+.vhx-mega-cols { display: grid; gap: 22px; }
+.vhx-mcol { min-width: 0; }
+.vhx-mcol-head {
+  display: flex; align-items: center; gap: 7px;
+  font-size: .74rem; font-weight: 800; letter-spacing: .03em; text-transform: uppercase;
+  color: var(--vh-ink); padding-bottom: 8px; margin-bottom: 7px; border-bottom: 1px solid var(--vh-line);
 }
-.vhx-dept:hover > .vhx-dept-link { background: var(--vh-accent); color: var(--vh-on-accent); }
-.vhx-dept:hover > .vhx-dept-link svg { color: var(--vh-on-accent); opacity: .9; }
-.vhx-dept-panel {
-  position: absolute; left: 232px; top: 0; right: 0; bottom: 0; overflow-y: auto;
-  padding: 4px 6px 6px 18px; display: none; flex-direction: column; gap: 4px;
+.vhx-mcol-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0; }
+.vhx-mcol-list a {
+  display: block; padding: 5px 8px; border-radius: 7px;
+  font-size: .8rem; font-weight: 500; line-height: 1.35; color: var(--vh-ink);
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
 }
-/* Default = first department; a hovered department overrides it (progressive: needs :has) */
-.vhx-flyout .vhx-dept:first-child .vhx-dept-panel { display: flex; }
-.vhx-flyout:has(.vhx-dept:hover) .vhx-dept:first-child .vhx-dept-panel { display: none; }
-.vhx-flyout .vhx-dept:hover .vhx-dept-panel { display: flex; }
-.vhx-dept-panel-head { display: flex; align-items: center; gap: 8px; font-weight: 800; font-size: 1rem; color: var(--vh-ink); }
-.vhx-dept-blurb { margin: 0 0 4px; font-size: .78rem; }
-.vhx-dept-subs { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 2px; }
-.vhx-dept-sub {
-  display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-radius: 8px;
-  font-size: .85rem; font-weight: 600; color: var(--vh-ink);
-}
-.vhx-dept-sub:hover { background: var(--vh-bg-subtle); }
-.vhx-mega-all { display: inline-block; margin-top: 6px; color: var(--vh-accent) !important; font-size: .82rem !important; font-weight: 700 !important; }
-.vhx-mega-foot { border-top: 1px solid var(--vh-line); margin-top: 6px; padding: 8px 8px 4px; }
+.vhx-mcol-list a:hover { background: var(--vh-bg-subtle); color: var(--vh-accent); }
+.vhx-mcol-all { margin-top: 3px; font-size: .74rem !important; font-weight: 700 !important; color: var(--vh-accent) !important; }
+.vhx-mega-foot { border-top: 1px solid var(--vh-line); margin-top: 12px; padding-top: 10px; }
 /* Mobile: department accordions */
 .vhx-mnav-cat > summary {
   list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
@@ -282,36 +272,20 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
                 <ChevronDown size={13} strokeWidth={2.4} aria-hidden style={{ opacity: 0.6 }} />
               </Link>
               <div className="vhx-mega-panel" role="group" aria-label="Shop by category">
-                <div className="vhx-flyout">
-                  {/* Left rail: departments. Hovering one reveals its sub-categories on the right. */}
-                  <ul className="vhx-flyout-rail">
-                    {catTree.map((top) => (
-                      <li key={top.id} className="vhx-dept">
-                        <Link href={`/category/${top.slug}`} className="vhx-dept-link">
-                          <span className="vh-row" style={{ gap: 9, minWidth: 0 }}>
-                            <span aria-hidden style={{ fontSize: "1.1rem" }}>{top.emoji}</span>
-                            <span style={{ overflow: "hidden", textOverflow: "ellipsis" }}>{top.name}</span>
-                          </span>
-                          <ChevronDown size={14} strokeWidth={2.4} aria-hidden style={{ transform: "rotate(-90deg)", opacity: 0.5, flexShrink: 0 }} />
-                        </Link>
-                        <div className="vhx-dept-panel" role="group" aria-label={top.name}>
-                          <div className="vhx-dept-panel-head">
-                            <span aria-hidden style={{ fontSize: "1.15rem" }}>{top.emoji}</span> {top.name}
-                          </div>
-                          {top.blurb && <p className="small muted vhx-dept-blurb">{top.blurb}</p>}
-                          <div className="vhx-dept-subs">
-                            {top.children.map((sub) => (
-                              <Link key={sub.id} href={subHref(sub)} className="vhx-dept-sub">
-                                <span aria-hidden style={{ opacity: 0.7 }}>{sub.emoji}</span>
-                                <span>{sub.name}</span>
-                              </Link>
-                            ))}
-                          </div>
-                          <Link href={`/category/${top.slug}`} className="vhx-mega-all">Shop all {top.name} →</Link>
-                        </div>
-                      </li>
-                    ))}
-                  </ul>
+                <div className="vhx-mega-cols" style={{ gridTemplateColumns: `repeat(${Math.min(catTree.length || 1, 3)}, minmax(0, 1fr))` }}>
+                  {catTree.map((top) => (
+                    <div key={top.id} className="vhx-mcol">
+                      <Link href={`/category/${top.slug}`} className="vhx-mcol-head">
+                        <span aria-hidden style={{ fontSize: ".92rem" }}>{top.emoji}</span> {top.name}
+                      </Link>
+                      <ul className="vhx-mcol-list">
+                        {top.children.map((sub) => (
+                          <li key={sub.id}><Link href={subHref(sub)}>{sub.name}</Link></li>
+                        ))}
+                        <li><Link href={`/category/${top.slug}`} className="vhx-mcol-all">All {top.name} →</Link></li>
+                      </ul>
+                    </div>
+                  ))}
                 </div>
                 {/* MED_CANNABIS: informational line only — never a shop link */}
                 <div className="vhx-mega-foot">
