@@ -14,7 +14,7 @@ import "server-only";
  * and the PIN REGION only (first three digits); the buyer's email, name and full
  * address never enter this log. What it records is *what regulated product, from
  * which batch, went to which region, when, and who dispatched it* — the facts a
- * regulator asks for, and nothing about the patient.
+ * regulator asks for, and nothing about the buyer.
  */
 
 import { REGULATED_CLASSES } from "@/lib/catalog";
