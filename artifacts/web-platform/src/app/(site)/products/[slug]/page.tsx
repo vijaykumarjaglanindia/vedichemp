@@ -65,7 +65,7 @@ async function checkPin(pin: string, cls: string): Promise<{ ok: boolean; title:
   const { serviceability } = await import("@/lib/shipping");
   const svc = await serviceability(pin, cls);
   if (!svc.ok && svc.reason === "pin") {
-    return { ok: false, title: "Please enter a valid pincode", body: "Enter the 6-digit PIN code of the delivery address." };
+    return { ok: false, title: "Please enter a valid pincode", body: "Enter the 6-digit pincode of the delivery address." };
   }
   const regulated = cls === "CBD_WELLNESS";
   if (!svc.ok && svc.reason === "regulated") {
@@ -750,12 +750,12 @@ export default async function ProductDetailPage({
             </form>
 
             {/* Delivery estimate by PIN — serviceability is decided server-side */}
-            <form method="GET" className="vh-field" style={{ marginBottom: "var(--sp-3)" }} aria-label="Check delivery by PIN code">
+            <form method="GET" className="vh-field" style={{ marginBottom: "var(--sp-3)" }} aria-label="Check delivery by pincode">
               <label htmlFor="pdp-pin" className="vh-label vh-row" style={{ gap: 6 }}>
                 <MapPin size={13} aria-hidden style={{ color: "var(--vh-accent)" }} /> Deliver to
               </label>
               <div className="vh-row" style={{ gap: 8 }}>
-                <input id="pdp-pin" name="pin" defaultValue={pin ?? ""} className="vh-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="Enter 6-digit PIN code" style={{ maxWidth: 200 }} />
+                <input id="pdp-pin" name="pin" defaultValue={pin ?? ""} className="vh-input" inputMode="numeric" pattern="[0-9]{6}" maxLength={6} placeholder="Enter 6-digit pincode" style={{ maxWidth: 200 }} />
                 <button type="submit" className="vh-btn vh-btn-ghost vh-btn-sm">Check</button>
               </div>
               {pinResult ? (

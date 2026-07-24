@@ -35,7 +35,7 @@ const LEGAL_PAGES: Record<string, { key: string; title: string; desc: string }> 
   shipping: {
     key: "legalShipping",
     title: "Shipping Policy",
-    desc: "Sellers pack and ship every order. Costs, timelines, PIN-code coverage and the age check on delivery for 21+ categories.",
+    desc: "Sellers pack and ship every order. Costs, timelines, pincode coverage and the age check on delivery for 21+ categories.",
   },
 };
 

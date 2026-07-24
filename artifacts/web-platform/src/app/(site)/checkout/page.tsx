@@ -121,7 +121,7 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
                 <input id="co-state" name="state" className="vh-input" defaultValue={draft.state} autoComplete="address-level1" required />
               </div>
               <div className={field("pincode")}>
-                <label htmlFor="co-pin" className="vh-label">PIN code <span className="req">*</span></label>
+                <label htmlFor="co-pin" className="vh-label">Pincode <span className="req">*</span></label>
                 <input id="co-pin" name="pincode" className="vh-input" defaultValue={draft.pincode} inputMode="numeric" pattern="[0-9]{6}" maxLength={6} required />
               </div>
             </div>
