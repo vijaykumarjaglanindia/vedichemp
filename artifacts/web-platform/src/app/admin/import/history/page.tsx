@@ -17,6 +17,7 @@ import { ImpShell, ImpHero, Metric } from "@/app/admin/import/_ui";
 import { Card, EmptyState, StatusPill } from "@/components/ui";
 import type { ImportHistoryRow } from "@/lib/import/types";
 import { listHistory } from "@/lib/import/store";
+import { RunDetail } from "./RunDetail";
 
 export const metadata: Metadata = { title: "Import History" };
 export const dynamic = "force-dynamic";
@@ -133,10 +134,17 @@ export default async function ImportHistoryPage() {
                       <td><StatusPill tone={statusTone(r.status)}>{r.status.replace(/_/g, " ")}</StatusPill></td>
                       <td style={{ textAlign: "right", whiteSpace: "nowrap" }}>
                         <span className="vh-row" style={{ gap: 6, justifyContent: "flex-end" }}>
+                          <RunDetail
+                            run={{
+                              id: r.id, storeLabel: r.storeLabel, method: r.method, startedAt: r.startedAt,
+                              finishedAt: r.finishedAt, durationMs: r.durationMs, status: r.status, trigger: r.trigger,
+                              actor: r.actor, imported: r.imported, updated: r.updated, skipped: r.skipped,
+                              deleted: r.deleted, failed: r.failed, warnings: r.warnings,
+                            }}
+                            logsHref={`/admin/import/logs?historyId=${r.id}`}
+                            failedHref={r.failed > 0 ? "/admin/import/failed" : undefined}
+                          />
                           <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/import/logs?historyId=${r.id}`}>Logs</Link>
-                          {r.failed > 0 && (
-                            <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/import/failed">Failed</Link>
-                          )}
                         </span>
                       </td>
                     </tr>

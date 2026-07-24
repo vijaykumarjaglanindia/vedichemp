@@ -225,3 +225,6 @@ export function ProgressRing({ percent, size = 64 }: { percent: number; size?: n
     </svg>
   );
 }
+
+// Reusable view/edit popup — see ./Modal.tsx
+export { Modal, DetailRows } from "./Modal";
