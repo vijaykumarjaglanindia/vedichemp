@@ -79,7 +79,7 @@ export default async function AdminCmsPage({
         </Card>
 
         <Banner severity="info" title="Deletion is protected, not casual">
-          High-traffic and seed blog posts cannot be removed by a single editor — the delete is refused server-side
+          High-traffic and seed blog posts cannot be removed by a single editor — the delete is refused
           and the attempt is logged (see the <Link href="/admin/cms/editor?slug=new">post editor</Link>). Custom
           pages and media are created and removed in their own libraries; every change lands in the{" "}
           <Link href="/admin/audit">audit trail</Link>.

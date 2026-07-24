@@ -154,7 +154,7 @@ export default async function InventoryPage({ searchParams }: { searchParams: Pr
             <Hourglass size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-info)", marginTop: 2, flexShrink: 0 }} />
             <div className="small">
               <strong>FEFO — First-Expiry, First-Out.</strong> Outbound picking always allocates the batch with the
-              nearest expiry date first, provided it is sellable (CoA approved, A2). A newer batch cannot ship ahead
+              nearest expiry date first, provided its lab report is approved. A newer batch cannot ship ahead
               of an older approved one.
             </div>
           </div>

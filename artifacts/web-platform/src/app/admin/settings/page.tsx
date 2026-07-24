@@ -61,7 +61,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
           There is no <code>PLATFORM_OWNER</code>-can-do-everything role. <code>ADMIN_OWNER</code> can appoint the
           people who read prescriptions, approve money and adjudicate disputes — the roles that do those things can
           never be <em>granted</em> to it, enforced below as SoD pairs by the same grant-time rule as every other
-          pair (CLAUDE.md §7). Held roles are also consulted at <em>use</em> time where the deed is most sensitive:
+          pair. Held roles are also consulted at <em>use</em> time where the deed is most sensitive:
           the prescription reveal derives the viewer&rsquo;s role from what they actually hold, and the audit trail
           is readable only by the auditor/security roles.
         </Banner>
@@ -139,19 +139,19 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
             <button className="vh-btn vh-btn-primary" type="submit" style={{ width: "fit-content" }}>Grant role</button>
           </form>
           <p className="small muted" style={{ margin: "10px 0 0" }}>
-            You cannot grant a role to yourself; an SoD conflict is refused server-side and the refusal is audited.
+            You cannot grant a role to yourself; a separation-of-duties conflict is refused and the refusal is logged.
           </p>
         </Card>
         </div>
 
         <div className="vh-grid cols-2">
           <Card title={<span className="vh-row" style={{ gap: 8 }}><ReceiptText {...I} aria-hidden /> Tax rules</span>}>
-            <p className="small muted" style={{ marginTop: 0 }}>GST slabs by HSN code, TCS/TDS thresholds by seller turnover — computed server-side at checkout, editable here with a change log.</p>
+            <p className="small muted" style={{ marginTop: 0 }}>GST slabs by HSN code, TCS/TDS thresholds by seller turnover — calculated on our servers at checkout, editable here with a change log.</p>
           </Card>
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Percent {...I} aria-hidden /> Commission rules</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>
               A rate <strong>increase</strong> cannot take effect before 30 days&rsquo; notice elapses —
-              <code> CHECK (effectiveFrom &gt;= noticeSentAt + interval &apos;30 days&apos;)</code>, mirrored by the
+              <code> a required 30-day notice before any increase takes effect</code>, mirrored by the
               server guard on <Link href="/admin/finance/commissions">the schedules page</Link>. A decrease only
               ever benefits the seller and may apply immediately (A5 bars retroactive <em>increases</em>).
             </p>
@@ -170,7 +170,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
         <Card title={<span className="vh-row" style={{ gap: 8 }}><BellRing {...I} aria-hidden /> Notification templates</span>}>
           <p className="small muted" style={{ marginTop: 0 }}>
             Rx-view buyer notifications, recall notices, and settlement statements are templated here. No template
-            in this list is permitted to include health data in its subject line — the §6 guard at the notify()
+            in this list is permitted to include health data in its subject line — the health-data guard at the notification step
             boundary redacts and counts any leak, and the outbox makes the stream auditable.
           </p>
           <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/outbox">Open the outbox →</Link>
@@ -259,7 +259,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
           <p className="small muted" style={{ marginTop: 0 }}>
             The audit trail is readable only by <code>ADMIN_AUDITOR</code> and <code>ADMIN_SECURITY</code> —
             enforced on the page itself against held roles, not just described here; other accounts get a
-            restricted notice with the next step. The table is append-only for everyone.
+            restricted notice with the next step. The log can only be added to, never edited, for anyone.
           </p>
           <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/audit">Open the audit trail →</Link>
         </Card>

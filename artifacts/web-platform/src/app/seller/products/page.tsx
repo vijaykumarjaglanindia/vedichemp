@@ -197,8 +197,7 @@ export default async function SellerProductsPage({
         />
       </Card>
       <p className="small muted" style={{ margin: "8px 0 var(--sp-4)" }}>
-        Regulated classes (CBD Wellness, Medical Cannabis) display CoA status per batch. A batch without an APPROVED,
-        batch-matched Certificate of Analysis cannot be published — see each product for the batch breakdown.
+        Regulated classes (CBD Wellness, Medical Cannabis) show lab-report status per batch. A batch without an approved lab report matching it cannot be published — see each product for the batch breakdown.
       </p>
 
       <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
@@ -221,7 +220,7 @@ export default async function SellerProductsPage({
             </label>
             <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Upload &amp; create drafts</button>
             <p className="small muted" style={{ margin: 0 }}>
-              Every row passes the same server-side checks as the form — <strong>rows with medical-claims copy are
+              We check every row just like the form — <strong>rows with medical-claims copy are
               rejected</strong> (no listing may make medical claims), and regulated rows still need an approved batch
               CoA before they can ever go live.
             </p>

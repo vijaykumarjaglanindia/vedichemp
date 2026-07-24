@@ -34,7 +34,7 @@ export default async function AuditPage() {
           <a href="/admin/settings#roles">Roles &amp; permissions</a> page — grants are audited and SoD-checked.
         </Banner>
         <p className="small muted vh-row" style={{ gap: 6, marginTop: "var(--sp-3)" }}>
-          <Lock size={14} strokeWidth={2.2} aria-hidden /> The trail itself is append-only for everyone — this
+          <Lock size={14} strokeWidth={2.2} aria-hidden /> The trail can only be added to, never edited, for anyone — this
           gate controls reading it, not changing it. Nothing can change it.
         </p>
       </Shell>

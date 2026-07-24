@@ -116,7 +116,7 @@ export default async function AssistantPage({
         <div className="small">
           <strong>Suggestions, not decisions.</strong> Every panel below produces a suggestion for you to review and
           edit. Generated copy for regulated classes still passes the compliance copy-check before it can publish —
-          the assistant cannot bypass the A2 CoA gate or the A1 advertising prohibition. Engine: <strong>{gen.provider}</strong>.
+          the assistant can't get around the lab-report requirement or the advertising ban on Medical Cannabis. Engine: <strong>{gen.provider}</strong>.
         </div>
       </div>
 
@@ -129,7 +129,7 @@ export default async function AssistantPage({
                 &ldquo;{gen.text}&rdquo;
               </div>
               <div className="small" style={{ marginTop: 8, color: claimsClean ? "var(--vh-ok)" : "var(--vh-danger)", fontWeight: 600 }}>
-                {claimsClean ? "Copy-check: no disease claims detected · passed" : "Copy-check: claims language detected · blocked (not usable)"}
+                {claimsClean ? "Claims check: no disease claims found · passed" : "Claims check: claims wording found · blocked (can't be used)"}
               </div>
               <div className="vh-row" style={{ gap: 8, marginTop: 12 }}>
                 <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/seller/products/${descTarget.id}`} title="Open the listing editor to paste and save this draft">Use this draft</Link>
@@ -153,7 +153,7 @@ export default async function AssistantPage({
                 <span className="small muted">Suggested price</span>
                 <MoneyText paise={suggestPricePaise(priceTarget.pricePaise)} />
               </div>
-              <div className="small muted">Based on category demand and comparable buy-box winners. Final price is always seller-set — this is a suggestion, never applied automatically.</div>
+              <div className="small muted">Based on category demand and comparable top-selling listings. Final price is always seller-set — this is a suggestion, never applied automatically.</div>
               <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/seller/products/${priceTarget.id}`} style={{ marginTop: 12, display: "inline-block" }} title="Open the listing editor — price stays seller-set">Apply to listing</Link>
             </>
           ) : (
@@ -165,7 +165,7 @@ export default async function AssistantPage({
           {lowStockTarget ? (
             <>
               <p className="small muted" style={{ marginTop: 0 }}>{lowStockTarget.title}</p>
-              <div className="small">Lowest cover in your catalogue: <strong>{lowStockTarget.stockQty} in stock</strong>{lowStockTarget.stockQty <= lowStockTarget.lowStockAt ? " — below your low-stock threshold" : ""}.</div>
+              <div className="small">Lowest stock in your catalogue: <strong>{lowStockTarget.stockQty} in stock</strong>{lowStockTarget.stockQty <= lowStockTarget.lowStockAt ? " — below your low-stock threshold" : ""}.</div>
               <div className="small muted" style={{ marginTop: 6 }}>Reorder before it sells out to avoid a stockout. A new batch needs its own approved CoA before it can sell.</div>
               <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/inventory" style={{ marginTop: 12, display: "inline-block" }}>Review inventory →</Link>
             </>
@@ -178,7 +178,7 @@ export default async function AssistantPage({
           <p className="small muted" style={{ marginTop: 0 }}>Next 4 weeks, all listings</p>
           <Columns values={FORECAST_4W.valuesPaise} labels={FORECAST_4W.labels} height={96} />
           <div className="small" style={{ marginTop: 12 }}>
-            Projected GMV: <strong><MoneyText paise={FORECAST_4W.valuesPaise.reduce((s, val) => s + val, 0)} /></strong>
+            Projected sales: <strong><MoneyText paise={FORECAST_4W.valuesPaise.reduce((s, val) => s + val, 0)} /></strong>
             {fcDeltaPct !== 0 && <> ({fcDeltaPct > 0 ? "+" : ""}{fcDeltaPct}% week 1 → week 4)</>}
           </div>
           <div className="small muted" style={{ marginTop: 4 }}>A projection from your recent order run — a planning aid, never a guarantee.</div>
@@ -208,7 +208,7 @@ export default async function AssistantPage({
                 <span className="small muted">Sentiment (by rating)</span>
                 <span className="small"><strong>{rvPos}% positive</strong> · {rvNeu}% neutral · {rvNeg}% negative</span>
               </div>
-              <div className="small muted">Computed from your real approved reviews (4–5★ positive, 3★ neutral, 1–2★ negative). Any health symptom a buyer mentions is redacted before it reaches this console.</div>
+              <div className="small muted">Computed from your real approved reviews (4–5★ positive, 3★ neutral, 1–2★ negative). Any health symptom a buyer mentions is removed before it reaches you.</div>
             </>
           ) : (
             <p className="small muted" style={{ margin: 0 }}>Not enough approved reviews to analyse yet — sentiment appears here once buyers review your listings.</p>

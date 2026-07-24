@@ -115,7 +115,7 @@ export default async function AdminFinancePage({
                     <option value="Ananda Foods">Ananda Foods</option>
                   </select>
                 </div>
-                <button className="vh-btn vh-btn-sm" type="submit">Create settlement run</button>
+                <button className="vh-btn vh-btn-sm" type="submit">Create payout run</button>
                 <span className="small muted">Amounts derive from delivered orders — not typed in.</span>
               </form>
             </div>

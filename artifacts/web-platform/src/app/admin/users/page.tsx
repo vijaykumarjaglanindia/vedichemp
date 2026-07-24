@@ -254,7 +254,7 @@ export default async function AdminUsersPage({
         </Card>
 
         <div className="vh-grid cols-2">
-          <Card title={<span className="vh-row" style={{ gap: 8 }}><History {...I} aria-hidden /> Recent status changes (append-only)</span>}>
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><History {...I} aria-hidden /> Recent status changes (log — only added, never edited)</span>}>
             {history.length === 0 ? (
               <p className="small muted" style={{ margin: 0 }}>No status changes yet.</p>
             ) : (

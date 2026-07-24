@@ -223,7 +223,7 @@ export default async function ProductEditorPage({
                 <div className="vh-field">
                   <label className="vh-label" htmlFor="price">Selling price (paise) <span className="req">*</span></label>
                   <input className="vh-input" id="price" name="pricePaise" type="number" min={0} step={1} defaultValue={product!.pricePaise} />
-                  <span className="vh-help">Integer paise. Renders as <MoneyText paise={product!.pricePaise} /></span>
+                  <span className="vh-help">In paise. Shows as <MoneyText paise={product!.pricePaise} /></span>
                 </div>
                 <div className="vh-field">
                   <label className="vh-label" htmlFor="mrp">MRP (paise) <span className="req">*</span></label>
@@ -492,9 +492,9 @@ export default async function ProductEditorPage({
               <div className="vh-row" role="alert" style={{ alignItems: "flex-start", gap: 8, marginTop: 12, padding: "10px 12px", borderRadius: "var(--vh-radius-sm)", border: "1px solid var(--vh-line)", borderLeft: "3px solid var(--vh-danger)", background: "color-mix(in srgb, var(--vh-danger-bg) 45%, var(--vh-surface))" }}>
                 <ShieldAlert size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-danger)", marginTop: 2, flexShrink: 0 }} />
                 <div className="small">
-                  <strong>The CoA gate is closed.</strong> Review cannot approve this listing until the batch has an
-                  APPROVED, batch-matched Certificate of Analysis. Enforced server-side — there is no
-                  senior-approval override and no <span className="mono">force_sellable</span> flag.
+                  <strong>This listing needs a lab report.</strong> It can&rsquo;t be approved until the batch has an
+                  approved lab report that matches it. There is no
+                  override, and no way to force the listing live.
                 </div>
               </div>
             )}
@@ -502,7 +502,7 @@ export default async function ProductEditorPage({
 
           {regulated && (
             <div id="coa-upload">
-              <Card title="Submit a batch Certificate of Analysis">
+              <Card title="Submit a batch lab report">
                 <form action={submitCoaForBatch} className="vh-grid" style={{ gap: 12 }}>
                   <input type="hidden" name="productId" value={product!.id} />
                   <div className="vh-dropzone">
@@ -525,7 +525,7 @@ export default async function ProductEditorPage({
 
           {legacyBatches.length > 0 && (
             <div id="batches">
-              <Card title="Batches" action={<span className="small muted">A2 gates per batch</span>} pad0>
+              <Card title="Batches" action={<span className="small muted">Each batch needs its own approved lab report</span>} pad0>
                 <DataTable columns={batchColumns} rows={legacyBatches} />
               </Card>
             </div>
@@ -609,7 +609,7 @@ export default async function ProductEditorPage({
 
           <p className="small muted" style={{ marginTop: 0 }}>
             Offer a lower per-unit price to <strong>approved business accounts</strong> who buy in bulk (clinics,
-            resellers, studios). Regular shoppers always pay the normal price. Applied server-side at the cart.
+            resellers, studios). Regular shoppers always pay the normal price. Applied automatically at checkout.
           </p>
 
           {(product!.wholesaleTiers ?? []).length > 0 && (

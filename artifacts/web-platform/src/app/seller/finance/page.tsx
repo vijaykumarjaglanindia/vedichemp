@@ -86,11 +86,11 @@ export default async function FinancePage() {
         <Card><Stat label="Next payout" value={<span className="tabular">{WALLET.nextPayoutDate}</span>} /></Card>
       </div>
 
-      <Card title="Settlement reports" action={<a className="vh-btn vh-btn-sm vh-btn-ghost" href={withBase("/seller/finance/statement")} download><Download size={13} strokeWidth={2.2} aria-hidden /> Statement CSV</a>} pad0>
+      <Card title="Payout statements" action={<a className="vh-btn vh-btn-sm vh-btn-ghost" href={withBase("/seller/finance/statement")} download><Download size={13} strokeWidth={2.2} aria-hidden /> Statement CSV</a>} pad0>
         <DataTable columns={settlementColumns} rows={myRuns} empty={<div className="vh-empty">No settlements yet.</div>} />
       </Card>
       <p className="small muted" style={{ margin: "8px 0 var(--sp-4)" }}>
-        Settlements are posted by the marketplace under maker–checker — no single admin moves money. Once posted,
+        Payouts are posted by us with two-person sign-off — no single person can move money. Once posted,
         a statement is immutable; a correction is a new row that references the old one, never an edit.
       </p>
 

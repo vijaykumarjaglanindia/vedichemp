@@ -157,7 +157,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
             Refunds under ₹5,000 can post on a single admin&apos;s action (still logged, still reason-coded).
             Refunds at or above ₹5,000 — or whose maker has already made ₹5,000+ of unchecked movements in the
             trailing 24 hours — require a second, different human checker.{" "}
-            <code>assertCheckerPresent()</code> rejects a checker who equals the maker, and rejects any service
+            The system rejects an approver who is the same person as the requester, and blocks any automated service
             account as either party. Splitting one large refund into several small ones does not evade this: the
             cumulative-threshold check counts prior unchecked movements against the same maker.
           </p>
@@ -172,7 +172,7 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
         </Card>
 
         <Banner severity="danger" title="Explicitly absent by design">
-          <code>POST /admin/orders/:id/refund/reverse</code> does not exist. A refund the platform has issued to a
+          There is no reverse-refund action. A refund the platform has issued to a
           buyer cannot be pulled back through this console — reversing money already returned to a buyer is not an
           admin action, it would make the buyer collateral in a seller dispute.
         </Banner>

@@ -38,7 +38,7 @@ const SUB_CARDS: { id: string; icon: ReactNode; title: string; href: string; des
   { id: "moderation", icon: <Brush {...I} aria-hidden />, title: "Content moderation", href: "#moderation", desc: "Reviews, seller storefront copy, product images." },
   { id: "ads", icon: <Megaphone {...I} aria-hidden />, title: "Advertisement review", href: "/admin/ads", desc: "Three-layer A1 enforcement — see the Ads console." },
   { id: "pv", icon: <HeartPulse {...I} aria-hidden />, title: "Pharmacovigilance / adverse events", href: "#pv", desc: "Adverse-event triage is a valid sensitive-access reason code." },
-  { id: "logs", icon: <ScrollText {...I} aria-hidden />, title: "Compliance logs", href: "#logs", desc: "SensitiveAccessLog and AuditLog — append-only, never edited." },
+  { id: "logs", icon: <ScrollText {...I} aria-hidden />, title: "Compliance logs", href: "#logs", desc: "Sensitive-access log and audit log — records are only ever added, never edited." },
 ];
 
 const RECALL_NOTES: Record<string, { sev: "ok" | "danger" | "warn"; title: string; body: string }> = {
@@ -98,7 +98,7 @@ export default async function AdminCompliancePage({
         <Banner severity="warn" title="Sensitive reads require a logged reason">
           Viewing a prescription, medical note or consultation note is restricted to the Pharmacist and Compliance
           roles, requires a reason code from a controlled list plus ≥20 characters of free-text justification, and
-          notifies the buyer. The access log write happens <strong>before</strong> the object key is resolved — if
+          notifies the buyer. The access is recorded <strong>before</strong> the file can be opened — if
           the log write fails, the read fails. There is no bare image link anywhere in this console.
         </Banner>
 
@@ -222,7 +222,7 @@ export default async function AdminCompliancePage({
 
         <Card
           title={<span className="vh-row" style={{ gap: 8 }}><Eye size={16} strokeWidth={2.2} aria-hidden /> Sensitive access — last 24h</span>}
-          action={<span className="small muted">SensitiveAccessLog mirror · append-only</span>}
+          action={<span className="small muted">Sensitive-access log · records only added, never edited</span>}
           pad0
         >
           <div style={{ overflowX: "auto" }}>
@@ -318,7 +318,7 @@ export default async function AdminCompliancePage({
 
             {/* The immutable register — every INITIATE and CLOSE, append-only */}
             <div style={{ borderTop: "1px solid var(--vh-line)", paddingTop: 10 }}>
-              <div className="small muted" style={{ marginBottom: 6 }}>Recall register (append-only · A3) — {recallRegister.length} events</div>
+              <div className="small muted" style={{ marginBottom: 6 }}>Recall register (records only added, never edited) — {recallRegister.length} events</div>
               {recallRegister.length === 0 ? (
                 <p className="small muted" style={{ margin: 0 }}>No recalls on record.</p>
               ) : (
@@ -356,7 +356,7 @@ export default async function AdminCompliancePage({
           >
             <p className="small muted" style={{ marginTop: 0 }}>
               Every regulated (CBD) line is recorded here the moment a seller dispatches it — append-only, never
-              edited or deleted. Corrections are new rows that supersede the old one. §6: batch and destination
+              edited or deleted. Corrections are new rows that supersede the old one. Batch and destination
               region only — no buyer identity, no health data.
             </p>
             {dispensing.length === 0 ? (

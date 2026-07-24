@@ -38,10 +38,10 @@ const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> 
   state: { sev: "warn", text: "That review was already moderated." },
   missing: { sev: "warn", text: "That item no longer exists." },
   qhidden: { sev: "ok", text: "Question hidden — it no longer shows on the product page. The action is logged." },
-  removed: { sev: "ok", text: "Review removed after report — it's hidden and dropped from the rating. The reports are stamped resolved (append-only)." },
-  dismissed: { sev: "ok", text: "Reports dismissed — the review stays live. The reports are stamped resolved (append-only)." },
-  escalated: { sev: "ok", text: "Store escalated to compliance for a KYC/licence review. The reports are stamped resolved (append-only)." },
-  sdismissed: { sev: "ok", text: "Store reports dismissed — the store stays open. The reports are stamped resolved (append-only)." },
+  removed: { sev: "ok", text: "Review removed after report — it's hidden and dropped from the rating. The reports are stamped resolved (recorded, never edited)." },
+  dismissed: { sev: "ok", text: "Reports dismissed — the review stays live. The reports are stamped resolved (recorded, never edited)." },
+  escalated: { sev: "ok", text: "Store escalated to compliance for a KYC/licence review. The reports are stamped resolved (recorded, never edited)." },
+  sdismissed: { sev: "ok", text: "Store reports dismissed — the store stays open. The reports are stamped resolved (recorded, never edited)." },
 };
 
 const STORE_MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {

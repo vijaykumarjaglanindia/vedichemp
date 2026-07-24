@@ -212,7 +212,7 @@ export default async function AdminHomePage() {
         >
           <p className="small muted" style={{ marginTop: 0 }}>
             No single admin moves money, suspends a seller or closes a recall alone. Every row below needs a
-            second, different human. The checker action is <strong>rejected server-side with a 403</strong> if the
+            second, different human. The checker action is <strong>refused by the server</strong> if the
             checker id equals the maker id — this UI mirrors that rule, it does not enforce it.
           </p>
           <table className="vh-table">
@@ -271,8 +271,8 @@ export default async function AdminHomePage() {
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Siren {...I} aria-hidden /> Break-glass access</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>
               Emergency access to a sensitive record (e.g. a prescription during a live adverse-event triage) requires{" "}
-              <strong>dual WebAuthn approval</strong> — two distinct passkey holders, neither of whom can be the
-              requester. The access is logged before the object key resolves, and the subject is notified regardless
+              <strong>two-passkey approval</strong> — two different passkey holders, neither of whom can be the
+              requester. The access is recorded before the file can be opened, and the subject is notified regardless
               of urgency.
             </p>
             <Link className="vh-btn vh-btn-sm vh-btn-danger" href="/admin/compliance">Initiate break-glass →</Link>

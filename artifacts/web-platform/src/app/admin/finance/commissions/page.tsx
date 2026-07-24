@@ -22,7 +22,7 @@ export const dynamic = "force-dynamic";
 
 const NOTES: Record<string, { sev: "ok" | "danger"; text: string }> = {
   saved: { sev: "ok", text: "Schedule saved. Sellers are notified today; the new rate applies only from the effective date." },
-  date: { sev: "danger", text: "A5: the effective date must be at least 30 days after the notice date (today). Retroactive or short-notice fee changes are impossible — the database refuses them too." },
+  date: { sev: "danger", text: "The effective date must be at least 30 days after today's notice. Retroactive or short-notice fee changes aren't allowed — the system refuses them." },
   rate: { sev: "danger", text: "Rate must be between 0 and 40 percent." },
   cls: { sev: "danger", text: "Pick a compliance class." },
   target: { sev: "danger", text: "Seller- and product-level schedules need a target (seller name or product slug)." },

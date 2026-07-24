@@ -149,7 +149,7 @@ export default async function CustomersPage({
         )}
         <p className="small muted" style={{ margin: "12px 0 0" }}>
           Ratings are computed by the platform — you can reply on the Reviews console but cannot edit or remove a
-          review. Reviews mentioning health conditions are redacted server-side before they reach you (A4 boundary).
+          review. Reviews mentioning health conditions are removed before they reach you.
         </p>
       </Card>
     </Shell>
