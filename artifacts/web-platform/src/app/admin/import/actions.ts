@@ -102,6 +102,20 @@ export async function runDueSyncsAction(): Promise<void> {
   revalidatePath("/admin/import");
 }
 
+/** Edit a connection's display + sync settings from the View/Edit popup. */
+export async function editStoreAction(formData: FormData): Promise<void> {
+  const id = String(formData.get("id") ?? "");
+  const store = await db.findStore(id);
+  if (store) {
+    const label = String(formData.get("label") ?? "").trim() || store.label;
+    const schedule = String(formData.get("schedule") ?? store.schedule ?? "manual") as SyncCadence;
+    const autoPublish = formData.get("autoPublish") === "on";
+    await db.patchStore(id, { label, schedule, autoPublish });
+    await writeAudit({ actor: await actor(), action: "IMPORT_STORE_EDIT", target: label, outcome: "OK", note: `schedule=${schedule}, autoPublish=${autoPublish}` });
+  }
+  revalidatePath("/admin/import/stores");
+}
+
 export async function setScheduleAction(formData: FormData): Promise<void> {
   const id = String(formData.get("id") ?? "");
   const cadence = String(formData.get("cadence") ?? "manual") as SyncCadence;

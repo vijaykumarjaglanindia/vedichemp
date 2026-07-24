@@ -10,10 +10,11 @@
  */
 
 import type { Metadata } from "next";
-import { PlugZap, CreditCard, MessageSquare, Mail, KeyRound, Database, Sparkles, CheckCircle2, CircleDashed } from "lucide-react";
+import { CreditCard, MessageSquare, Mail, KeyRound, Database, Sparkles } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Card, StatusPill } from "@/components/ui";
-import { allStatuses, type IntegrationCategory, type IntegrationStatus } from "@/lib/integrations";
+import { allStatuses, type IntegrationCategory } from "@/lib/integrations";
+import { ProviderSetup } from "./ProviderSetup";
 
 export const metadata: Metadata = { title: "Integrations" };
 export const dynamic = "force-dynamic";
@@ -59,7 +60,12 @@ export default async function IntegrationsPage() {
             >
               <p className="small muted" style={{ marginTop: 0 }}>{meta.blurb}</p>
               <div style={{ display: "grid", gap: 12 }}>
-                {items.map((s) => <Provider key={s.key} s={s} />)}
+                {items.map((s) => (
+                  <ProviderSetup
+                    key={s.key}
+                    p={{ key: s.key, name: s.name, blurb: s.blurb, configured: s.configured, docsHref: s.docsHref, env: s.env, present: s.present }}
+                  />
+                ))}
               </div>
             </Card>
           );
@@ -69,38 +75,3 @@ export default async function IntegrationsPage() {
   );
 }
 
-function Provider({ s }: { s: IntegrationStatus }) {
-  return (
-    <div className="vh-card" style={{ padding: 14 }}>
-      <div className="vh-row" style={{ gap: 10, justifyContent: "space-between", flexWrap: "wrap" }}>
-        <div>
-          <div className="vh-row" style={{ gap: 8 }}>
-            {s.configured
-              ? <CheckCircle2 size={16} aria-hidden style={{ color: "var(--vh-ok)" }} />
-              : <CircleDashed size={16} aria-hidden style={{ color: "var(--vh-muted)" }} />}
-            <strong>{s.name}</strong>
-            <StatusPill tone={s.configured ? "ok" : "neutral"}>{s.configured ? "connected" : "not connected"}</StatusPill>
-          </div>
-          <div className="small muted" style={{ marginTop: 4 }}>{s.blurb}</div>
-        </div>
-        {s.docsHref && <a className="vh-btn vh-btn-sm vh-btn-ghost" href={s.docsHref} target="_blank" rel="noreferrer">Provider docs ↗</a>}
-      </div>
-
-      <div style={{ marginTop: 10, display: "grid", gap: 4 }}>
-        {s.env.map((v) => {
-          const present = s.present.includes(v.name);
-          return (
-            <div key={v.name} className="vh-row small" style={{ gap: 8, flexWrap: "wrap" }}>
-              <code className="mono" style={{ background: "var(--vh-surface-2)", padding: "1px 6px", borderRadius: 4 }}>{v.name}</code>
-              <StatusPill tone={present ? "ok" : (v.required ?? true) ? "warn" : "neutral"}>
-                {present ? "set" : (v.required ?? true) ? "required" : "optional"}
-              </StatusPill>
-              {v.secret && <span className="muted" style={{ fontSize: "0.75rem" }}>secret</span>}
-              {v.note && <span className="muted">— {v.note}</span>}
-            </div>
-          );
-        })}
-      </div>
-    </div>
-  );
-}

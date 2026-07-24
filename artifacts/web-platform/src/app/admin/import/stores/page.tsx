@@ -14,7 +14,8 @@ import { Card, EmptyState, StatusPill } from "@/components/ui";
 import { ImpShell, ImpHero, HealthPill, CapabilityChips, MethodGlyph } from "../_ui";
 import { listStores } from "@/lib/import/store";
 import { methodMeta } from "@/lib/import/connectors";
-import { removeStoreAction, syncStoreAction } from "../actions";
+import { removeStoreAction, syncStoreAction, editStoreAction } from "../actions";
+import { StoreDetail } from "./StoreDetail";
 
 export const metadata: Metadata = { title: "Connected Stores" };
 export const dynamic = "force-dynamic";
@@ -57,12 +58,20 @@ export default async function ConnectedStoresPage() {
                       {Object.entries(s.credentialsMasked).map(([k, v]) => <span key={k} style={{ marginRight: 12 }}>{k}: <span className="mono">{v}</span></span>)}
                     </div>
                   )}
-                  <div className="vh-row" style={{ gap: 8, marginTop: 12 }}>
+                  <div className="vh-row" style={{ gap: 8, marginTop: 12, flexWrap: "wrap" }}>
+                    <StoreDetail
+                      editAction={editStoreAction}
+                      store={{
+                        id: s.id, sellerName: s.sellerName, methodName: m.name, label: s.label,
+                        endpoint: s.endpoint, health: s.health, productCount: s.productCount ?? 0,
+                        schedule: s.schedule ?? "manual", autoPublish: s.autoPublish,
+                        lastSyncAt: s.lastSyncAt, createdAt: s.createdAt, credentialsMasked: s.credentialsMasked,
+                      }}
+                    />
                     <form action={syncStoreAction}>
                       <input type="hidden" name="id" value={s.id} />
                       <button type="submit" className="vh-btn vh-btn-sm vh-btn-ghost"><RefreshCw size={13} aria-hidden /> Sync now</button>
                     </form>
-                    <Link href="/admin/import/scheduler" className="vh-btn vh-btn-sm vh-btn-ghost">Schedule</Link>
                     <form action={removeStoreAction} style={{ marginLeft: "auto" }}>
                       <input type="hidden" name="id" value={s.id} />
                       <button className="vh-btn vh-btn-sm vh-btn-ghost" type="submit" style={{ color: "var(--vh-danger)" }}><Trash2 size={13} aria-hidden /> Disconnect</button>

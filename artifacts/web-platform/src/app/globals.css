@@ -916,3 +916,45 @@ details.vh-card > summary + * { margin-top: 10px; animation: vh-rise .32s ease b
 }
 .imp-spin { animation: imp-rotate 0.9s linear infinite; }
 @keyframes imp-rotate { 100% { transform: rotate(360deg); } }
+
+/* ─────────────────────────── Modal (view / edit popup) ─────────────────────────── */
+.vh-modal-backdrop {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(15, 23, 30, 0.48);
+  display: flex; align-items: flex-start; justify-content: center;
+  padding: clamp(12px, 6vh, 72px) 16px; overflow-y: auto;
+  animation: vh-modal-fade 120ms ease-out;
+}
+@keyframes vh-modal-fade { from { opacity: 0; } to { opacity: 1; } }
+.vh-modal {
+  width: 100%; background: var(--vh-surface, #fff);
+  border: 1px solid var(--vh-border, #e5e7eb);
+  border-radius: calc(var(--vh-radius, 12px) + 2px);
+  box-shadow: 0 24px 60px -12px rgba(0, 0, 0, 0.35);
+  display: flex; flex-direction: column; max-height: 88vh;
+  animation: vh-modal-rise 140ms cubic-bezier(.2,.8,.2,1);
+}
+@keyframes vh-modal-rise { from { transform: translateY(8px) scale(.99); opacity: 0; } to { transform: none; opacity: 1; } }
+.vh-modal-head {
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 12px;
+  padding: 16px 18px; border-bottom: 1px solid var(--vh-border, #e5e7eb);
+}
+.vh-modal-title { font-weight: 680; font-size: 1.05rem; line-height: 1.3; }
+.vh-modal-body { padding: 18px; overflow-y: auto; }
+.vh-modal-foot {
+  display: flex; gap: 8px; justify-content: flex-end; flex-wrap: wrap;
+  padding: 14px 18px; border-top: 1px solid var(--vh-border, #e5e7eb);
+}
+.vh-detail { display: grid; gap: 0; margin: 0; }
+.vh-detail-row {
+  display: grid; grid-template-columns: 190px 1fr; gap: 12px;
+  padding: 9px 0; border-bottom: 1px solid var(--vh-border, #eef0f2);
+}
+.vh-detail-row:last-child { border-bottom: 0; }
+.vh-detail-row dd { margin: 0; overflow-wrap: anywhere; }
+@media (max-width: 560px) { .vh-detail-row { grid-template-columns: 1fr; gap: 2px; } }
+@media (prefers-color-scheme: dark) {
+  .vh-modal { background: #141b20; border-color: #2a343b; }
+  .vh-modal-head, .vh-modal-foot { border-color: #2a343b; }
+  .vh-detail-row { border-color: #232c32; }
+}
