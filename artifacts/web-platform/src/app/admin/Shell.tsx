@@ -17,6 +17,7 @@ import type { ReactNode } from "react";
 import {
   LayoutDashboard, Users, Store, Package, Receipt, Landmark, Megaphone,
   ShieldCheck, Ban, FileText, Target, BarChart3, Settings, ScrollText, Bell, Star, TicketPercent, Truck, LifeBuoy, Building2, Flag, Send,
+  DownloadCloud, PlugZap, History, FolderTree, Tags, Clock, SlidersHorizontal, AlertTriangle,
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
 import { unreadCount } from "@/lib/notify";
@@ -63,6 +64,21 @@ const ADMIN_NAV: NavGroup[] = [
       { href: "/admin/reports", label: "Reported listings", icon: <Flag {...I} /> },
       { href: "/admin/support", label: "Support", icon: <LifeBuoy {...I} /> },
       { href: "/admin/prohibitions", label: "Prohibitions", icon: <Ban {...I} /> },
+    ],
+  },
+  {
+    group: "Marketplace",
+    items: [
+      { href: "/admin/import", label: "Product Import", icon: <DownloadCloud {...I} /> },
+      { href: "/admin/import/stores", label: "Connected Stores", icon: <PlugZap {...I} /> },
+      { href: "/admin/import/history", label: "Import History", icon: <History {...I} /> },
+      { href: "/admin/import/mapping/category", label: "Category Mapping", icon: <FolderTree {...I} /> },
+      { href: "/admin/import/mapping/attribute", label: "Attribute Mapping", icon: <SlidersHorizontal {...I} /> },
+      { href: "/admin/import/mapping/brand", label: "Brand Mapping", icon: <Tags {...I} /> },
+      { href: "/admin/import/scheduler", label: "Sync Scheduler", icon: <Clock {...I} /> },
+      { href: "/admin/import/rules", label: "Import Rules", icon: <SlidersHorizontal {...I} /> },
+      { href: "/admin/import/logs", label: "Import Logs", icon: <ScrollText {...I} /> },
+      { href: "/admin/import/failed", label: "Failed Imports", icon: <AlertTriangle {...I} /> },
     ],
   },
   {
