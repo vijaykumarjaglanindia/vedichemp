@@ -14,8 +14,9 @@ import { defaultRules } from "@/lib/import/types";
 import { applyRules } from "@/lib/import/rules";
 import { matchOne, detectDuplicates } from "@/lib/import/dedupe";
 import { diffProduct } from "@/lib/import/changes";
-import { previewImport, runImport } from "@/lib/import/service";
-import { readCatalog, coaBlocksPublish } from "@/lib/catalog";
+import { previewImport, runImport, syncStore, isDue, dueStores } from "@/lib/import/service";
+import { readCatalog, coaBlocksPublish, updateListing, setStock, findProduct } from "@/lib/catalog";
+import { addStore } from "@/lib/import/store";
 import type { ConnectedStore } from "@/lib/import/types";
 
 // Reset every in-memory store touched by an import.
@@ -166,5 +167,87 @@ describe("import validation gates", () => {
   it("blocks a product with a non-positive price", async () => {
     const p = await previewImport([mk({ title: "Freebie", pricing: { pricePaise: 0, currency: "INR" } })], defaultRules(), OPTS);
     expect(p.decisions.some((d) => d.decision.action === "block" && d.decision.code === "invalid_price")).toBe(true);
+  });
+});
+
+/* ─────────────────────────── Synchronization ─────────────────────────── */
+
+describe("store synchronization", () => {
+  async function connect(): Promise<ConnectedStore> {
+    return addStore({
+      sellerEmail: "sync@t.in", sellerName: "Sync Test Store", method: "woocommerce",
+      label: "Sync — Woo", endpoint: "https://sync-test.example", credentialsMasked: {},
+      health: "healthy", autoPublish: false, schedule: "daily",
+    });
+  }
+  const mine = async () => (await readCatalog()).filter((p) => p.sellerEmail === "sync@t.in");
+
+  it("first sync imports demo products as DRAFT and refuses Medical Cannabis (A1)", async () => {
+    const store = await connect();
+    const s = await syncStore({ storeId: store.id, actor: "admin@t.in", trigger: "manual" });
+    expect(s).toBeTruthy();
+    expect(s!.imported).toBeGreaterThan(0);
+    expect(s!.blockedMedical).toBeGreaterThanOrEqual(1);
+    expect((await readCatalog()).some((p) => p.cls === "MED_CANNABIS")).toBe(false);
+    const listings = await mine();
+    expect(listings.length).toBe(s!.imported);
+    expect(listings.every((p) => p.status === "DRAFT")).toBe(true);
+  });
+
+  it("re-syncing does not create duplicates and reports no changes", async () => {
+    const store = await connect();
+    await syncStore({ storeId: store.id, actor: "a@t.in" });
+    const before = (await readCatalog()).length;
+    const s2 = await syncStore({ storeId: store.id, actor: "a@t.in" });
+    expect(s2!.imported).toBe(0);     // everything matched an existing listing
+    expect(s2!.updated).toBe(0);      // deterministic re-fetch → nothing moved
+    expect((await readCatalog()).length).toBe(before); // no duplicates created
+  });
+
+  it("applies a real price/stock update when the source differs", async () => {
+    const store = await connect();
+    await syncStore({ storeId: store.id, actor: "a@t.in" });
+    const target = (await mine())[0]!;
+    await updateListing(target.id, { pricePaise: target.pricePaise + 50000 });
+    await setStock(target.id, target.stockQty + 7);
+
+    const s = await syncStore({ storeId: store.id, actor: "a@t.in" });
+    expect(s!.updated).toBeGreaterThanOrEqual(1);
+    const after = await findProduct(target.id);
+    expect(after!.pricePaise).toBe(target.pricePaise);          // source value restored
+    expect(Number.isInteger(after!.pricePaise)).toBe(true);      // still integer paise
+    expect(s!.changes.some((c) => c.kind === "price")).toBe(true);
+    expect(s!.changes.some((c) => c.kind === "stock")).toBe(true);
+  });
+
+  it("returns null for an unknown store", async () => {
+    expect(await syncStore({ storeId: "no-such-store", actor: "a@t.in" })).toBeNull();
+  });
+});
+
+/* ─────────────────────────── Sync cadence ─────────────────────────── */
+
+describe("sync cadence (isDue / dueStores)", () => {
+  const now = Date.UTC(2026, 6, 24, 12, 0, 0);
+  const overHourAgo = new Date(now - 3_600_000 - 1000).toISOString();
+
+  it("manual and realtime cadences are never due", () => {
+    expect(isDue({ schedule: "manual", lastSyncAt: overHourAgo }, now)).toBe(false);
+    expect(isDue({ schedule: "realtime", lastSyncAt: overHourAgo }, now)).toBe(false);
+  });
+  it("a time-based cadence never synced is due immediately", () => {
+    expect(isDue({ schedule: "daily" }, now)).toBe(true);
+  });
+  it("hourly is due after an hour, not before", () => {
+    expect(isDue({ schedule: "hourly", lastSyncAt: overHourAgo }, now)).toBe(true);
+    expect(isDue({ schedule: "hourly", lastSyncAt: new Date(now - 60_000).toISOString() }, now)).toBe(false);
+  });
+  it("dueStores selects only the due stores", () => {
+    const list = [
+      { schedule: "daily" },                                   // never synced → due
+      { schedule: "manual", lastSyncAt: overHourAgo },         // manual → never
+      { schedule: "hourly", lastSyncAt: overHourAgo },         // elapsed → due
+    ];
+    expect(dueStores(list, now).length).toBe(2);
   });
 });
