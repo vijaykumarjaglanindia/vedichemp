@@ -28,8 +28,16 @@ export interface Session {
   iat: number;
 }
 
+const DEV_SECRET = "dev-secret-rotate-me";
+
 function secret(): string {
-  return process.env.AUTH_SECRET ?? "dev-secret-rotate-me";
+  const s = process.env.AUTH_SECRET;
+  // Fail closed in production: an unset or un-rotated secret means every session
+  // cookie is forgeable by anyone who reads this source. Refuse to sign with it.
+  if (process.env.NODE_ENV === "production" && (!s || s === DEV_SECRET)) {
+    throw new Error("AUTH_SECRET must be set to a strong, non-default value in production. Refusing to sign sessions with the dev secret.");
+  }
+  return s ?? DEV_SECRET;
 }
 
 function sign(data: string): string {

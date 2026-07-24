@@ -11,6 +11,20 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+// ─────────────────────────── RUNTIME STATE ───────────────────────────
+// Durable snapshot of the in-process application stores (the globalThis.__vh*
+// seam). One JSON row per store, hydrated on boot and written through on a
+// short interval + on shutdown, so data survives a restart or redeploy on a
+// single long-lived instance. This is the pilot persistence bridge; each store
+// is meant to graduate to its own relational model over time. It carries no
+// money/eligibility authority of its own — the compliance tables and their
+// A1–A6 constraints remain the source of truth.
+model AppSnapshot {
+  key       String   @id
+  value     Json
+  updatedAt DateTime @updatedAt
+}
+
 // ─────────────────────────── ENUMS ───────────────────────────
 
 enum ComplianceClass {
