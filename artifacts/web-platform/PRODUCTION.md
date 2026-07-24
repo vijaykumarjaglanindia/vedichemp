@@ -17,6 +17,48 @@ enforced — attaching infrastructure activates it; no application code changes.
 | SEO | sitemap, robots, canonicals, OG image, Organization/WebSite+SearchAction/Product/Article/FAQPage/Breadcrumb JSON-LD |
 | Security headers | frame-ancestors allow-list, nosniff, Referrer-Policy, Permissions-Policy, HSTS (see `next.config.mjs`) |
 
+## Deploy on Replit (Postgres + durable data)
+
+The workspace already targets Replit (`nodejs-24` + `postgresql-16` modules,
+`.replit` at the repo root). To bring the web platform up on Replit with a real,
+**persistent** database:
+
+1. **Create the database.** Add Replit's PostgreSQL — it injects `DATABASE_URL`.
+   (Optionally set `MIGRATE_DATABASE_URL` to a role that can create roles; the
+   setup falls back to `DATABASE_URL`.)
+2. **Provision the schema, constraints and roles — one command:**
+   ```
+   pnpm --filter vedichemp run db:setup
+   ```
+   This runs `prisma db push` (creates every table incl. `AppSnapshot`), applies
+   the raw A1–A6 constraint/trigger migrations `0001–0004`, and prints
+   `prohibition_status` — **every row must read `enforced = t` before serving.**
+3. **Set the secrets** (Replit → Secrets): at minimum `AUTH_SECRET` (a long
+   random string — the app now **refuses to start signing sessions with the dev
+   default in production**). See "Environment variables" below for the rest.
+4. **Deploy as a single instance.** The pilot data layer (below) assumes ONE
+   writer, so use a **Reserved VM**, not Autoscale. Autoscale runs multiple
+   instances that would overwrite each other's snapshots.
+
+### Durable data — the pilot persistence bridge
+
+The live application stores (catalogue, orders, accounts, … — the
+`globalThis.__vh*` seam) are snapshotted to the `AppSnapshot` table:
+`src/instrumentation.ts` **hydrates** them on boot and **flushes** them every few
+seconds and on shutdown (`SIGTERM`), so data survives a redeploy or restart. It
+is a no-op without `DATABASE_URL`. Limits, stated honestly:
+
+- **Single writer only** (Reserved VM). Two instances corrupt each other's snapshots.
+- **A few seconds of the most recent writes** can be lost on a hard crash.
+- It holds **no money/eligibility authority** — the compliance tables and their
+  A1–A6 constraints remain the source of truth; a forged snapshot cannot bypass
+  a DB `CHECK`, a WORM trigger, or maker–checker.
+
+This is the bridge that makes a hosted pilot durable now. Each store is meant to
+graduate to its own relational model over time (`src/lib/persist.ts` → drop the
+key from `STORE_KEYS` once its table lands); that is the path to a multi-instance,
+zero-loss production database.
+
 ## Attach production services (the seams)
 
 1. **Database — `DATABASE_URL` (+ `MIGRATE_DATABASE_URL`)**
