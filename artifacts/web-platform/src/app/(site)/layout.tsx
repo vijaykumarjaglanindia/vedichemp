@@ -15,7 +15,9 @@ import Link from "next/link";
 import {
   Banknote,
   CreditCard,
+  ChevronDown,
   Landmark,
+  LayoutGrid,
   Leaf,
   Lock,
   Menu,
@@ -24,18 +26,16 @@ import {
   Truck,
 } from "lucide-react";
 import { CLASS_META } from "@/lib/compliance";
+import { categoryTree, type CategoryNode } from "@/lib/categories";
 import { mdToHtml } from "@/lib/richtext";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 import { readFeatures } from "@/lib/features";
 import { codEnabled } from "@/lib/payments";
 import { parseMenu, readSiteContent } from "@/lib/sitecontent";
-import { ComplianceClass } from "@prisma/client";
 
 // Every public page renders per-request so admin edits to site content and
 // CMS publishes are visible to all visitors immediately.
 export const dynamic = "force-dynamic";
-
-const SHOP_CLASSES: ComplianceClass[] = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
 
 const NAV_LINKS: { href: string; label: string }[] = [
   { href: "/catalogue", label: "All products" },
@@ -89,7 +89,7 @@ const chromeCss = `
 .vhx-mega { position: relative; }
 .vhx-mega-panel {
   position: absolute; top: calc(100% + 6px); left: 50%; transform: translateX(-50%);
-  width: min(720px, 92vw); background: var(--vh-bg-raised); border: 1px solid var(--vh-line);
+  width: min(880px, 94vw); background: var(--vh-bg-raised); border: 1px solid var(--vh-line);
   border-radius: var(--vh-radius); box-shadow: var(--vh-shadow-lg); padding: var(--sp-3);
   display: none; z-index: 60;
 }
@@ -101,6 +101,30 @@ const chromeCss = `
   border-radius: var(--vh-radius-sm); border: 1px solid transparent;
 }
 .vhx-mega-tile:hover { background: var(--vh-bg-subtle); border-color: var(--vh-line); }
+/* Category mega-menu: one column per department, sub-categories listed below */
+.vhx-mega-col { display: flex; flex-direction: column; gap: 4px; padding: 4px 6px; }
+.vhx-mega-col-head {
+  display: flex; align-items: center; gap: 6px; font-weight: 800; font-size: .9rem;
+  color: var(--vh-ink); padding: 4px 8px 8px; border-bottom: 1px solid var(--vh-line); margin-bottom: 4px;
+}
+.vhx-mega-sublist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 1px; }
+.vhx-mega-sublist a {
+  display: block; padding: 5px 8px; border-radius: 7px; font-size: .84rem; font-weight: 600; color: var(--vh-ink);
+}
+.vhx-mega-sublist a:hover { background: var(--vh-bg-subtle); }
+.vhx-mega-all { color: var(--vh-accent) !important; font-size: .78rem !important; font-weight: 700 !important; }
+/* Mobile: department accordions */
+.vhx-mnav-cat > summary {
+  list-style: none; cursor: pointer; display: flex; align-items: center; justify-content: space-between;
+  padding: 9px 12px; border-radius: 8px; font-weight: 700; font-size: .9rem; color: var(--vh-ink);
+}
+.vhx-mnav-cat > summary::-webkit-details-marker { display: none; }
+.vhx-mnav-cat[open] > summary svg { transform: rotate(180deg); }
+.vhx-mnav-cat > summary svg { transition: transform .15s ease; }
+.vhx-mnav-subs { display: grid; gap: 1px; padding: 2px 0 6px 12px; }
+.vhx-mnav-subs a { display: block; padding: 7px 12px; border-radius: 8px; font-size: .85rem; font-weight: 600; color: var(--vh-ink); }
+.vhx-mnav-subs a:hover { background: var(--vh-bg-subtle); }
+.vhx-mnav-all { color: var(--vh-accent) !important; }
 .vhx-cart-badge {
   position: absolute; top: 2px; right: 2px; min-width: 16px; height: 16px; padding: 0 4px;
   border-radius: 999px; background: var(--vh-accent); color: var(--vh-on-accent);
@@ -171,6 +195,14 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
       seller: p.seller, labVerified: p.labVerified,
     }));
   const cod = await codEnabled();
+  // The category mega-menu is built from the LIVE, admin-editable category tree
+  // (top departments + their sub-categories). categoryTree() returns visible
+  // categories only and never includes MED_CANNABIS (A1) — it is not a department.
+  const catTree: CategoryNode[] = await categoryTree();
+  // A sub-category opens the faceted catalogue filtered to its class + search
+  // term (always populated); a department opens its own landing page.
+  const subHref = (sub: CategoryNode["children"][number]) =>
+    sub.q && sub.cls ? `/catalogue?class=${sub.cls}&q=${encodeURIComponent(sub.q)}` : `/category/${sub.slug}`;
   // Menus are admin-edited (Site content → Menus); defaults mirror launch nav.
   const navLinks = parseMenu(content.navHeader ?? "");
   const footerCols = [
@@ -229,23 +261,31 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
           </Link>
 
           <nav aria-label="Primary" className="vh-row vhx-hide-sm" style={{ gap: 18 }}>
-            {/* Shop: CSS-only hover mega panel */}
+            {/* Categories: CSS-only hover mega panel, one column per department */}
             <div className="vhx-mega">
-              <Link href="/catalogue" className="small" style={{ fontWeight: 700 }} aria-haspopup="true">
-                Shop
+              <Link href="/catalogue" className="small vh-row" style={{ fontWeight: 700, gap: 5 }} aria-haspopup="true">
+                <LayoutGrid size={15} strokeWidth={2.2} aria-hidden /> Categories
+                <ChevronDown size={13} strokeWidth={2.4} aria-hidden style={{ opacity: 0.6 }} />
               </Link>
               <div className="vhx-mega-panel" role="group" aria-label="Shop by category">
-                <div className="vhx-mega-grid">
-                  {SHOP_CLASSES.map((cls) => {
-                    const meta = CLASS_META[cls];
-                    return (
-                      <Link key={cls} href={`/catalogue?class=${cls}`} className="vhx-mega-tile">
-                        <span aria-hidden style={{ fontSize: "1.3rem" }}>{meta.emoji}</span>
-                        <span style={{ fontWeight: 700, color: "var(--vh-ink)", fontSize: ".9rem" }}>{meta.label}</span>
-                        <span className="small muted" style={{ fontSize: ".76rem" }}>{meta.blurb}</span>
+                <div className="vhx-mega-grid" style={{ gridTemplateColumns: `repeat(${Math.min(catTree.length || 1, 4)}, minmax(0, 1fr))` }}>
+                  {catTree.map((top) => (
+                    <div key={top.id} className="vhx-mega-col">
+                      <Link href={`/category/${top.slug}`} className="vhx-mega-col-head">
+                        <span aria-hidden style={{ fontSize: "1.05rem" }}>{top.emoji}</span> {top.name}
                       </Link>
-                    );
-                  })}
+                      <ul className="vhx-mega-sublist">
+                        {top.children.map((sub) => (
+                          <li key={sub.id}>
+                            <Link href={subHref(sub)}>
+                              <span aria-hidden style={{ opacity: 0.7, marginRight: 6 }}>{sub.emoji}</span>{sub.name}
+                            </Link>
+                          </li>
+                        ))}
+                        <li><Link href={`/category/${top.slug}`} className="vhx-mega-all">All {top.name} →</Link></li>
+                      </ul>
+                    </div>
+                  ))}
                 </div>
                 {/* MED_CANNABIS: informational line only — never a shop link */}
                 <div style={{ borderTop: "1px solid var(--vh-line)", marginTop: "var(--sp-2)", paddingTop: "var(--sp-2)" }}>
@@ -282,12 +322,21 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
                 <Menu size={18} strokeWidth={2.2} aria-hidden />
               </summary>
               <nav className="vhx-mnav-panel" aria-label="Mobile">
-                <div className="vhx-mnav-head">Shop</div>
+                <div className="vhx-mnav-head">Shop by category</div>
                 <Link href="/catalogue">All products</Link>
-                {SHOP_CLASSES.map((cls) => (
-                  <Link key={cls} href={`/catalogue?class=${cls}`}>
-                    <span aria-hidden>{CLASS_META[cls].emoji}</span> {CLASS_META[cls].label}
-                  </Link>
+                {catTree.map((top) => (
+                  <details key={top.id} className="vhx-mnav-cat">
+                    <summary>
+                      <span><span aria-hidden>{top.emoji}</span> {top.name}</span>
+                      <ChevronDown size={15} strokeWidth={2.4} aria-hidden />
+                    </summary>
+                    <div className="vhx-mnav-subs">
+                      <Link href={`/category/${top.slug}`} className="vhx-mnav-all">All {top.name}</Link>
+                      {top.children.map((sub) => (
+                        <Link key={sub.id} href={subHref(sub)}>{sub.name}</Link>
+                      ))}
+                    </div>
+                  </details>
                 ))}
                 <div className="vhx-mnav-head">Vedic Hemp</div>
                 <Link href="/trust">How it works</Link>

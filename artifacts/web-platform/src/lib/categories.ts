@@ -37,9 +37,30 @@ export interface CategoryNode extends Category {
 export const CATEGORY_CLASSES: ComplianceClass[] = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
 
 const DEFAULTS: Category[] = [
+  // ── Top-level departments (one per shoppable class; MED_CANNABIS is never a department — A1) ──
   { id: "cat-hemp", slug: "hemp-nutrition", name: "Hemp Nutrition & Food", blurb: "FSSAI-approved hemp hearts, protein and cold-pressed oil.", emoji: "🌾", cls: "HEMP_FOOD", order: 1, visible: true, custom: false },
   { id: "cat-ayur", slug: "ayurveda", name: "Ayurveda", blurb: "Classical formulations from licensed AYUSH sellers.", emoji: "🪔", cls: "AYURVEDA", order: 2, visible: true, custom: false },
   { id: "cat-cbd", slug: "cbd-wellness", name: "Hemp Wellness / CBD", blurb: "Topicals and tinctures, every batch lab-reported. 21+.", emoji: "🌿", cls: "CBD_WELLNESS", order: 3, visible: true, custom: false },
+
+  // ── Sub-categories · Hemp Nutrition & Food ──
+  { id: "cat-hemp-hearts", slug: "hemp-seeds-hearts", name: "Hemp Seeds & Hearts", blurb: "Raw and hulled hemp hearts and seeds.", emoji: "🌰", cls: "HEMP_FOOD", q: "hemp hearts seeds", order: 10, visible: true, custom: false, parentId: "cat-hemp" },
+  { id: "cat-hemp-protein", slug: "hemp-protein", name: "Hemp Protein", blurb: "Plant protein powders and blends.", emoji: "💪", cls: "HEMP_FOOD", q: "protein", order: 11, visible: true, custom: false, parentId: "cat-hemp" },
+  { id: "cat-hemp-oil", slug: "hemp-culinary-oil", name: "Cold-Pressed Hemp Oil", blurb: "Culinary hemp seed oil.", emoji: "🫒", cls: "HEMP_FOOD", q: "hemp oil", order: 12, visible: true, custom: false, parentId: "cat-hemp" },
+  { id: "cat-hemp-flour", slug: "hemp-flour-foods", name: "Hemp Flour & Foods", blurb: "Flour, bars and everyday hemp foods.", emoji: "🥣", cls: "HEMP_FOOD", q: "flour", order: 13, visible: true, custom: false, parentId: "cat-hemp" },
+
+  // ── Sub-categories · Ayurveda ──
+  { id: "cat-ayur-churna", slug: "churna-powders", name: "Churna & Powders", blurb: "Classical churnas and herbal powders.", emoji: "🌿", cls: "AYURVEDA", q: "churna powder", order: 20, visible: true, custom: false, parentId: "cat-ayur" },
+  { id: "cat-ayur-tabs", slug: "ayurvedic-tablets", name: "Tablets & Capsules", blurb: "Vati, tablets and herbal capsules.", emoji: "💊", cls: "AYURVEDA", q: "tablet capsule", order: 21, visible: true, custom: false, parentId: "cat-ayur" },
+  { id: "cat-ayur-oils", slug: "herbal-oils", name: "Herbal Oils", blurb: "Ayurvedic oils for massage and care.", emoji: "🪔", cls: "AYURVEDA", q: "oil", order: 22, visible: true, custom: false, parentId: "cat-ayur" },
+  { id: "cat-ayur-ashwa", slug: "ashwagandha", name: "Ashwagandha", blurb: "Ashwagandha in every form.", emoji: "🌱", cls: "AYURVEDA", q: "ashwagandha", order: 23, visible: true, custom: false, parentId: "cat-ayur" },
+  { id: "cat-ayur-immunity", slug: "immunity-wellness", name: "Immunity & Wellness", blurb: "Everyday immunity and wellness support.", emoji: "🛡️", cls: "AYURVEDA", q: "immunity", order: 24, visible: true, custom: false, parentId: "cat-ayur" },
+
+  // ── Sub-categories · Hemp Wellness / CBD ──
+  { id: "cat-cbd-tinctures", slug: "cbd-tinctures-oils", name: "Tinctures & Oils", blurb: "Lab-reported tinctures and oils. 21+.", emoji: "💧", cls: "CBD_WELLNESS", q: "tincture oil", order: 30, visible: true, custom: false, parentId: "cat-cbd" },
+  { id: "cat-cbd-balms", slug: "cbd-balms-topicals", name: "Balms & Topicals", blurb: "Balms, salves and topical care. 21+.", emoji: "🧴", cls: "CBD_WELLNESS", q: "balm topical", order: 31, visible: true, custom: false, parentId: "cat-cbd" },
+  { id: "cat-cbd-capsules", slug: "cbd-capsules", name: "Capsules & Softgels", blurb: "Pre-measured capsules and softgels. 21+.", emoji: "💊", cls: "CBD_WELLNESS", q: "capsule", order: 32, visible: true, custom: false, parentId: "cat-cbd" },
+  { id: "cat-cbd-skin", slug: "cbd-skincare", name: "Skincare", blurb: "Hemp-based skincare. 21+.", emoji: "✨", cls: "CBD_WELLNESS", q: "skin", order: 33, visible: true, custom: false, parentId: "cat-cbd" },
+  { id: "cat-cbd-pet", slug: "cbd-pet-wellness", name: "Pet Wellness", blurb: "Hemp wellness for pets.", emoji: "🐾", cls: "CBD_WELLNESS", q: "pet", order: 34, visible: true, custom: false, parentId: "cat-cbd" },
 ];
 
 interface CategoryStore {
