@@ -373,6 +373,21 @@ export default async function ProductDetailPage({
                 </div>
               )}
 
+              {/* AI review summary — pinned to the TOP of the reviews. Provider seam
+                  in lib/ai.ts; labelled, never a claim, only shown once there are real
+                  approved reviews to summarise. */}
+              {reviewCount > 0 && (
+                <div id="ai-summary" style={{ background: "var(--vh-green-50)", border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "12px 14px", marginBottom: "var(--sp-3)" }}>
+                  <div className="vh-row" style={{ gap: 8, marginBottom: 4, flexWrap: "wrap" }}>
+                    <span className="vh-pill vh-pill-info">AI summary</span>
+                    <span className="small muted">from verified-purchase reviews · engine: {aiProviderName()}</span>
+                  </div>
+                  <p className="small" style={{ margin: 0 }}>
+                    {summarizeReviews({ title: product.title, rating: ratingValue, reviewCount, labVerified: product.labVerified })}
+                  </p>
+                </div>
+              )}
+
               {reviews.length > 0 ? (
                 <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: "var(--sp-3)" }}>
                   {reviews.map((r) => (
@@ -420,19 +435,6 @@ export default async function ProductDetailPage({
                 <p className="small muted" style={{ margin: 0 }}>No reviews yet — be the first to review this after your purchase.</p>
               )}
               <div style={{ marginTop: "var(--sp-3)", borderTop: "1px solid var(--vh-line)", paddingTop: "var(--sp-3)" }}>
-                {/* AI review summary — provider seam in lib/ai.ts; labelled, never a
-                    claim, and only shown once there are real approved reviews to summarise. */}
-                {reviewCount > 0 && (
-                <div id="ai-summary" style={{ background: "var(--vh-green-50)", border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: "12px 14px", marginBottom: "var(--sp-3)" }}>
-                  <div className="vh-row" style={{ gap: 8, marginBottom: 4 }}>
-                    <span className="vh-pill vh-pill-info">AI summary</span>
-                    <span className="small muted">from verified-purchase reviews · engine: {aiProviderName()}</span>
-                  </div>
-                  <p className="small" style={{ margin: 0 }}>
-                    {summarizeReviews({ title: product.title, rating: ratingValue, reviewCount, labVerified: product.labVerified })}
-                  </p>
-                </div>
-                )}
                 {myReview ? (
                   <div>
                     <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>

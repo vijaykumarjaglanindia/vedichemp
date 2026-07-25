@@ -958,3 +958,22 @@ details.vh-card > summary + * { margin-top: 10px; animation: vh-rise .32s ease b
   .vh-modal-head, .vh-modal-foot { border-color: #2a343b; }
   .vh-detail-row { border-color: #232c32; }
 }
+
+/* ─────────── Mobile-first commerce polish ─────────── */
+/* Product listings show two cards per row on phones (marketplace standard),
+   not a single sparse column. Scoped to grids that actually contain product
+   cards, so console/card layouts are unaffected. */
+@media (max-width: 640px) {
+  .vh-grid:has(.vh-product) { grid-template-columns: repeat(2, minmax(0, 1fr)) !important; gap: 10px; }
+  .vh-product-body { padding: 10px; gap: 6px; }
+  .vh-product-title { font-size: .86rem; }
+}
+@media (max-width: 380px) {
+  .vh-grid:has(.vh-product) { gap: 8px; }
+  .vh-product-body { padding: 8px; }
+}
+/* Comfortable tap targets on touch devices (WCAG 2.5.5) without bloating desktop. */
+@media (hover: none) and (max-width: 640px) {
+  .vh-btn-sm { min-height: 38px; }
+  .vh-iconbtn { min-width: 40px; min-height: 40px; }
+}
