@@ -120,7 +120,13 @@ export interface AdminReport {
 }
 
 export async function adminReport(days = 14): Promise<AdminReport> {
-  const orders = await allOrders();
+  // Defensive: a persisted snapshot from an older app version (or a partial
+  // write) could carry an incomplete order. Analytics must never crash the
+  // admin dashboard/export over one malformed row — skip anything without the
+  // fields we read.
+  const orders = (await allOrders()).filter(
+    (o): o is Order => !!o && typeof o.placedAt === "string" && Array.isArray(o.items) && typeof o.totalPaise === "number",
+  );
   const window = lastNDays(days);
   const byDate = new Map(window.map((d) => [d.date, { paise: 0, orders: 0 }]));
   const sellers = new Map<string, { units: number; paise: number }>();

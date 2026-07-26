@@ -7,7 +7,7 @@
  * writes nothing, and a store with no snapshot is left to self-seed.
  */
 
-import { describe, it, expect, beforeEach } from "vitest";
+import { describe, it, expect, beforeEach, afterAll } from "vitest";
 import { db } from "@/lib/db";
 import { flushAll, hydrateAll, persistenceEnabled } from "@/lib/persist";
 
@@ -15,6 +15,14 @@ type Bag = Record<string, unknown>;
 const g = globalThis as unknown as Bag;
 
 beforeEach(async () => {
+  await db.appSnapshot.deleteMany({});
+  g.__vhCatalogStore = undefined;
+  g.__vhOrders = undefined;
+});
+
+// Never leave test fixtures in the shared AppSnapshot table — a hydrating app
+// instance would otherwise pick up a malformed order/catalogue snapshot.
+afterAll(async () => {
   await db.appSnapshot.deleteMany({});
   g.__vhCatalogStore = undefined;
   g.__vhOrders = undefined;
