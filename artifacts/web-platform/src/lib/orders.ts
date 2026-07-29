@@ -60,9 +60,10 @@ export interface Order {
   state?: string; // buyer's state — drives GST place-of-supply on the invoice
   pincode: string;
   payment: string;
-  /** 100% prepaid platform: capture precedes order-forwarding, so a stored
-   *  order is always CAPTURED — the gateway reference proves it. */
-  paymentStatus: "CAPTURED";
+  /** In sandbox (no PSP) capture precedes order-forwarding, so the order is
+   *  CAPTURED on creation. With a real PSP it is created PENDING and the
+   *  verified payment webhook flips it to CAPTURED (see confirmPayment). */
+  paymentStatus: "PENDING" | "CAPTURED";
   gatewayRef?: string;
   subtotalPaise: number;
   discountPaise: number;
@@ -118,6 +119,10 @@ export interface PlaceOrderInput {
   totalPaise: number;
   gstPaise?: number;
   walletAppliedPaise?: number;
+  /** Sandbox creates CAPTURED; a live PSP checkout creates PENDING and confirms
+   *  it from the verified webhook. Defaults to CAPTURED. */
+  paymentStatus?: "PENDING" | "CAPTURED";
+  gatewayRef?: string;
 }
 
 /** The order (if any) already created under an idempotency key. Callers check
@@ -147,9 +152,9 @@ export async function createOrder(input: PlaceOrderInput): Promise<Order> {
     ...(input.state ? { state: input.state } : {}),
     pincode: input.pincode,
     payment: input.payment,
-    // Prepaid: capture happens at payment, before the order is forwarded.
-    paymentStatus: "CAPTURED",
-    gatewayRef: `gw_${input.idempotencyKey.slice(0, 8)}`,
+    // Sandbox captures on creation; a live PSP order starts PENDING (confirmed by webhook).
+    paymentStatus: input.paymentStatus ?? "CAPTURED",
+    gatewayRef: input.gatewayRef ?? `gw_${input.idempotencyKey.slice(0, 8)}`,
     subtotalPaise: input.subtotalPaise,
     ...(typeof input.gstPaise === "number" ? { gstPaise: input.gstPaise } : {}),
     discountPaise: input.discountPaise,
@@ -208,6 +213,25 @@ export async function advanceOrder(reference: string, op: string, by: string): P
   if (!rule.from.includes(order.status)) return { ok: false, reason: "state" };
   order.status = rule.to;
   order.timeline.push({ at: now(), status: rule.to, by });
+  return { ok: true, order };
+}
+
+/* ── Payment confirmation (PSP webhook) ───────────────────── */
+
+/**
+ * Mark a PENDING order CAPTURED after the PSP's verified webhook confirms the
+ * charge. Idempotent: a replayed webhook (or an order already captured) returns
+ * ok without double-processing. The webhook that calls this has already been
+ * authenticated by HMAC (see /api/v1/payments/webhook) — this never trusts an
+ * amount from the caller; it only records that the PSP confirmed the order.
+ */
+export async function confirmPayment(reference: string, providerRef?: string, by = "psp-webhook"): Promise<OrderResult> {
+  const order = await findOrder(reference);
+  if (!order) return { ok: false, reason: "missing" };
+  if (order.paymentStatus === "CAPTURED") return { ok: true, order }; // idempotent replay
+  order.paymentStatus = "CAPTURED";
+  if (providerRef) order.gatewayRef = providerRef;
+  order.timeline.push({ at: now(), status: order.status, by, note: "Payment captured" });
   return { ok: true, order };
 }
 

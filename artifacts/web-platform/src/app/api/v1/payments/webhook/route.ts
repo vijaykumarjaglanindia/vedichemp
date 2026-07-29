@@ -12,7 +12,31 @@
  */
 import { NextResponse } from "next/server";
 import { activeProvider, paymentsLive } from "@/lib/payments/gateway";
+import { confirmPayment } from "@/lib/orders";
 import { writeAudit } from "@/lib/audit";
+
+/** Dig the platform order reference + PSP payment id out of any provider's event. */
+function extractOrder(event: unknown): { reference?: string; providerRef?: string } {
+  const e = event as Record<string, any>;
+  const reference =
+    e?.payload?.payment?.entity?.notes?.orderId ??  // Razorpay
+    e?.payload?.order?.entity?.receipt ??            // Razorpay (order)
+    e?.data?.order?.order_id ??                      // Cashfree
+    e?.data?.object?.metadata?.orderId ??            // Stripe
+    e?.data?.object?.receipt ??
+    undefined;
+  const providerRef =
+    e?.payload?.payment?.entity?.id ??
+    e?.data?.payment?.cf_payment_id ??
+    e?.data?.object?.id ??
+    undefined;
+  return { reference: reference ? String(reference) : undefined, providerRef: providerRef ? String(providerRef) : undefined };
+}
+
+/** Event types that mean "the buyer paid". */
+function isSuccess(eventType: string): boolean {
+  return /captured|succeeded|success|paid/i.test(eventType);
+}
 
 export async function POST(req: Request) {
   // Read the RAW body — signature verification must run on the exact bytes.
@@ -39,8 +63,21 @@ export async function POST(req: Request) {
 
   await writeAudit({ actor: "psp-webhook", action: "PAYMENT_WEBHOOK", target: verdict.provider, outcome: "OK", note: `Verified event: ${eventType}.` });
 
-  // Reconciliation seam: match the event's order id to a platform order and
-  // record the confirmation. Left intentionally minimal — the PSP is the
-  // authority on the charge; the platform only records what it confirmed.
-  return NextResponse.json({ data: { received: true, provider: verdict.provider, event: eventType } });
+  // Reconcile: on a success event, mark the matching order CAPTURED. This is
+  // idempotent (a replayed webhook is a no-op) and never trusts an amount from
+  // the caller — the PSP is the authority on the charge; the platform records it.
+  let reconciled: string | null = null;
+  if (isSuccess(eventType)) {
+    const { reference, providerRef } = extractOrder(event);
+    if (reference) {
+      const res = await confirmPayment(reference, providerRef);
+      reconciled = res.ok ? reference : null;
+      await writeAudit({
+        actor: "psp-webhook", action: "PAYMENT_CONFIRMED", target: reference,
+        outcome: res.ok ? "OK" : "DENIED", note: res.ok ? "Order marked CAPTURED." : `No matching order (${res.reason}).`,
+      });
+    }
+  }
+
+  return NextResponse.json({ data: { received: true, provider: verdict.provider, event: eventType, reconciled } });
 }
