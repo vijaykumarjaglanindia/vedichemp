@@ -81,11 +81,19 @@ zero-loss production database.
      `src/app/api/v1/auth/[provider]/route.ts`.
    - Admin auth stays passkey-first: SMS OTP is **not** accepted for admin,
      and the operator door (`/vh-admin`) is never linked from public pages.
-3. **Payments** — the admin picks the gateway (Razorpay / PhonePe / Cashfree /
-   Stripe) and switches methods in Admin → Finance → Payments. PSP API keys
-   attach at the `payment` branch of `placeOrder` (PSP-hosted fields,
-   PCI-DSS SAQ-A); the server-side whitelist already rejects any method the
-   admin has not enabled.
+3. **Payments** — fully wired end to end; set one provider's env keys and the
+   live flow activates (`RAZORPAY_*` or `CASHFREE_*`; `STRIPE_*` needs its
+   Elements mount, honestly flagged in the UI). With keys set: `placeOrder`
+   creates the order **PENDING**, opens a PSP order for the charged amount and
+   hands the buyer to `/checkout/pay` (the provider's hosted checkout — card/UPI
+   fields never touch the platform, PCI-DSS SAQ-A). The PSP's **signed webhook**
+   (`/api/v1/payments/webhook`, HMAC-verified, fails closed) is the only thing
+   that marks the order CAPTURED, and a seller cannot accept — so can never
+   ship — an unpaid order. Without keys, sandbox behaviour is unchanged. The
+   admin still picks methods in Admin → Finance → Payments; a forged/disabled
+   method is rejected server-side. Set the matching `*_WEBHOOK_SECRET` and point
+   the PSP dashboard's webhook at `/api/v1/payments/webhook` before enabling
+   real charges.
 4. **AI — `ANTHROPIC_API_KEY`** (optional `OPENAI_API_KEY` label support).
    Unset = deterministic fallbacks so every AI surface still renders; set =
    live model calls through `src/lib/ai.ts`. All AI output passes the claims
