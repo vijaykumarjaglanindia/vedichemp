@@ -211,6 +211,10 @@ export async function advanceOrder(reference: string, op: string, by: string): P
   const order = await findOrder(reference);
   if (!rule || !order) return { ok: false, reason: "missing" };
   if (!rule.from.includes(order.status)) return { ok: false, reason: "state" };
+  // Money gate: goods never enter fulfilment before the PSP confirms the charge.
+  // Sandbox orders are CAPTURED at creation, so this only bites live PENDING
+  // orders — a seller cannot accept (and therefore never ship) an unpaid order.
+  if (op === "accept" && order.paymentStatus !== "CAPTURED") return { ok: false, reason: "unpaid" };
   order.status = rule.to;
   order.timeline.push({ at: now(), status: rule.to, by });
   return { ok: true, order };

@@ -69,6 +69,15 @@ function RealOrderDetail({
         </span>
       }
     >
+      {order.paymentStatus === "PENDING" && (
+        <div style={{ marginBottom: "var(--sp-3)" }}>
+          <Banner severity="info" title="Payment pending">
+            We haven&rsquo;t received your payment for this order yet. It confirms automatically the moment your payment
+            goes through — the seller ships only after that. If you closed the payment page, you can safely retry the
+            payment; you will never be charged twice for the same order.
+          </Banner>
+        </div>
+      )}
       {flags.reorder === "none" && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="info" title="Nothing from this order is available right now">

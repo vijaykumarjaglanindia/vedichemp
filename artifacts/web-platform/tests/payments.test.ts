@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeEach } from "vitest";
-import { createOrder, confirmPayment, findOrder, type PlaceOrderInput } from "@/lib/orders";
+import { createOrder, confirmPayment, findOrder, advanceOrder, type PlaceOrderInput } from "@/lib/orders";
 
 beforeEach(() => { (globalThis as Record<string, unknown>).__vhOrders = undefined; });
 
@@ -51,5 +51,29 @@ describe("payment confirmation (PSP webhook)", () => {
   it("sandbox orders (no PSP) are CAPTURED on creation — unchanged", async () => {
     await createOrder(base("SBX", { payment: "cod" }));
     expect((await findOrder("SBX"))!.paymentStatus).toBe("CAPTURED");
+  });
+});
+
+/* ─────────────────────────── Fulfilment money-gate ─────────────────────────── */
+
+describe("unpaid orders cannot enter fulfilment", () => {
+  it("a seller cannot accept a payment-PENDING order; capture unlocks it", async () => {
+    await createOrder(base("GATE1", { paymentStatus: "PENDING" }));
+
+    const refused = await advanceOrder("GATE1", "accept", "seller:Store");
+    expect(refused.ok).toBe(false);
+    expect(refused.ok === false && refused.reason).toBe("unpaid");
+    expect((await findOrder("GATE1"))!.status).toBe("PLACED"); // untouched
+
+    await confirmPayment("GATE1", "pay_ok");
+    const accepted = await advanceOrder("GATE1", "accept", "seller:Store");
+    expect(accepted.ok).toBe(true);
+    expect((await findOrder("GATE1"))!.status).toBe("ACCEPTED");
+  });
+
+  it("sandbox (CAPTURED-on-create) orders accept exactly as before", async () => {
+    await createOrder(base("GATE2"));
+    const r = await advanceOrder("GATE2", "accept", "seller:Store");
+    expect(r.ok).toBe(true);
   });
 });

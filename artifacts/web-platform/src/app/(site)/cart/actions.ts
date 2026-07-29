@@ -335,7 +335,31 @@ export async function placeOrder(formData: FormData): Promise<void> {
   if (walletAppliedPaise > 0) record.walletAppliedPaise = walletAppliedPaise;
   const chargedPaise = cart.totalPaise - walletAppliedPaise;
 
+  // Live PSP path: with a gateway configured and a prepaid method chosen, the
+  // order is created PENDING and a PSP order is opened for the charge; the
+  // buyer completes it on /checkout/pay and the verified webhook flips the
+  // order to CAPTURED. Without a gateway (sandbox), or when the wallet covered
+  // everything, behaviour is unchanged: CAPTURED on creation. If the PSP call
+  // fails, the order STAYS PENDING (fail closed on money — the fulfilment gate
+  // refuses to accept an unpaid order; nothing ships).
+  const { paymentsLive, activeProvider } = await import("@/lib/payments/gateway");
+  const methodKind = (await readEnabledPayments()).find((m) => m.key === payment)?.kind ?? "prepaid";
+  const livePayment = paymentsLive() && methodKind === "prepaid" && chargedPaise > 0;
+  let pspRef: string | undefined;
+  let payHandoff: { provider: string; reference: string; amountPaise: number; checkout: Record<string, string> } | null = null;
+  if (livePayment) {
+    try {
+      const psp = await activeProvider().createOrder({ amountPaise: chargedPaise, orderId: reference });
+      pspRef = psp.providerRef;
+      payHandoff = { provider: psp.provider, reference, amountPaise: chargedPaise, checkout: psp.checkout };
+    } catch {
+      // PSP unreachable: order lands PENDING with no handoff; the buyer's order
+      // page shows "payment pending" and support/webhook can reconcile later.
+    }
+  }
+
   await createOrder({
+    ...(livePayment ? { paymentStatus: "PENDING" as const, ...(pspRef ? { gatewayRef: pspRef } : {}) } : {}),
     idempotencyKey,
     buyerEmail,
     reference,
@@ -368,7 +392,7 @@ export async function placeOrder(formData: FormData): Promise<void> {
   await notify("buyer", buyerEmail, {
     kind: "ORDER_PLACED",
     title: `Order ${reference} confirmed`,
-    body: `${itemCount} item${itemCount === 1 ? "" : "s"} · ₹${(chargedPaise / 100).toLocaleString("en-IN")} paid${walletAppliedPaise > 0 ? ` (₹${(walletAppliedPaise / 100).toLocaleString("en-IN")} from wallet)` : ""}. We'll tell you when it ships.`,
+    body: `${itemCount} item${itemCount === 1 ? "" : "s"} · ₹${(chargedPaise / 100).toLocaleString("en-IN")} ${livePayment ? "to pay" : "paid"}${walletAppliedPaise > 0 ? ` (₹${(walletAppliedPaise / 100).toLocaleString("en-IN")} from wallet)` : ""}. ${livePayment ? "Complete payment to get it moving." : "We'll tell you when it ships."}`,
     href: `/account/orders/live-${reference}`,
   });
   for (const seller of [...new Set(orderItems.map((it) => it.seller))]) {
@@ -411,5 +435,10 @@ export async function placeOrder(formData: FormData): Promise<void> {
   jar.delete("vh-checkout-draft");
   await clearCartCookies();
   await writeCoupon(null);
+  // Live PSP: hand the buyer to the hosted-checkout page; the webhook confirms.
+  if (payHandoff) {
+    jar.set("vh-pay", JSON.stringify(payHandoff), { path: "/", httpOnly: true, sameSite: "lax", maxAge: 1800 });
+    redirect("/checkout/pay");
+  }
   redirect("/checkout/confirmed");
 }

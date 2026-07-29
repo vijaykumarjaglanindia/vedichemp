@@ -121,7 +121,10 @@ export default async function SellerOrdersPage({
               {realOrders.map((o) => {
                 const myItems = o.items.filter((it) => it.seller === store);
                 const myTotal = myItems.reduce((n, it) => n + it.linePaise, 0);
-                const nextOp = o.status === "PLACED" ? "accept" : o.status === "ACCEPTED" ? "pack" : o.status === "PACKED" ? "ship" : o.status === "SHIPPED" ? "deliver" : null;
+                // An unpaid (live-PSP PENDING) order shows in the queue but cannot be
+                // accepted — the server refuses anyway; the UI just says why.
+                const unpaid = o.status === "PLACED" && o.paymentStatus !== "CAPTURED";
+                const nextOp = unpaid ? null : o.status === "PLACED" ? "accept" : o.status === "ACCEPTED" ? "pack" : o.status === "PACKED" ? "ship" : o.status === "SHIPPED" ? "deliver" : null;
                 const nextLabel = nextOp === "accept" ? "Accept" : nextOp === "pack" ? "Pack" : nextOp === "ship" ? "Mark shipped" : nextOp === "deliver" ? "Mark delivered" : null;
                 return (
                   <div key={o.reference} id={`ord-${o.reference}`} className="vh-row-between" style={{ gap: 12, padding: "12px 16px", borderTop: "1px solid var(--vh-line)", flexWrap: "wrap" }}>
@@ -132,6 +135,7 @@ export default async function SellerOrdersPage({
                     <span className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
                       <MoneyText paise={myTotal} />
                       <StatusPill tone={ORDER_TONE[o.status]}>{o.status.replace(/_/g, " ")}</StatusPill>
+                      {unpaid && <StatusPill tone="warn">Payment pending</StatusPill>}
                       {nextOp && nextLabel && (
                         <form action={fulfilOrder} style={{ display: "inline-flex" }}>
                           <input type="hidden" name="reference" value={o.reference} />
