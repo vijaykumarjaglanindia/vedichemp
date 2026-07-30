@@ -10,9 +10,14 @@
  * runs REAL logic against the supplied config (missing/blank credentials fail,
  * malformed URLs fail, unsupported methods report "planned"), while
  * `fetchProducts` returns a deterministic demo catalogue for the connected
- * store — clearly a fixture, generated once per store so previews are stable.
- * Swapping a demo adapter for a live one is a single function body; the
- * contract and everything above it are unchanged.
+ * store — a fixture, generated once per store so previews are stable.
+ *
+ * That fixture must never be passed off as the seller's own catalogue. Every
+ * demo-backed validate() sets `demoBacked: true` and carries DEMO_SOURCE_NOTE,
+ * `isDemoBacked(method)` answers the same question ahead of a fetch, and no
+ * demo adapter reports a product count or a certificate of analysis — it has
+ * neither. Swapping a demo adapter for a live one is a single function body
+ * plus removing its method from DEMO_METHODS; the contract is unchanged.
  */
 
 import type {
@@ -115,8 +120,23 @@ export function methodMeta(method: ConnectionMethod): MethodMeta {
 export interface ValidateResult {
   ok: boolean;
   storeName?: string;
+  /** Only ever set by a connector that actually counted the seller's products.
+   *  A demo-backed adapter leaves it undefined — it has nothing to count. */
   productCountHint?: number;
   reason?: string;
+  /** True when the products this connector returns are the demo catalogue and
+   *  NOT the seller's own. Surfaces must say so before anything is imported. */
+  demoBacked?: boolean;
+}
+
+/** The disclosure a console must show for any demo-backed connector. */
+export const DEMO_SOURCE_NOTE =
+  "Demo data — not your store. This environment cannot reach seller storefronts, so this connector returns a fixed sample catalogue.";
+
+/** Whether `method` currently reads a real merchant feed. Every method is
+ *  demo-backed until a live adapter replaces its entry in REGISTRY. */
+export function isDemoBacked(method: ConnectionMethod): boolean {
+  return DEMO_METHODS.has(method);
 }
 
 export interface Connector {
@@ -205,7 +225,10 @@ function demoCatalogue(storeSeed: string): NormalizedProduct[] {
       inventory: { quantity: stock, stockStatus: stock > 0 ? "in_stock" : "out_of_stock", lowStockAt: 10, tracked: true, backorders: false },
       images: hasImage ? [{ url: `https://cdn.seller.example/${sku}.jpg`, alt: s.title, position: 0 }] : [],
       videos: r > 0.85 ? ["https://youtube.com/watch?v=demo"] : [],
-      documents: s.cls === "CBD_WELLNESS" ? [{ kind: "coa", url: `https://cdn.seller.example/coa/${sku}.pdf`, label: "Certificate of Analysis" }] : [],
+      // No CoA document and no coaUrl: a certificate of analysis is regulatory
+      // evidence about a real batch (A2). The demo adapter has none, so every
+      // regulated row lands with nothing on file and cannot be published.
+      documents: [],
       shipping: { weightGrams: 100 + Math.floor(r * 400), shippingClass: "standard" },
       seo: { metaTitle: s.title, metaDescription: `Buy ${s.title} from ${s.brand}.`, metaKeywords: [s.brand, "buy online"] },
       identifiers: { barcode: `890${(1000000 + i * 37).toString().padStart(9, "0")}`, mpn: sku },
@@ -213,7 +236,7 @@ function demoCatalogue(storeSeed: string): NormalizedProduct[] {
         ? [{ name: "Size", values: ["Small", "Large"], variation: true }]
         : [{ name: "Pack", values: ["Single"] }],
       variants: [],
-      marketplace: { cbdPercent: s.cbd, thcPercent: s.thc, prescriptionRequired: s.cls === "MED_CANNABIS", coaUrl: s.cls === "CBD_WELLNESS" ? `https://cdn.seller.example/coa/${sku}.pdf` : undefined, countryOfOrigin: "India" },
+      marketplace: { cbdPercent: s.cbd, thcPercent: s.thc, prescriptionRequired: s.cls === "MED_CANNABIS", countryOfOrigin: "India" },
       rawFieldCount: 34,
     };
   });
@@ -229,7 +252,10 @@ function demoConnector(method: ConnectionMethod): Connector {
       if (!base.ok) return base;
       const meta = methodMeta(method);
       const seed = config.storeUrl || config.apiUrl || config.feedUrl || config.shopUrl || config.endpoint || meta.name;
-      return { ok: true, storeName: prettyStoreName(seed), productCountHint: SEED_CATALOGUE.length };
+      // No productCountHint: this adapter never reached the seller's store, so
+      // it has no count to report. A number here would be a fabricated figure
+      // about a real merchant.
+      return { ok: true, storeName: prettyStoreName(seed), demoBacked: true, reason: DEMO_SOURCE_NOTE };
     },
     async fetchProducts(config) {
       const meta = methodMeta(method);
@@ -249,6 +275,10 @@ function prettyStoreName(seedOrUrl: string): string {
   } catch { /* fall through */ }
   return seedOrUrl;
 }
+
+/** Every method served by the demo adapter. A method leaves this set the moment
+ *  a live adapter is registered for it — nothing else needs to change. */
+const DEMO_METHODS = new Set<ConnectionMethod>(METHODS.map((m) => m.method));
 
 const REGISTRY: Record<ConnectionMethod, Connector> = Object.fromEntries(
   METHODS.map((m) => [m.method, demoConnector(m.method)]),

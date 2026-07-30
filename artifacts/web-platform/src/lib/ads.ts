@@ -244,13 +244,32 @@ export function qualityScore(p: CatalogProduct): number {
   return Math.max(1, Math.min(10, Math.round(q * 10) / 10));
 }
 
-/** Deterministic daily-impression estimate for a keyword (shown at add time). */
-export async function estimateKeywordImpressions(text: string): Promise<number> {
-  const { readLiveProducts } = await import("@/lib/catalog");
-  const live = await readLiveProducts();
+/**
+ * OBSERVED daily impressions for a keyword — what this exact keyword has
+ * actually been served across the platform, divided by the number of days the
+ * auction has run. Returns null when the keyword has never been served: a new
+ * keyword has no history, and a manufactured number would be a figure a seller
+ * sets a real budget against.
+ */
+export async function observedKeywordImpressionsPerDay(text: string): Promise<number | null> {
   const q = text.trim().toLowerCase();
-  const matches = live.filter((p) => matchesQuery(`${p.title} ${p.seller}`, q)).length;
-  return 40 + matches * 120 + Math.max(0, 24 - text.length) * 5;
+  if (!q) return null;
+  const campaigns = store().campaigns;
+  let shown = 0;
+  const days = new Set<string>();
+  for (const c of campaigns) {
+    for (const d of Object.keys(c.daily)) if (c.daily[d]!.shown > 0) days.add(d);
+    for (const g of c.adGroups) {
+      for (const k of g.keywords) if (k.text === q) shown += k.impressions;
+    }
+  }
+  if (shown === 0 || days.size === 0) return null;
+  return Math.round(shown / days.size);
+}
+
+/** Back-compatible wrapper: observed impressions per day, 0 when none recorded. */
+export async function estimateKeywordImpressions(text: string): Promise<number> {
+  return (await observedKeywordImpressionsPerDay(text)) ?? 0;
 }
 
 /* ── Campaign CRUD ────────────────────────────────────────── */
@@ -358,7 +377,10 @@ export async function addKeyword(
     ...(input.bidPaise ? { bidPaise: input.bidPaise } : {}),
     impressions: 0,
   });
-  return { ok: true, estimate: await estimateKeywordImpressions(text) };
+  // `estimate` is present only when this keyword has actually been served
+  // before; a new keyword reports nothing rather than a manufactured figure.
+  const observed = await observedKeywordImpressionsPerDay(text);
+  return { ok: true, ...(observed === null ? {} : { estimate: observed }) };
 }
 
 export async function addNegativeKeyword(campaignId: string, groupId: string, text: string): Promise<boolean> {

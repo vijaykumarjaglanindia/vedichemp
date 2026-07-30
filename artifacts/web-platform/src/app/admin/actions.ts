@@ -13,7 +13,7 @@
 
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { PERIOD_CLOSE_CHECKLIST } from "./_lib/data";
+import { periodCloseBlockers } from "@/lib/periodclose";
 import { MAX_BODY, SAMPLE_POSTS, deletePostOverride, findPost, listRevisions, pushRevision, slugify, writePostOverride } from "@/lib/cms";
 import { getSession } from "@/lib/auth-lite";
 import { writeAudit } from "@/lib/audit";
@@ -33,13 +33,21 @@ async function actor(): Promise<string> {
 export async function initiatePeriodClose(formData: FormData): Promise<void> {
   const reason = String(formData.get("reason") ?? "").trim();
   if (reason.length < 20) redirect("/admin/finance?close=reason#close-period");
+  const who = await actor();
 
-  // Fail closed: a close cannot even be INITIATED while checklist items are
-  // open — the checklist is server data, not a UI suggestion.
-  if (PERIOD_CLOSE_CHECKLIST.some((c) => !c.done)) {
+  // Fail closed: a close cannot even be INITIATED while any precondition is
+  // still open. Each one is derived from the live money stores, so this gate
+  // clears when the work is done — never because someone ticked a box.
+  const blockers = await periodCloseBlockers();
+  if (blockers.length > 0) {
+    await writeAudit({
+      actor: who, action: "PERIOD_CLOSE_INITIATE", target: "current period", outcome: "DENIED",
+      note: `open: ${blockers.map((b) => b.key).join(", ")} · ${reason.slice(0, 60)}`,
+    });
     redirect("/admin/finance?close=blocked#close-period");
   }
 
+  await writeAudit({ actor: who, action: "PERIOD_CLOSE_INITIATE", target: "current period", outcome: "OK", note: reason.slice(0, 80) });
   (await cookies()).set("vh-adm-close", "initiated", OPTS);
   redirect("/admin/finance?close=initiated#close-period");
 }
@@ -1097,7 +1105,7 @@ import {
 } from "@/lib/catalog";
 import { ComplianceClass } from "@prisma/client";
 import { writeStoreCopy } from "@/lib/engage";
-import { SELLERS } from "@/lib/sample";
+import { kycApproved } from "@/lib/vendor";
 
 const ADMIN_CREATABLE: ComplianceClass[] = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"];
 
@@ -1141,7 +1149,7 @@ export async function adminSaveListing(formData: FormData): Promise<void> {
 
   const seller = String(formData.get("seller") ?? "").trim();
   const cls = String(formData.get("cls") ?? "");
-  if (!SELLERS.some((s) => s.name === seller)) redirect(`${back}?err=seller`);
+  if (!kycApproved(seller)) redirect(`${back}?err=seller`);
   if (!ADMIN_CREATABLE.includes(cls as ComplianceClass)) {
     // A1: an admin cannot conjure a medical listing either — log the attempt.
     await writeAudit({ actor: who, action: "LISTING_CREATE_OBO", target: `${title} (for ${seller})`, outcome: "DENIED", note: "A1/A2: class not creatable" });
@@ -1340,7 +1348,7 @@ export async function adminBulkUpload(formData: FormData): Promise<void> {
     const pricePaise = parseInt(priceRaw, 10);
     const mrpPaise = parseInt(mrpRaw, 10);
     let reason: string | null = null;
-    if (!SELLERS.some((s) => s.name === seller && s.kycState === "KYC_APPROVED")) reason = "seller must be a KYC-approved storefront";
+    if (!kycApproved(seller)) reason = "seller must be a KYC-approved storefront";
     else if (title.length < 8 || title.length > 150) reason = "title must be 8–150 chars";
     else if (!BULK_CLASSES.includes(cls)) reason = `class must be one of ${BULK_CLASSES.join("/")}`;
     else if (CLAIMS_LANGUAGE.test(title) || CLAIMS_LANGUAGE.test(desc)) reason = "claims language rejected (no listing may make medical claims)";

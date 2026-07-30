@@ -20,7 +20,10 @@ import {
   Wallet,
 } from "lucide-react";
 import { Banner, Card, SectionHead, Timeline } from "@/components/ui";
+import { resolveCommission } from "@/lib/commissions";
 import { CLASS_META } from "@/lib/compliance";
+import { formatPaise } from "@/lib/money";
+import { readShipping } from "@/lib/shipping";
 import { ComplianceClass } from "@prisma/client";
 import { applyToSell } from "./actions";
 
@@ -51,12 +54,28 @@ const LICENCE_REQUIREMENTS: Record<ComplianceClass, string> = {
   MED_CANNABIS: "Licensing under the applicable NDPS/state cannabis framework. Listings are never advertised and are visible only to buyers with a pharmacist-verified prescription.",
 };
 
-const COMMISSION_ROWS: { cls: string; rate: string; note: string }[] = [
-  { cls: "Marketplace commission", rate: "10%", note: "Early Adopter Program rate, locked in at launch" },
-  { cls: "Payment collection", rate: "Included", note: "We collect from the buyer and settle to you" },
-  { cls: "Shipping", rate: "Flat & fair", note: "One flat charge on smaller orders, free above the threshold" },
-  { cls: "No surprise fees", rate: "Ever", note: "No supply-chain, listing or hidden platform charges" },
-];
+/**
+ * The headline fee table. The commission is the platform's CURRENT global rate,
+ * resolved from the admin-managed schedule (A5 governs any increase), and the
+ * shipping line quotes the free-delivery threshold the cart actually charges
+ * against — this page can never publish a rate the platform no longer applies.
+ */
+async function commissionRows(): Promise<{ cls: string; rate: string; note: string }[]> {
+  const commission = await resolveCommission({});
+  const { freeAtPaise } = await readShipping();
+  return [
+    {
+      cls: "Marketplace commission",
+      rate: `${commission.ratePct}%`,
+      note: commission.source === "launch-default"
+        ? "Early Adopter Program rate, locked in at launch"
+        : "The current published rate — an increase needs 30 days' notice",
+    },
+    { cls: "Payment collection", rate: "Included", note: "We collect from the buyer and settle to you" },
+    { cls: "Shipping", rate: "Flat & fair", note: `One flat charge on smaller orders, free above ${formatPaise(freeAtPaise)}` },
+    { cls: "No surprise fees", rate: "Ever", note: "No supply-chain, listing or hidden platform charges" },
+  ];
+}
 
 const APPLY_ERRORS: Record<string, string> = {
   business: "Business name should be 3–80 characters.",
@@ -71,6 +90,7 @@ export default async function SellPage({
   searchParams: Promise<{ applied?: string; err?: string }>;
 }) {
   const { applied, err } = await searchParams;
+  const commissionTable = await commissionRows();
   return (
     <>
       <section className="vh-hero">
@@ -139,7 +159,7 @@ export default async function SellPage({
                     <tr><th>Category</th><th>Headline rate</th><th>Includes</th></tr>
                   </thead>
                   <tbody>
-                    {COMMISSION_ROWS.map((r) => (
+                    {commissionTable.map((r) => (
                       <tr key={r.cls}>
                         <td style={{ fontWeight: 700, color: "var(--vh-ink)" }}>{r.cls}</td>
                         <td className="tabular">{r.rate}</td>

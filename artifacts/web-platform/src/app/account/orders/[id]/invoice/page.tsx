@@ -1,10 +1,12 @@
 /**
  * VEDIC HEMP — TAX INVOICE (print view)
  *
- * Server-rendered, print-ready invoice for one order — works for the sample
- * history and for orders placed this session (live-<ref>). Every amount is
- * integer paise via MoneyText; the seller of record issues the invoice (the
- * platform is a marketplace intermediary collecting payment on their behalf).
+ * Server-rendered, print-ready invoice for one real order (live-<ref>), read
+ * from the order store and gated to the buyer who placed it. Every amount is
+ * integer paise via MoneyText and every tax figure comes from lib/tax — a tax
+ * invoice may never carry a number the platform did not actually charge. The
+ * seller of record issues the invoice (the platform is a marketplace
+ * intermediary collecting payment on their behalf).
  */
 
 import type { Metadata } from "next";
@@ -12,8 +14,6 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { ArrowLeft, Printer } from "lucide-react";
 import { MoneyText } from "@/components/ui";
-import { ORDERS, PRODUCTS } from "@/lib/sample";
-import { readOrderHistory } from "@/lib/engage";
 import { findOrder } from "@/lib/orders";
 import { findProduct } from "@/lib/catalog";
 import { getSession } from "@/lib/auth-lite";
@@ -88,24 +88,6 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         ...(sellerKyc ? { sellerGstin: sellerKyc.gstin } : {}),
       };
     }
-  } else {
-    const order = ORDERS.find((o) => o.id === id);
-    if (order) {
-      const taxPaise = Math.round(order.totalPaise * 0.05);
-      model = {
-        reference: order.reference,
-        placedAt: order.placedAt,
-        seller: order.seller ?? "Marketplace seller",
-        buyerName: order.buyer ?? "Registered buyer",
-        buyerCity: "As on the order",
-        items: order.items.map((it) => ({ title: it.title, qty: it.qty, unitPaise: null, linePaise: null })),
-        subtotalPaise: order.totalPaise - taxPaise,
-        discountPaise: 0,
-        couponCode: null,
-        shippingPaise: taxPaise,
-        totalPaise: order.totalPaise,
-      };
-    }
   }
   if (!model) notFound();
 
@@ -177,7 +159,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
             </div>
           )}
           <div className="vh-row-between small">
-            <span className="muted">{id.startsWith("live-") ? "Shipping" : "Tax (GST)"}</span>
+            <span className="muted">Shipping</span>
             <MoneyText paise={model.shippingPaise} />
           </div>
           {model.gst && (

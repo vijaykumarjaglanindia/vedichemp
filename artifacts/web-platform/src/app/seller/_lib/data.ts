@@ -1,11 +1,13 @@
 /**
  * VEDIC HEMP — SELLER CONSOLE DATA (per-store, real for every seller)
  *
- * Every seller sees THEIR OWN store here, not a fixed demo store. The seed
- * store "Vedic Botanicals" (the account seller@example.in owns) keeps its rich
- * illustrative fixtures verbatim; every other real store gets data derived from
- * the shared `@/lib/sample` catalogue, orders and settlements, with honest
- * empty states for surfaces it has never used (no campaigns, no payouts yet).
+ * Every seller sees THEIR OWN store here, and every store goes through the same
+ * code path — there is no privileged seed store with richer numbers. Identity,
+ * licences and capability come from the live vendor KYC record; catalogue and
+ * order shape come from the shared `@/lib/sample` records the rest of the
+ * consoles render. Surfaces whose truth lives in an async store the console
+ * reads directly (wallet, payouts, fees, ads, forecasts) are EMPTY here rather
+ * than invented — an honest empty state, never a fabricated headline.
  *
  * Nothing here is a source of truth — the CoA publish gate (A2), stock and
  * settlements are enforced in the live stores (`@/lib/catalog|orders|
@@ -16,9 +18,9 @@
 
 import { ComplianceClass } from "@prisma/client";
 import { PRODUCTS, ORDERS, SELLERS, SETTLEMENTS, type SampleProduct, type SampleOrder, type SampleSeller } from "@/lib/sample";
+import { kycFor, licenceExpired, type VendorKyc } from "@/lib/vendor";
 
-/** The seed store the demo seller (seller@example.in) owns. Its fixtures are
- *  frozen so the E2E battery — which signs in as that seller — is unaffected. */
+/** The store the demo seller (seller@example.in) owns. */
 export const SEED_STORE = "Vedic Botanicals";
 
 /* ── Types ─────────────────────────────────────────────────── */
@@ -72,16 +74,12 @@ export interface AdPlacement {
   exampleEmoji: string;
 }
 
-/** Store identity beyond the shared SampleSeller record (registered state, tax
- *  and bank identity shown on the Store & KYC page, plus warehouse + handle). */
+/** Store identity beyond the shared SampleSeller record. Tax and bank identity
+ *  are NOT here — those live in the vendor KYC record (`@/lib/vendor`), which
+ *  is the only record the platform can honestly show a seller. */
 export interface StoreProfile {
   handle: string;
   tagline: string;
-  regState: string;
-  warehouse: string;
-  pan: string;
-  bankMasked: string;
-  bankName: string;
 }
 
 /** Everything the seller sub-consoles render for one store. Keys mirror the
@@ -119,10 +117,13 @@ export const ORDER_STATUS_TABS = ["ALL", "PENDING", "ACCEPTED", "PACKED", "SHIPP
 
 export const LOW_STOCK_THRESHOLD = 50;
 
-export function daysUntil(dateStr: string, todayStr = "2026-07-09"): number {
-  const today = new Date(todayStr).getTime();
-  const target = new Date(dateStr).getTime();
-  return Math.round((target - today) / (1000 * 60 * 60 * 24));
+const DAY_MS = 86_400_000;
+
+/** Whole days from today (IST-anchored) until an ISO date. Negative = past. */
+export function daysUntil(dateStr: string, todayStr?: string): number {
+  const from = todayStr ? new Date(`${todayStr}T00:00:00+05:30`).getTime() : Date.now();
+  const target = new Date(`${dateStr}T00:00:00+05:30`).getTime();
+  return Math.ceil((target - from) / DAY_MS);
 }
 
 export const REPORT_TILES = [
@@ -132,13 +133,6 @@ export const REPORT_TILES = [
   { key: "advertising", label: "Advertising report", icon: "📣", blurb: "Spend, ACOS, ROAS by campaign." },
   { key: "compliance", label: "Compliance report", icon: "🛡️", blurb: "CoA status, licence validity, policy strikes." },
   { key: "custom", label: "Custom report", icon: "🧩", blurb: "Build a report from any of the fields above." },
-];
-
-export const LISTING_QUALITY: { label: string; value: number; display: string }[] = [
-  { label: "Images (3+ per listing)", value: 82, display: "82%" },
-  { label: "Attributes complete", value: 91, display: "91%" },
-  { label: "SEO title & description", value: 68, display: "68%" },
-  { label: "CoA coverage (approved batches)", value: 74, display: "74%" },
 ];
 
 export const AD_PLACEMENTS: AdPlacement[] = [
@@ -154,29 +148,14 @@ const STORE_PROFILES: Record<string, StoreProfile> = {
   "Vedic Botanicals": {
     handle: "vedic-botanicals",
     tagline: "AYUSH-licensed CBD wellness & Ayurveda, lab-tested every batch.",
-    regState: "Karnataka",
-    warehouse: "Bengaluru FC-2",
-    pan: "AABCV1234M",
-    bankMasked: "••••••4821",
-    bankName: "Kotak Mahindra Bank",
   },
   "Himalayan Hemp Co.": {
     handle: "himalayan-hemp-co",
     tagline: "Cold-pressed hemp foods from the Himalayan foothills.",
-    regState: "Uttarakhand",
-    warehouse: "Dehradun FC-1",
-    pan: "AABCH9876M",
-    bankMasked: "••••••7714",
-    bankName: "HDFC Bank",
   },
   "Ananda Foods": {
     handle: "ananda-foods",
     tagline: "Ayurveda staples & hemp nutrition, sourced direct from growers.",
-    regState: "Tamil Nadu",
-    warehouse: "Chennai FC-1",
-    pan: "AABCA4567M",
-    bankMasked: "••••••2093",
-    bankName: "ICICI Bank",
   },
 };
 
@@ -184,20 +163,11 @@ function slugifyStore(store: string): string {
   return store.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 40) || "store";
 }
 
-function storeInitials(store: string): string {
-  return (store.match(/\b[A-Za-z]/g) ?? ["V", "H"]).join("").slice(0, 3).toUpperCase();
-}
-
 function profileFor(store: string): StoreProfile {
   return (
     STORE_PROFILES[store] ?? {
       handle: slugifyStore(store),
       tagline: "Licensed hemp & wellness seller on Vedic Hemp.",
-      regState: "—",
-      warehouse: "Primary FC",
-      pan: "—",
-      bankMasked: "—",
-      bankName: "—",
     }
   );
 }
@@ -217,279 +187,96 @@ function sellerRecord(store: string): SampleSeller {
   );
 }
 
-const REGULATED: ComplianceClass[] = ["CBD_WELLNESS", "MED_CANNABIS"];
-
 function hsnFor(cls: ComplianceClass): string {
   return cls === "CBD_WELLNESS" ? "33049910" : cls === "HEMP_FOOD" ? "15159091" : "30049011";
 }
 
-/* ─────────────────────────────────────────────────────────────
-   VEDIC BOTANICALS — the seed store's frozen fixtures (verbatim).
-   Kept exactly so the E2E battery (which signs in as this seller)
-   sees identical output.
-   ───────────────────────────────────────────────────────────── */
+/* ── Licences & capability (from the live vendor KYC record) ── */
 
-const VB_BATCHES_BY_PRODUCT: Record<string, Batch[]> = {
-  p4: [
-    { code: "VB-2405", mfgDate: "2025-11-01", expiryDate: "2027-11-01", qty: 84, reserved: 12, coaStatus: "APPROVED", labReportId: "LR-4401" },
-    { code: "VB-2406", mfgDate: "2026-05-10", expiryDate: "2028-05-10", qty: 340, reserved: 0, coaStatus: "PENDING_REVIEW", labReportId: "LR-4410", note: "Submitted to compliance queue — SLA 4h" },
-  ],
-  p5: [
-    { code: "VB-2408", mfgDate: "2026-03-01", expiryDate: "2027-03-01", qty: 118, reserved: 20, coaStatus: "APPROVED", labReportId: "LR-4407" },
-    { code: "VB-2409", mfgDate: "2026-06-01", expiryDate: "2027-06-01", qty: 95, reserved: 0, coaStatus: "PENDING_REVIEW", labReportId: "LR-4412", note: "Submitted to compliance queue — SLA 4h" },
-  ],
-  p8: [
-    { code: "VB-2401", mfgDate: "2025-08-01", expiryDate: "2027-08-01", qty: 41, reserved: 6, coaStatus: "APPROVED", labReportId: "LR-4390" },
-    { code: "VB-2410", mfgDate: "2026-07-01", expiryDate: "2027-07-01", qty: 150, reserved: 0, coaStatus: "MISSING", note: "No lab report uploaded — batch cannot be published" },
-  ],
-};
-
-const VB_DRAFT_PRODUCT: SellerProduct = {
-  id: "p-vb-draft1",
-  title: "CBD Sleep Gummies 30ct",
-  slug: "cbd-sleep-gummies-30ct",
-  cls: "CBD_WELLNESS",
-  pricePaise: 119900,
-  mrpPaise: 149900,
-  seller: "Vedic Botanicals",
-  rating: 0,
-  emoji: "🍬",
-  labVerified: false,
-  state: "DRAFT",
-  hsn: "21069099",
-  listingState: "DRAFT",
-  batches: [],
-};
-
-const VB_EXTRA_ORDERS: SampleOrder[] = [
-  { id: "o-vb-1", reference: "VH2026070931", placedAt: "2026-07-09", status: "PENDING", totalPaise: 149900, buyer: "Kavya R.", seller: "Vedic Botanicals", items: [{ title: "CBD Wellness Balm 30g", qty: 1, emoji: "🌿" }] },
-  { id: "o-vb-2", reference: "VH2026070928", placedAt: "2026-07-09", status: "PENDING", totalPaise: 249900, buyer: "Imran S.", seller: "Vedic Botanicals", items: [{ title: "CBD Ayurvedic Tincture 10ml", qty: 1, emoji: "💧" }] },
-  { id: "o-vb-3", reference: "VH2026070871", placedAt: "2026-07-08", status: "ACCEPTED", totalPaise: 129900, buyer: "Divya M.", seller: "Vedic Botanicals", items: [{ title: "CBD Muscle Relief Roll-On 50ml", qty: 1, emoji: "🧴" }] },
-  { id: "o-vb-4", reference: "VH2026070812", placedAt: "2026-07-08", status: "PACKED", totalPaise: 149900, buyer: "Rohit K.", seller: "Vedic Botanicals", items: [{ title: "CBD Wellness Balm 30g", qty: 1, emoji: "🌿" }] },
-  { id: "o-vb-5", reference: "VH2026070755", placedAt: "2026-07-07", status: "SHIPPED", totalPaise: 249900, eta: "11 Jul", buyer: "Sneha T.", seller: "Vedic Botanicals", items: [{ title: "CBD Ayurvedic Tincture 10ml", qty: 1, emoji: "💧" }] },
-  { id: "o-vb-6", reference: "VH2026070640", placedAt: "2026-07-05", status: "DELIVERED", totalPaise: 129900, buyer: "Arjun V.", seller: "Vedic Botanicals", items: [{ title: "CBD Muscle Relief Roll-On 50ml", qty: 1, emoji: "🧴" }] },
-];
-
-const VB_LICENCES: Licence[] = [
-  { type: "AYUSH", number: "AYUSH/KA/2024/00931", validFrom: "2024-04-01", validTo: "2026-07-29", status: "VERIFIED", unlocks: ["AYURVEDA", "CBD_WELLNESS"] },
-  { type: "FSSAI", number: null, validFrom: null, validTo: null, status: "NOT_APPLIED", unlocks: ["HEMP_FOOD"] },
-  { type: "STATE_DRUG", number: null, validFrom: null, validTo: null, status: "NOT_APPLIED", unlocks: ["MED_CANNABIS"] },
-];
-
-const VB_CAPABILITY_MATRIX: SellerData["CAPABILITY_MATRIX"] = [
-  { cls: "HEMP_FOOD", requiredLicence: "FSSAI", capability: "LOCKED", note: "Apply for an FSSAI licence to unlock Hemp Food listings." },
-  { cls: "AYURVEDA", requiredLicence: "AYUSH", capability: "ACTIVE_RENEW", note: "Unlocked by AYUSH licence — expiring soon, renew to avoid delisting." },
-  { cls: "CBD_WELLNESS", requiredLicence: "AYUSH", capability: "ACTIVE_RENEW", note: "Unlocked by AYUSH licence + per-batch CoA. Licence expiring soon." },
-  { cls: "MED_CANNABIS", requiredLicence: "STATE_DRUG", capability: "LOCKED", note: "Requires a State Drug licence and Rx dispensing infrastructure. Never advertisable, regardless of licence." },
-];
-
-const VB_COMMISSION_BREAKDOWN: SellerData["COMMISSION_BREAKDOWN"] = {
-  grossPaise: 8_45_200_00 + 1_92_000_00,
-  commissionPaise: 1_23_400_00,
-  gstOnCommissionPaise: 22_212_00 / 100,
-  tdsPaise: 8_45_200,
-  tcsPaise: 4_22_600,
-  netPayablePaise: 8_45_200_00,
-};
-
-function vedicBotanicalsData(): SellerData {
-  const store = "Vedic Botanicals";
-  const seller = sellerRecord(store);
-  const profile = profileFor(store);
-
-  const products: SellerProduct[] = [
-    ...PRODUCTS.filter((p) => p.seller === store).map((p) => ({
-      ...p,
-      hsn: p.cls === "CBD_WELLNESS" ? "33049910" : "30049011",
-      listingState: p.state,
-      batches: VB_BATCHES_BY_PRODUCT[p.id] ?? [],
-    })),
-    VB_DRAFT_PRODUCT,
-  ];
-
-  const orders: SampleOrder[] = [...ORDERS.filter((o) => o.seller === store), ...VB_EXTRA_ORDERS];
-
-  const warehouseStock: WarehouseStock[] = products.flatMap((p) =>
-    p.batches.map((b) => ({
-      warehouse: "Bengaluru FC-2",
-      product: p.title,
-      batch: b.code,
-      qty: b.qty,
-      reserved: b.reserved,
-      sellable: b.coaStatus === "APPROVED",
-    }))
-  );
-
-  return {
-    store,
-    SELLER: seller,
-    PROFILE: profile,
-    STORE_PREVIEW: { handle: profile.handle, tagline: profile.tagline },
-    SELLER_PRODUCTS: products,
-    findSellerProduct: (id) => products.find((p) => p.id === id),
-    SELLER_ORDERS: orders,
-    findSellerOrder: (id) => orders.find((o) => o.id === id),
-    SELLER_SETTLEMENTS: [
-      ...SETTLEMENTS.filter((s) => s.seller === store),
-      { id: "st-vb-2", seller: "Vedic Botanicals", period: "1–15 Jun 2026", netPaise: 6_12_400_00, status: "POSTED", maker: "finance.rao", checker: "finance.approver.iyer" },
-      { id: "st-vb-3", seller: "Vedic Botanicals", period: "16–31 May 2026", netPaise: 5_88_900_00, status: "POSTED", maker: "finance.rao", checker: "finance.approver.iyer" },
-    ],
-    WAREHOUSE_STOCK: warehouseStock,
-    LICENCES: VB_LICENCES,
-    CAPABILITY_MATRIX: VB_CAPABILITY_MATRIX,
-    ACCOUNT_HEALTH: {
-      score: seller.healthScore,
-      subScores: [
-        { key: "fulfilment", label: "Fulfilment", value: 92 },
-        { key: "defect", label: "Defect rate", value: 96, note: "0.4% (target <1%)" },
-        { key: "policy", label: "Policy compliance", value: 88 },
-        { key: "coa", label: "CoA compliance", value: 74, note: "2 batches pending, 1 missing" },
-      ],
-    },
-    WALLET: { balancePaise: 1_24_600_00, reservedPaise: 18_400_00, nextPayoutDate: "2026-07-15" },
-    PAYOUT_HISTORY: [
-      { id: "po1", date: "2026-06-30", amountPaise: 6_12_400_00, status: "PAID", utr: "UTR2026063099441" },
-      { id: "po2", date: "2026-06-15", amountPaise: 5_88_900_00, status: "PAID", utr: "UTR2026061587732" },
-      { id: "po3", date: "2026-05-31", amountPaise: 5_41_200_00, status: "PAID", utr: "UTR2026053120981" },
-    ],
-    COMMISSION_BREAKDOWN: VB_COMMISSION_BREAKDOWN,
-    NEXT_FEE_CHANGE: {
-      noticeSentAt: "2026-06-10",
-      effectiveFrom: "2026-07-10",
-      summary: "Referral fee for CBD_WELLNESS moves from 12% to 13%.",
-    },
-    FEE_BREAKDOWN_SEGMENTS: [
-      { label: "Referral commission", paise: VB_COMMISSION_BREAKDOWN.commissionPaise },
-      { label: "GST on commission", paise: VB_COMMISSION_BREAKDOWN.gstOnCommissionPaise },
-      { label: "TDS + TCS", paise: VB_COMMISSION_BREAKDOWN.tdsPaise + VB_COMMISSION_BREAKDOWN.tcsPaise },
-      { label: "Shipping fees", paise: 38_500_00 },
-    ],
-    REVENUE_SPARK: [48, 52, 51, 58, 61, 59, 64, 66, 63, 70, 74, 72],
-    AD_CAMPAIGNS: [
-      { id: "ad1", name: "Summer Wellness — CBD Balm", type: "Sponsored Product", cls: "CBD_WELLNESS", budgetPaise: 50000_00, spendPaise: 31200_00, acos: 18.4, roas: 5.4, status: "ACTIVE" },
-      { id: "ad2", name: "Store Spotlight — Vedic Botanicals", type: "Store Spotlight", cls: "CBD_WELLNESS", budgetPaise: 25000_00, spendPaise: 25000_00, acos: 22.1, roas: 4.5, status: "PAUSED" },
-      { id: "ad3", name: "Ashwagandha Category Push", type: "Category Takeover", cls: "AYURVEDA", budgetPaise: 15000_00, spendPaise: 6400_00, acos: 14.0, roas: 7.1, status: "UNDER_REVIEW" },
-    ],
-    ADS_SUMMARY: { impressions7d: 214_500, clicks7d: 3_812, acos7d: 19.1, roas7d: 5.2 },
-    BUNDLES: [
-      { name: "Balm + Roll-On Duo", products: ["CBD Wellness Balm 30g", "CBD Muscle Relief Roll-On 50ml"], discountPaise: 20000, status: "ACTIVE" },
-    ],
-    FLASH_SALES: [
-      { name: "Weekend Wellness Flash Sale", window: "12–13 Jul 2026", discount: "Up to 20%", status: "SCHEDULED" },
-    ],
-    FORECAST_4W: { valuesPaise: [4_82_000_00, 5_10_000_00, 5_36_000_00, 5_62_000_00], labels: ["W1", "W2", "W3", "W4"] },
+/**
+ * There is no licence store: what the platform actually holds is the vendor KYC
+ * record — the classes it was verified for, and the drug licence on file. A row
+ * therefore carries a number or an expiry ONLY when that record does; anything
+ * else would be a licence the platform never saw.
+ */
+function licencesFrom(kyc: VendorKyc | undefined): Licence[] {
+  const classes = kyc?.classes ?? [];
+  const covers = (...cls: ComplianceClass[]) => cls.some((c) => classes.includes(c));
+  const lapsed = kyc ? licenceExpired(kyc) : false;
+  const statusFor = (applies: boolean, needsLicence: boolean): LicenceStatus => {
+    if (!applies || !kyc) return "NOT_APPLIED";
+    if (needsLicence && lapsed) return "EXPIRED";
+    return kyc.status === "APPROVED" ? "VERIFIED" : "UNDER_REVIEW";
   };
-}
-
-/* ─────────────────────────────────────────────────────────────
-   DERIVED — any other real store, computed from the shared sample
-   catalogue / orders / settlements. Deterministic (no randomness)
-   so the console renders stably.
-   ───────────────────────────────────────────────────────────── */
-
-function deriveBatch(store: string, p: SampleProduct, i: number): Batch {
-  const regulated = REGULATED.includes(p.cls);
-  // Non-regulated food/ayurveda batches are sellable; a regulated batch is only
-  // sellable once its CoA is APPROVED — mirrors the live A2 gate.
-  const coaStatus: CoaStatus = regulated ? (p.labVerified ? "APPROVED" : "MISSING") : "APPROVED";
-  const seq = 2400 + (i % 90) + 1;
-  const qty = 60 + ((p.id.charCodeAt(p.id.length - 1) * 17) % 240);
-  return {
-    code: `${storeInitials(store)}-${seq}`,
-    mfgDate: "2026-04-01",
-    expiryDate: "2028-04-01",
-    qty,
-    reserved: Math.round(qty * 0.1),
-    coaStatus,
-    ...(coaStatus === "APPROVED" ? { labReportId: `LR-${seq}` } : { note: "No approved lab report yet — batch cannot be published" }),
-  };
-}
-
-function deriveLicences(seller: SampleSeller): Licence[] {
-  const sells = (cls: ComplianceClass) => seller.classes.includes(cls);
-  const verified = seller.kycState === "KYC_APPROVED";
+  const ayush = covers("AYURVEDA", "CBD_WELLNESS");
   return [
     {
       type: "FSSAI",
-      number: sells("HEMP_FOOD") && verified ? `1002${seller.id.replace(/\D/g, "") || "0"}0011122` : null,
-      validFrom: sells("HEMP_FOOD") && verified ? "2024-04-01" : null,
-      validTo: sells("HEMP_FOOD") && verified ? "2027-03-31" : null,
-      status: sells("HEMP_FOOD") ? (verified ? "VERIFIED" : "UNDER_REVIEW") : "NOT_APPLIED",
+      number: null,
+      validFrom: null,
+      validTo: null,
+      status: statusFor(covers("HEMP_FOOD"), false),
       unlocks: ["HEMP_FOOD"],
     },
     {
       type: "AYUSH",
-      number: (sells("AYURVEDA") || sells("CBD_WELLNESS")) && verified ? `AYUSH/2024/00${seller.id.replace(/\D/g, "") || "0"}00` : null,
-      validFrom: (sells("AYURVEDA") || sells("CBD_WELLNESS")) && verified ? "2024-04-01" : null,
-      validTo: (sells("AYURVEDA") || sells("CBD_WELLNESS")) && verified ? "2027-03-31" : null,
-      status: sells("AYURVEDA") || sells("CBD_WELLNESS") ? (verified ? "VERIFIED" : "UNDER_REVIEW") : "NOT_APPLIED",
+      number: ayush ? kyc?.drugLicenceNo ?? null : null,
+      validFrom: null,
+      validTo: ayush ? kyc?.drugLicenceExpiry ?? null : null,
+      status: statusFor(ayush, true),
       unlocks: ["AYURVEDA", "CBD_WELLNESS"],
     },
+    // MED_CANNABIS never self-onboards: a State Drug licence is a manual,
+    // out-of-band review, so this row is never derived from a seller record.
     { type: "STATE_DRUG", number: null, validFrom: null, validTo: null, status: "NOT_APPLIED", unlocks: ["MED_CANNABIS"] },
   ];
 }
 
-function deriveCapabilityMatrix(licences: Licence[]): SellerData["CAPABILITY_MATRIX"] {
-  const statusOf = (t: Licence["type"]) => licences.find((l) => l.type === t)?.status ?? "NOT_APPLIED";
-  const cap = (t: Licence["type"]): "ACTIVE" | "ACTIVE_RENEW" | "LOCKED" => (statusOf(t) === "VERIFIED" ? "ACTIVE" : "LOCKED");
+function capabilityFrom(licences: Licence[]): SellerData["CAPABILITY_MATRIX"] {
+  const cap = (t: Licence["type"]): "ACTIVE" | "ACTIVE_RENEW" | "LOCKED" => {
+    const l = licences.find((x) => x.type === t);
+    if (!l || l.status !== "VERIFIED") return "LOCKED";
+    const days = l.validTo ? daysUntil(l.validTo) : null;
+    return days !== null && days <= 30 ? "ACTIVE_RENEW" : "ACTIVE";
+  };
+  const note = (t: Licence["type"], active: string, locked: string) => {
+    const c = cap(t);
+    return c === "ACTIVE_RENEW" ? `${active} Licence expiring soon — renew to avoid delisting.` : c === "ACTIVE" ? active : locked;
+  };
   return [
-    { cls: "HEMP_FOOD", requiredLicence: "FSSAI", capability: cap("FSSAI"), note: cap("FSSAI") === "ACTIVE" ? "Unlocked by your FSSAI licence." : "Apply for an FSSAI licence to unlock Hemp Food listings." },
-    { cls: "AYURVEDA", requiredLicence: "AYUSH", capability: cap("AYUSH"), note: cap("AYUSH") === "ACTIVE" ? "Unlocked by your AYUSH licence." : "Apply for an AYUSH licence to unlock Ayurveda listings." },
-    { cls: "CBD_WELLNESS", requiredLicence: "AYUSH", capability: cap("AYUSH"), note: cap("AYUSH") === "ACTIVE" ? "Unlocked by your AYUSH licence + per-batch CoA." : "Requires an AYUSH licence and a per-batch CoA." },
+    { cls: "HEMP_FOOD", requiredLicence: "FSSAI", capability: cap("FSSAI"), note: note("FSSAI", "Unlocked by your verified store record.", "Verify your store for hemp foods to unlock these listings.") },
+    { cls: "AYURVEDA", requiredLicence: "AYUSH", capability: cap("AYUSH"), note: note("AYUSH", "Unlocked by your AYUSH licence.", "Add an AYUSH licence to unlock Ayurveda listings.") },
+    { cls: "CBD_WELLNESS", requiredLicence: "AYUSH", capability: cap("AYUSH"), note: note("AYUSH", "Unlocked by your AYUSH licence + per-batch CoA.", "Requires an AYUSH licence and a per-batch CoA.") },
     { cls: "MED_CANNABIS", requiredLicence: "STATE_DRUG", capability: "LOCKED", note: "Requires a State Drug licence and Rx dispensing infrastructure. Never advertisable, regardless of licence." },
   ];
 }
 
-function derivedData(store: string): SellerData {
+/* ─────────────────────────────────────────────────────────────
+   The read model. One path for every store — deterministic (no
+   randomness) so the console renders stably.
+   ───────────────────────────────────────────────────────────── */
+
+/**
+ * The seller console read model for one store. Pure and synchronous — resolve
+ * the store first with `actingStore()` (src/app/seller/_lib/store.ts), then call
+ * this. Anything whose truth lives in an async store is empty here: the page
+ * that renders it reads that store directly.
+ */
+export function sellerData(store: string): SellerData {
   const seller = sellerRecord(store);
   const profile = profileFor(store);
+  const licences = licencesFrom(kycFor(store));
 
-  const products: SellerProduct[] = PRODUCTS.filter((p) => p.seller === store).map((p, i) => ({
+  const products: SellerProduct[] = PRODUCTS.filter((p) => p.seller === store).map((p) => ({
     ...p,
     hsn: hsnFor(p.cls),
     listingState: p.state,
-    batches: [deriveBatch(store, p, i)],
+    // Batches, their CoA state and their reserved units live in the catalog and
+    // order stores; the console reads those, never a copy kept here.
+    batches: [],
   }));
 
   const orders: SampleOrder[] = ORDERS.filter((o) => o.seller === store);
-
-  const warehouseStock: WarehouseStock[] = products.flatMap((p) =>
-    p.batches.map((b) => ({
-      warehouse: profile.warehouse,
-      product: p.title,
-      batch: b.code,
-      qty: b.qty,
-      reserved: b.reserved,
-      sellable: b.coaStatus === "APPROVED",
-    }))
-  );
-
-  const licences = deriveLicences(seller);
-
-  // Finance derived from this store's real settlement rows.
-  const runs = SETTLEMENTS.filter((s) => s.seller === store);
-  const posted = runs.filter((r) => r.status === "POSTED");
-  const balancePaise = posted.reduce((n, r) => n + r.netPaise, 0);
-  const payoutHistory = posted.map((r, i) => ({
-    id: `po-${slugifyStore(store)}-${i}`,
-    date: "2026-06-30",
-    amountPaise: r.netPaise,
-    status: "PAID",
-    utr: `UTR${r.id.toUpperCase()}`,
-  }));
-
-  // Gross from this store's live orders; commission at the platform base 12%.
-  const grossPaise = orders.reduce((n, o) => n + o.totalPaise, 0);
-  const commissionPaise = Math.round(grossPaise * 0.12);
-  const gstOnCommissionPaise = Math.round(commissionPaise * 0.18);
-  const tdsPaise = Math.round(grossPaise * 0.01);
-  const tcsPaise = Math.round(grossPaise * 0.005);
-  const netPayablePaise = grossPaise - commissionPaise - gstOnCommissionPaise - tdsPaise - tcsPaise;
-
-  // A modest 12-point revenue index anchored on the store's health (honest
-  // stand-in until per-week analytics exist — never a fabricated headline).
-  const base = Math.max(20, seller.healthScore || 40);
-  const revenueSpark = Array.from({ length: 12 }, (_, i) => Math.round(base * (0.85 + (i / 11) * 0.3)));
 
   return {
     store,
@@ -501,51 +288,30 @@ function derivedData(store: string): SellerData {
     SELLER_ORDERS: orders,
     findSellerOrder: (id) => orders.find((o) => o.id === id),
     SELLER_SETTLEMENTS: SETTLEMENTS.filter((s) => s.seller === store),
-    WAREHOUSE_STOCK: warehouseStock,
+    WAREHOUSE_STOCK: [],
     LICENCES: licences,
-    CAPABILITY_MATRIX: deriveCapabilityMatrix(licences),
+    CAPABILITY_MATRIX: capabilityFrom(licences),
     ACCOUNT_HEALTH: {
       score: seller.healthScore,
-      subScores: [
-        { key: "fulfilment", label: "Fulfilment", value: seller.healthScore },
-        { key: "defect", label: "Defect rate", value: Math.min(100, seller.healthScore + 8) },
-        { key: "policy", label: "Policy compliance", value: seller.healthScore },
-        { key: "coa", label: "CoA compliance", value: products.every((p) => p.batches.every((b) => b.coaStatus === "APPROVED")) ? 100 : 60 },
-      ],
+      // The CoA row is computed live by the dashboard from this store's open A2
+      // blockers; fulfilment/defect/policy scoring does not exist yet, and an
+      // invented score is worse than no score.
+      subScores: [{ key: "coa", label: "CoA compliance", value: 0 }],
     },
-    WALLET: { balancePaise, reservedPaise: 0, nextPayoutDate: "2026-07-15" },
-    PAYOUT_HISTORY: payoutHistory,
-    COMMISSION_BREAKDOWN: { grossPaise, commissionPaise, gstOnCommissionPaise, tdsPaise, tcsPaise, netPayablePaise },
+    WALLET: { balancePaise: 0, reservedPaise: 0, nextPayoutDate: "—" },
+    PAYOUT_HISTORY: [],
+    COMMISSION_BREAKDOWN: { grossPaise: 0, commissionPaise: 0, gstOnCommissionPaise: 0, tdsPaise: 0, tcsPaise: 0, netPayablePaise: 0 },
     NEXT_FEE_CHANGE: {
       noticeSentAt: "2026-06-10",
       effectiveFrom: "2026-07-10",
       summary: "Referral fee schedule review — no increase applies to your active classes this cycle.",
     },
-    FEE_BREAKDOWN_SEGMENTS: [
-      { label: "Referral commission", paise: commissionPaise },
-      { label: "GST on commission", paise: gstOnCommissionPaise },
-      { label: "TDS + TCS", paise: tdsPaise + tcsPaise },
-      { label: "Shipping fees", paise: Math.round(grossPaise * 0.03) },
-    ],
-    REVENUE_SPARK: revenueSpark,
-    // Honest empty state — a new store has run no campaigns and taken no ad spend.
+    FEE_BREAKDOWN_SEGMENTS: [],
+    REVENUE_SPARK: [],
     AD_CAMPAIGNS: [],
     ADS_SUMMARY: { impressions7d: 0, clicks7d: 0, acos7d: 0, roas7d: 0 },
     BUNDLES: [],
     FLASH_SALES: [],
-    FORECAST_4W: {
-      valuesPaise: Array.from({ length: 4 }, (_, i) => Math.round((grossPaise / Math.max(1, orders.length)) * (orders.length + i + 1))),
-      labels: ["W1", "W2", "W3", "W4"],
-    },
+    FORECAST_4W: { valuesPaise: [], labels: [] },
   };
-}
-
-/**
- * The seller console read model for one store. The seed store keeps its frozen
- * demo fixtures; every other real store is derived from live sample data with
- * honest empty states. Pure and synchronous — resolve the store first with
- * `actingStore()` (src/app/seller/_lib/store.ts), then call this.
- */
-export function sellerData(store: string): SellerData {
-  return store === SEED_STORE ? vedicBotanicalsData() : derivedData(store);
 }

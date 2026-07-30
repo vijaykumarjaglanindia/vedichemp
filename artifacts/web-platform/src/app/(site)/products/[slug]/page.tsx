@@ -56,13 +56,30 @@ import { ProductCard } from "../../_lib/ProductCard";
 type Params = { slug: string };
 
 /**
+ * India Post PIN prefixes for the states the delivery zones distinguish. A PIN
+ * outside this list resolves to the national zone, exactly as an address in an
+ * unlisted state does — so the estimate here is the one the cart charges for
+ * the same destination.
+ */
+const PIN_STATE: Record<string, string> = {
+  "11": "delhi",
+  "18": "jammu and kashmir", "19": "jammu and kashmir",
+  "36": "gujarat", "37": "gujarat", "38": "gujarat", "39": "gujarat",
+  "40": "maharashtra", "41": "maharashtra", "42": "maharashtra", "43": "maharashtra", "44": "maharashtra",
+  "50": "telangana",
+  "56": "karnataka", "57": "karnataka", "58": "karnataka", "59": "karnataka",
+  "60": "tamil nadu", "61": "tamil nadu", "62": "tamil nadu", "63": "tamil nadu", "64": "tamil nadu",
+  "78": "assam", "79": "nagaland",
+};
+
+/**
  * Serviceability by PIN — decided here, on the server, never in the client
- * (the client renders the verdict). Demo logic is deterministic; with the
- * courier API attached this becomes a serviceability lookup. Regulated
- * classes have a narrower lane network than plain hemp foods.
+ * (the client renders the verdict). Both the verdict and the delivery estimate
+ * come from the admin-editable shipping zones. Regulated classes have a
+ * narrower lane network than plain hemp foods.
  */
 async function checkPin(pin: string, cls: string): Promise<{ ok: boolean; title: string; body: string }> {
-  const { serviceability } = await import("@/lib/shipping");
+  const { serviceability, resolveZone, etaLabel } = await import("@/lib/shipping");
   const svc = await serviceability(pin, cls);
   if (!svc.ok && svc.reason === "pin") {
     return { ok: false, title: "Please enter a valid pincode", body: "Enter the 6-digit pincode of the delivery address." };
@@ -75,14 +92,13 @@ async function checkPin(pin: string, cls: string): Promise<{ ok: boolean; title:
       body: "Sellers can't ship CBD wellness here yet — we can't do the age check on delivery in this area. Hemp foods and Ayurveda deliver normally.",
     };
   }
-  const days = 2 + ((pin.split("").reduce((s, d) => s + Number(d), 0)) % 3);
-  const eta = new Date(Date.now() + days * 86400000).toLocaleDateString("en-IN", { weekday: "short", day: "numeric", month: "short" });
+  const zone = await resolveZone(PIN_STATE[pin.slice(0, 2)]);
   return {
     ok: true,
-    title: `Delivers to ${pin} by ${eta}`,
-    body: regulated
-      ? "Shipped by the seller's delivery partner · ID checked on handover (21+)."
-      : "Shipped by the seller's courier · pay securely online (UPI, Cards & Net Banking).",
+    title: `Delivers to ${pin} in ${etaLabel(zone)}`,
+    body: `${zone.name} delivery zone · ${regulated
+      ? "shipped by the seller's delivery partner, ID checked on handover (21+)."
+      : "shipped by the seller's courier, pay securely online (UPI, Cards & Net Banking)."}`,
   };
 }
 
@@ -770,7 +786,7 @@ export default async function ProductDetailPage({
                   <span className="muted" style={{ display: "block", fontWeight: 400 }}>{pinResult.body}</span>
                 </span>
               ) : (
-                <span className="vh-help">Enter your pincode to check delivery date &amp; availability.</span>
+                <span className="vh-help">Enter your pincode to check the delivery estimate &amp; availability.</span>
               )}
             </form>
 

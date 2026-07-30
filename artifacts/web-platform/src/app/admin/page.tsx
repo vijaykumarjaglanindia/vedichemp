@@ -2,71 +2,62 @@
  * VEDIC HEMP — ADMIN HOME (§3.1)
  *
  * The admin's first screen: marketplace health, statutory clocks, the day's
- * work queues, the maker–checker inbox, and a pseudonymised activity feed.
- * Nothing here is decorative — every card either reflects a server-computed
- * number (sample data standing in for it) or a server guard (A2/A4/A6) that
- * this page merely narrates.
+ * work queues, the maker–checker inbox, and the activity feed. Every queue,
+ * approval and incident is read from the live store that owns it — the only
+ * illustrative block is the labelled trend row, which stands in until real
+ * order volume flows.
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  FlaskConical, Stethoscope, Megaphone, ClipboardList, Timer, Ban,
+  FlaskConical, Stethoscope, Megaphone, ClipboardList, Ban,
   CheckCircle2, XCircle, AlertTriangle, KeyRound, Siren, ScrollText, Gauge,
 } from "lucide-react";
 import { Shell } from "./Shell";
 import { Card, Stat, StatusPill, MoneyText, EmptyState } from "@/components/ui";
 import { Sparkline, Columns } from "@/components/ui/charts";
-import { KPIS, COMPLIANCE_QUEUE, SETTLEMENTS, AUDIT } from "@/lib/sample";
+import { KPIS } from "@/lib/sample";
 import { pendingPrescriptions } from "@/lib/prescriptions";
 import { readCatalog } from "@/lib/catalog";
+import { reviewQueue } from "@/lib/ads";
+import { readAudit } from "@/lib/audit";
+import { getSession } from "@/lib/auth-lite";
+import { allRuns } from "@/lib/settlements";
+import { allWithdrawals } from "@/lib/earnings";
+import { pendingActions } from "@/lib/users";
+import { openRecalls } from "@/lib/recalls";
+import { reportedStores } from "@/lib/store-reports";
+import { allKyc, licenceExpired } from "@/lib/vendor";
 
 // The console chrome shows a live unread-notification badge (request-time
 // state), so the admin home must render per request, not at build time.
 export const dynamic = "force-dynamic";
 import {
-  GMV_14D_PAISE, ORDERS_14D, AOV_14D_PAISE, LIVE_SELLERS_14D, DAY_LABELS_14, slaCountdown,
+  GMV_14D_PAISE, ORDERS_14D, AOV_14D_PAISE, LIVE_SELLERS_14D, DAY_LABELS_14,
 } from "./_lib/data";
 
 export const metadata: Metadata = { title: "Admin Home" };
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
 
-const CURRENT_ADMIN = "seller_ops.khan"; // the signed-in admin, for the "cannot approve your own" demo
-
-// Work queues: COMPLIANCE_QUEUE grouped by kind, with counts.
-function groupQueue() {
-  const map = new Map<string, typeof COMPLIANCE_QUEUE>();
-  for (const item of COMPLIANCE_QUEUE) {
-    const bucket = map.get(item.kind) ?? [];
-    bucket.push(item);
-    map.set(item.kind, bucket);
-  }
-  return Array.from(map.entries()).map(([kind, items]) => ({ kind, items }));
-}
-
 const QUEUE_META: Record<string, { icon: React.ReactNode; href: string }> = {
-  "CoA Review": { icon: <FlaskConical {...I} aria-hidden />, href: "/admin/catalogue" },
-  "Rx Verification": { icon: <Stethoscope {...I} aria-hidden />, href: "/admin/compliance" },
+  "CoA Review": { icon: <FlaskConical {...I} aria-hidden />, href: "/admin/catalogue#coa-queue" },
+  "Rx Verification": { icon: <Stethoscope {...I} aria-hidden />, href: "/admin/compliance#rx" },
   "Ad Creative Review": { icon: <Megaphone {...I} aria-hidden />, href: "/admin/ads" },
 };
 
-// Maker–checker inbox: pending approvals across the platform. Each row names
-// its maker so the UI can demonstrate the "maker cannot check their own
-// action" rule (A6) — this is cosmetic; the real gate is assertCheckerPresent()
-// on the server, which throws MAKER_IS_CHECKER regardless of what the UI shows.
-const PENDING_APPROVALS = [
-  ...SETTLEMENTS.filter((s) => s.status === "AWAITING_CHECKER").map((s) => ({
-    id: s.id,
-    kind: "Settlement",
-    subject: `${s.seller} · ${s.period}`,
-    amount: s.netPaise,
-    maker: s.maker,
-    href: "/admin/finance",
-  })),
-  { id: "sa1", kind: "Seller suspension", subject: "Ananda Foods — KYC lapse", amount: null, maker: "seller_ops.khan", href: "/admin/sellers" },
-  { id: "rc1", kind: "Recall close", subject: "CBD Tincture 10ml — batch VB-2401", amount: null, maker: "compliance.nair", href: "/admin/compliance" },
-];
+/** A row in the maker–checker inbox. Every one is a real awaiting record from
+ *  the store that owns it; the maker is whoever actually made it. The rule is
+ *  enforced server-side at decision time — this UI mirrors it, never gates. */
+interface PendingApproval {
+  id: string;
+  kind: string;
+  subject: string;
+  amount: number | null;
+  maker: string;
+  href: string;
+}
 
 /** KPI tile: Stat + a small trend sparkline beneath it. */
 /** Day-over-day change of a series' last two points — a real delta derived
@@ -95,14 +86,60 @@ function KpiTile({
 }
 
 export default async function AdminHomePage() {
-  const queueGroups = groupQueue();
-  const totalQueueItems = COMPLIANCE_QUEUE.length;
+  // Statutory clocks and work queues read the same real stores: prescriptions
+  // awaiting pharmacist review, regulated listings whose CoA has not yet been
+  // verified, and ad creatives awaiting a human. All start empty by design and
+  // climb only as real work arrives — the two cards can never disagree.
+  const rxQueue = await pendingPrescriptions();
+  const coaQueue = (await readCatalog()).filter((p) => p.coaState === "PENDING_REVIEW");
+  const adQueue = await reviewQueue();
+  const rxPending = rxQueue.length;
+  const coaPending = coaQueue.length;
 
-  // Statutory clocks read the real stores: prescriptions awaiting pharmacist
-  // review, and regulated listings whose CoA has not yet been verified. Both
-  // start empty by design and climb only as real work arrives.
-  const rxPending = (await pendingPrescriptions()).length;
-  const coaPending = (await readCatalog()).filter((p) => p.coaState === "PENDING_REVIEW").length;
+  const queueGroups = [
+    { kind: "Rx Verification", items: rxQueue.map((r) => ({ id: r.id, subject: `${r.id} · uploaded ${r.uploadedAt.slice(0, 10)}` })) },
+    { kind: "CoA Review", items: coaQueue.map((p) => ({ id: p.id, subject: `${p.title}${p.batchCode ? ` · batch ${p.batchCode}` : ""}` })) },
+    { kind: "Ad Creative Review", items: adQueue.map((a) => ({ id: a.ad.id, subject: `${a.campaign.seller} · ${a.campaign.name}` })) },
+  ].filter((g) => g.items.length > 0);
+  const totalQueueItems = queueGroups.reduce((n, g) => n + g.items.length, 0);
+
+  const currentAdmin = (await getSession())?.email ?? "";
+  const openRecs = await openRecalls();
+  const pendingApprovals: PendingApproval[] = [
+    ...(await allRuns()).filter((r) => r.status === "AWAITING_CHECKER").map((r) => ({
+      id: r.id, kind: "Settlement", subject: `${r.seller} · ${r.period}`, amount: r.netPaise, maker: r.maker, href: "/admin/finance#settlements",
+    })),
+    ...(await allWithdrawals()).filter((w) => w.status === "APPROVED").map((w) => ({
+      id: w.id, kind: "Vendor payout", subject: `${w.seller} · ${w.destination}`, amount: w.amountPaise, maker: w.makerId ?? "—", href: "/admin/finance/withdrawals",
+    })),
+    ...(await pendingActions()).map((p) => ({
+      id: p.id, kind: p.kind === "SUSPEND" ? "Account suspension" : "Account reinstatement", subject: p.handle, amount: null, maker: p.maker, href: "/admin/users",
+    })),
+    ...openRecs.map((r) => ({
+      id: r.ref, kind: "Recall close", subject: `${r.ref} · ${r.reason.slice(0, 60)}`, amount: null, maker: r.initiator, href: "/admin/compliance#recall",
+    })),
+  ];
+
+  const activity = await readAudit(8);
+
+  // Incidents are real signals or nothing: storefronts under an open abuse
+  // report, verifications whose drug licence has lapsed, and open recalls.
+  const flaggedStores = await reportedStores();
+  const lapsedLicences = (await allKyc()).filter((r) => r.status === "APPROVED" && licenceExpired(r));
+  const incidents = [
+    ...flaggedStores.map((s) => ({
+      id: `sr-${s.storeSlug}`,
+      body: <>Storefront <strong>{s.storeName}</strong> has {s.reports.length} open abuse report{s.reports.length === 1 ? "" : "s"}. <Link href="/admin/reviews">Review →</Link></>,
+    })),
+    ...lapsedLicences.map((r) => ({
+      id: `lic-${r.store}`,
+      body: <>Seller <strong>{r.store}</strong> is verified on a drug licence that expired on {r.drugLicenceExpiry}. <Link href="/admin/verification">Review →</Link></>,
+    })),
+    ...openRecs.map((r) => ({
+      id: `rc-${r.ref}`,
+      body: <>Recall <strong>{r.ref}</strong> is open and needs a second, different admin to close it. <Link href="/admin/compliance#recall">Review →</Link></>,
+    })),
+  ];
 
   return (
     <Shell active="/admin" breadcrumb={["Admin"]} title="Marketplace operations">
@@ -168,7 +205,7 @@ export default async function AdminHomePage() {
           action={<StatusPill tone={totalQueueItems ? "warn" : "ok"}>{totalQueueItems} open</StatusPill>}
         >
           {queueGroups.length === 0 ? (
-            <EmptyState icon="✅" headline="Queues are empty" />
+            <EmptyState icon="✅" headline="Queues are empty" sub="Prescriptions, batch CoAs and ad creatives appear here the moment one is waiting on a human." />
           ) : (
             <div className="vh-grid cols-3">
               {queueGroups.map((g) => {
@@ -183,17 +220,9 @@ export default async function AdminHomePage() {
                       <StatusPill tone="warn">{g.items.length}</StatusPill>
                     </div>
                     <ul style={{ listStyle: "none", margin: "0 0 var(--sp-2)", padding: 0, display: "grid", gap: 8 }}>
-                      {g.items.slice(0, 3).map((it) => {
-                        const cd = slaCountdown(it.sla, it.ageHours);
-                        return (
-                          <li key={it.id} className="vh-row-between" style={{ gap: 8 }}>
-                            <span className="small muted" style={{ minWidth: 0 }}>{it.subject}</span>
-                            <StatusPill tone={cd.tone}>
-                              <Timer size={12} strokeWidth={2.2} aria-hidden /> {cd.label}
-                            </StatusPill>
-                          </li>
-                        );
-                      })}
+                      {g.items.slice(0, 3).map((it) => (
+                        <li key={it.id} className="small muted" style={{ minWidth: 0 }}>{it.subject}</li>
+                      ))}
                     </ul>
                     <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={meta?.href ?? "/admin/compliance"}>
                       Claim next →
@@ -208,51 +237,55 @@ export default async function AdminHomePage() {
         {/* Maker–checker inbox */}
         <Card
           title={<span className="vh-row" style={{ gap: 8 }}><ScrollText {...I} aria-hidden /> Maker–checker inbox</span>}
-          action={<StatusPill tone={PENDING_APPROVALS.length ? "warn" : "ok"}>{PENDING_APPROVALS.length} pending</StatusPill>}
+          action={<StatusPill tone={pendingApprovals.length ? "warn" : "ok"}>{pendingApprovals.length} pending</StatusPill>}
         >
           <p className="small muted" style={{ marginTop: 0 }}>
             No single admin moves money, suspends a seller or closes a recall alone. Every row below needs a
             second, different human. The checker action is <strong>refused by the server</strong> if the
             checker id equals the maker id — this UI mirrors that rule, it does not enforce it.
           </p>
-          <table className="vh-table">
-            <thead>
-              <tr>
-                <th>Kind</th>
-                <th>Subject</th>
-                <th style={{ textAlign: "right" }}>Amount</th>
-                <th>Maker</th>
-                <th>Checker action</th>
-              </tr>
-            </thead>
-            <tbody>
-              {PENDING_APPROVALS.map((a) => {
-                const selfCheck = a.maker === CURRENT_ADMIN;
-                return (
-                  <tr key={a.id}>
-                    <td>{a.kind}</td>
-                    <td>
-                      <Link href={a.href}>{a.subject}</Link>
-                    </td>
-                    <td style={{ textAlign: "right" }}>{a.amount != null ? <MoneyText paise={a.amount} /> : <span className="muted">—</span>}</td>
-                    <td className="mono small">{a.maker}</td>
-                    <td>
-                      {selfCheck ? (
-                        <span className="small vh-row" style={{ gap: 6, color: "var(--vh-danger)" }} title="You are the maker of this action">
-                          <Ban size={14} strokeWidth={2.2} aria-hidden />
-                          You made this — cannot check your own (403 if attempted)
-                        </span>
-                      ) : (
-                        <Link className="vh-btn vh-btn-sm vh-btn-primary" href={a.href}>
-                          Review as checker
-                        </Link>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
+          {pendingApprovals.length === 0 ? (
+            <EmptyState icon="🧑‍⚖️" headline="Nothing awaiting a checker" sub="Settlement runs, vendor payouts, account status changes and open recalls land here while they wait for a second admin." />
+          ) : (
+            <table className="vh-table">
+              <thead>
+                <tr>
+                  <th>Kind</th>
+                  <th>Subject</th>
+                  <th style={{ textAlign: "right" }}>Amount</th>
+                  <th>Maker</th>
+                  <th>Checker action</th>
+                </tr>
+              </thead>
+              <tbody>
+                {pendingApprovals.map((a) => {
+                  const selfCheck = !!currentAdmin && a.maker === currentAdmin;
+                  return (
+                    <tr key={a.id}>
+                      <td>{a.kind}</td>
+                      <td>
+                        <Link href={a.href}>{a.subject}</Link>
+                      </td>
+                      <td style={{ textAlign: "right" }}>{a.amount != null ? <MoneyText paise={a.amount} /> : <span className="muted">—</span>}</td>
+                      <td className="mono small">{a.maker}</td>
+                      <td>
+                        {selfCheck ? (
+                          <span className="small vh-row" style={{ gap: 6, color: "var(--vh-danger)" }} title="You are the maker of this action">
+                            <Ban size={14} strokeWidth={2.2} aria-hidden />
+                            You made this — cannot check your own (403 if attempted)
+                          </span>
+                        ) : (
+                          <Link className="vh-btn vh-btn-sm vh-btn-primary" href={a.href}>
+                            Review as checker
+                          </Link>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
+              </tbody>
+            </table>
+          )}
         </Card>
 
         {/* JIT elevation + break-glass */}
@@ -281,38 +314,41 @@ export default async function AdminHomePage() {
 
         {/* Live activity + incidents */}
         <div className="vh-grid cols-2">
-          <Card title="Live activity" action={<Link className="small" href="/admin/settings">Full audit log →</Link>}>
-            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
-              {AUDIT.map((a) => {
-                const denied = a.outcome === "DENIED";
-                return (
-                  <li
-                    key={a.id}
-                    className="vh-row-between"
-                    style={{
-                      gap: 8,
-                      padding: "8px 8px",
-                      borderRadius: 8,
-                      borderBottom: "1px solid var(--vh-line)",
-                      background: denied ? "color-mix(in srgb, var(--vh-danger) 9%, transparent)" : undefined,
-                    }}
-                  >
-                    <span className="small vh-row" style={{ gap: 8, minWidth: 0 }}>
-                      {denied
-                        ? <XCircle size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-danger)", flexShrink: 0 }} />
-                        : <CheckCircle2 size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)", flexShrink: 0 }} />}
-                      <span style={{ fontWeight: denied ? 700 : undefined }}>
-                        <span className="mono muted">{a.actor}</span> · {a.action.replace(/_/g, " ")} · {a.entity}
+          <Card title="Live activity" action={<Link className="small" href="/admin/audit">Full audit log →</Link>}>
+            {activity.length === 0 ? (
+              <EmptyState icon="🧾" headline="No admin actions yet this session" sub="Every mutating action — and every denied attempt — lands here the moment it happens." />
+            ) : (
+              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
+                {activity.map((a, i) => {
+                  const denied = a.outcome === "DENIED";
+                  return (
+                    <li
+                      key={`${a.at}-${i}`}
+                      className="vh-row-between"
+                      style={{
+                        gap: 8,
+                        padding: "8px 8px",
+                        borderRadius: 8,
+                        borderBottom: "1px solid var(--vh-line)",
+                        background: denied ? "color-mix(in srgb, var(--vh-danger) 9%, transparent)" : undefined,
+                      }}
+                    >
+                      <span className="small vh-row" style={{ gap: 8, minWidth: 0 }}>
+                        {denied
+                          ? <XCircle size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-danger)", flexShrink: 0 }} />
+                          : <CheckCircle2 size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)", flexShrink: 0 }} />}
+                        <span style={{ fontWeight: denied ? 700 : undefined }}>
+                          <span className="mono muted">{a.actor}</span> · {a.action.replace(/_/g, " ")} · {a.target}
+                        </span>
                       </span>
-                    </span>
-                    <StatusPill tone={a.outcome === "SUCCESS" ? "ok" : denied ? "danger" : "warn"}>{a.outcome}</StatusPill>
-                  </li>
-                );
-              })}
-            </ul>
+                      <StatusPill tone={denied ? "danger" : "ok"}>{a.outcome}</StatusPill>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
             <p className="small muted" style={{ marginTop: "var(--sp-2)", marginBottom: 0 }}>
-              Actor names shown are role-scoped handles, not personal identifiers. Denied attempts are logged too —
-              what someone tried is often more informative than what they did.
+              Denied attempts are logged too — what someone tried is often more informative than what they did.
             </p>
           </Card>
 
@@ -325,18 +361,19 @@ export default async function AdminHomePage() {
                   <code>blocked=true</code> (A1).
                 </div>
               </li>
-              <li className="vh-banner vh-banner-warn">
-                <AlertTriangle {...I} aria-hidden />
-                <div>
-                  Seller <strong>Ananda Foods</strong> is AT_RISK (health score 58). <Link href="/admin/sellers">Review →</Link>
-                </div>
-              </li>
-              <li className="vh-banner vh-banner-info">
-                <Gauge {...I} aria-hidden />
-                <div>
-                  {KPIS.disputesOpen} disputes open · auction fill rate {(KPIS.auctionFillRate * 100).toFixed(0)}%.
-                </div>
-              </li>
+              {incidents.length === 0 ? (
+                <li className="vh-banner vh-banner-ok">
+                  <CheckCircle2 {...I} aria-hidden />
+                  <div>No open incident: no storefront under report, no lapsed licence, no recall awaiting closure.</div>
+                </li>
+              ) : (
+                incidents.map((x) => (
+                  <li key={x.id} className="vh-banner vh-banner-warn">
+                    <AlertTriangle {...I} aria-hidden />
+                    <div>{x.body}</div>
+                  </li>
+                ))
+              )}
             </ul>
           </Card>
         </div>

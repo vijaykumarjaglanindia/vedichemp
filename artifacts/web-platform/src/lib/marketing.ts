@@ -96,18 +96,11 @@ declare global {
   var __vhCampaigns: Campaign[] | undefined;
 }
 
-function seed(): Campaign[] {
-  const at = "2026-07-01T09:00:00.000Z";
-  return [
-    { id: "m1", channel: "Email", name: "Weekly wellness digest", subject: "This week on Vedic Hemp", body: "New arrivals in hemp foods and Ayurveda, plus a recipe for hemp-seed chutney.", audience: "Digest subscribers (184k)", status: "APPROVED", reason: "clean", createdBy: "seed", createdAt: at, approvedBy: "seed" },
-    { id: "m2", channel: "WhatsApp", name: "Order delivered follow-up", subject: "Your order arrived", body: "How did it go? Reply here or rate your items in the app.", audience: "Transactional", status: "APPROVED", reason: "clean", createdBy: "seed", createdAt: at, approvedBy: "seed" },
-    { id: "m3", channel: "Push", name: "Cart abandonment nudge", subject: "Still deciding?", body: "The items in your cart are waiting. Free delivery over ₹999.", audience: "Cart abandoners (12k)", status: "APPROVED", reason: "clean", createdBy: "seed", createdAt: at, approvedBy: "seed" },
-    { id: "m4", channel: "SMS", name: "Festival sale — CBD Wellness range", subject: "Festival offers", body: "Up to 20% off our AYUSH-licensed CBD wellness balm and tincture range this week.", audience: "Wellness buyers (96k)", status: "PENDING_COPY_CHECK", reason: "cbd", createdBy: "seed", createdAt: at },
-  ];
-}
-
+// A campaign is a send record: it is evidence that someone composed copy and
+// that the screen ruled on it. A seeded, pre-APPROVED row would be a sendable
+// message nobody wrote — so the store starts empty.
 function store(): Campaign[] {
-  globalThis.__vhCampaigns ??= seed();
+  globalThis.__vhCampaigns ??= [];
   return globalThis.__vhCampaigns;
 }
 
@@ -133,6 +126,17 @@ export type CreateResult =
   | { ok: true; campaign: Campaign }
   | { ok: false; reason: "channel" | "name" | "subject" | "body" | "audience" };
 
+// The console renders the audience label verbatim, so a parenthesised reach
+// typed into it ("Digest subscribers (184k)") would read as a segment size the
+// platform actually counted. A segment is a NAME here; its size is whatever the
+// real directory holds at send time.
+const TYPED_REACH = /\s*\(\s*\d[\d,. ]*\s*(k|m|lakh|lakhs|cr|crore|crores)?\s*\+?\s*\)/gi;
+
+/** An audience label with any hand-typed headcount stripped. */
+export function segmentLabel(audience: string): string {
+  return audience.replace(TYPED_REACH, "").replace(/\s{2,}/g, " ").trim();
+}
+
 /**
  * Create + screen a campaign in one step. The resulting status is whatever the
  * screen decided — a caller cannot pass a status in, so no client ever seeds an
@@ -144,7 +148,7 @@ export async function createCampaign(actor: string, input: CampaignInput): Promi
   const name = input.name.trim();
   const subject = input.subject.trim();
   const body = input.body.trim();
-  const audience = input.audience.trim() || "All contacts";
+  const audience = segmentLabel(input.audience.trim()) || "All contacts";
 
   if (!CHANNELS.includes(channel)) return { ok: false, reason: "channel" };
   if (name.length < 4 || name.length > 80) return { ok: false, reason: "name" };

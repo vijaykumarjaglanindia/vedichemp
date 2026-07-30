@@ -3,9 +3,11 @@
  *
  * The same in-memory-with-globalThis pattern used across the platform. Every
  * export is async so the DB swap is a body change, not a signature change.
- * Seeded with a small, clearly-illustrative fixture so the console renders a
- * live-looking state on a fresh boot (it starts populated on purpose — an
- * empty import console is hard to review).
+ *
+ * The store starts EMPTY. A connected store, a sync run and a failed row are
+ * records of things that happened; the console must not open on a history the
+ * platform never had. A deployment that wants a reviewable console sets
+ * `VH_DEMO=1`, and then every seeded row says "demo" on its face.
  */
 
 import type {
@@ -49,23 +51,32 @@ export function nextId(prefix: string): string {
 
 /* ─────────────────────────── Seed ─────────────────────────── */
 
+/** The same switch as accounts.demoSeedEnabled(): demo rows never exist in a
+ *  production build unless a deployment explicitly asked for them. */
+function demoSeedEnabled(): boolean {
+  if (process.env.VH_DEMO === "1") return true;
+  if (process.env.VH_DEMO === "0") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
 function seed(d: ImportDB) {
   if (d.seeded) return;
   d.seeded = true;
+  if (!demoSeedEnabled()) return;
   const store = (id: string, seller: string, email: string, method: ConnectionMethod, label: string, endpoint: string, health: StoreHealth, count: number, schedule: SyncCadence, lastSyncAt?: string): ConnectedStore => ({
     id, sellerEmail: email, sellerName: seller, method, label, endpoint,
     credentialsMasked: { key: "ck_••••••••••3a2f" }, createdAt: "2026-07-10T09:00:00.000Z",
     lastSyncAt, health, productCount: count, schedule, autoPublish: false,
   });
   d.stores = [
-    store("cs1", "Vedic Botanicals", "seller@vedicbotanicals.in", "woocommerce", "Vedic Botanicals — WooCommerce", "https://vedicbotanicals.in", "healthy", 42, "daily", "2026-07-24T04:00:00.000Z"),
-    store("cs2", "Himalayan Hemp Co.", "seller@himalayanhemp.in", "shopify", "Himalayan Hemp — Shopify", "https://himalayanhemp.myshopify.com", "healthy", 28, "hourly", "2026-07-24T08:00:00.000Z"),
-    store("cs3", "GreenLeaf Naturals", "ops@greenleaf.example", "csv", "GreenLeaf — CSV upload", "greenleaf-products.csv", "degraded", 14, "manual", "2026-07-22T11:20:00.000Z"),
+    store("cs1", "Vedic Botanicals", "seller@vedicbotanicals.in", "woocommerce", "Demo — Vedic Botanicals (WooCommerce)", "https://vedicbotanicals.in", "healthy", 42, "daily", "2026-07-24T04:00:00.000Z"),
+    store("cs2", "Himalayan Hemp Co.", "seller@himalayanhemp.in", "shopify", "Demo — Himalayan Hemp (Shopify)", "https://himalayanhemp.myshopify.com", "healthy", 28, "hourly", "2026-07-24T08:00:00.000Z"),
+    store("cs3", "GreenLeaf Naturals", "ops@greenleaf.example", "csv", "Demo — GreenLeaf (CSV upload)", "greenleaf-products.csv", "degraded", 14, "manual", "2026-07-22T11:20:00.000Z"),
   ];
   d.history = [
-    { id: "ih1", storeId: "cs2", storeLabel: "Himalayan Hemp — Shopify", method: "shopify", startedAt: "2026-07-24T08:00:00.000Z", finishedAt: "2026-07-24T08:00:47.000Z", durationMs: 47000, status: "completed", imported: 4, updated: 21, skipped: 3, deleted: 0, failed: 0, warnings: 1, trigger: "scheduled", actor: "system" },
-    { id: "ih2", storeId: "cs1", storeLabel: "Vedic Botanicals — WooCommerce", method: "woocommerce", startedAt: "2026-07-24T04:00:00.000Z", finishedAt: "2026-07-24T04:01:12.000Z", durationMs: 72000, status: "completed_with_errors", imported: 6, updated: 33, skipped: 2, deleted: 1, failed: 2, warnings: 4, trigger: "scheduled", actor: "system" },
-    { id: "ih3", storeId: "cs3", storeLabel: "GreenLeaf — CSV upload", method: "csv", startedAt: "2026-07-22T11:19:00.000Z", finishedAt: "2026-07-22T11:20:00.000Z", durationMs: 60000, status: "completed_with_errors", imported: 12, updated: 0, skipped: 1, deleted: 0, failed: 1, warnings: 2, trigger: "manual", actor: "seller_ops.khan" },
+    { id: "ih1", storeId: "cs2", storeLabel: "Demo — Himalayan Hemp (Shopify)", method: "shopify", startedAt: "2026-07-24T08:00:00.000Z", finishedAt: "2026-07-24T08:00:47.000Z", durationMs: 47000, status: "completed", imported: 4, updated: 21, skipped: 3, deleted: 0, failed: 0, warnings: 1, trigger: "scheduled", actor: "system" },
+    { id: "ih2", storeId: "cs1", storeLabel: "Demo — Vedic Botanicals (WooCommerce)", method: "woocommerce", startedAt: "2026-07-24T04:00:00.000Z", finishedAt: "2026-07-24T04:01:12.000Z", durationMs: 72000, status: "completed_with_errors", imported: 6, updated: 33, skipped: 2, deleted: 1, failed: 2, warnings: 4, trigger: "scheduled", actor: "system" },
+    { id: "ih3", storeId: "cs3", storeLabel: "Demo — GreenLeaf (CSV upload)", method: "csv", startedAt: "2026-07-22T11:19:00.000Z", finishedAt: "2026-07-22T11:20:00.000Z", durationMs: 60000, status: "completed_with_errors", imported: 12, updated: 0, skipped: 1, deleted: 0, failed: 1, warnings: 2, trigger: "manual", actor: "seller_ops.khan" },
   ];
   d.logs = [
     { id: "il1", historyId: "ih2", at: "2026-07-24T04:00:11.000Z", level: "warn", message: "Product has no image — imported without one (requireImage rule off).", productRef: "Hemp Seed Oil Cold-Pressed 500ml" },

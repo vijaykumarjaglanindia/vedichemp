@@ -28,6 +28,10 @@ export interface Account {
   sellerStore?: string; // for SELLER accounts: the storefront they own
   provider: "password" | "email" | "phone" | "google" | "facebook";
   createdAt: string;
+  /** Set on the env-provisioned bootstrap owner: the credential came from a
+   *  deployment variable, so it is not a credential this person chose. Cleared
+   *  by setPassword(). */
+  mustResetPassword?: boolean;
 }
 
 interface AccountStore {
@@ -69,10 +73,24 @@ export function passwordProblem(password: string): string | null {
 
 /* ── The seeded directory ─────────────────────────────────────────── */
 
-// A single well-known password for the seeded demo accounts, documented in
-// SEED_CREDENTIALS below. Production seeds one bootstrap owner and forces a
-// reset on first sign-in; here every seeded account shares it so the platform
-// is immediately explorable with real, credential-checked logins.
+/**
+ * The demo directory below is a table of KNOWN PASSWORDS. A PRODUCTION build
+ * never has it unless someone explicitly asked (`VH_DEMO=1`); it provisions
+ * exactly one bootstrap owner from BOOTSTRAP_OWNER_EMAIL +
+ * BOOTSTRAP_OWNER_PASSWORD, and if those are unset the directory starts empty
+ * — handing out a credential nobody asked for is worse than an empty console.
+ * Development and the test runner keep the fixture so the platform stays
+ * explorable and the suite has something to sign in against.
+ *
+ * This is the one switch for every demo seam in the codebase; the others say so
+ * and evaluate the same expression.
+ */
+export function demoSeedEnabled(): boolean {
+  if (process.env.VH_DEMO === "1") return true;
+  if (process.env.VH_DEMO === "0") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
 const SEED_PASSWORD = "Vedic@Hemp1";
 
 interface Seed { email: string; name: string; role: AccountRole; store?: string }
@@ -95,27 +113,46 @@ const SEED_ACCOUNTS: Seed[] = [
   { email: "support.dsouza@vedichemp.in", name: "D'Souza (Support)", role: "ADMIN" },
 ];
 
-/** Human-readable seed credentials for the sign-in page's demo hint + docs. */
-export const SEED_CREDENTIALS = {
-  password: SEED_PASSWORD,
-  buyer: "buyer@example.in",
-  seller: "seller@example.in",
-  admin: "admin@example.in",
-};
+/**
+ * The demo sign-in hint. EMPTY unless the demo directory exists, so no page can
+ * render a working credential on a deployment that did not ask for one.
+ */
+export const SEED_CREDENTIALS = demoSeedEnabled()
+  ? { password: SEED_PASSWORD, buyer: "buyer@example.in", seller: "seller@example.in", admin: "admin@example.in" }
+  : { password: "", buyer: "", seller: "", admin: "" };
 
 function seedStore(): AccountStore {
   const s: AccountStore = { byEmail: {}, seq: 1 };
-  for (const a of SEED_ACCOUNTS) {
-    const email = a.email.toLowerCase();
+  if (demoSeedEnabled()) {
+    for (const a of SEED_ACCOUNTS) {
+      const email = a.email.toLowerCase();
+      s.byEmail[email] = {
+        id: `acc-${s.seq++}`,
+        email,
+        name: a.name,
+        role: a.role,
+        passwordHash: hashPassword(SEED_PASSWORD),
+        ...(a.store ? { sellerStore: a.store } : {}),
+        provider: "password",
+        createdAt: "2026-01-01T00:00:00.000Z",
+      };
+    }
+    return s;
+  }
+  // One bootstrap owner, from the deployment's own variables. §7: the owner
+  // appoints everyone else, so no other account is provisioned here.
+  const email = (process.env.BOOTSTRAP_OWNER_EMAIL ?? "").trim().toLowerCase();
+  const password = process.env.BOOTSTRAP_OWNER_PASSWORD ?? "";
+  if (email && !passwordProblem(password)) {
     s.byEmail[email] = {
       id: `acc-${s.seq++}`,
       email,
-      name: a.name,
-      role: a.role,
-      passwordHash: hashPassword(SEED_PASSWORD),
-      ...(a.store ? { sellerStore: a.store } : {}),
+      name: process.env.BOOTSTRAP_OWNER_NAME?.trim() || "Platform Owner",
+      role: "ADMIN",
+      passwordHash: hashPassword(password),
       provider: "password",
-      createdAt: "2026-01-01T00:00:00.000Z",
+      createdAt: new Date().toISOString(),
+      mustResetPassword: true,
     };
   }
   return s;
@@ -130,6 +167,12 @@ function store(): AccountStore {
 
 export function findAccount(email: string): Account | null {
   return store().byEmail[email.trim().toLowerCase()] ?? null;
+}
+
+/** The whole directory, oldest first — the source the admin user console
+ *  projects from. Never returns a password hash's plaintext (there isn't one). */
+export function allAccounts(): Account[] {
+  return Object.values(store().byEmail).sort((a, b) => (a.createdAt < b.createdAt ? -1 : a.createdAt > b.createdAt ? 1 : a.id.localeCompare(b.id)));
 }
 
 export type AuthResult =
@@ -203,5 +246,6 @@ export function setPassword(email: string, password: string): boolean {
   const account = findAccount(email);
   if (!account) return false;
   account.passwordHash = hashPassword(password);
+  delete account.mustResetPassword;
   return true;
 }

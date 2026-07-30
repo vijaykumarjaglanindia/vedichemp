@@ -15,8 +15,9 @@ import { ordersForSeller, sellerSubtotal, type Order } from "@/lib/orders";
 import { runsForSeller } from "@/lib/settlements";
 import { findAccount } from "@/lib/accounts";
 
-/** "This seller" is the Vedic Botanicals store (CONTRACT — the seed store the
- *  demo seller session owns). */
+/** The demo storefront, used only as the default argument of the pure
+ *  projections below. Nothing resolves a signed-in seller to it — that comes
+ *  from their own account (storeForEmailOrNull). */
 export const SELLER_STORE = "Vedic Botanicals";
 
 export interface Blocker {
@@ -89,12 +90,19 @@ export function kpisFrom(orders: Order[], today: string, days = 7, store: string
 }
 
 /**
- * The storefront the signed-in seller owns, resolved from their account. Every
- * seller sees THEIR store's live data, not a fixed demo store; an email with no
- * seller account falls back to the seed store so the demo is still explorable.
+ * The storefront an account owns, or null when it owns none. There is no
+ * fallback: an account with no seller store is not a seller, and resolving one
+ * for them would show — and let them mutate — another tenant's listings,
+ * orders and settlement balance.
  */
+export function storeForEmailOrNull(email: string): string | null {
+  return findAccount(email)?.sellerStore ?? null;
+}
+
+/** As above, as the empty string when the account owns no store — every read
+ *  keyed on it then matches nothing, so no other tenant's data is reachable. */
 export function storeForEmail(email: string): string {
-  return findAccount(email)?.sellerStore ?? SELLER_STORE;
+  return storeForEmailOrNull(email) ?? "";
 }
 
 export async function sellerHome(email: string, today: string, days = 7): Promise<SellerHome> {

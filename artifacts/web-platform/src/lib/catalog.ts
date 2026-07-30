@@ -22,6 +22,7 @@
 
 import { ComplianceClass } from "@prisma/client";
 import { PRODUCTS, type SampleProduct } from "@/lib/sample";
+import { aggregatesByProduct, type Aggregate } from "@/lib/reviews";
 
 export type ListingStatus = "DRAFT" | "UNDER_REVIEW" | "LIVE" | "SUSPENDED" | "ARCHIVED";
 export type CoaState = "NONE" | "PENDING_REVIEW" | "APPROVED" | "REJECTED";
@@ -62,6 +63,9 @@ export interface CatalogProduct extends SampleProduct {
    *  For a variant product this is the DERIVED sum across variants. */
   stockQty: number;
   lowStockAt: number; // seller-set threshold for the low-stock signal
+  /** How many APPROVED reviews `rating` is the average of. 0 means the listing
+   *  has no rating at all — a caller must render nothing, not "0.0★". */
+  ratingCount?: number;
   /**
    * Optional variants (size / pack / strength). When present, each variant
    * carries its own price and stock; the product's pricePaise becomes the
@@ -152,9 +156,13 @@ export interface Variant {
   stockQty: number;
 }
 
-/* Launch fixtures → store defaults. CBD items launched with approved batches. */
-const DEFAULT_BATCH: Record<string, string> = { p4: "VB-2405", p5: "VB-2408", p8: "VB-2401" };
-const DEFAULT_STOCK: Record<string, number> = { p1: 120, p2: 64, p3: 8, p4: 96, p5: 40, p6: 210, p7: 150, p8: 3 };
+/**
+ * Opening stock for the launch fixtures — one quantity for every fixture, and
+ * comfortably above `lowStockAt`: a hand-tuned per-listing number would put a
+ * scarcity badge on the shelf that nobody counted. Sellers set real on-hand
+ * quantities in Inventory (setStock).
+ */
+const FIXTURE_OPENING_STOCK = 50;
 /**
  * Seeded variants so a public product page demonstrates options out of the
  * box. The first variant matches the fixture price so listing cards are
@@ -169,18 +177,27 @@ const DEFAULT_VARIANTS: Record<string, { optionName: string; variants: Variant[]
     ],
   },
 };
-const DEFAULTS: CatalogProduct[] = PRODUCTS.map((p) => ({
-  ...p,
-  desc: "",
-  hsn: p.cls === "CBD_WELLNESS" ? "33049910" : p.cls === "AYURVEDA" ? "30049011" : "12079990",
-  status: "LIVE",
-  coaState: p.labVerified ? "APPROVED" : "NONE",
-  batchCode: DEFAULT_BATCH[p.id] ?? "",
-  custom: false,
-  stockQty: DEFAULT_STOCK[p.id] ?? 50,
-  lowStockAt: 10,
-  ...(DEFAULT_VARIANTS[p.id] ? DEFAULT_VARIANTS[p.id] : {}),
-}));
+const DEFAULTS: CatalogProduct[] = PRODUCTS.map((p): CatalogProduct => {
+  // A2: no fixture carries a lab report, so a regulated fixture opens as a
+  // DRAFT with no CoA and no batch. It reaches LIVE only through submitCoa()
+  // and an APPROVED decideCoa() — an APPROVED coaState always has a real
+  // decision behind it, never a batch code the platform invented for itself.
+  const regulated = REGULATED_CLASSES.includes(p.cls);
+  return {
+    ...p,
+    labVerified: regulated ? false : p.labVerified,
+    desc: "",
+    hsn: p.cls === "CBD_WELLNESS" ? "33049910" : p.cls === "AYURVEDA" ? "30049011" : "12079990",
+    status: regulated ? "DRAFT" : "LIVE",
+    state: regulated ? "DRAFT" : p.state,
+    coaState: "NONE",
+    batchCode: "",
+    custom: false,
+    stockQty: FIXTURE_OPENING_STOCK,
+    lowStockAt: 10,
+    ...(DEFAULT_VARIANTS[p.id] ? DEFAULT_VARIANTS[p.id] : {}),
+  };
+});
 
 /** Derive the "from" price and total stock for a variant product on read, so
  *  every consumer (cards, search, cart-gating) keeps working unchanged. */
@@ -194,6 +211,16 @@ function withDerivedVariantFields(p: CatalogProduct): CatalogProduct {
     mrpPaise: Math.min(...mrps),
     stockQty: p.variants.reduce((n, v) => n + v.stockQty, 0),
   };
+}
+
+/**
+ * The star rating is the average of the listing's APPROVED reviews and nothing
+ * else — no stored number, no fixture value. A listing nobody has reviewed
+ * carries rating 0 / ratingCount 0, which every surface renders as no rating.
+ */
+function withDerivedRating(p: CatalogProduct, aggregates: Map<string, Aggregate>): CatalogProduct {
+  const agg = aggregates.get(p.id);
+  return { ...p, rating: agg?.avg ?? 0, ratingCount: agg?.count ?? 0 };
 }
 
 interface CatalogStore {
@@ -217,9 +244,10 @@ function store(): CatalogStore {
 
 export async function readCatalog(): Promise<CatalogProduct[]> {
   const s = store();
+  const aggregates = await aggregatesByProduct();
   return [...DEFAULTS, ...s.created]
     .filter((p) => !s.deleted.includes(p.id))
-    .map((p) => withDerivedVariantFields({ ...p, ...s.patches[p.id] }));
+    .map((p) => withDerivedRating(withDerivedVariantFields({ ...p, ...s.patches[p.id] }), aggregates));
 }
 
 /** Public, sellable catalogue: LIVE only. Callers still apply A1 class filters. */
@@ -304,10 +332,10 @@ export async function createListing(input: CreateListingInput): Promise<CatalogP
     batchCode: "",
     sellerEmail: input.sellerEmail,
     custom: true,
-    // Opening stock: the form value when given, else a sellable starter the
-    // seller can adjust in Inventory. A brand-new listing should be buyable
-    // the moment it's approved, not silently stuck at zero.
-    stockQty: Number.isInteger(input.stockQty) && input.stockQty! >= 0 ? input.stockQty! : 25,
+    // Opening stock is the quantity the seller entered, and zero when they
+    // entered none: a listing is never sellable on units the platform invented
+    // for it. It shows out-of-stock until the seller sets real stock.
+    stockQty: Number.isInteger(input.stockQty) && input.stockQty! >= 0 ? input.stockQty! : 0,
     lowStockAt: 10,
     ...(input.shortDesc ? { shortDesc: input.shortDesc } : {}),
     ...(input.brand ? { brand: input.brand } : {}),

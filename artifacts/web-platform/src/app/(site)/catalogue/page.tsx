@@ -27,6 +27,7 @@ import { withBase } from "@/lib/base";
 import { type CatalogProduct, liveByClasses, saleActive } from "@/lib/catalog";
 import { findCategory, readCategories } from "@/lib/categories";
 import { CLASS_META, permittedClasses } from "@/lib/compliance";
+import { aggregate } from "@/lib/reviews";
 import { type SampleProduct } from "@/lib/sample";
 import { addToCart } from "../cart/actions";
 import { toggleWishlist } from "../actions";
@@ -63,6 +64,21 @@ function discountPct(p: SampleProduct): number {
   return Math.round(((p.mrpPaise - p.pricePaise) / p.mrpPaise) * 100);
 }
 
+/** What a card may say about a rating: the average and the number of APPROVED
+ *  reviews behind it. `count` is undefined when there are none, so a product
+ *  nobody has reviewed shows no count at all — same as the product page. */
+interface ShownRating { value: number; count?: number }
+
+async function ratingsFor(products: { id: string; rating: number }[]): Promise<Map<string, ShownRating>> {
+  const out = new Map<string, ShownRating>();
+  for (const p of products) {
+    if (out.has(p.id)) continue;
+    const agg = await aggregate(p.id);
+    out.set(p.id, agg.count > 0 ? { value: agg.avg, count: agg.count } : { value: p.rating });
+  }
+  return out;
+}
+
 /** Rebuild the query string with some keys changed/removed. */
 function href(params: Params, patch: Record<string, string | null>): string {
   const next = new URLSearchParams();
@@ -75,7 +91,7 @@ function href(params: Params, patch: Record<string, string | null>): string {
   return `/catalogue${qs ? `?${qs}` : ""}`;
 }
 
-function ProductTile({ p, sponsored }: { p: CatalogProduct; sponsored?: boolean }) {
+function ProductTile({ p, rating, sponsored }: { p: CatalogProduct; rating: ShownRating; sponsored?: boolean }) {
   const pct = discountPct(p);
   const image = p.images?.[0];
   const onSale = saleActive(p);
@@ -97,7 +113,7 @@ function ProductTile({ p, sponsored }: { p: CatalogProduct; sponsored?: boolean 
       <div className="vh-product-body">
         <Link href={`/products/${p.slug}`} className="vh-product-title">{p.title}</Link>
         <div className="small muted">{p.brand || p.seller}</div>
-        <Rating value={p.rating} count={Math.round(p.rating * 47)} />
+        <Rating value={rating.value} count={rating.count} />
         <div className="vh-row" style={{ gap: 6 }}>
           <MoneyText paise={price} className="vh-product-title" />
           {strike > price && <span className="small muted" style={{ textDecoration: "line-through" }}><MoneyText paise={strike} /></span>}
@@ -191,6 +207,8 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   const adWin = await runAuction("listing-sponsored", q ? { q } : undefined);
   const showSponsored = !adWin && chips.length === 0 && view === "grid" && !!sponsored;
   const recentlyViewed = all.slice(0, 6);
+  const ratings = await ratingsFor([...results, ...(sponsored ? [sponsored] : [])]);
+  const ratingOf = (p: CatalogProduct): ShownRating => ratings.get(p.id) ?? { value: p.rating };
 
   return (
     <div className="vh-container" style={{ paddingTop: "var(--sp-4)", paddingBottom: "var(--sp-6)" }}>
@@ -361,7 +379,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                     <Link href={`/products/${p.slug}`} className="vh-product-title" style={{ display: "block" }}>{p.title}</Link>
                     <div className="small muted" style={{ margin: "2px 0 6px" }}>{p.seller}</div>
                     <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                      <Rating value={p.rating} count={Math.round(p.rating * 47)} />
+                      <Rating value={ratingOf(p).value} count={ratingOf(p).count} />
                       <ComplianceBadge cls={p.cls} />
                     </div>
                   </div>
@@ -413,11 +431,11 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                 if (showSponsored && i === 2 && sponsored) {
                   tiles.push(
                     <AdSlot key="sponsored" cls={sponsored.cls} placement="listing-sponsored" unstyled>
-                      <ProductTile p={sponsored} sponsored />
+                      <ProductTile p={sponsored} rating={ratingOf(sponsored)} sponsored />
                     </AdSlot>
                   );
                 }
-                tiles.push(<ProductTile key={p.id} p={p} />);
+                tiles.push(<ProductTile key={p.id} p={p} rating={ratingOf(p)} />);
                 return tiles;
               })}
             </div>

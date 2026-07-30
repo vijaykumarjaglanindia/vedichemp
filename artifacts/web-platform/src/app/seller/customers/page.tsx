@@ -17,11 +17,10 @@ import { questionsForSlugs } from "@/lib/qa";
 import { approvedStoreReviews, storeAggregate } from "@/lib/store-reviews";
 import { answerProductQuestion } from "../actions";
 import { actingStore } from "../_lib/store";
+import { sellerData } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Customers" };
 export const dynamic = "force-dynamic";
-
-const STORE_SLUG = "vedic-botanicals";
 
 /** Whole days between two YYYY-MM-DD dates (never negative). */
 function daysBetween(from: string, to: string): number {
@@ -49,9 +48,10 @@ export default async function CustomersPage({
     : null;
   const avgLabel = avgDays === null ? "—" : avgDays < 1 ? "Same day" : `${avgDays.toFixed(1)} days`;
 
-  // Real store reviews (moderated buyer reviews of this store).
-  const agg = await storeAggregate(STORE_SLUG);
-  const recentReviews = (await approvedStoreReviews(STORE_SLUG)).slice(0, 4);
+  // Real store reviews (moderated buyer reviews of THIS store).
+  const { handle } = sellerData(STORE).PROFILE;
+  const agg = await storeAggregate(handle);
+  const recentReviews = (await approvedStoreReviews(handle)).slice(0, 4);
   return (
     <Shell active="/seller/customers" breadcrumb={["Seller Central", "Customers"]} title="Customers">
       {answered && (

@@ -59,20 +59,40 @@ export function articleJsonLd(post: { slug: string; title: string; body: string;
   };
 }
 
-export function productJsonLd(p: SampleProduct) {
+/**
+ * The real rating aggregate for a product, from APPROVED reviews only
+ * (`reviews.aggregate`). Either key carries the average, so a caller may pass
+ * the aggregate through as `{ rating, count }` or `{ avg, count }`.
+ */
+export interface RatingAggregate {
+  count: number;
+  rating?: number;
+  avg?: number;
+}
+
+/**
+ * Structured data is a public claim to search engines, so it may only state
+ * what the store can prove: with no approved reviews the AggregateRating node
+ * is ABSENT (schema.org permits absence; it does not permit invention), and
+ * availability follows real on-hand stock when the caller knows it.
+ */
+export function productJsonLd(p: SampleProduct & { stockQty?: number }, agg?: RatingAggregate) {
   if (p.cls === "MED_CANNABIS") throw new Error("A1: MED_CANNABIS never appears in public structured data.");
+  const ratingValue = agg && agg.count > 0 ? agg.rating ?? agg.avg : undefined;
   return {
     "@context": "https://schema.org",
     "@type": "Product",
     name: p.title,
     brand: { "@type": "Brand", name: p.seller },
-    aggregateRating: { "@type": "AggregateRating", ratingValue: p.rating, reviewCount: Math.round(p.rating * 37) },
+    ...(agg && typeof ratingValue === "number" && ratingValue > 0
+      ? { aggregateRating: { "@type": "AggregateRating", ratingValue, reviewCount: agg.count } }
+      : {}),
     offers: {
       "@type": "Offer",
       priceCurrency: "INR",
       price: rupees(p.pricePaise).toFixed(2),
-      availability: "https://schema.org/InStock",
-      url: `https://vedichemp.in/products/${p.slug}`,
+      availability: p.stockQty !== undefined && p.stockQty <= 0 ? "https://schema.org/OutOfStock" : "https://schema.org/InStock",
+      url: `${SITE_URL}/products/${p.slug}`,
     },
   };
 }

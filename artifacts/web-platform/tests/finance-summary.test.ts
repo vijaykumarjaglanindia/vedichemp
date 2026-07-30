@@ -2,26 +2,50 @@ import { describe, it, expect, beforeEach } from "vitest";
 import { financeSummary, TCS_RATE_BPS, TDS_RATE_BPS } from "@/lib/finance-summary";
 
 /**
- * financeSummary aggregates the REAL stores. The settlement store seeds three
- * runs (two POSTED, one AWAITING); the order store starts empty. These tests
- * pin the derivations so a regression to hand-typed constants fails the build.
+ * financeSummary aggregates the REAL stores. Both of them start EMPTY — a
+ * settlement run is money and only exists once a maker created it and a checker
+ * posted it — so these tests put the runs in themselves and then pin the
+ * derivations, so a regression to hand-typed constants fails the build.
  */
 
-// Seeded settlement figures (src/lib/settlements.ts seed()).
 const ST1 = { grossPaise: 9_39_100_00, commissionPaise: 93_900_00 }; // POSTED, Vedic Botanicals
 const ST2 = { grossPaise: 4_58_700_00, commissionPaise: 45_900_00 }; // AWAITING, Himalayan Hemp Co.
 const ST3 = { grossPaise: 2_26_000_00, commissionPaise: 22_600_00 }; // POSTED, Ananda Foods
 
 const g = globalThis as { __vhOrders?: unknown; __vhSettlements?: unknown };
 
+const run = (id: string, seller: string, f: { grossPaise: number; commissionPaise: number }, status: string, createdAt: string) => ({
+  id, seller, period: "test period",
+  grossPaise: f.grossPaise, commissionPaise: f.commissionPaise, netPaise: f.grossPaise - f.commissionPaise,
+  status, maker: "maker@vh.test", ...(status === "POSTED" ? { checker: "checker@vh.test", postedAt: createdAt } : {}),
+  createdAt, orderRefs: [],
+});
+
 beforeEach(() => {
-  // Reset both stores so each test starts from the seeded settlement runs and
-  // an empty order book.
+  // Empty order book; three settlement runs written straight into the store the
+  // same way createRun()/postRun() would leave them.
   g.__vhOrders = undefined;
-  g.__vhSettlements = undefined;
+  g.__vhSettlements = {
+    runs: [
+      run("st1", "Vedic Botanicals", ST1, "POSTED", "2026-07-01"),
+      run("st2", "Himalayan Hemp Co.", ST2, "AWAITING_CHECKER", "2026-07-01"),
+      run("st3", "Ananda Foods", ST3, "POSTED", "2026-06-16"),
+    ],
+    seq: 4,
+  };
 });
 
 describe("financeSummary", () => {
+  it("reports zeros with no settlement runs — nothing has been settled yet", async () => {
+    g.__vhSettlements = undefined;
+    const fin = await financeSummary();
+    expect(fin.settledGrossPaise).toBe(0);
+    expect(fin.commissionPaise).toBe(0);
+    expect(fin.tcsPaise).toBe(0);
+    expect(fin.tdsPaise).toBe(0);
+    expect(fin.revenueBySeller).toEqual([]);
+  });
+
   it("recognises commission and take rate only from posted runs / all runs", async () => {
     const fin = await financeSummary();
 

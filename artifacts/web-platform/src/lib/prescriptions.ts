@@ -68,30 +68,12 @@ declare global {
   var __vhPrescriptions: RxStore | undefined;
 }
 
-function seed(): RxStore {
-  return {
-    rx: [
-      {
-        id: "rx-1001", buyerEmail: "buyer@example.in", buyerName: "Aarav Sharma",
-        doctor: "Dr. Kavita Rao, MD (Pain Medicine)", regNo: "MCI-88213",
-        issuedAt: "2026-06-20", validTill: "2026-09-20", status: "APPROVED",
-        uploadedAt: "2026-06-21", fileRef: "rx/aarav-1001.pdf",
-      },
-      {
-        id: "rx-1002", buyerEmail: "meera@example.in", buyerName: "Meera Nair",
-        doctor: "Dr. S. Iyer, MD", regNo: "MCI-77104",
-        issuedAt: "2026-07-10", validTill: "2026-10-10", status: "PENDING_REVIEW",
-        uploadedAt: "2026-07-14", fileRef: "rx/meera-1002.pdf",
-      },
-    ],
-    log: [],
-    seq: 1003,
-    logSeq: 1,
-  };
-}
-
+// A prescription is health data and a doctor's registration number is a real
+// credential: neither is ever written here except by a real upload and a real
+// pharmacist decision, so the store starts empty and the Rx entitlement that
+// reads it (permittedClasses) fails closed until one exists.
 function store(): RxStore {
-  globalThis.__vhPrescriptions ??= seed();
+  globalThis.__vhPrescriptions ??= { rx: [], log: [], seq: 1001, logSeq: 1 };
   return globalThis.__vhPrescriptions;
 }
 

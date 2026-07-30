@@ -16,7 +16,15 @@ import "server-only";
  * The store carries a real email for each account only so the buyer-notice job
  * (A4) can reach them; the console still renders masked contacts and this file
  * never exposes the raw email to a page.
+ *
+ * The directory itself is a PROJECTION of the real account store: one row per
+ * registered buyer, its masked contact derived from that account's own email,
+ * its lifetime order count counted from the order book, and its loyalty tier
+ * computed from that count against an editable tier table. Only what an admin
+ * decides — status, and the ledger of how it got there — is stored here.
  */
+
+import { allAccounts } from "@/lib/accounts";
 
 export type AccountStatus = "ACTIVE" | "RESTRICTED" | "SUSPENDED";
 
@@ -84,42 +92,130 @@ declare global {
   var __vhUsers: UserStore | undefined;
 }
 
-function seed(): UserStore {
-  return {
-    accounts: [
-      { id: "u1", handle: "ananya.s", email: "buyer@example.in", maskedEmail: "an***@gmail.com", maskedPhone: "+91 9•••••234", status: "ACTIVE", tier: "Leaf", ordersLifetime: 14, joinedAt: "2025-02-11", sessions: 2 },
-      { id: "u2", handle: "rakesh.p", email: "rakesh@example.in", maskedEmail: "ra***@yahoo.com", maskedPhone: "+91 8•••••901", status: "ACTIVE", tier: "Sprout", ordersLifetime: 3, joinedAt: "2025-11-02", sessions: 1 },
-      { id: "u3", handle: "meera.k", email: "meera@example.in", maskedEmail: "me***@outlook.com", maskedPhone: "+91 7•••••556", status: "RESTRICTED", tier: "Bloom", ordersLifetime: 41, joinedAt: "2024-06-19", sessions: 0 },
-      { id: "u4", handle: "vikram.n", email: "vikram@example.in", maskedEmail: "vi***@gmail.com", maskedPhone: "+91 9•••••112", status: "SUSPENDED", tier: "Sprout", ordersLifetime: 1, joinedAt: "2026-01-30", sessions: 0 },
-    ],
-    pending: [],
-    events: [],
-    impersonations: [],
-    seq: 1,
-  };
-}
-
 function store(): UserStore {
-  globalThis.__vhUsers ??= seed();
+  globalThis.__vhUsers ??= { accounts: [], pending: [], events: [], impersonations: [], seq: 1 };
   return globalThis.__vhUsers;
 }
 
 const nowIso = () => new Date().toISOString().slice(0, 16).replace("T", " ");
 
+/* ── Loyalty tiers (an owner's lever, not a literal on a row) ─────── */
+
+export interface LoyaltyTier {
+  name: string;
+  minLifetimeOrders: number; // reached at or above this many lifetime orders
+}
+
+export const LOYALTY_TIER_DEFAULTS: LoyaltyTier[] = [
+  { name: "Sprout", minLifetimeOrders: 0 },
+  { name: "Leaf", minLifetimeOrders: 5 },
+  { name: "Bloom", minLifetimeOrders: 25 },
+  { name: "Vedic Prime", minLifetimeOrders: 100 },
+];
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __vhLoyaltyTiers: LoyaltyTier[] | undefined;
+}
+
+function tierTable(): LoyaltyTier[] {
+  return [...(globalThis.__vhLoyaltyTiers ?? LOYALTY_TIER_DEFAULTS)].sort((a, b) => a.minLifetimeOrders - b.minLifetimeOrders);
+}
+
+export async function readLoyaltyTiers(): Promise<LoyaltyTier[]> {
+  return tierTable().map((t) => ({ ...t }));
+}
+
+export async function writeLoyaltyTiers(tiers: LoyaltyTier[]): Promise<void> {
+  const clean = tiers
+    .filter((t) => t.name.trim() && Number.isInteger(t.minLifetimeOrders) && t.minLifetimeOrders >= 0)
+    .map((t) => ({ name: t.name.trim().slice(0, 40), minLifetimeOrders: t.minLifetimeOrders }));
+  // An entry tier reached at zero orders must exist, or a new buyer has none.
+  if (!clean.some((t) => t.minLifetimeOrders === 0)) return;
+  globalThis.__vhLoyaltyTiers = clean;
+}
+
+/** The tier a lifetime order count earns. */
+export function tierForOrders(lifetimeOrders: number): string {
+  const table = tierTable();
+  let name = table[0]?.name ?? LOYALTY_TIER_DEFAULTS[0]!.name;
+  for (const t of table) if (lifetimeOrders >= t.minLifetimeOrders) name = t.name;
+  return name;
+}
+
+/* ── Projection from the real stores ──────────────────────────────── */
+
+/**
+ * Lifetime orders for a buyer, counted from the order book. Read directly off
+ * the order store's in-process seam because the buyer viewer resolves a tier on
+ * a synchronous path — the shape is orders.ts's `Order`, narrowed to the one
+ * field this needs.
+ */
+function lifetimeOrders(email: string): number {
+  const s = (globalThis as { __vhOrders?: { orders?: { buyerEmail?: string }[] } }).__vhOrders;
+  const e = email.trim().toLowerCase();
+  return (s?.orders ?? []).filter((o) => (o.buyerEmail ?? "").toLowerCase() === e).length;
+}
+
+/** Masked from the account's OWN address — never a typed-in stand-in. */
+function maskEmail(email: string): string {
+  const at = email.indexOf("@");
+  if (at < 1) return "•••";
+  return `${email.slice(0, Math.min(2, at))}***${email.slice(at)}`;
+}
+
+function handleFor(email: string): string {
+  return email.slice(0, email.indexOf("@") > 0 ? email.indexOf("@") : undefined);
+}
+
+/**
+ * Reconcile the console's directory with the real account store, then refresh
+ * every derived field. A row exists because someone registered; its status is
+ * the only thing an admin owns here, so that alone survives a refresh.
+ */
+function project(): Account[] {
+  const s = store();
+  for (const a of allAccounts()) {
+    if (a.role !== "BUYER") continue;
+    if (s.accounts.some((x) => x.email.toLowerCase() === a.email)) continue;
+    s.accounts.push({
+      id: a.id,
+      handle: handleFor(a.email),
+      email: a.email,
+      maskedEmail: maskEmail(a.email),
+      maskedPhone: "—", // no phone is held on an account; nothing to mask
+      status: "ACTIVE",
+      tier: LOYALTY_TIER_DEFAULTS[0]!.name,
+      ordersLifetime: 0,
+      joinedAt: a.createdAt.slice(0, 10),
+      // The session is a stateless signed cookie, so there is no registry of
+      // live sessions to count. Reporting a number would be inventing one.
+      sessions: 0,
+    });
+  }
+  for (const row of s.accounts) {
+    row.ordersLifetime = lifetimeOrders(row.email);
+    row.tier = tierForOrders(row.ordersLifetime);
+  }
+  return s.accounts;
+}
+
 export async function listAccounts(query?: string): Promise<Account[]> {
   const q = (query ?? "").trim().toLowerCase();
-  return store().accounts.filter((a) => (q ? a.handle.toLowerCase().includes(q) : true));
+  return project().filter((a) => (q ? a.handle.toLowerCase().includes(q) : true));
 }
 
 export function findAccount(id: string): Account | undefined {
-  return store().accounts.find((a) => a.id === id);
+  return project().find((a) => a.id === id);
 }
 
 /** Loyalty tier for a buyer email, or null if they aren't in the directory
- *  (a brand-new account starts at the entry tier). */
+ *  (a brand-new account starts at the entry tier). Earned from their real
+ *  order history against the tier table — never a value typed onto a row. */
 export function tierForEmail(email: string): string | null {
   const e = email.trim().toLowerCase();
-  return store().accounts.find((a) => a.email.toLowerCase() === e)?.tier ?? null;
+  if (!allAccounts().some((a) => a.email === e)) return null;
+  return tierForOrders(lifetimeOrders(e));
 }
 
 function record(a: Account, to: AccountStatus, actor: string, reason: string, via: StatusEvent["via"]) {

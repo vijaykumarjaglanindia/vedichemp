@@ -10,8 +10,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { AdBanner } from "@/components/ui/ads";
-import { BadgeCheck, MapPin, ShieldCheck, UserCheck, UserPlus, Globe, ExternalLink } from "lucide-react";
+import { BadgeCheck, MapPin, UserCheck, UserPlus, Globe, ExternalLink } from "lucide-react";
 import { Banner, Card, EmptyState, Rating, SectionHead, StatusPill } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
 import { mdToHtml } from "@/lib/richtext";
@@ -22,8 +21,9 @@ import { approvedStoreReviews, storeAggregate } from "@/lib/store-reviews";
 import { toggleFollowStore, submitStoreReview, reportStore } from "../../actions";
 import { ProductCard } from "../../_lib/ProductCard";
 import { ShareButton } from "../../_lib/ShareButton";
-import { sellerBySlug, sellerProducts, STORE_PROFILES } from "../../_lib/data";
-import { kycApproved } from "@/lib/vendor";
+import { publicProducts, sellerSlug, STORE_PROFILES } from "../../_lib/data";
+import { allKyc, type VendorKyc } from "@/lib/vendor";
+import type { ComplianceClass } from "@prisma/client";
 
 export const dynamic = "force-dynamic";
 
@@ -40,14 +40,39 @@ const ANN_ICON: Record<"info" | "sale" | "warn", string> = { info: "📣", sale:
 
 type Params = { slug: string };
 
+/**
+ * A storefront exists when the platform holds something real about it — a
+ * verification record, live listings, or both. Neither gate is a fixture
+ * lookup, so a store that genuinely passes KYC gets a storefront instead of
+ * "this store isn't available".
+ */
+async function resolveStore(slug: string): Promise<{ name: string; kyc?: VendorKyc; products: Awaited<ReturnType<typeof publicProducts>> } | null> {
+  const kyc = (await allKyc()).find((r) => sellerSlug(r.store) === slug);
+  const products = (await publicProducts()).filter((p) => sellerSlug(p.seller) === slug);
+  const name = kyc?.store ?? products[0]?.seller;
+  if (!name) return null;
+  return { name, ...(kyc ? { kyc } : {}), products };
+}
+
+/** The verification facts a buyer may see — read off the store's KYC record,
+ *  never a curated list. PAN and bank details are never public (§4). */
+function certificationsFor(k: VendorKyc): string[] {
+  const out = [`Registered as ${k.legalName}`, `GSTIN ${k.gstin}`];
+  for (const cls of k.classes.filter((c) => c !== "MED_CANNABIS")) out.push(`${CLASS_META[cls].short} licensed`);
+  if (k.drugLicenceNo) {
+    out.push(`Drug licence ${k.drugLicenceNo}${k.drugLicenceExpiry ? ` · valid to ${k.drugLicenceExpiry}` : ""}`);
+  }
+  return out;
+}
+
 export async function generateMetadata({ params }: { params: Promise<Params> }): Promise<Metadata> {
   const { slug } = await params;
-  const seller = sellerBySlug(slug);
-  if (!seller) return { title: "Store not found" };
+  const store = await resolveStore(slug);
+  if (!store) return { title: "Store not found" };
   const profile = STORE_PROFILES[slug];
   const copy = slug === "vedic-botanicals" ? await readStoreCopy() : null;
-  const title = copy?.metaTitle?.trim() || `${seller.name} — official store`;
-  const description = copy?.metaDescription?.trim() || copy?.tagline?.trim() || profile?.tagline || `Shop ${seller.name} on Vedic Hemp.`;
+  const title = copy?.metaTitle?.trim() || `${store.name} — official store`;
+  const description = copy?.metaDescription?.trim() || copy?.tagline?.trim() || profile?.tagline || `Shop ${store.name} on Vedic Hemp.`;
   const url = `/store/${slug}`;
   return {
     title,
@@ -61,10 +86,10 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
 export default async function StorePage({ params, searchParams }: { params: Promise<Params>; searchParams: Promise<{ rvw?: string; rep?: string }> }) {
   const { slug } = await params;
   const { rvw, rep } = await searchParams;
-  const seller = sellerBySlug(slug);
+  const store = await resolveStore(slug);
   const profile = STORE_PROFILES[slug];
 
-  if (!seller || !profile) {
+  if (!store) {
     return (
       <div className="vh-container" style={{ paddingTop: "var(--sp-4)", paddingBottom: "var(--sp-6)" }}>
         <EmptyState
@@ -77,21 +102,23 @@ export default async function StorePage({ params, searchParams }: { params: Prom
     );
   }
 
+  const { name: storeName, kyc, products } = store;
   // A1: a public storefront never shows MED_CANNABIS — not as a product,
-  // not as a licence badge on a shoppable surface.
-  const publicClasses = seller.classes.filter((c) => c !== "MED_CANNABIS");
-  const products = await sellerProducts(seller.name);
+  // not as a licence badge on a shoppable surface. The classes are the ones the
+  // store is verified for, or (with no record yet) the ones it actually lists in.
+  const publicClasses = (kyc?.classes ?? [...new Set(products.map((p) => p.cls))])
+    .filter((c): c is ComplianceClass => c !== "MED_CANNABIS");
+  const location = kyc ? `${kyc.city}, ${kyc.state}` : null;
+  const certifications = kyc ? certificationsFor(kyc) : [];
   const following = (await readFollows()).includes(slug);
   // Seller-published copy overrides the sample profile (their own store only).
   const storeCopy = slug === "vedic-botanicals" ? await readStoreCopy() : null;
-  const tagline = storeCopy?.tagline ?? profile.tagline;
-  const story = storeCopy?.story ?? profile.story;
+  const tagline = storeCopy?.tagline ?? profile?.tagline ?? null;
+  const story = storeCopy?.story ?? profile?.story ?? null;
   const availability = slug === "vedic-botanicals" ? await readStoreAvailability() : null;
   const announcement = slug === "vedic-botanicals" ? await readStoreAnnouncement() : null;
   const today = new Date().toISOString().slice(0, 10);
 
-  // Real store rating — computed from approved store reviews. Falls back to the
-  // sample profile only when a store has no reviews yet.
   const storeAgg = await storeAggregate(slug);
   const storeReviews = await approvedStoreReviews(slug);
   // Real rating/count from approved store reviews only — no invented fallback.
@@ -118,7 +145,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
   const crumbs = [
     { name: "Home", href: "/" },
     { name: "Stores", href: "/" },
-    { name: seller.name, href: `/store/${slug}` },
+    { name: storeName, href: `/store/${slug}` },
   ];
 
   return (
@@ -166,31 +193,30 @@ export default async function StorePage({ params, searchParams }: { params: Prom
                 fontFamily: "var(--vh-display)", flexShrink: 0,
               }}
             >
-              {seller.name.charAt(0)}
+              {storeName.charAt(0)}
             </span>
             <div style={{ flex: 1, minWidth: 260 }}>
-              <h1 className="vh-display" style={{ color: "var(--vh-ink)", fontSize: "1.9rem", marginBottom: 4 }}>{seller.name}</h1>
-              <p style={{ color: "var(--vh-body)", margin: "0 0 10px", fontSize: ".95rem" }}>{tagline}</p>
+              <h1 className="vh-display" style={{ color: "var(--vh-ink)", fontSize: "1.9rem", marginBottom: 4 }}>{storeName}</h1>
+              {tagline && <p style={{ color: "var(--vh-body)", margin: "0 0 10px", fontSize: ".95rem" }}>{tagline}</p>}
               <div className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
                 <a href="#reviews" style={{ background: "var(--vh-surface)", border: "1px solid var(--vh-line)", borderRadius: 999, padding: "3px 10px", display: "inline-flex", textDecoration: "none" }}>
                   {headlineCount > 0 ? <Rating value={headlineRating} count={headlineCount} /> : <span className="small muted">New store · no reviews yet</span>}
                 </a>
-                {kycApproved(seller.name) && (
+                {kyc?.status === "APPROVED" && (
                   <span className="vh-pill vh-pill-ok">
                     <BadgeCheck size={12} strokeWidth={2.2} aria-hidden /> Verified seller
                   </span>
                 )}
-                <span className="vh-pill vh-pill-ok">
-                  <ShieldCheck size={12} strokeWidth={2.2} aria-hidden /> Reliability score {seller.healthScore}
-                </span>
                 {publicClasses.map((cls) => (
                   <span key={cls} className="vh-pill vh-pill-info">
                     <BadgeCheck size={12} strokeWidth={2.2} aria-hidden /> {CLASS_META[cls].short} licensed
                   </span>
                 ))}
-                <span className="vh-row small" style={{ gap: 4, color: "var(--vh-body)" }}>
-                  <MapPin size={13} strokeWidth={2.2} aria-hidden /> {profile.location} · since {profile.founded}
-                </span>
+                {location && (
+                  <span className="vh-row small" style={{ gap: 4, color: "var(--vh-body)" }}>
+                    <MapPin size={13} strokeWidth={2.2} aria-hidden /> {location}
+                  </span>
+                )}
               </div>
               {socials.length > 0 && (
                 <div className="vh-row" style={{ gap: 8, marginTop: 10, flexWrap: "wrap" }}>
@@ -201,7 +227,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
                       target="_blank"
                       rel="noopener noreferrer nofollow"
                       className="vh-pill vh-pill-neutral"
-                      aria-label={`${seller.name} on ${label}`}
+                      aria-label={`${storeName} on ${label}`}
                       style={{ textDecoration: "none", gap: 5 }}
                     >
                       {label === "Website"
@@ -228,7 +254,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
                   </button>
                 )}
               </form>
-              <ShareButton title={`${seller.name} — official store on Vedic Hemp`} />
+              <ShareButton title={`${storeName} — official store on Vedic Hemp`} />
             </div>
           </div>
         </div>
@@ -237,53 +263,56 @@ export default async function StorePage({ params, searchParams }: { params: Prom
       <div className="vh-container" style={{ paddingBottom: "var(--sp-6)" }}>
         {/* ── Story + certifications ─────────────────────── */}
         <section className="vh-section" style={{ paddingBottom: 0 }}>
-          {/* Store campaign banner (store-campaign) */}
-          <div style={{ margin: "var(--sp-3) 0" }}>
-            <AdBanner
-              cls="CBD_WELLNESS" placement="store-campaign" brand={seller.name}
-              headline="Monsoon wellness: seller-funded 20% off on the recovery range"
-              cta="Shop the offer" href="/catalogue?class=CBD_WELLNESS"
-            />
-          </div>
-
           <div className="vh-split">
-            <Card title="About this store">
-              <div className="small vh-prose" dangerouslySetInnerHTML={{ __html: mdToHtml(story) }} />
-            </Card>
-            <Card title="Certifications">
-              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
-                {profile.certifications.map((c) => (
-                  <li key={c} className="vh-row small" style={{ gap: 8 }}>
-                    <BadgeCheck size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-accent)", flexShrink: 0 }} />
-                    {c}
-                  </li>
-                ))}
-              </ul>
-              <p className="small muted" style={{ margin: "12px 0 0" }}>
-                Shared by the seller when they joined. For lab-tested categories, we also show the licence and each
-                batch&rsquo;s lab report on the product page — those are the checks we verify.
-              </p>
+            {story && (
+              <Card title="About this store">
+                <div className="small vh-prose" dangerouslySetInnerHTML={{ __html: mdToHtml(story) }} />
+              </Card>
+            )}
+            <Card title="Verification">
+              {certifications.length > 0 ? (
+                <>
+                  <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "flex", flexDirection: "column", gap: 10 }}>
+                    {certifications.map((c) => (
+                      <li key={c} className="vh-row small" style={{ gap: 8 }}>
+                        <BadgeCheck size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-accent)", flexShrink: 0 }} />
+                        {c}
+                      </li>
+                    ))}
+                  </ul>
+                  <p className="small muted" style={{ margin: "12px 0 0" }}>
+                    From the details this seller filed and we checked before the store could list. For lab-tested
+                    categories, each batch&rsquo;s lab report is on the product page too.
+                  </p>
+                </>
+              ) : (
+                <p className="small muted" style={{ margin: 0 }}>
+                  This store hasn&rsquo;t completed business verification yet.
+                </p>
+              )}
             </Card>
           </div>
         </section>
 
-        {/* ── Collections chips ──────────────────────────── */}
-        <section className="vh-section" style={{ paddingBottom: 0 }}>
-          <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
-            <span className="small" style={{ fontWeight: 800, color: "var(--vh-ink)" }}>Collections:</span>
-            {profile.collections.map((c) => (
-              <Link key={c} href="/catalogue" className="vh-pill vh-pill-neutral" style={{ textDecoration: "none" }}>
-                {c}
-              </Link>
-            ))}
-          </div>
-        </section>
+        {/* ── Collections chips — the classes this store actually lists in ── */}
+        {publicClasses.length > 0 && (
+          <section className="vh-section" style={{ paddingBottom: 0 }}>
+            <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
+              <span className="small" style={{ fontWeight: 800, color: "var(--vh-ink)" }}>Collections:</span>
+              {publicClasses.map((cls) => (
+                <Link key={cls} href={`/catalogue?class=${cls}`} className="vh-pill vh-pill-neutral" style={{ textDecoration: "none" }}>
+                  {CLASS_META[cls].short}
+                </Link>
+              ))}
+            </div>
+          </section>
+        )}
 
         {/* ── Featured products ──────────────────────────── */}
         <section className="vh-section" style={{ paddingBottom: 0 }}>
           <SectionHead
             eyebrow="Featured"
-            title={`Products from ${seller.name}`}
+            title={`Products from ${storeName}`}
             sub="Every wellness item below was lab-tested for its exact batch before it could be listed."
           />
           {products.length === 0 ? (
@@ -356,7 +385,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
                   <p style={{ margin: "6px 0 0", fontSize: ".92rem", color: "var(--vh-body)" }}>{r.body}</p>
                   {r.sellerReply && (
                     <div style={{ marginTop: 8, marginLeft: 12, paddingLeft: 12, borderLeft: "2px solid var(--vh-line)" }}>
-                      <div className="small" style={{ fontWeight: 600 }}>{seller.name} replied</div>
+                      <div className="small" style={{ fontWeight: 600 }}>{storeName} replied</div>
                       <p className="small muted" style={{ margin: "2px 0 0" }}>{r.sellerReply}</p>
                     </div>
                   )}
@@ -411,7 +440,7 @@ export default async function StorePage({ params, searchParams }: { params: Prom
                 <summary className="vh-btn vh-btn-sm vh-btn-ghost" style={{ display: "inline-flex", cursor: "pointer" }}>Report this store</summary>
                 <form action={reportStore} className="vh-row" style={{ gap: 8, marginTop: 10, flexWrap: "wrap", alignItems: "center" }}>
                   <input type="hidden" name="slug" value={slug} />
-                  <input type="hidden" name="storeName" value={seller.name} />
+                  <input type="hidden" name="storeName" value={storeName} />
                   <select name="reason" className="vh-select" defaultValue="OFF_PLATFORM" aria-label="Reason for reporting this store" style={{ maxWidth: 280 }}>
                     <option value="OFF_PLATFORM">Asked me to pay outside Vedic Hemp</option>
                     <option value="COUNTERFEIT">Counterfeit or fake products</option>

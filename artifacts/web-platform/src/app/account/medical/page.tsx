@@ -14,6 +14,7 @@
 
 import type { Metadata } from "next";
 import type { ReactNode } from "react";
+import { redirect } from "next/navigation";
 import { Eye, FileUp, KeyRound, Lock, ShieldCheck, Stethoscope, Timer } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, Banner, EmptyState, type Column } from "@/components/ui";
@@ -68,7 +69,12 @@ export default async function MedicalPage({
 }: {
   searchParams: Promise<{ uploaded?: string; err?: string; viewlink?: string }>;
 }) {
-  const email = (await getSession())?.email ?? "buyer@example.in";
+  // A4 fails closed on the READ too: prescription metadata (doctor, registration
+  // number, validity) is health data. Without a verifiable session there is no
+  // owner to show it to, so nothing is resolved and nothing is rendered.
+  const session = await getSession();
+  if (!session?.email) redirect("/signin?next=/account/medical");
+  const email = session.email;
   // The buyer's OWN prescriptions, from the live store (the same rows the
   // pharmacist queue verifies) — never static demo data.
   const mine = await myPrescriptions(email);

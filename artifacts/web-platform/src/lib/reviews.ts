@@ -131,6 +131,27 @@ export async function aggregate(productId: string): Promise<Aggregate> {
   return { count, avg, histogram };
 }
 
+/**
+ * Every product's aggregate in one pass, keyed by product id — products with
+ * no APPROVED review are absent from the map (no entry, not a zero row). The
+ * catalogue derives each listing's star rating from this, so a rating is only
+ * ever the arithmetic of reviews real buyers wrote.
+ */
+export async function aggregatesByProduct(): Promise<Map<string, Aggregate>> {
+  const sums = new Map<string, number>();
+  const out = new Map<string, Aggregate>();
+  for (const r of store().items) {
+    if (r.status !== "APPROVED") continue;
+    const agg = out.get(r.productId) ?? { count: 0, avg: 0, histogram: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
+    agg.histogram[Math.max(1, Math.min(5, r.rating)) as 1 | 2 | 3 | 4 | 5] += 1;
+    agg.count += 1;
+    out.set(r.productId, agg);
+    sums.set(r.productId, (sums.get(r.productId) ?? 0) + r.rating);
+  }
+  for (const [productId, agg] of out) agg.avg = Math.round((sums.get(productId)! / agg.count) * 10) / 10;
+  return out;
+}
+
 /** All reviews awaiting moderation (admin queue), newest first. */
 export async function pendingQueue(): Promise<Review[]> {
   return store().items.filter((r) => r.status === "PENDING").sort((a, b) => (a.createdAt < b.createdAt ? 1 : -1));

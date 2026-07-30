@@ -10,6 +10,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import {
   Activity, BadgePercent, BellRing, FileUp, LifeBuoy, MapPin, Package,
@@ -54,9 +55,13 @@ const QUICK_ACTIONS = [
 ];
 
 export default async function AccountHomePage() {
-  const viewer = await resolveBuyer();
+  // Every widget below is keyed on this email — wallet, orders, prescriptions,
+  // subscriptions. A cookie that fails verification resolves to no buyer at
+  // all, never to a substitute account whose data would then be rendered.
   const session = await getSession();
-  const email = session?.email ?? "buyer@example.in";
+  if (!session?.email) redirect("/signin?next=/account");
+  const email = session.email;
+  const viewer = await resolveBuyer();
   const firstName = viewer.firstName;
 
   // ── Real buyer-specific data (server stores, this buyer only) ──────────

@@ -13,6 +13,7 @@ import { Shell } from "../Shell";
 import { Banner, Card, StatusPill, EmptyState } from "@/components/ui";
 import { ROLE_DEFS, currentStaff, listStaff, permissionsFor } from "@/lib/staff";
 import { inviteStaffMember, changeStaffRole, setStaffMemberStatus, removeStaffMember, actAsStaff } from "../actions";
+import { actingStore } from "../_lib/store";
 
 export const metadata: Metadata = { title: "Staff & roles" };
 export const dynamic = "force-dynamic";
@@ -38,7 +39,8 @@ function roleLabel(role: string): string {
 
 export default async function StaffPage({ searchParams }: { searchParams: Promise<{ done?: string; err?: string; denied?: string }> }) {
   const { done, err, denied } = await searchParams;
-  const team = await listStaff();
+  // The roster is this store's own — never another store's team.
+  const team = await listStaff(await actingStore());
   const me = await currentStaff();
   const canManage = permissionsFor(me.role).has("staff");
   const msg = (done && MESSAGES[done]) || (err && (MESSAGES[err] ?? MESSAGES[`${err}_err`])) || undefined;

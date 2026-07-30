@@ -31,14 +31,14 @@ import {
   Wheat,
 } from "lucide-react";
 import { MoneyText, Rating, SectionHead } from "@/components/ui";
-import { AdBanner, AdSlot, AdVideo, CampaignLabel } from "@/components/ui/ads";
+import { AdSlot, AdVideo, CampaignLabel } from "@/components/ui/ads";
 import { CLASS_META } from "@/lib/compliance";
 import { publishedPosts } from "@/lib/cms";
 import { mdToHtml } from "@/lib/richtext";
 import { faqJsonLd } from "@/lib/seo";
 import { readFeatures } from "@/lib/features";
 import { parseFaqs, parseGoals, parseHeadedBlocks, parseTestimonials, parseTiles, readSiteContent } from "@/lib/sitecontent";
-import { SELLERS } from "@/lib/sample";
+import { allKyc } from "@/lib/vendor";
 import { ComplianceClass } from "@prisma/client";
 import {
   deals,
@@ -88,8 +88,12 @@ export default async function HomePage() {
   const flashSaleList = await flashSale();
   const bestsellers = [...universe].sort((a, b) => b.rating - a.rating).slice(0, 8);
   const heroTiles = universe.slice(0, 4);
-  const featuredSellers = SELLERS.filter((s) => s.kycState === "KYC_APPROVED").slice(0, 3);
-  const adProduct = universe.find((p) => p.cls === "CBD_WELLNESS" && p.seller === "Vedic Botanicals");
+  // Verified stores, from the real verification register — a store reaches this
+  // strip by passing KYC and having something live to sell, nothing else.
+  const storesWithLive = new Set(universe.map((p) => p.seller));
+  const featuredSellers = (await allKyc())
+    .filter((k) => k.status === "APPROVED" && storesWithLive.has(k.store))
+    .slice(0, 3);
 
   return (
     <>
@@ -196,15 +200,6 @@ export default async function HomePage() {
       {/* ── Today's deals ────────────────────────────────── */}
       <section className="vh-section" style={{ paddingTop: 0 }}>
         <div className="vh-container">
-          {/* Leaderboard banner — configured in Admin → Ads (home-leaderboard) */}
-          {flags.sponsoredSections && <div style={{ marginBottom: "var(--sp-5)" }}>
-            <AdBanner
-              cls="HEMP_FOOD" placement="home-leaderboard" brand="Himalayan Hemp Co."
-              headline="Cold-pressed hemp seed oil — this week's storewide 25% off"
-              body="FSSAI-licensed hemp foods, shipped by the seller." cta="Shop the range" href="/store/himalayan-hemp-co"
-            />
-          </div>}
-
           <SectionHead
             eyebrow="Today's deals"
             title={content.headDeals ?? ""}
@@ -287,47 +282,6 @@ export default async function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* ── Sponsored placement (switchable; A1-safe, always labelled) ── */}
-      {flags.sponsoredSections && <section className="vh-section" style={{ paddingTop: 0 }}>
-        <div className="vh-container">
-          <AdSlot cls="CBD_WELLNESS" placement="home-mid-banner">
-            <div className="vh-row" style={{ gap: "var(--sp-4)", flexWrap: "wrap" }}>
-              <span
-                aria-hidden
-                style={{
-                  display: "inline-flex", alignItems: "center", justifyContent: "center",
-                  width: 64, height: 64, borderRadius: 16, fontSize: "1.8rem",
-                  background: "var(--vh-green-100)", flexShrink: 0,
-                }}
-              >
-                🌿
-              </span>
-              <div style={{ flex: 1, minWidth: 260 }}>
-                <h3 style={{ marginBottom: 4 }}>Vedic Botanicals — the monsoon recovery ritual</h3>
-                <p className="small muted" style={{ marginBottom: 0 }}>
-                  AYUSH-licensed CBD balms and roll-ons, batch-tested at a NABL-accredited lab.
-                  Formulated with hemp extract, shea butter and camphor.
-                </p>
-              </div>
-              {adProduct && (
-                <div className="vh-row" style={{ gap: 12 }}>
-                  <div className="small" style={{ textAlign: "right" }}>
-                    <div style={{ fontWeight: 700, color: "var(--vh-ink)" }}>{adProduct.title}</div>
-                    <strong style={{ color: "var(--vh-ink)" }}><MoneyText paise={adProduct.pricePaise} /></strong>
-                  </div>
-                  <Link href={`/store/${sellerSlug("Vedic Botanicals")}`} className="vh-btn vh-btn-primary vh-btn-sm">
-                    Visit store
-                  </Link>
-                </div>
-              )}
-            </div>
-          </AdSlot>
-          <p className="small muted" style={{ marginTop: 8, marginBottom: 0, fontSize: ".72rem" }}>
-            Sponsored placements are always labelled and never influence your search results.
-          </p>
-        </div>
-      </section>}
 
       {/* ── Shop by health goal ──────────────────────────── */}
       <section className="vh-section vh-section-alt">
@@ -459,11 +413,11 @@ export default async function HomePage() {
           <SectionHead
             eyebrow="Sellers"
             title={content.headSellers ?? ""}
-            sub="Reliability scores reflect fulfilment, returns and compliance history — computed by the platform, not self-reported."
+            sub="Every store here passed licence and business verification before it could list — the details are on each storefront."
           />
           <div className="vh-grid cols-3">
             {featuredSellers.map((s) => (
-              <div key={s.id} className="vh-card">
+              <div key={s.store} className="vh-card">
                 <div className="vh-row" style={{ gap: 12, marginBottom: 10 }}>
                   <span
                     aria-hidden
@@ -473,19 +427,19 @@ export default async function HomePage() {
                       background: "var(--vh-accent)", color: "var(--vh-on-accent)",
                     }}
                   >
-                    {s.name.charAt(0)}
+                    {s.store.charAt(0)}
                   </span>
                   <div>
-                    <div style={{ fontWeight: 800, color: "var(--vh-ink)" }}>{s.name}</div>
-                    <span className="vh-pill vh-pill-ok">Reliability score {s.healthScore}</span>
+                    <div style={{ fontWeight: 800, color: "var(--vh-ink)" }}>{s.store}</div>
+                    <span className="small muted">{s.city}, {s.state}</span>
                   </div>
                 </div>
                 <div className="vh-row" style={{ gap: 6, flexWrap: "wrap", marginBottom: 12 }}>
-                  {s.classes.map((cls) => (
+                  {s.classes.filter((cls) => cls !== "MED_CANNABIS").map((cls) => (
                     <span key={cls} className="vh-cbadge vh-cbadge-ayush">{CLASS_META[cls].short}</span>
                   ))}
                 </div>
-                <Link href={`/store/${sellerSlug(s.name)}`} className="vh-btn vh-btn-outline vh-btn-sm" style={{ gap: 6 }}>
+                <Link href={`/store/${sellerSlug(s.store)}`} className="vh-btn vh-btn-outline vh-btn-sm" style={{ gap: 6 }}>
                   <Store size={14} strokeWidth={2.2} aria-hidden />
                   Visit store
                 </Link>

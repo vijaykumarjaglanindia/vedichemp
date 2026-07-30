@@ -8,10 +8,11 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { Eye, FileDown, MapPin } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
-import { ORDERS, type SampleOrder } from "@/lib/sample";
+import { type SampleOrder } from "@/lib/sample";
 import { readReturns } from "@/lib/engage";
 import { getSession } from "@/lib/auth-lite";
 import { ordersForBuyer } from "@/lib/orders";
@@ -39,7 +40,10 @@ export default async function OrdersPage({
   // `live-<reference>`. They carry a genuine lifecycle status set by
   // fulfilment/return actions — not a fixed PENDING.
   const session = await getSession();
-  const placed: SampleOrder[] = (await ordersForBuyer(session?.email ?? "guest@vedichemp.in")).map((o) => ({
+  // An unverifiable session cookie passes the edge middleware; it must never
+  // resolve to a substitute identity whose orders would then be rendered.
+  if (!session?.email) redirect("/signin?next=/account/orders");
+  const placed: SampleOrder[] = (await ordersForBuyer(session.email)).map((o) => ({
     id: `live-${o.reference}`,
     reference: o.reference,
     placedAt: o.placedAt.slice(0, 10),
@@ -51,10 +55,9 @@ export default async function OrdersPage({
   }));
 
   const returns = await readReturns();
-  // The buyer's real checkout orders, prepended to the illustrative sample
-  // history (src/lib/sample.ts — the documented demo seam that lets the console
-  // be reviewed with realistic content until a live order DB is attached).
-  const rows = [...placed, ...ORDERS]
+  // Every row is one of this buyer's own orders from the order store — a buyer
+  // is never shown someone else's history, and never an illustrative one.
+  const rows = placed
     .map((o) => (returns[o.id] ? { ...o, status: "RETURN_REQUESTED" } : o))
     .filter((o) => {
     if (filter === "open") return OPEN_STATUSES.has(o.status);
@@ -150,7 +153,15 @@ export default async function OrdersPage({
       </div>
 
       <Card pad0>
-        <DataTable columns={columns} rows={rows} empty={<div className="vh-empty">No orders match this filter.</div>} />
+        <DataTable
+          columns={columns}
+          rows={rows}
+          empty={
+            <div className="vh-empty">
+              {filter === "all" ? "No orders yet — anything you order will appear here." : "No orders match this filter."}
+            </div>
+          }
+        />
       </Card>
     </Shell>
   );

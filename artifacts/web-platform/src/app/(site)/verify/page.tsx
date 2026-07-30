@@ -12,8 +12,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { FlaskConical, Search, ShieldCheck } from "lucide-react";
 import { Banner, Card, StatusPill } from "@/components/ui";
-import { CLASS_META } from "@/lib/compliance";
-import { publicProducts, specsFor } from "../_lib/data";
+import { readLiveProducts } from "@/lib/catalog";
+import { CLASS_META, isRegulated, permittedClasses } from "@/lib/compliance";
+import { specsFor } from "../_lib/data";
 
 export const metadata: Metadata = {
   title: "Verify a batch",
@@ -21,13 +22,20 @@ export const metadata: Metadata = {
   alternates: { canonical: "/verify" },
 };
 
-/** batch code → the public product it belongs to (permitted classes only). */
+/**
+ * batch code → the LIVE listing that carries it. The match is against the
+ * listing's own `batchCode` — the field the CoA record is matched to — so a
+ * code verifies here exactly when the platform holds a batch by that name, and
+ * a corrected batch reaches this page the moment compliance decides it.
+ * A MED_CANNABIS code produces the identical "not found" as an unknown one (A1).
+ */
 async function findByBatch(code: string) {
   const norm = code.trim().toUpperCase();
   if (!norm) return null;
-  for (const p of await publicProducts()) {
-    const specs = specsFor(p);
-    if (specs.batch.toUpperCase() === norm) return { product: p, specs };
+  const permitted = permittedClasses({ hasRx: false });
+  for (const p of await readLiveProducts()) {
+    if (!permitted.includes(p.cls) || !p.batchCode) continue;
+    if (p.batchCode.trim().toUpperCase() === norm) return { product: p, specs: specsFor(p) };
   }
   return null;
 }
@@ -58,7 +66,7 @@ export default async function VerifyPage({
         <form method="get" className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
           <div className="vh-field" style={{ flex: "1 1 240px" }}>
             <label className="vh-label" htmlFor="vf-code">Batch code</label>
-            <input className="vh-input mono" id="vf-code" name="code" defaultValue={code ?? ""} placeholder="e.g. VB-2406" maxLength={20} />
+            <input className="vh-input mono" id="vf-code" name="code" defaultValue={code ?? ""} placeholder="Printed next to the mfg. date" maxLength={20} />
           </div>
           <button className="vh-btn vh-btn-primary" type="submit" style={{ alignSelf: "end" }}>
             <Search size={15} strokeWidth={2.2} aria-hidden /> Verify
@@ -77,12 +85,16 @@ export default async function VerifyPage({
                     <div style={{ fontWeight: 800, color: "var(--vh-ink)" }}>{hit.product.title}</div>
                     <div className="small muted">Sold by {hit.product.seller} · {CLASS_META[hit.product.cls].label}</div>
                   </div>
-                  <StatusPill tone={hit.product.labVerified ? "ok" : "neutral"}>
-                    {hit.product.labVerified ? "Lab report verified" : "Licensed food product"}
+                  <StatusPill tone={hit.product.coaState === "APPROVED" ? "ok" : "neutral"}>
+                    {hit.product.coaState === "APPROVED"
+                      ? "Batch lab report approved"
+                      : isRegulated(hit.product.cls)
+                        ? "Batch lab report not approved"
+                        : "No batch lab report required"}
                   </StatusPill>
                 </div>
                 <dl className="small" style={{ display: "grid", gridTemplateColumns: "auto 1fr", gap: "6px 16px", margin: 0 }}>
-                  <dt className="muted">Testing lab</dt><dd style={{ margin: 0 }}>{hit.specs.lab}</dd>
+                  <dt className="muted">Testing / facility</dt><dd style={{ margin: 0 }}>{hit.specs.lab}</dd>
                   <dt className="muted">Ingredients</dt><dd style={{ margin: 0 }}>{hit.specs.ingredients}</dd>
                   <dt className="muted">Net quantity</dt><dd style={{ margin: 0 }}>{hit.specs.netWeight}</dd>
                 </dl>

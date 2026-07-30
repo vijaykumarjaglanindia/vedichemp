@@ -41,12 +41,15 @@ const DEFAULTS: ShippingSettings = {
   zones: DEFAULT_ZONES,
   freeAtPaise: 5_000_00,
   defaultWeightGrams: 250,
-  regulatedBlockedPins: ["19", "37", "69"],
+  // Empty by default: a PIN is refused a sale only once the courier network has
+  // actually been proven unable to do an age-checked handover there, and that
+  // is an operator's finding to record at /admin/shipping — never a literal.
+  regulatedBlockedPins: [],
 };
 
 declare global {
   // eslint-disable-next-line no-var
-  var __vhShipping: Partial<Pick<ShippingSettings, "freeAtPaise" | "defaultWeightGrams">> & { rates?: Record<string, { basePaise: number; perKgPaise: number }> } | undefined;
+  var __vhShipping: Partial<Pick<ShippingSettings, "freeAtPaise" | "defaultWeightGrams" | "regulatedBlockedPins">> & { rates?: Record<string, { basePaise: number; perKgPaise: number }> } | undefined;
 }
 
 function overrides() {
@@ -61,20 +64,29 @@ export async function readShipping(): Promise<ShippingSettings> {
     zones,
     freeAtPaise: o.freeAtPaise ?? DEFAULTS.freeAtPaise,
     defaultWeightGrams: o.defaultWeightGrams ?? DEFAULTS.defaultWeightGrams,
-    regulatedBlockedPins: DEFAULTS.regulatedBlockedPins,
+    regulatedBlockedPins: o.regulatedBlockedPins ?? DEFAULTS.regulatedBlockedPins,
   };
 }
 
-/** Admin edits a zone's base + per-kg rate, and/or the free-shipping threshold. */
+/** A PIN prefix is 2–6 digits; anything else would silently widen the block. */
+export function normalisePinPrefixes(input: string[] | string): string[] {
+  const raw = Array.isArray(input) ? input : input.split(/[\s,]+/);
+  return [...new Set(raw.map((p) => p.trim()).filter((p) => /^[1-8]\d{1,5}$/.test(p)))].sort();
+}
+
+/** Admin edits a zone's base + per-kg rate, the free-shipping threshold, and
+ *  the PIN prefixes the courier network cannot age-check a handover in. */
 export async function writeShipping(patch: {
   rates?: Record<string, { basePaise: number; perKgPaise: number }>;
   freeAtPaise?: number;
   defaultWeightGrams?: number;
+  regulatedBlockedPins?: string[] | string;
 }): Promise<void> {
   const o = overrides();
   if (patch.rates) o.rates = { ...(o.rates ?? {}), ...patch.rates };
   if (patch.freeAtPaise !== undefined) o.freeAtPaise = patch.freeAtPaise;
   if (patch.defaultWeightGrams !== undefined) o.defaultWeightGrams = patch.defaultWeightGrams;
+  if (patch.regulatedBlockedPins !== undefined) o.regulatedBlockedPins = normalisePinPrefixes(patch.regulatedBlockedPins);
 }
 
 export async function resolveZone(destState: string | undefined, settings?: ShippingSettings): Promise<ShippingZone> {

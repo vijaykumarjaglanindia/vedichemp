@@ -17,7 +17,8 @@ import { Columns, Donut } from "@/components/ui/charts";
 import { allRuns, type SettlementRun } from "@/lib/settlements";
 import { financeSummary, TCS_RATE_BPS, TDS_RATE_BPS } from "@/lib/finance-summary";
 import { createSettlementRun, postSettlementRun } from "../actions";
-import { PERIOD_CLOSE_CHECKLIST } from "../_lib/data";
+import { periodCloseChecklist } from "@/lib/periodclose";
+import { allKyc } from "@/lib/vendor";
 import { initiatePeriodClose } from "../actions";
 
 export const metadata: Metadata = { title: "Finance · Admin" };
@@ -44,7 +45,6 @@ const columns: Column<SettlementRun>[] = [
       );
     } },
 ];
-const closeDone = PERIOD_CLOSE_CHECKLIST.filter((c) => c.done).length;
 
 const CLOSE_NOTES: Record<string, { sev: "ok" | "danger" | "warn"; title: string; body: string }> = {
   initiated: { sev: "ok", title: "Period close initiated (maker)", body: "A second, different admin must now sign off before the period actually closes." },
@@ -70,6 +70,11 @@ export default async function AdminFinancePage({
   const { close, st } = await searchParams;
   const runs = await allRuns();
   const fin = await financeSummary();
+  // A run can only be created for a store the platform has actually verified —
+  // the same KYC record the verification queue decides on.
+  const settleable = (await allKyc()).filter((r) => r.status === "APPROVED");
+  const closeChecklist = await periodCloseChecklist();
+  const closeDone = closeChecklist.filter((c) => c.done).length;
   const totalPending = runs.filter((s) => s.status === "AWAITING_CHECKER").reduce((sum, s) => sum + s.netPaise, 0);
   const totalPosted = runs.filter((s) => s.status === "POSTED").reduce((sum, s) => sum + s.netPaise, 0);
   const stMsg = st ? ST_MSG[st] : undefined;
@@ -106,18 +111,23 @@ export default async function AdminFinancePage({
           <Card title="Seller settlements" action={<span className="small muted">Maker ≠ checker · both human · service accounts barred</span>} pad0>
             <DataTable columns={columns} rows={runs} />
             <div style={{ padding: "12px 16px", borderTop: "1px solid var(--vh-line)" }}>
-              <form action={createSettlementRun} className="vh-row" style={{ gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
-                <div className="vh-field" style={{ minWidth: 220 }}>
-                  <label className="vh-label" htmlFor="st-seller">Create a run (you become its maker)</label>
-                  <select className="vh-input" id="st-seller" name="seller" defaultValue="Vedic Botanicals">
-                    <option value="Vedic Botanicals">Vedic Botanicals</option>
-                    <option value="Himalayan Hemp Co.">Himalayan Hemp Co.</option>
-                    <option value="Ananda Foods">Ananda Foods</option>
-                  </select>
-                </div>
-                <button className="vh-btn vh-btn-sm" type="submit">Create payout run</button>
-                <span className="small muted">Amounts derive from delivered orders — not typed in.</span>
-              </form>
+              {settleable.length === 0 ? (
+                <p className="small muted" style={{ margin: 0 }}>
+                  No verified storefront to settle yet — a run can only be created for a store whose
+                  verification is approved. <Link href="/admin/verification">Open the verification queue →</Link>
+                </p>
+              ) : (
+                <form action={createSettlementRun} className="vh-row" style={{ gap: 8, alignItems: "flex-end", flexWrap: "wrap" }}>
+                  <div className="vh-field" style={{ minWidth: 220 }}>
+                    <label className="vh-label" htmlFor="st-seller">Create a run (you become its maker)</label>
+                    <select className="vh-input" id="st-seller" name="seller" defaultValue={settleable[0]!.store}>
+                      {settleable.map((r) => <option key={r.store} value={r.store}>{r.store}</option>)}
+                    </select>
+                  </div>
+                  <button className="vh-btn vh-btn-sm" type="submit">Create payout run</button>
+                  <span className="small muted">Amounts derive from delivered orders — not typed in.</span>
+                </form>
+              )}
             </div>
           </Card>
         </div>
@@ -188,21 +198,22 @@ export default async function AdminFinancePage({
 
         <Card
           title={<span className="vh-row" style={{ gap: 8 }}><CalendarCheck2 {...I} aria-hidden /> Period close</span>}
-          action={<span className="vh-row" style={{ gap: 8 }}><span className="small muted">Illustrative checklist</span><StatusPill tone={closeDone === PERIOD_CLOSE_CHECKLIST.length ? "ok" : "warn"}>{closeDone}/{PERIOD_CLOSE_CHECKLIST.length}</StatusPill></span>}
+          action={<span className="vh-row" style={{ gap: 8 }}><span className="small muted">Derived from live settlement, payout and return state</span><StatusPill tone={closeDone === closeChecklist.length ? "ok" : "warn"}>{closeDone}/{closeChecklist.length}</StatusPill></span>}
         >
           <p className="small muted" style={{ marginTop: 0 }}>
             Closing a settlement period locks every posted statement in it against further linkage and generates the
             statutory filing bundle. Period close itself is a maker–checker action, and — like a posted settlement —
-            a closed period cannot be reopened; a correction is a new period.
+            a closed period cannot be reopened; a correction is a new period. Each item below is read from the money
+            stores every time this page loads; none of them can be ticked by hand.
           </p>
           <ul style={{ listStyle: "none", margin: "0 0 var(--sp-2)", padding: 0, display: "grid", gap: 8 }}>
-            {PERIOD_CLOSE_CHECKLIST.map((c) => (
-              <li key={c.label} className="vh-row small" style={{ gap: 8 }}>
+            {closeChecklist.map((c) => (
+              <li key={c.key} className="vh-row small" style={{ gap: 8 }}>
                 {c.done
                   ? <CheckCircle2 size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)", flexShrink: 0 }} />
                   : <Circle size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-line)", flexShrink: 0 }} />}
                 <span style={{ color: c.done ? undefined : "var(--vh-ink)" }}>
-                  {c.label} {c.done ? <span className="muted">— done</span> : <span className="muted">— pending</span>}
+                  {c.label} {c.done ? <span className="muted">— clear</span> : <span className="muted">— {c.detail ?? "open"}</span>}
                 </span>
               </li>
             ))}

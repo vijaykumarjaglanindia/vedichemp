@@ -20,6 +20,7 @@ import { CLASS_META } from "@/lib/compliance";
 import { addLicence, requestOwnerTransfer, saveStoreAnnouncement, saveStoreAvailability, updateStorefront } from "../actions";
 import { readStoreAnnouncement, readStoreAvailability, readStoreCopy } from "@/lib/engage";
 import { storeAggregate } from "@/lib/store-reviews";
+import { kycFor, statusLabel } from "@/lib/vendor";
 import { listStaff, ROLE_DEFS } from "@/lib/staff";
 import { cookies } from "next/headers";
 
@@ -36,13 +37,16 @@ export default async function StorePage({
   const { transfer, err, licence, avail, ann } = await searchParams;
   const copyParam = (await searchParams).copy;
   const store = await actingStore();
-  const { SELLER, PROFILE, LICENCES, CAPABILITY_MATRIX, STORE_PREVIEW } = sellerData(store);
+  const { SELLER, LICENCES, CAPABILITY_MATRIX, STORE_PREVIEW } = sellerData(store);
   const storeCopy = await readStoreCopy();
   const availability = await readStoreAvailability();
   const announcement = await readStoreAnnouncement();
   // Real store rating (from moderated buyer reviews) and real team roster.
   const storeAgg = await storeAggregate(STORE_PREVIEW.handle);
-  const staff = await listStaff();
+  const staff = await listStaff(store);
+  // Tax and bank identity come from the store's own KYC record — the only one
+  // the platform actually holds. No record means nothing to show.
+  const kyc = kycFor(store);
   const jar = await cookies();
   let submittedLicences: { type: string; number: string; validTo: string; status: string }[] = [];
   try { submittedLicences = JSON.parse(jar.get("vh-sell-lic")?.value ?? "[]") as typeof submittedLicences; } catch { submittedLicences = []; }
@@ -178,7 +182,7 @@ export default async function StorePage({
               </div>
               <div className="vh-field">
                 <label className="vh-label" htmlFor="regState">Registered state</label>
-                <input className="vh-input" id="regState" name="regState" type="text" defaultValue={PROFILE.regState} readOnly />
+                <input className="vh-input" id="regState" name="regState" type="text" defaultValue={kyc?.state ?? "—"} readOnly />
                 <span className="vh-help">Changing state re-runs KYC.</span>
               </div>
             </div>
@@ -188,18 +192,28 @@ export default async function StorePage({
             </div>
           </Card>
 
-          <Card title="Business & tax details">
-            <div className="vh-grid" style={{ gap: 8 }}>
-              <div className="vh-row-between"><span className="small muted">GSTIN</span><span className="mono small">{SELLER.gstin}</span></div>
-              <div className="vh-row-between"><span className="small muted">PAN</span><span className="mono small">{PROFILE.pan}</span></div>
-              <div className="vh-row-between"><span className="small muted">Bank account</span><span className="mono small">{PROFILE.bankMasked}</span></div>
-              <div className="vh-row-between">
-                <span className="small muted">Penny-drop verification</span>
-                {PROFILE.bankMasked !== "—"
-                  ? <StatusPill tone="ok">Verified — {PROFILE.bankName}</StatusPill>
-                  : <StatusPill tone="neutral">Not on file — add payout bank</StatusPill>}
+          <Card title="Business & tax details" action={<Link className="small" href="/seller/verification" style={{ fontWeight: 700 }}>Manage</Link>}>
+            {kyc ? (
+              <div className="vh-grid" style={{ gap: 8 }}>
+                <div className="vh-row-between"><span className="small muted">GSTIN</span><span className="mono small">{kyc.gstin}</span></div>
+                <div className="vh-row-between"><span className="small muted">PAN</span><span className="mono small">{kyc.pan}</span></div>
+                <div className="vh-row-between"><span className="small muted">Bank account</span><span className="mono small">••••{kyc.bankAccountLast4} · {kyc.bankIfsc}</span></div>
+                <div className="vh-row-between">
+                  <span className="small muted">Penny-drop verification</span>
+                  {kyc.status === "APPROVED"
+                    ? <StatusPill tone="ok">Verified — {kyc.bankName}</StatusPill>
+                    : <StatusPill tone="warn">{statusLabel(kyc.status)} — not verified yet</StatusPill>}
+                </div>
               </div>
-            </div>
+            ) : (
+              <div className="vh-grid" style={{ gap: 10 }}>
+                <span className="small muted">
+                  Nothing on file yet. Your GSTIN, PAN and payout bank are recorded when you complete store
+                  verification — and a payout account is only marked verified once the penny-drop clears.
+                </span>
+                <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/verification" style={{ justifySelf: "start" }}>Complete verification</Link>
+              </div>
+            )}
           </Card>
         </div>
       </div>

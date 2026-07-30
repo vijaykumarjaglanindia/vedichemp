@@ -4,23 +4,25 @@
  * The single landing page for every regulated workflow: prescription
  * verification (A4), lab report / CoA verification (A2), product recalls
  * (A3), restricted products, content moderation, advertisement review and
- * pharmacovigilance. COMPLIANCE_QUEUE is rendered here as the active
- * worklist that every sub-card ultimately feeds from.
+ * pharmacovigilance. The active worklist is the union of the live queues the
+ * sub-cards work from, so the hub can never disagree with them.
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
+import type { ComplianceClass } from "@prisma/client";
 import {
   Stethoscope, FlaskConical, Siren, Lock, Brush, Megaphone, HeartPulse, ScrollText,
-  Timer, CheckCircle2, XCircle, Eye,
+  CheckCircle2, XCircle, Eye,
 } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, Banner, ComplianceBadge, EmptyState } from "@/components/ui";
-import { COMPLIANCE_QUEUE, AUDIT } from "@/lib/sample";
-import { SENSITIVE_ACCESS_24H, slaCountdown } from "../_lib/data";
 import { closeRecall, initiateRecall, decidePrescriptionAction, revealPrescriptionAction, correctDispenseAction } from "../actions";
 import { pendingPrescriptions, allPrescriptions, accessLog, SENSITIVE_REASONS, reasonLabel } from "@/lib/prescriptions";
+import { readCatalog } from "@/lib/catalog";
+import { reviewQueue } from "@/lib/ads";
+import { readAudit } from "@/lib/audit";
 import { openRecalls, recallEvents } from "@/lib/recalls";
 import { dispenseRegister, supersededSeqs } from "@/lib/dispensing";
 import { allEvents as allAdverse, triageFor } from "@/lib/adverse";
@@ -29,6 +31,10 @@ import { triageAdverseEvent } from "../actions";
 export const metadata: Metadata = { title: "Compliance · Admin" };
 
 const I = { size: 18, strokeWidth: 2.2 } as const;
+
+/** Audit actions that belong to a compliance officer's day, for the activity
+ *  feed at the foot of this page. The trail itself is never filtered. */
+const COMPLIANCE_ACTION = /^(COA_|RX_|PRESCRIPTION_|SENSITIVE_|RECALL_|ADVERSE_|DISPENSE_|LISTING_(APPROVE|REJECT|SUSPEND|TAKEDOWN)|CLAIMS_)/;
 
 const SUB_CARDS: { id: string; icon: ReactNode; title: string; href: string; desc: string }[] = [
   { id: "rx", icon: <Stethoscope {...I} aria-hidden />, title: "Prescription verification", href: "#rx", desc: "Pharmacist-only. Logged reason. Buyer notified on every view." },
@@ -75,10 +81,24 @@ export default async function AdminCompliancePage({
   const SEV_TONE = { MILD: "ok", MODERATE: "warn", SEVERE: "danger" } as const;
   const rxPending = await pendingPrescriptions();
   const rxApproved = (await allPrescriptions()).filter((r) => r.status === "APPROVED");
-  const liveAccess = await accessLog();
-  const accessRows = liveAccess.length
-    ? liveAccess.map((e) => ({ id: e.id, at: e.at, actor: e.viewer, role: e.viewerRole, reason: e.reasonCode, subject: e.prescriptionId, buyerNotified: e.buyerNotified, outcome: e.outcome }))
-    : SENSITIVE_ACCESS_24H;
+  // A4: the only rows here are real reads. An empty log means nobody has
+  // opened a health record — which is the reassuring state, not a gap to fill.
+  const accessRows = (await accessLog()).map((e) => ({
+    id: e.id, at: e.at, actor: e.viewer, role: e.viewerRole, reason: e.reasonCode,
+    subject: e.prescriptionId, buyerNotified: e.buyerNotified, outcome: e.outcome,
+  }));
+
+  // The worklist is the union of the three queues this page and its siblings
+  // already work from — never a list of its own that could drift from them.
+  const coaPending = (await readCatalog()).filter((p) => p.coaState === "PENDING_REVIEW");
+  const adPending = await reviewQueue();
+  const worklist: { id: string; kind: string; subject: string; cls?: ComplianceClass; href: string }[] = [
+    ...rxPending.map((r) => ({ id: `rx-${r.id}`, kind: "Rx verification", subject: `${r.id} · uploaded ${r.uploadedAt.slice(0, 10)}`, href: "#rx" })),
+    ...coaPending.map((p) => ({ id: `coa-${p.id}`, kind: "CoA review", subject: `${p.title}${p.batchCode ? ` · batch ${p.batchCode}` : ""}`, cls: p.cls, href: "/admin/catalogue#coa-queue" })),
+    ...adPending.map((a) => ({ id: `ad-${a.ad.id}`, kind: "Ad creative review", subject: `${a.campaign.seller} · ${a.campaign.name}`, ...(a.product ? { cls: a.product.cls } : {}), href: "/admin/ads" })),
+  ];
+
+  const recentActivity = (await readAudit(60)).filter((e) => COMPLIANCE_ACTION.test(e.action)).slice(0, 10);
   const RX_MSG: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {
     approve: { sev: "ok", text: "Prescription verified — the buyer can order eligible items, and they've been notified." },
     reject: { sev: "ok", text: "Prescription rejected — the buyer is asked to re-upload." },
@@ -112,35 +132,32 @@ export default async function AdminCompliancePage({
           ))}
         </div>
 
-        <Card title="Active worklist" action={<StatusPill tone={COMPLIANCE_QUEUE.length ? "warn" : "ok"}>{COMPLIANCE_QUEUE.length} open</StatusPill>} pad0>
-          <div style={{ overflowX: "auto" }}>
-            <table className="vh-table">
-              <thead>
-                <tr><th>Kind</th><th>Subject</th><th>Class</th><th>SLA</th><th>Countdown</th><th>Action</th></tr>
-              </thead>
-              <tbody>
-                {COMPLIANCE_QUEUE.map((q) => {
-                  const cd = slaCountdown(q.sla, q.ageHours);
-                  return (
+        <Card title="Active worklist" action={<StatusPill tone={worklist.length ? "warn" : "ok"}>{worklist.length} open</StatusPill>} pad0>
+          {worklist.length === 0 ? (
+            <div style={{ padding: 12 }}>
+              <EmptyState icon="✅" headline="Nothing waiting on compliance" sub="Prescriptions to verify, batch CoAs to decide and ad creatives to review all appear here the moment they arrive." />
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table className="vh-table">
+                <thead>
+                  <tr><th>Kind</th><th>Subject</th><th>Class</th><th>Action</th></tr>
+                </thead>
+                <tbody>
+                  {worklist.map((q) => (
                     <tr key={q.id}>
                       <td>{q.kind}</td>
                       <td>{q.subject}</td>
-                      <td>{q.class ? <ComplianceBadge cls={q.class} /> : <span className="muted small">—</span>}</td>
-                      <td className="small">{q.sla} · age {q.ageHours}h</td>
+                      <td>{q.cls ? <ComplianceBadge cls={q.cls} /> : <span className="muted small">—</span>}</td>
                       <td>
-                        <StatusPill tone={cd.tone}>
-                          <Timer size={12} strokeWidth={2.2} aria-hidden /> {cd.label}
-                        </StatusPill>
-                      </td>
-                      <td>
-                        <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/compliance#${q.id}`}>Claim</Link>
+                        <Link className="vh-btn vh-btn-sm vh-btn-primary" href={q.href}>Open</Link>
                       </td>
                     </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
         </Card>
 
         <div id="rx" style={{ scrollMarginTop: 90 }}>
@@ -225,44 +242,50 @@ export default async function AdminCompliancePage({
           action={<span className="small muted">Sensitive-access log · records only added, never edited</span>}
           pad0
         >
-          <div style={{ overflowX: "auto" }}>
-            <table className="vh-table">
-              <thead>
-                <tr><th>At</th><th>Actor</th><th>Reason code</th><th>Subject</th><th>Buyer notified</th><th>Outcome</th></tr>
-              </thead>
-              <tbody>
-                {accessRows.map((r) => {
-                  const denied = r.outcome === "DENIED";
-                  return (
-                    <tr key={r.id} style={denied ? { background: "color-mix(in srgb, var(--vh-danger) 8%, transparent)" } : undefined}>
-                      <td className="small muted">{r.at}</td>
-                      <td>
-                        <div className="mono small">{r.actor}</div>
-                        <div className="small muted">{r.role}</div>
-                      </td>
-                      <td className="mono small">{r.reason}</td>
-                      <td className="mono small">{r.subject}</td>
-                      <td>
-                        <span className="vh-row small" style={{ gap: 6 }}>
-                          {r.buyerNotified
-                            ? <><CheckCircle2 size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)" }} /> notified</>
-                            : <span className="muted">— not viewed</span>}
-                        </span>
-                      </td>
-                      <td>
-                        <span className="vh-row small" style={{ gap: 6 }}>
-                          {denied
-                            ? <XCircle size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-danger)" }} />
-                            : <CheckCircle2 size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)" }} />}
-                          <StatusPill tone={denied ? "danger" : "ok"}>{r.outcome}</StatusPill>
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
+          {accessRows.length === 0 ? (
+            <div style={{ padding: 12 }}>
+              <EmptyState icon="🔒" headline="No sensitive reads recorded" sub="Every view of a prescription or medical note lands here with its reason code, before the file can be opened — including the ones that were refused." />
+            </div>
+          ) : (
+            <div style={{ overflowX: "auto" }}>
+              <table className="vh-table">
+                <thead>
+                  <tr><th>At</th><th>Actor</th><th>Reason code</th><th>Subject</th><th>Buyer notified</th><th>Outcome</th></tr>
+                </thead>
+                <tbody>
+                  {accessRows.map((r) => {
+                    const denied = r.outcome === "DENIED";
+                    return (
+                      <tr key={r.id} style={denied ? { background: "color-mix(in srgb, var(--vh-danger) 8%, transparent)" } : undefined}>
+                        <td className="small muted">{r.at}</td>
+                        <td>
+                          <div className="mono small">{r.actor}</div>
+                          <div className="small muted">{r.role}</div>
+                        </td>
+                        <td className="mono small">{r.reason}</td>
+                        <td className="mono small">{r.subject}</td>
+                        <td>
+                          <span className="vh-row small" style={{ gap: 6 }}>
+                            {r.buyerNotified
+                              ? <><CheckCircle2 size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)" }} /> notified</>
+                              : <span className="muted">— not viewed</span>}
+                          </span>
+                        </td>
+                        <td>
+                          <span className="vh-row small" style={{ gap: 6 }}>
+                            {denied
+                              ? <XCircle size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-danger)" }} />
+                              : <CheckCircle2 size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)" }} />}
+                            <StatusPill tone={denied ? "danger" : "ok"}>{r.outcome}</StatusPill>
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
           <p className="small muted" style={{ margin: 0, padding: "12px 18px 16px" }}>
             A <code>DENIED</code> row means the actor&rsquo;s role did not hold the Rx-viewer scope, so the server
             refused before any key resolved. Denied attempts are logged and the buyer is notified of the attempt too.
@@ -466,25 +489,30 @@ export default async function AdminCompliancePage({
           </Card>
         </div>
 
-        <Card title="Recent compliance activity" action={<span className="small muted">Pseudonymised · denied attempts included</span>}>
-          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
-            {AUDIT.map((a) => {
-              const denied = a.outcome === "DENIED";
-              return (
-                <li key={a.id} className="vh-row-between" style={{ gap: 8 }}>
-                  <span className="small vh-row" style={{ gap: 8, minWidth: 0 }}>
-                    {denied
-                      ? <XCircle size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-danger)", flexShrink: 0 }} />
-                      : <CheckCircle2 size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)", flexShrink: 0 }} />}
-                    <span>
-                      <span className="mono muted">{a.actor}</span> · {a.action.replace(/_/g, " ")} · reason {a.reason}
+        <Card title="Recent compliance activity" action={<Link className="small" href="/admin/audit">Full audit trail →</Link>}>
+          {recentActivity.length === 0 ? (
+            <EmptyState icon="🧾" headline="No compliance actions yet" sub="Every CoA decision, prescription verification, sensitive read and recall event lands here — denied attempts included." />
+          ) : (
+            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
+              {recentActivity.map((a, i) => {
+                const denied = a.outcome === "DENIED";
+                return (
+                  <li key={`${a.at}-${i}`} className="vh-row-between" style={{ gap: 8 }}>
+                    <span className="small vh-row" style={{ gap: 8, minWidth: 0 }}>
+                      {denied
+                        ? <XCircle size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-danger)", flexShrink: 0 }} />
+                        : <CheckCircle2 size={15} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-ok)", flexShrink: 0 }} />}
+                      <span>
+                        <span className="mono muted">{a.actor}</span> · {a.action.replace(/_/g, " ")} · {a.target}
+                        {a.note ? <span className="muted"> · {a.note}</span> : null}
+                      </span>
                     </span>
-                  </span>
-                  <StatusPill tone={a.outcome === "SUCCESS" ? "ok" : denied ? "danger" : "warn"}>{a.outcome}</StatusPill>
-                </li>
-              );
-            })}
-          </ul>
+                    <StatusPill tone={denied ? "danger" : "ok"}>{a.outcome}</StatusPill>
+                  </li>
+                );
+              })}
+            </ul>
+          )}
         </Card>
       </div>
     </Shell>

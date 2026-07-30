@@ -17,8 +17,7 @@ import {
   ShieldCheck, Percent, ReceiptText, Truck, CreditCard, BellRing, ScrollText, KeyRound, ToggleLeft, UserPlus,
 } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, StatusPill, Banner } from "@/components/ui";
-import { API_KEYS } from "../_lib/data";
+import { Card, StatusPill, Banner, EmptyState } from "@/components/ui";
 import { ADMIN_ROLES, SOD_PAIRS, listAdmins } from "@/lib/roles";
 import { listFlags, listPendingFlagChanges, flagChangeLog } from "@/lib/flags";
 import { grantRoleAction, revokeRoleAction, proposeFlagAction, decideFlagAction } from "./actions";
@@ -235,20 +234,14 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
         </div>
 
         <Card title={<span className="vh-row" style={{ gap: 8 }}><KeyRound {...I} aria-hidden /> API keys</span>} pad0>
-          <table className="vh-table">
-            <thead><tr><th>Key</th><th>Scope</th></tr></thead>
-            <tbody>
-              {API_KEYS.map((k) => (
-                <tr key={k.id}>
-                  <td>
-                    <div style={{ fontWeight: 600 }}>{k.name}</div>
-                    <div className="mono small muted">{k.masked}</div>
-                  </td>
-                  <td className="mono small">{k.scope}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <div style={{ padding: 12 }}>
+            <EmptyState
+              icon="🔑"
+              headline="No API keys issued"
+              sub="A service-account key appears here once one is created. Outbound providers configured by environment variable are listed on Integrations instead — they hold their own credentials, not keys minted here."
+              cta={{ label: "Open integrations →", href: "/admin/integrations" }}
+            />
+          </div>
           <p className="small muted" style={{ margin: 0, padding: "12px 18px 16px" }}>
             Service-account API keys are scoped and rotatable, and are structurally barred from being a maker or
             checker on any money-moving action. Full key material is shown once at creation, never again.

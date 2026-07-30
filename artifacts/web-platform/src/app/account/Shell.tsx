@@ -8,19 +8,22 @@
  *
  * Per spec §0.4 shell chrome, an Rx status chip renders on every dashboard
  * page whenever the buyer has any prescription: amber when it expires within
- * 15 days, red when expired, info while an upload is under review.
+ * 15 days, red when expired, info while an upload is under review. It is
+ * resolved from the buyer's OWN rows in the live prescription store — a buyer
+ * with no prescription gets no chip at all.
  */
 
 import type { ReactNode } from "react";
 import Link from "next/link";
-import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import {
   LayoutDashboard, Package, MapPin, RefreshCw, Stethoscope, Wallet,
   Heart, UserRound, Bell, LifeBuoy, Building2,
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
-import { PRESCRIPTIONS, daysUntil } from "./_lib/data";
+import { daysUntil } from "./_lib/data";
 import { getSession } from "@/lib/auth-lite";
+import { myPrescriptions } from "@/lib/prescriptions";
 import { unreadCount } from "@/lib/notify";
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
@@ -43,31 +46,26 @@ const BUYER_NAV: NavGroup[] = [
   },
 ];
 
-async function RxChip(): Promise<ReactNode> {
-  const jar = await cookies();
-  let uploads: { status?: string }[] = [];
-  try { uploads = JSON.parse(jar.get("vh-rx")?.value ?? "[]") as { status?: string }[]; } catch { uploads = []; }
-
-  if (uploads.length > 0) {
-    return (
-      <Link href="/account/medical" className="vh-pill vh-pill-info" style={{ textDecoration: "none" }}>
-        Rx under review
-      </Link>
-    );
-  }
-  const rx = PRESCRIPTIONS[0];
-  if (!rx) return null;
-  const days = daysUntil(rx.validTill);
-  const expired = rx.status === "EXPIRED" || days < 0;
+function chip(className: string, label: string): ReactNode {
   return (
-    <Link
-      href="/account/medical"
-      className={`vh-pill ${expired ? "vh-pill-danger" : days <= 15 ? "vh-pill-warn" : "vh-pill-ok"}`}
-      style={{ textDecoration: "none" }}
-    >
-      {expired ? "Rx expired · renew" : days <= 15 ? `Rx expires in ${days}d` : "Rx active"}
+    <Link href="/account/medical" className={`vh-pill ${className}`} style={{ textDecoration: "none" }}>
+      {label}
     </Link>
   );
+}
+
+async function RxChip(email: string): Promise<ReactNode> {
+  const rows = await myPrescriptions(email);
+  if (rows.some((r) => r.status === "PENDING_REVIEW")) return chip("vh-pill-info", "Rx under review");
+
+  const approved = rows.find((r) => r.status === "APPROVED");
+  if (approved) {
+    const days = daysUntil(approved.validTill);
+    return days <= 15 ? chip("vh-pill-warn", `Rx expires in ${days}d`) : chip("vh-pill-ok", "Rx active");
+  }
+  if (rows.some((r) => r.status === "EXPIRED")) return chip("vh-pill-danger", "Rx expired · renew");
+  // No prescription on file (or only a rejected one) — no status to report.
+  return null;
 }
 
 export async function Shell({
@@ -80,7 +78,11 @@ export async function Shell({
   children: ReactNode;
 }) {
   const session = await getSession();
-  const email = session?.email ?? "guest@vedichemp.in";
+  // The edge middleware only checks that a session cookie EXISTS; this is where
+  // it is verified. A cookie that fails verification is signed out, never
+  // resolved to a substitute buyer.
+  if (!session?.email) redirect(`/signin?next=${encodeURIComponent(active)}`);
+  const email = session.email;
   return (
     <ConsoleShell
       brand="🌿 My Account"
@@ -89,11 +91,11 @@ export async function Shell({
       breadcrumb={breadcrumb}
       title={title}
       actions={actions}
-      topbarExtra={await RxChip()}
+      topbarExtra={await RxChip(email)}
       bellHref="/account/notifications"
       bellCount={await unreadCount("buyer", email)}
-      userLabel={session?.name || "My account"}
-      userSub={session?.email ?? "Guest session"}
+      userLabel={session.name || "My account"}
+      userSub={email}
     >
       {children}
     </ConsoleShell>

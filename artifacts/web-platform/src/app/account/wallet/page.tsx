@@ -6,9 +6,9 @@
  */
 
 import type { Metadata } from "next";
-import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
-import { Landmark, PieChart, ReceiptText, TrendingUp } from "lucide-react";
+import { PieChart, ReceiptText, TrendingUp } from "lucide-react";
 import { Shell } from "../Shell";
 import { Banner, Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
 import { readCommerce } from "@/lib/commerce";
@@ -56,7 +56,11 @@ export default async function WalletPage({
   searchParams: Promise<{ gift?: string }>;
 }) {
   const { gift } = await searchParams;
-  const email = (await getSession())?.email ?? "buyer@example.in";
+  // A ledger is only ever shown to the account that owns it. An unverifiable
+  // session cookie is signed out, never resolved to a substitute buyer.
+  const session = await getSession();
+  if (!session?.email) redirect("/signin?next=/account/wallet");
+  const email = session.email;
   const balance = await balancePaise(email);
   const rows = await ledger(email);
   const segments = splitSegments(await creditBreakdown(email));
@@ -94,7 +98,7 @@ export default async function WalletPage({
   return (
     <Shell active="/account/wallet" breadcrumb={["My Account", "Wallet"]} title="Wallet">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
-        <div className="vh-grid cols-3" style={{ alignItems: "stretch" }}>
+        <div className="vh-grid cols-2" style={{ alignItems: "stretch" }}>
           {/* Balance + trend */}
           <Card title={title(<TrendingUp {...I} />, "Balance")}>
             <div className="vh-stat" style={{ marginBottom: 8 }}>
@@ -126,23 +130,6 @@ export default async function WalletPage({
               </ul>
             </div>
           </Card>
-
-          {/* Withdrawals — gated with clear remediation */}
-          <Card title={title(<Landmark {...I} />, "Withdraw to bank")}>
-            <div className="vh-row" style={{ gap: 8, marginBottom: 8 }}>
-              <StatusPill tone="warn">Identity not verified</StatusPill>
-            </div>
-            <p className="small muted" style={{ margin: "0 0 8px" }}>
-              Withdrawing cashback or refunds to your bank account unlocks after a one-time identity
-              verification. Promo credit is non-withdrawable and can only be used against orders.
-            </p>
-            <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/account/profile#security">
-              Verify identity to withdraw
-            </Link>
-            <p className="small muted" style={{ margin: "8px 0 0" }}>
-              Takes about 2 minutes in Profile → Security.
-            </p>
-          </Card>
         </div>
 
         <Card
@@ -150,7 +137,11 @@ export default async function WalletPage({
           action={<span className="small muted">Every entry is permanent — nothing is edited or deleted</span>}
           pad0
         >
-          <DataTable columns={columns} rows={rows} />
+          <DataTable
+            columns={columns}
+            rows={rows}
+            empty={<div className="vh-empty">No wallet activity yet — cashback, refunds and credits will appear here.</div>}
+          />
         </Card>
 
         <div id="giftcard" style={{ scrollMarginTop: 90 }}>

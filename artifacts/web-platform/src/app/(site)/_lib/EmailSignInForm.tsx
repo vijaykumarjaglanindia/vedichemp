@@ -42,6 +42,10 @@ export async function EmailSignInForm({
   emailPlaceholder?: string;
   help?: string;
 }) {
+  // The seeded credentials are a demo affordance, so they ship only when the
+  // deployment explicitly asks for one — and never on the operator door, whose
+  // seed account is the platform owner.
+  const showDemoHint = process.env.VH_DEMO === "1" && role !== "ADMIN";
   // ── Email one-time code mode (EMAIL_API_KEY / EMAIL_OTP set) ──
   if (await emailOtpEnabled()) {
     if (otpSent) {
@@ -130,10 +134,12 @@ export async function EmailSignInForm({
           New here? <Link href={`${back}?mode=register`} style={{ fontWeight: 700 }}>Create a buyer account</Link>
         </p>
       )}
-      <p className="small muted" style={{ margin: 0, textAlign: "center", opacity: 0.85 }}>
-        Demo login — <span className="mono">{role === "SELLER" ? SEED_CREDENTIALS.seller : role === "ADMIN" ? SEED_CREDENTIALS.admin : SEED_CREDENTIALS.buyer}</span>
-        {" / "}<span className="mono">{SEED_CREDENTIALS.password}</span>
-      </p>
+      {showDemoHint && (
+        <p className="small muted" style={{ margin: 0, textAlign: "center", opacity: 0.85 }}>
+          Demo login — <span className="mono">{role === "SELLER" ? SEED_CREDENTIALS.seller : SEED_CREDENTIALS.buyer}</span>
+          {" / "}<span className="mono">{SEED_CREDENTIALS.password}</span>
+        </p>
+      )}
     </form>
   );
 }

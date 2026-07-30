@@ -17,7 +17,7 @@ import { Shell } from "../../Shell";
 import { Banner, Card, ComplianceBadge, DataTable, MoneyText, StatusPill, toneForStatus, type Column } from "@/components/ui";
 import { readCatalog, REGULATED_CLASSES, type CatalogProduct } from "@/lib/catalog";
 import { CLASS_META } from "@/lib/compliance";
-import { SELLERS } from "@/lib/sample";
+import { allKyc } from "@/lib/vendor";
 import { adminBulkUpload, adminSaveListing } from "../../actions";
 
 export const metadata: Metadata = { title: "All listings · Admin" };
@@ -45,6 +45,9 @@ export default async function AdminAllListingsPage({
     ? (rawStatus as (typeof STATUS_TABS)[number])
     : "ALL";
   const query = (q ?? "").trim().toLowerCase();
+  // The storefronts a listing may be created for are the verified ones — the
+  // same records the verification queue approves, not a list kept here.
+  const verifiedStores = (await allKyc()).filter((r) => r.status === "APPROVED");
   const catalog = await readCatalog();
   const rows = catalog
     .filter((p) => (status === "ALL" ? true : p.status === status))
@@ -151,17 +154,23 @@ export default async function AdminAllListingsPage({
             storefront, goes LIVE only through review, and a regulated class still needs its batch CoA
             approved first — creating for someone is not approving for them.
           </p>
+          {verifiedStores.length === 0 && (
+            <p className="small muted" style={{ marginTop: 0 }}>
+              No storefront is verified yet, so there is nobody to create a listing for.{" "}
+              <Link href="/admin/verification">Open the verification queue →</Link>
+            </p>
+          )}
           <form action={adminSaveListing} className="vh-grid" style={{ gap: 14 }}>
             <div className="vh-grid cols-2" style={{ gap: 14 }}>
               <div className="vh-field">
                 <label className="vh-label" htmlFor="obo-seller">Seller <span className="req">*</span></label>
-                <select className="vh-input" id="obo-seller" name="seller" defaultValue="">
+                <select className="vh-input" id="obo-seller" name="seller" defaultValue="" disabled={verifiedStores.length === 0}>
                   <option value="" disabled>Choose the storefront…</option>
-                  {SELLERS.filter((s) => s.kycState === "KYC_APPROVED").map((s) => (
-                    <option key={s.id} value={s.name}>{s.name}</option>
+                  {verifiedStores.map((r) => (
+                    <option key={r.store} value={r.store}>{r.store}</option>
                   ))}
                 </select>
-                <span className="vh-help">Only KYC-approved sellers can receive listings.</span>
+                <span className="vh-help">Only verified storefronts can receive listings — the server checks this again on save.</span>
               </div>
               <div className="vh-field">
                 <label className="vh-label" htmlFor="obo-cls">Compliance class <span className="req">*</span></label>

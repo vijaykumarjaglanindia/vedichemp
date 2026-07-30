@@ -66,89 +66,15 @@ declare global {
 const today = () => new Date().toISOString().slice(0, 10);
 
 /**
- * The console is single-tenant on the seed store ("Vedic Botanicals"), an
- * established, already-verified seller — so the KYC gate is a no-op for it
- * until an admin revokes it. New stores would seed at NOT_STARTED.
+ * There is no seed. A KYC record carries a GSTIN, a PAN, a payout account and,
+ * for a regulated class, a drug licence number and its expiry — real regulatory
+ * credentials, and the thing the public storefront directory badges a seller
+ * "verified" on. Inventing one would publish a licence claim nobody made. Every
+ * record here arrives through submitKyc() and is decided by decideKyc(); until
+ * then kycStatus() reports NOT_STARTED and the go-live gate stays shut.
  */
-function seed(): VendorStore {
-  return {
-    records: [
-      {
-        store: "Vedic Botanicals",
-        ownerEmail: "seller@example.in",
-        legalName: "Vedic Botanicals Wellness Pvt Ltd",
-        gstin: "27AABCV1234M1Z5",
-        pan: "AABCV1234M",
-        addressLine: "14, Ayurveda Enclave, Baner",
-        city: "Pune",
-        state: "Maharashtra",
-        pincode: "411045",
-        bankName: "HDFC Bank",
-        bankAccountLast4: "4472",
-        bankIfsc: "HDFC0000123",
-        classes: ["CBD_WELLNESS", "AYURVEDA"],
-        drugLicenceNo: "MH-AYUSH-2021-88213",
-        drugLicenceExpiry: "2027-03-31",
-        status: "APPROVED",
-        submittedAt: "2026-01-02",
-        decidedAt: "2026-01-05",
-        history: [
-          { at: "2026-01-02", status: "SUBMITTED", by: "seller@example.in" },
-          { at: "2026-01-05", status: "APPROVED", by: "compliance@vedichemp.in" },
-        ],
-      },
-      {
-        store: "Himalayan Hemp Co.",
-        ownerEmail: "himalayan@example.in",
-        legalName: "Himalayan Hemp Foods Pvt Ltd",
-        gstin: "05AABCH9876M1Z2",
-        pan: "AABCH9876M",
-        addressLine: "Farm Road, Selaqui Industrial Area",
-        city: "Dehradun",
-        state: "Uttarakhand",
-        pincode: "248011",
-        bankName: "ICICI Bank",
-        bankAccountLast4: "8821",
-        bankIfsc: "ICIC0000456",
-        classes: ["HEMP_FOOD"],
-        status: "APPROVED",
-        submittedAt: "2025-11-10",
-        decidedAt: "2025-11-14",
-        history: [
-          { at: "2025-11-10", status: "SUBMITTED", by: "himalayan@example.in" },
-          { at: "2025-11-14", status: "APPROVED", by: "compliance@vedichemp.in" },
-        ],
-      },
-      {
-        store: "Ananda Foods",
-        ownerEmail: "ananda@example.in",
-        legalName: "Ananda Ayurveda Foods LLP",
-        gstin: "29AABCA4567M1Z8",
-        pan: "AABCA4567M",
-        addressLine: "22, Vontikoppal, Saraswathipuram",
-        city: "Mysuru",
-        state: "Karnataka",
-        pincode: "570009",
-        bankName: "Kotak Mahindra Bank",
-        bankAccountLast4: "3390",
-        bankIfsc: "KKBK0000789",
-        classes: ["HEMP_FOOD", "AYURVEDA"],
-        drugLicenceNo: "KA-AYUSH-2018-40567",
-        drugLicenceExpiry: "2027-09-30",
-        status: "APPROVED",
-        submittedAt: "2025-09-01",
-        decidedAt: "2025-09-06",
-        history: [
-          { at: "2025-09-01", status: "SUBMITTED", by: "ananda@example.in" },
-          { at: "2025-09-06", status: "APPROVED", by: "compliance@vedichemp.in" },
-        ],
-      },
-    ],
-  };
-}
-
 function store(): VendorStore {
-  globalThis.__vhVendorKyc ??= seed();
+  globalThis.__vhVendorKyc ??= { records: [] };
   return globalThis.__vhVendorKyc;
 }
 

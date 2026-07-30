@@ -1,8 +1,10 @@
 /**
  * VEDIC HEMP — SELLER MANAGEMENT (§3.3)
  *
- * KYC queue + the seller register. Approve/Reject/Suspend are maker–checker
- * (A6). Drug-licence verification for CBD/MED_CANNABIS classes needs a
+ * The seller register, read from the live verification records and what each
+ * store has actually sold. The decisions themselves live in one place —
+ * /admin/verification — so this page can never hold a second, divergent
+ * roster. Drug-licence verification for CBD/MED_CANNABIS classes needs a
  * registry lookup AND a pharmacist sign-off — a registry outage must not
  * block the queue indefinitely, but it also cannot forge an approval
  * ("fail closed on compliance gates"). Commission-plan changes carry a
@@ -12,70 +14,57 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  BadgeCheck, Ban, RotateCcw, SearchCheck, Percent, Timer, Store, UsersRound, CalendarClock,
+  BadgeCheck, Ban, RotateCcw, SearchCheck, Percent, Store, UsersRound, CalendarClock,
 } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, StatusPill, toneForStatus, MoneyText, ComplianceBadge, Banner, DataTable, type Column } from "@/components/ui";
-import { Sparkline } from "@/components/ui/charts";
+import { Card, StatusPill, MoneyText, ComplianceBadge, Banner, EmptyState, DataTable, type Column } from "@/components/ui";
 import { readStoreCopy } from "@/lib/engage";
-import { SELLERS, type SampleSeller } from "@/lib/sample";
+import { allKyc, pendingKyc, licenceExpired, statusLabel, type KycStatus, type VendorKyc } from "@/lib/vendor";
+import { earningLines } from "@/lib/earnings";
 import { adminSaveStorefront } from "../actions";
-import { SELLER_HEALTH_SERIES, KYC_META, slaCountdown } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Sellers · Admin" };
+export const dynamic = "force-dynamic";
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
 const IB = { size: 14, strokeWidth: 2.2 } as const;
 
-const KYC_QUEUE = SELLERS.filter((s) => s.kycState === "KYC_PENDING");
+const TONE: Record<KycStatus, "ok" | "warn" | "danger" | "neutral"> = {
+  NOT_STARTED: "neutral", SUBMITTED: "warn", APPROVED: "ok", MORE_INFO: "warn", REJECTED: "danger", SUSPENDED: "danger",
+};
 
-const columns: Column<SampleSeller>[] = [
+/** A store's register row: its verification record plus what it has actually
+ *  sold. Both come from the live stores — nothing here is kept on this page. */
+type SellerRow = VendorKyc & { gmvPaise: number };
+
+const columns: Column<SellerRow>[] = [
   { key: "name", header: "Seller", render: (s) => (
       <div>
-        <div style={{ fontWeight: 600 }}>{s.name}</div>
+        <div style={{ fontWeight: 600 }}>{s.store}</div>
         <div className="small muted mono">{s.gstin}</div>
       </div>
     ) },
-  { key: "state", header: "State", render: (s) => <StatusPill tone={toneForStatus(s.state)}>{s.state.replace(/_/g, " ")}</StatusPill> },
-  { key: "health", header: "Health score", render: (s) => {
-      const series = SELLER_HEALTH_SERIES[s.id];
-      return (
-        <div className="vh-row" style={{ gap: 10 }}>
-          <span className="tabular" style={{ color: s.healthScore < 65 ? "var(--vh-warn)" : "var(--vh-ok)", minWidth: 52 }}>
-            {s.kycState === "KYC_PENDING" ? "—" : `${s.healthScore}/100`}
-          </span>
-          {series && (
-            <Sparkline
-              points={series}
-              width={70}
-              height={22}
-              stroke={s.healthScore < 65 ? "var(--vh-warn)" : "var(--vh-ok)"}
-              label={`${s.name} health score, last 7 weeks`}
-            />
-          )}
-        </div>
-      );
-    } },
+  { key: "state", header: "Verification", render: (s) => (
+      <span className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
+        <StatusPill tone={TONE[s.status]}>{statusLabel(s.status)}</StatusPill>
+        {licenceExpired(s) && <StatusPill tone="danger">Licence expired</StatusPill>}
+      </span>
+    ) },
+  { key: "where", header: "Registered", render: (s) => <span className="small">{s.city}, {s.state}</span> },
   { key: "classes", header: "Classes", render: (s) => (
       <div className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
         {s.classes.map((c) => <ComplianceBadge key={c} cls={c} />)}
       </div>
     ) },
-  { key: "gmv", header: "GMV (lifetime)", align: "right", render: (s) => <MoneyText paise={s.gmvPaise} /> },
+  { key: "gmv", header: "GMV (delivered)", align: "right", render: (s) => <MoneyText paise={s.gmvPaise} /> },
   { key: "actions", header: "Actions", render: (s) => (
       <div className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
-        <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/sellers#${s.id}-commission`}>
+        <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/finance/commissions">
           <Percent {...IB} aria-hidden /> Commission plan
         </Link>
-        {s.state !== "SUSPENDED" ? (
-          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/sellers#${s.id}-suspend`}>
-            <Ban {...IB} aria-hidden /> Suspend
-          </Link>
-        ) : (
-          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/sellers#${s.id}-reinstate`}>
-            <RotateCcw {...IB} aria-hidden /> Reinstate
-          </Link>
-        )}
+        <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/verification">
+          {s.status === "APPROVED" ? <><Ban {...IB} aria-hidden /> Pause verification</> : <><RotateCcw {...IB} aria-hidden /> Review verification</>}
+        </Link>
       </div>
     ) },
 ];
@@ -87,6 +76,13 @@ export default async function AdminSellersPage({
 }) {
   const { store } = await searchParams;
   const storeCopy = await readStoreCopy();
+  const queue = await pendingKyc();
+  const register: SellerRow[] = await Promise.all(
+    (await allKyc()).map(async (r) => ({
+      ...r,
+      gmvPaise: (await earningLines(r.store)).reduce((n, l) => n + l.grossPaise, 0),
+    })),
+  );
   return (
     <Shell active="/admin/sellers" breadcrumb={["Admin", "Sellers"]} title="Seller management">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
@@ -106,41 +102,37 @@ export default async function AdminSellersPage({
         )}
         <Card
           title={<span className="vh-row" style={{ gap: 8 }}><BadgeCheck {...I} aria-hidden /> KYC queue</span>}
-          action={<StatusPill tone={KYC_QUEUE.length ? "warn" : "ok"}>{KYC_QUEUE.length} pending</StatusPill>}
+          action={<StatusPill tone={queue.length ? "warn" : "ok"}>{queue.length} pending</StatusPill>}
         >
-          {KYC_QUEUE.length === 0 ? (
-            <p className="small muted">Nothing pending.</p>
+          {queue.length === 0 ? (
+            <p className="small muted" style={{ margin: 0 }}>
+              Nothing pending — no store is waiting on a verification decision.{" "}
+              <Link href="/admin/verification">Open the verification queue →</Link>
+            </p>
           ) : (
             <div className="vh-grid" style={{ gap: "var(--sp-2)" }}>
-              {KYC_QUEUE.map((s) => {
-                const meta = KYC_META[s.id] ?? { sla: "24h", ageHours: 0 };
-                const cd = slaCountdown(meta.sla, meta.ageHours);
-                return (
-                  <div key={s.id} className="vh-card" style={{ padding: "var(--sp-3)" }}>
-                    <div className="vh-row-between" style={{ flexWrap: "wrap", gap: 8 }}>
-                      <span>
-                        <div className="vh-row" style={{ gap: 8 }}>
-                          <Store {...I} aria-hidden />
-                          <span style={{ fontWeight: 600 }}>{s.name}</span>
-                          <StatusPill tone={cd.tone}>
-                            <Timer size={12} strokeWidth={2.2} aria-hidden /> {cd.label}
-                          </StatusPill>
-                        </div>
-                        <div className="small muted mono" style={{ marginTop: 4 }}>
-                          {s.gstin} · {s.classes.join(", ")} · in queue {meta.ageHours}h of {meta.sla} SLA
-                        </div>
-                      </span>
-                      <span className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                        <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/sellers#${s.id}-registry`}>
-                          <SearchCheck {...IB} aria-hidden /> Registry lookup
-                        </Link>
-                        <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/admin/sellers#${s.id}-approve`}>Approve (maker)</Link>
-                        <Link className="vh-btn vh-btn-sm vh-btn-danger" href={`/admin/sellers#${s.id}-reject`}>Reject</Link>
-                      </span>
-                    </div>
+              {queue.map((r) => (
+                <div key={r.store} className="vh-card" style={{ padding: "var(--sp-3)" }}>
+                  <div className="vh-row-between" style={{ flexWrap: "wrap", gap: 8 }}>
+                    <span>
+                      <div className="vh-row" style={{ gap: 8 }}>
+                        <Store {...I} aria-hidden />
+                        <span style={{ fontWeight: 600 }}>{r.store}</span>
+                        {r.submittedAt && <span className="small muted">submitted {r.submittedAt}</span>}
+                      </div>
+                      <div className="small muted mono" style={{ marginTop: 4 }}>
+                        {r.gstin} · {r.classes.join(", ")}
+                        {r.drugLicenceNo ? ` · licence ${r.drugLicenceNo} (exp ${r.drugLicenceExpiry})` : ""}
+                      </div>
+                    </span>
+                    <span className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
+                      <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/admin/verification">
+                        <SearchCheck {...IB} aria-hidden /> Review &amp; decide
+                      </Link>
+                    </span>
                   </div>
-                );
-              })}
+                </div>
+              ))}
             </div>
           )}
         </Card>
@@ -153,8 +145,12 @@ export default async function AdminSellersPage({
           platform (fail closed on compliance, fail open on convenience).
         </Banner>
 
-        <Card title="All sellers" pad0>
-          <DataTable columns={columns} rows={SELLERS} />
+        <Card title="All sellers" action={<Link className="small" href="/admin/verification">Verification queue →</Link>} pad0>
+          <DataTable
+            columns={columns}
+            rows={register}
+            empty={<EmptyState icon="🏪" headline="No stores registered yet" sub="A storefront appears here once it submits its business details for verification." />}
+          />
         </Card>
 
         {/* ── Storefront copy on the seller's behalf ────────── */}

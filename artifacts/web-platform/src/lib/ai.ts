@@ -121,14 +121,71 @@ export function draftListingDescription(
   return `${openers[i]} ${bodies[i]} ${closer}`;
 }
 
-/** Deterministic review summarizer — the no-key fallback for PDP summaries. */
-export function summarizeReviews(input: { title: string; rating: number; reviewCount: number; labVerified: boolean }): string {
-  const tone = input.rating >= 4.4 ? "consistently positive" : input.rating >= 4 ? "positive with minor gripes" : "mixed";
-  const packaging = input.rating >= 4.2 ? "packaging and delivery speed" : "delivery speed";
-  return (
-    `Across ${input.reviewCount} verified-purchase reviews, sentiment is ${tone} (${input.rating.toFixed(1)}★). ` +
-    `Buyers most often praise ${packaging}` +
-    (input.labVerified ? ", and many mention checking the batch lab report before buying. " : ". ") +
-    `Recurring request: larger pack sizes staying in stock. No reviewer reports a safety issue.`
-  );
+/** Words a summary must never present as what buyers talked about. */
+const SUMMARY_STOPWORDS = new Set([
+  "this", "that", "with", "from", "have", "very", "just", "they", "them", "then", "than", "were", "will",
+  "would", "could", "about", "after", "again", "also", "been", "because", "before", "being", "both",
+  "does", "doing", "each", "into", "more", "most", "much", "only", "other", "over", "same", "some",
+  "such", "there", "these", "thing", "those", "time", "used", "using", "when", "which", "while", "your",
+  "product", "review", "reviews", "order", "ordered", "bought", "buying", "seller", "store", "item",
+]);
+
+/**
+ * Terms that recur ACROSS review bodies — the only thing a summary may say
+ * buyers talk about. Counted once per review (a single chatty reviewer cannot
+ * make a term look common) and never a claims word, whatever a reviewer wrote.
+ */
+function recurringTerms(bodies: string[], limit: number): string[] {
+  const counts = new Map<string, number>();
+  for (const body of bodies) {
+    for (const word of new Set(body.toLowerCase().match(/[a-z]{4,}/g) ?? [])) {
+      if (SUMMARY_STOPWORDS.has(word) || CLAIMS_LANGUAGE.test(word)) continue;
+      counts.set(word, (counts.get(word) ?? 0) + 1);
+    }
+  }
+  const floor = bodies.length >= 3 ? 2 : 1;
+  return [...counts.entries()]
+    .filter(([, n]) => n >= floor)
+    .sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))
+    .slice(0, limit)
+    .map(([word]) => word);
+}
+
+/**
+ * Deterministic review summarizer — the no-key fallback for PDP summaries.
+ *
+ * Every sentence is arithmetic over the APPROVED reviews passed in: the count,
+ * the star split and the terms that recur across bodies. It states nothing a
+ * reviewer did not write — in particular it never reports the ABSENCE of a
+ * complaint or a safety issue, which no review set can evidence. With no
+ * reviews supplied it says only what the count and average already prove, and
+ * with no reviews at all it returns "" so the caller renders nothing.
+ */
+export function summarizeReviews(input: {
+  title: string;
+  rating: number;
+  reviewCount: number;
+  labVerified: boolean;
+  /** The APPROVED reviews to summarise (reviews.approvedFor). */
+  reviews?: { rating: number; body: string }[];
+}): string {
+  const count = input.reviews ? input.reviews.length : input.reviewCount;
+  if (!Number.isFinite(count) || count <= 0) return "";
+  const rows = (input.reviews ?? []).filter((r) => typeof r.body === "string" && r.body.trim().length > 0);
+  const avg = rows.length
+    ? Math.round((rows.reduce((n, r) => n + r.rating, 0) / rows.length) * 10) / 10
+    : Number.isFinite(input.rating) && input.rating > 0 ? input.rating : 0;
+  const head = `${count} approved review${count === 1 ? "" : "s"}${avg > 0 ? `, averaging ${avg.toFixed(1)}★` : ""}.`;
+  if (rows.length === 0) return `${head} The reviews themselves are below.`;
+
+  const high = rows.filter((r) => r.rating >= 4).length;
+  const low = rows.filter((r) => r.rating <= 2).length;
+  const terms = recurringTerms(rows.map((r) => r.body), 3);
+  const parts = [head];
+  if (high > 0) parts.push(`${high} of ${rows.length} rated it 4★ or higher${low > 0 ? `, ${low} rated it 2★ or lower` : ""}.`);
+  else if (low > 0) parts.push(`${low} of ${rows.length} rated it 2★ or lower.`);
+  if (terms.length > 0) parts.push(`Words that come up across the reviews: ${terms.join(", ")}.`);
+  const text = parts.join(" ");
+  // Fail closed: a term lifted from a review body may never carry a claim.
+  return CLAIMS_LANGUAGE.test(text) ? head : text;
 }

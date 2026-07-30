@@ -163,24 +163,39 @@ type SpecSource = SampleProduct & Partial<{
   storage: string; directions: string; fssaiLicNo: string;
 }>;
 
-const SPECS: Record<string, ProductSpecs> = {
-  "hemp-seed-oil-250ml": { netWeight: "250 ml", ingredients: "100% cold-pressed hemp seed oil (Cannabis sativa L. seed)", hsn: "1515", batch: "HH-2506", lab: "FSSAI-licensed facility (food class — no batch CoA gate)" },
-  "hemp-protein-500g": { netWeight: "500 g", ingredients: "Hemp seed protein powder (50% protein)", hsn: "1208", batch: "HH-2504", lab: "FSSAI-licensed facility (food class — no batch CoA gate)" },
-  "hemp-hearts-400g": { netWeight: "400 g", ingredients: "Hulled hemp seeds (hemp hearts)", hsn: "1207", batch: "AF-2507", lab: "FSSAI-licensed facility (food class — no batch CoA gate)" },
-  "cbd-balm-30g": { netWeight: "30 g", ingredients: "Full-spectrum hemp extract, shea butter, beeswax, camphor", hsn: "3004", batch: "VB-2406", lab: "Aurum Analytica, Bengaluru (NABL-accredited)" },
-  "cbd-tincture-10ml": { netWeight: "10 ml", ingredients: "Hemp leaf extract in MCT oil, 1500 mg CBD", hsn: "3004", batch: "VB-2409", lab: "Aurum Analytica, Bengaluru (NABL-accredited)" },
-  "ashwagandha-60": { netWeight: "60 capsules", ingredients: "Withania somnifera root extract 500 mg per capsule", hsn: "3004", batch: "AF-2503", lab: "AYUSH-licensed facility" },
-  "triphala-200g": { netWeight: "200 g", ingredients: "Amalaki, Bibhitaki, Haritaki (equal parts, classical ratio)", hsn: "3004", batch: "AF-2501", lab: "AYUSH-licensed facility" },
-  "cbd-rollon-50ml": { netWeight: "50 ml", ingredients: "Hemp extract, menthol, wintergreen oil in roll-on base", hsn: "3004", batch: "VB-2411", lab: "Aurum Analytica, Bengaluru (NABL-accredited)" },
+/**
+ * Curated label copy for the launch fixtures — used ONLY where the live listing
+ * carries nothing of its own. Batch and testing facility are deliberately
+ * absent: those are provenance, and provenance may only come from the listing's
+ * own record (see specsFor).
+ */
+const SPECS: Record<string, Omit<ProductSpecs, "batch" | "lab">> = {
+  "hemp-seed-oil-250ml": { netWeight: "250 ml", ingredients: "100% cold-pressed hemp seed oil (Cannabis sativa L. seed)", hsn: "1515" },
+  "hemp-protein-500g": { netWeight: "500 g", ingredients: "Hemp seed protein powder (50% protein)", hsn: "1208" },
+  "hemp-hearts-400g": { netWeight: "400 g", ingredients: "Hulled hemp seeds (hemp hearts)", hsn: "1207" },
+  "cbd-balm-30g": { netWeight: "30 g", ingredients: "Full-spectrum hemp extract, shea butter, beeswax, camphor", hsn: "3004" },
+  "cbd-tincture-10ml": { netWeight: "10 ml", ingredients: "Hemp leaf extract in MCT oil, 1500 mg CBD", hsn: "3004" },
+  "ashwagandha-60": { netWeight: "60 capsules", ingredients: "Withania somnifera root extract 500 mg per capsule", hsn: "3004" },
+  "triphala-200g": { netWeight: "200 g", ingredients: "Amalaki, Bibhitaki, Haritaki (equal parts, classical ratio)", hsn: "3004" },
+  "cbd-rollon-50ml": { netWeight: "50 ml", ingredients: "Hemp extract, menthol, wintergreen oil in roll-on base", hsn: "3004" },
 };
 
 const DASH = "—";
 
+/** The testing/facility line, read off the listing's own compliance state. A
+ *  regulated batch reaches labVerified only through an APPROVED CoA (A2). */
+function facilityFor(p: SpecSource): string {
+  if (p.labVerified) return "Independent accredited lab — batch CoA approved";
+  if (p.cls === "HEMP_FOOD") return "FSSAI-licensed facility (food class — no batch CoA gate)";
+  if (p.cls === "AYURVEDA") return "AYUSH-licensed facility";
+  return "Licensed facility";
+}
+
 /**
- * The PDP spec table. A seller-created listing supplies its own label facts;
- * they win. The seeded sample catalogue has no such fields, so it falls back
- * to the curated SPECS map, then to safe generic defaults — every listing
- * renders a complete, honest table either way.
+ * The PDP spec table. Live listing fields always win; the curated map above
+ * only fills descriptive gaps a seeded fixture leaves. Batch and testing
+ * facility are never curated — the batch a buyer verifies has to be the batch
+ * the CoA record carries, so a corrected batchCode changes what buyers see.
  */
 export function specsFor(p: SpecSource): ProductSpecs {
   const seed = SPECS[p.slug];
@@ -188,11 +203,8 @@ export function specsFor(p: SpecSource): ProductSpecs {
     netWeight: p.netQuantity || seed?.netWeight || DASH,
     ingredients: p.ingredients || seed?.ingredients || "See pack label",
     hsn: p.hsn || seed?.hsn || DASH,
-    // The curated batch for a seeded product is its QR-printed/public batch (the
-    // one the /verify page and PDP surface). A seller-CREATED listing has no
-    // curated entry, so it falls through to its own catalog batchCode.
-    batch: seed?.batch || p.batchCode || DASH,
-    lab: seed?.lab || (p.labVerified ? "NABL-accredited independent lab" : "Licensed facility"),
+    batch: p.batchCode || DASH,
+    lab: facilityFor(p),
     marketer: p.marketer || seed?.marketer,
     countryOfOrigin: p.countryOfOrigin || seed?.countryOfOrigin || "India",
     shelfLife: (p.shelfLifeMonths && p.shelfLifeMonths > 0 ? `${p.shelfLifeMonths} months from manufacture` : undefined) || seed?.shelfLife,

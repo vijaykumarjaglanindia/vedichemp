@@ -38,19 +38,10 @@ declare global {
   var __vhWallet: WalletStore | undefined;
 }
 
-function seed(): WalletStore {
-  const txns: WalletTxn[] = [
-    { id: "w1", buyerEmail: "buyer@example.in", at: "2026-07-08", kind: "CASHBACK", note: "Order VH2026070912 · 2% cashback", amountPaise: 3538, status: "POSTED" },
-    { id: "w2", buyerEmail: "buyer@example.in", at: "2026-07-02", kind: "REFUND", note: "Return · order VH2026062810", amountPaise: 249900, status: "POSTED" },
-    { id: "w3", buyerEmail: "buyer@example.in", at: "2026-06-30", kind: "PROMO", note: "Welcome bonus", amountPaise: 10000, status: "POSTED" },
-    { id: "w4", buyerEmail: "buyer@example.in", at: "2026-06-28", kind: "DEBIT", note: "Applied to order VH2026062810", amountPaise: -50000, status: "POSTED" },
-    { id: "w5", buyerEmail: "buyer@example.in", at: "2026-06-20", kind: "WITHDRAWAL", note: "Payout to bank ····4471", amountPaise: -100000, status: "PROCESSING" },
-  ];
-  return { txns, seq: txns.length + 1 };
-}
-
+// Spendable credit is money. Every row here must originate from a real refund,
+// cancellation, promo grant or spend — so the ledger starts empty.
 function store(): WalletStore {
-  globalThis.__vhWallet ??= seed();
+  globalThis.__vhWallet ??= { txns: [], seq: 1 };
   return globalThis.__vhWallet;
 }
 

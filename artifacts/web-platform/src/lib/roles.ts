@@ -68,18 +68,38 @@ declare global {
   var __vhAdminRoles: AdminAccount[] | undefined;
 }
 
+/** The same switch as accounts.demoSeedEnabled() (kept local so this module
+ *  stays free of the server-only account directory): a demo table of
+ *  privileged identities never exists in a production build unless asked for. */
+function demoSeedEnabled(): boolean {
+  if (process.env.VH_DEMO === "1") return true;
+  if (process.env.VH_DEMO === "0") return false;
+  return process.env.NODE_ENV !== "production";
+}
+
+/**
+ * §7: the owner appoints. So a real deployment starts with exactly ONE grant —
+ * the bootstrap owner named by BOOTSTRAP_OWNER_EMAIL — and every other role
+ * arrives through grantRole(), which is refused on an SoD conflict and on a
+ * self-grant, and which the action layer audits. A seeded pharmacist or a
+ * seeded maker/checker pair would be privilege nobody granted.
+ */
 function seed(): AdminAccount[] {
-  return [
-    // OWNER + SECURITY is a permitted combination: security oversight (audit
-    // trail) is exactly the owner's appoint-and-watch remit, not one of the
-    // §7-barred powers (prescriptions, money, disputes).
-    { email: "admin@example.in", roles: ["ADMIN_OWNER", "ADMIN_SECURITY"] },
-    { email: "compliance2@example.in", roles: ["ADMIN_COMPLIANCE"] },
-    { email: "pharmacist.nair@vedichemp.in", roles: ["ADMIN_PHARMACIST"] },
-    { email: "finance.rao@vedichemp.in", roles: ["ADMIN_FINANCE"] },
-    { email: "finance.approver.iyer@vedichemp.in", roles: ["ADMIN_FINANCE_APPROVER"] },
-    { email: "support.dsouza@vedichemp.in", roles: ["ADMIN_SUPPORT", "ADMIN_ORDER_OPS"] },
-  ];
+  if (demoSeedEnabled()) {
+    return [
+      // OWNER + SECURITY is a permitted combination: security oversight (audit
+      // trail) is exactly the owner's appoint-and-watch remit, not one of the
+      // §7-barred powers (prescriptions, money, disputes).
+      { email: "admin@example.in", roles: ["ADMIN_OWNER", "ADMIN_SECURITY"] },
+      { email: "compliance2@example.in", roles: ["ADMIN_COMPLIANCE"] },
+      { email: "pharmacist.nair@vedichemp.in", roles: ["ADMIN_PHARMACIST"] },
+      { email: "finance.rao@vedichemp.in", roles: ["ADMIN_FINANCE"] },
+      { email: "finance.approver.iyer@vedichemp.in", roles: ["ADMIN_FINANCE_APPROVER"] },
+      { email: "support.dsouza@vedichemp.in", roles: ["ADMIN_SUPPORT", "ADMIN_ORDER_OPS"] },
+    ];
+  }
+  const owner = (process.env.BOOTSTRAP_OWNER_EMAIL ?? "").trim().toLowerCase();
+  return owner ? [{ email: owner, roles: ["ADMIN_OWNER", "ADMIN_SECURITY"] }] : [];
 }
 
 function store(): AdminAccount[] {

@@ -18,6 +18,7 @@ import { reviewsForSlugs } from "@/lib/reviews";
 import { storeReviewsBySlug } from "@/lib/store-reviews";
 import { replySellerReview, replyStoreReviewAction } from "../actions";
 import { actingStore } from "../_lib/store";
+import { sellerData } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Reviews" };
 export const dynamic = "force-dynamic";
@@ -31,8 +32,6 @@ function Stars({ n }: { n: number }) {
   );
 }
 
-const STORE_SLUG = "vedic-botanicals";
-
 export default async function SellerReviewsPage({ searchParams }: { searchParams: Promise<{ replied?: string; err?: string; sreplied?: string; serr?: string }> }) {
   const STORE = await actingStore();
   const { replied, err, sreplied, serr } = await searchParams;
@@ -41,8 +40,10 @@ export default async function SellerReviewsPage({ searchParams }: { searchParams
   const slugs = listings.map((p) => p.slug);
   const approved = await reviewsForSlugs(slugs, { status: "APPROVED" });
   const pending = await reviewsForSlugs(slugs, { status: "PENDING" });
-  const storeApproved = await storeReviewsBySlug(STORE_SLUG, { status: "APPROVED" });
-  const storePending = await storeReviewsBySlug(STORE_SLUG, { status: "PENDING" });
+  // Store reviews belong to THIS store's storefront handle — never another's.
+  const { handle } = sellerData(STORE).PROFILE;
+  const storeApproved = await storeReviewsBySlug(handle, { status: "APPROVED" });
+  const storePending = await storeReviewsBySlug(handle, { status: "PENDING" });
 
   return (
     <Shell active="/seller/reviews" breadcrumb={["Seller Central", "Reviews"]} title="Reviews"

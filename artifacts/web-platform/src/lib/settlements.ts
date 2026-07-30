@@ -43,19 +43,10 @@ declare global {
   var __vhSettlements: SettlementStore | undefined;
 }
 
-function seed(): SettlementStore {
-  return {
-    runs: [
-      { id: "st1", seller: "Vedic Botanicals", period: "16–30 Jun 2026", grossPaise: 9_39_100_00, commissionPaise: 93_900_00, netPaise: 8_45_200_00, status: "POSTED", maker: "finance.rao", checker: "finance.approver.iyer", createdAt: "2026-07-01", postedAt: "2026-07-02", orderRefs: [] },
-      { id: "st2", seller: "Himalayan Hemp Co.", period: "16–30 Jun 2026", grossPaise: 4_58_700_00, commissionPaise: 45_900_00, netPaise: 4_12_800_00, status: "AWAITING_CHECKER", maker: "finance.rao", createdAt: "2026-07-01", orderRefs: [] },
-      { id: "st3", seller: "Ananda Foods", period: "1–15 Jun 2026", grossPaise: 2_26_000_00, commissionPaise: 22_600_00, netPaise: 2_03_400_00, status: "POSTED", maker: "finance.rao", checker: "finance.approver.iyer", createdAt: "2026-06-16", postedAt: "2026-06-17", orderRefs: [] },
-    ],
-    seq: 4,
-  };
-}
-
+// A settlement run is a money record: it exists only because createRun()
+// gathered real earnings lines and a checker posted it. There is no seed.
 function store(): SettlementStore {
-  globalThis.__vhSettlements ??= seed();
+  globalThis.__vhSettlements ??= { runs: [], seq: 1 };
   return globalThis.__vhSettlements;
 }
 
