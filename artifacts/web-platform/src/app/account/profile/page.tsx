@@ -16,6 +16,7 @@ import {
   Trash2, UserRound,
 } from "lucide-react";
 import { cookies } from "next/headers";
+import { redirect } from "next/navigation";
 import { signOut } from "../../(site)/signin/actions";
 import { Shell } from "../Shell";
 import { Card, StatusPill, Banner } from "@/components/ui";
@@ -72,16 +73,20 @@ export default async function ProfilePage({
 }: {
   searchParams: Promise<{ sec?: string; sid?: string }>;
 }) {
+  // Identity + consent are the signed-in buyer's own, read server-side. An
+  // unverifiable session cookie passes the edge middleware; it must never
+  // resolve to a substitute identity whose profile would then be rendered.
+  const { getSession } = await import("@/lib/auth-lite");
+  const session = await getSession();
+  if (!session?.email) redirect("/signin?next=/account/profile");
+  const consentEmail = session.email;
+
   const viewer = await resolveBuyer();
   const { sec } = await searchParams;
   const jar = await cookies();
   const passkeyRequested = jar.get("vh-passkey")?.value === "requested";
   const smsOtpOff = jar.get("vh-2fa-sms")?.value === "off";
-  // Identity + consent are the signed-in buyer's own, read server-side.
-  const { getSession } = await import("@/lib/auth-lite");
   const { currentConsent } = await import("@/lib/consent");
-  const session = await getSession();
-  const consentEmail = session?.email ?? "buyer@example.in";
   const consentOverrides: Record<string, boolean> = await currentConsent(consentEmail);
   const fullName = (session?.name ?? "").trim() || viewer.firstName;
   // No phone is stored against an email/password or OAuth account, so we show

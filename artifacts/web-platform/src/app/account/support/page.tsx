@@ -9,6 +9,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import type { ReactNode } from "react";
 import { ChevronRight, HelpCircle, MessageSquarePlus, Ticket } from "lucide-react";
 import { Shell } from "../Shell";
@@ -50,8 +51,11 @@ export default async function SupportPage({
   searchParams: Promise<{ ok?: string; err?: string; replied?: string }>;
 }) {
   const { ok, err, replied } = await searchParams;
-  const email = (await getSession())?.email ?? "guest@vedichemp.in";
-  const tickets = await ticketsForBuyer(email);
+  // An unverifiable session cookie passes the edge middleware; it must never
+  // resolve to a substitute identity whose ticket threads would then be shown.
+  const session = await getSession();
+  if (!session?.email) redirect("/signin?next=/account/support");
+  const tickets = await ticketsForBuyer(session.email);
 
   return (
     <Shell active="/account/support" breadcrumb={["My Account", "Support"]} title="Support & tickets">

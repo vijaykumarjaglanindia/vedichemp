@@ -7,6 +7,7 @@
  */
 
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { SlidersHorizontal } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, EmptyState } from "@/components/ui";
@@ -20,8 +21,11 @@ export const metadata: Metadata = { title: "Notifications" };
 export const dynamic = "force-dynamic";
 
 export default async function NotificationsPage() {
-  const email = (await getSession())?.email ?? "guest@vedichemp.in";
-  const liveItems = await notificationsFor("buyer", email);
+  // An unverifiable session cookie passes the edge middleware; it must never
+  // resolve to a substitute identity whose notifications would then be shown.
+  const session = await getSession();
+  if (!session?.email) redirect("/signin?next=/account/notifications");
+  const liveItems = await notificationsFor("buyer", session.email);
 
   return (
     <Shell active="/account/notifications" breadcrumb={["My Account", "Notifications"]} title="Notifications">

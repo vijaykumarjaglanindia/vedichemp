@@ -6,7 +6,8 @@ import { readLiveProducts } from "@/lib/catalog";
 export const dynamic = "force-dynamic";
 import { publishedPosts } from "@/lib/cms";
 import { readCategories } from "@/lib/categories";
-import { STORE_PROFILES } from "./(site)/_lib/data";
+import { allKyc } from "@/lib/vendor";
+import { sellerSlug } from "./(site)/_lib/data";
 
 /**
  * Public, indexable routes only. Console routes (/account, /seller, /admin)
@@ -16,6 +17,7 @@ import { STORE_PROFILES } from "./(site)/_lib/data";
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
   const base = "https://vedichemp.in";
   const now = new Date();
+  const liveProducts = (await readLiveProducts()).filter((p) => p.cls !== "MED_CANNABIS");
   const statics = [
     "", "/catalogue", "/stores", "/trust", "/about", "/sell", "/blog", "/verify", "/gifts", "/compare", "/help",
     "/legal/terms", "/legal/privacy", "/legal/returns", "/legal/shipping",
@@ -26,7 +28,7 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     priority: p === "" ? 1 : 0.7,
   }));
   // The LIVE store only — a draft or archived listing has no public URL to list.
-  const products = (await readLiveProducts()).filter((p) => p.cls !== "MED_CANNABIS").map((p) => ({
+  const products = liveProducts.map((p) => ({
     url: `${base}/products/${p.slug}`,
     lastModified: now,
     changeFrequency: "daily" as const,
@@ -39,7 +41,16 @@ export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
     changeFrequency: "monthly" as const,
     priority: 0.6,
   }));
-  const stores = Object.keys(STORE_PROFILES).map((slug) => ({
+  // Storefronts the public directory actually shows: KYC-APPROVED stores with
+  // something live to sell. A fixture slug nobody verified is not a public URL,
+  // and a store verified this morning is crawlable this afternoon.
+  const liveSellerSlugs = new Set(liveProducts.map((p) => sellerSlug(p.seller)));
+  const stores = [...new Set(
+    (await allKyc())
+      .filter((r) => r.status === "APPROVED")
+      .map((r) => sellerSlug(r.store))
+      .filter((slug) => liveSellerSlugs.has(slug)),
+  )].map((slug) => ({
     url: `${base}/store/${slug}`,
     lastModified: now,
     changeFrequency: "weekly" as const,

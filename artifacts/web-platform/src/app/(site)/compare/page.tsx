@@ -21,13 +21,40 @@ export const metadata: Metadata = {
   alternates: { canonical: "/compare" },
 };
 
-function verdict(a: SampleProduct, b: SampleProduct): string {
+/** A listing's rating is the average of its APPROVED reviews (lib/catalog) and
+ *  nothing else, so 0 means "nobody has reviewed it" — never a 0.0★ to show. */
+type Compared = SampleProduct & { ratingCount?: number };
+
+function hasRating(p: Compared): boolean {
+  return p.rating > 0;
+}
+
+function ratingCell(p: Compared): React.ReactNode {
+  return hasRating(p)
+    ? <Rating value={p.rating} count={p.ratingCount} />
+    : <span className="muted">No reviews yet</span>;
+}
+
+function verdict(a: Compared, b: Compared): string {
   const cheaper = a.pricePaise <= b.pricePaise ? a : b;
-  const rated = a.rating >= b.rating ? a : b;
-  const parts = [
-    `${cheaper.title} is the lower-priced option`,
-    rated === cheaper ? "and also carries the higher buyer rating" : `while ${rated.title} carries the higher buyer rating (${rated.rating.toFixed(1)}★)`,
-  ];
+  const parts = [`${cheaper.title} is the lower-priced option`];
+  // The verdict may only state what the review store proves: with no approved
+  // reviews there is no rating to compare, and it says so.
+  if (hasRating(a) && hasRating(b)) {
+    if (a.rating === b.rating) {
+      parts.push(`and both carry the same buyer rating (${a.rating.toFixed(1)}★)`);
+    } else {
+      const top = a.rating > b.rating ? a : b;
+      parts.push(top === cheaper
+        ? "and also carries the higher buyer rating"
+        : `while ${top.title} carries the higher buyer rating (${top.rating.toFixed(1)}★)`);
+    }
+  } else if (hasRating(a) || hasRating(b)) {
+    const only = hasRating(a) ? a : b;
+    parts.push(`and only ${only.title} has buyer reviews so far (${only.rating.toFixed(1)}★)`);
+  } else {
+    parts.push("and neither has buyer reviews yet");
+  }
   const lab = [a, b].filter((p) => p.labVerified);
   if (lab.length === 1 && lab[0]) parts.push(`only ${lab[0].title} ships with a batch-matched lab report`);
   if (lab.length === 2) parts.push("both ship with batch-matched lab reports");
@@ -55,7 +82,7 @@ export default async function ComparePage({
   const sb = specsFor(b);
   const rows: { label: string; va: React.ReactNode; vb: React.ReactNode }[] = [
     { label: "Price", va: <MoneyText paise={a.pricePaise} />, vb: <MoneyText paise={b.pricePaise} /> },
-    { label: "Rating", va: <Rating value={a.rating} />, vb: <Rating value={b.rating} /> },
+    { label: "Rating", va: ratingCell(a), vb: ratingCell(b) },
     { label: "Category", va: CLASS_META[a.cls].label, vb: CLASS_META[b.cls].label },
     { label: "Seller", va: a.seller, vb: b.seller },
     { label: "Lab report", va: a.labVerified ? `Lab-tested · batch ${sa.batch}` : "Licensed food product", vb: b.labVerified ? `Lab-tested · batch ${sb.batch}` : "Licensed food product" },

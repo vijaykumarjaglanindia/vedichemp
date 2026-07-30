@@ -16,8 +16,10 @@ const GSTIN = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z][0-9A-Z]{3}$/;
 export async function requestBusinessAccount(formData: FormData): Promise<void> {
   const company = String(formData.get("company") ?? "").trim().slice(0, 80);
   const gstin = String(formData.get("gstin") ?? "").trim().toUpperCase();
+  // A wholesale entitlement is keyed to a named account — never a substitute one.
   const session = await getSession();
-  const email = session?.email ?? "guest@vedichemp.in";
+  if (!session?.email) redirect("/signin?next=/account/business");
+  const email = session.email;
 
   if (company.length < 3) redirect("/account/business?err=company");
   if (!GSTIN.test(gstin)) redirect("/account/business?err=gstin");

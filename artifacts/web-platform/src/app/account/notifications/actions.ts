@@ -12,7 +12,9 @@ import { getSession } from "@/lib/auth-lite";
 import { markAllRead, markReadOwned } from "@/lib/notify";
 
 async function recipient(): Promise<string> {
-  return (await getSession())?.email ?? "guest@vedichemp.in";
+  const email = (await getSession())?.email;
+  if (!email) redirect("/signin?next=/account/notifications");
+  return email;
 }
 
 export async function markNotif(formData: FormData): Promise<void> {

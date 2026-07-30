@@ -7,6 +7,7 @@
  */
 
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 import { Building2, BadgeCheck } from "lucide-react";
 import { Shell } from "../Shell";
 import { Banner, Card, StatusPill } from "@/components/ui";
@@ -26,8 +27,11 @@ const ERRORS: Record<string, string> = {
 
 export default async function BusinessPage({ searchParams }: { searchParams: Promise<{ ok?: string; err?: string }> }) {
   const { ok, err } = await searchParams;
-  const email = (await getSession())?.email ?? "guest@vedichemp.in";
-  const account = accountFor(email);
+  // An unverifiable session cookie passes the edge middleware; it must never
+  // resolve to a substitute identity whose B2B status would then be shown.
+  const session = await getSession();
+  if (!session?.email) redirect("/signin?next=/account/business");
+  const account = accountFor(session.email);
   const status = account?.status ?? "NONE";
 
   return (

@@ -20,7 +20,8 @@ export async function subscriptionAction(formData: FormData): Promise<void> {
   const id = String(formData.get("subId") ?? "").slice(0, 12);
   const op = String(formData.get("op") ?? "");
   const session = await getSession();
-  const email = session?.email ?? "buyer@example.in";
+  if (!session?.email) redirect("/signin?next=/account/subscriptions");
+  const email = session.email;
 
   const sub = findSub(id);
   if (!sub || sub.buyerEmail.toLowerCase() !== email.toLowerCase() || !["skip", "unskip", "pause", "resume", "cancel"].includes(op)) {

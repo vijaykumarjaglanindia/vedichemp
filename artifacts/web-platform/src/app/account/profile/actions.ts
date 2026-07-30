@@ -40,7 +40,11 @@ export async function toggleConsent(formData: FormData): Promise<void> {
   const { isPurpose, currentConsent, appendConsent } = await import("@/lib/consent");
   // Essential consent is locked — a crafted submit for it dies here.
   if (!isPurpose(key)) redirect("/account/profile#privacy");
-  const email = (await getSession())?.email ?? "buyer@example.in";
+  // A consent event is a legal record of who agreed to what: it is written
+  // against the signed-in account or not at all.
+  const session = await getSession();
+  if (!session?.email) redirect("/signin?next=/account/profile");
+  const email = session.email;
   // The ledger is the source of truth: read the current resolution, then APPEND
   // the flipped value as a new immutable event (never edit a prior row).
   const current = await currentConsent(email);
@@ -53,7 +57,10 @@ export async function deleteAccount(formData: FormData): Promise<void> {
   const confirm = String(formData.get("confirm") ?? "");
   if (confirm !== "DELETE") redirect("/account/profile?sec=confirm#delete");
 
-  const email = (await getSession())?.email ?? "buyer@example.in";
+  // Erasure is irreversible and audited by name — never on a substitute identity.
+  const session = await getSession();
+  if (!session?.email) redirect("/signin?next=/account/profile");
+  const email = session.email;
   // Server-side deletion gate: an account with an order still in flight (or a
   // return being settled) can't be erased — fulfilment and buyer-first refunds
   // must complete first. The denied attempt is audited.

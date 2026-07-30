@@ -12,9 +12,9 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BadgeCheck, MapPin, Store as StoreIcon } from "lucide-react";
 import { Card, SectionHead, EmptyState } from "@/components/ui";
-import { STORE_PROFILES, sellerSlug, sellerProducts } from "../_lib/data";
-import { SELLERS } from "@/lib/sample";
-import { kycApproved } from "@/lib/vendor";
+import { STORE_PROFILES, publicProducts, sellerSlug } from "../_lib/data";
+import { allKyc } from "@/lib/vendor";
+import { readStoreCopy } from "@/lib/engage";
 import { storeAggregate } from "@/lib/store-reviews";
 import { breadcrumbJsonLd } from "@/lib/seo";
 
@@ -30,37 +30,45 @@ export const metadata: Metadata = {
 interface DirEntry {
   slug: string;
   name: string;
-  tagline: string;
-  location: string;
+  tagline: string | null;
+  location: string | null;
   liveCount: number;
   rating: number;
   reviewCount: number;
 }
 
+/**
+ * The directory is derived from two live records and no roster: the KYC store
+ * (APPROVED only) and the products that are actually LIVE for it. A store the
+ * platform verified today is here today, whether or not it was ever a launch
+ * fixture; a fixture whose KYC lapses drops out on the next request.
+ */
 async function directory(): Promise<DirEntry[]> {
+  const live = await publicProducts();
+  const approved = (await allKyc()).filter((r) => r.status === "APPROVED");
   const out: DirEntry[] = [];
-  for (const seller of SELLERS) {
-    const slug = sellerSlug(seller.name);
-    const profile = STORE_PROFILES[slug];
-    // The gate: KYC-approved AND has a public profile AND something live to sell.
-    if (!profile || !kycApproved(seller.name)) continue;
-    const live = await sellerProducts(seller.name);
-    if (live.length === 0) continue;
+  for (const kyc of approved) {
+    const slug = sellerSlug(kyc.store);
+    const liveHere = live.filter((p) => sellerSlug(p.seller) === slug);
+    if (liveHere.length === 0) continue; // nothing to sell, nothing to list
+    // Seller-published copy first; the seeded launch blurb only fills a gap.
+    const copy = await readStoreCopy(kyc.store);
+    const tagline = copy?.tagline?.trim() || STORE_PROFILES[slug]?.tagline || null;
     const agg = await storeAggregate(slug);
     out.push({
       slug,
-      name: seller.name,
-      tagline: profile.tagline,
-      location: profile.location,
-      liveCount: live.length,
+      name: kyc.store,
+      tagline,
+      // The registered business city/state off the verification record.
+      location: kyc.city && kyc.state ? `${kyc.city}, ${kyc.state}` : null,
+      liveCount: liveHere.length,
       // Real rating/count from approved store reviews only — a store with none
       // shows "New store", never an invented rating or review tally.
-      // only when there are no reviews yet.
       rating: agg.count ? agg.avg : 0,
       reviewCount: agg.count,
     });
   }
-  return out.sort((a, b) => b.rating - a.rating);
+  return out.sort((a, b) => b.rating - a.rating || b.liveCount - a.liveCount || a.name.localeCompare(b.name));
 }
 
 export default async function StoresDirectoryPage() {
@@ -99,12 +107,14 @@ export default async function StoresDirectoryPage() {
                         <BadgeCheck size={13} strokeWidth={2.4} aria-hidden /> Verified
                       </span>
                     </div>
-                    <div className="small muted vh-row" style={{ gap: 4 }}>
-                      <MapPin size={12} strokeWidth={2.2} aria-hidden /> {s.location}
-                    </div>
+                    {s.location && (
+                      <div className="small muted vh-row" style={{ gap: 4 }}>
+                        <MapPin size={12} strokeWidth={2.2} aria-hidden /> {s.location}
+                      </div>
+                    )}
                   </span>
                 </div>
-                <p className="small" style={{ margin: "0 0 10px", color: "var(--vh-ink)" }}>{s.tagline}</p>
+                {s.tagline && <p className="small" style={{ margin: "0 0 10px", color: "var(--vh-ink)" }}>{s.tagline}</p>}
                 <div className="vh-row-between small muted">
                   <span>{s.reviewCount > 0 ? `★ ${s.rating.toFixed(1)} · ${s.reviewCount.toLocaleString("en-IN")} reviews` : "New store"}</span>
                   <span>{s.liveCount} product{s.liveCount === 1 ? "" : "s"}</span>

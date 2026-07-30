@@ -23,6 +23,8 @@ export interface SearchDoc {
   pricePaise: number;
   cls: string;
   clsLabel: string;
+  /** Average of the listing's APPROVED reviews — 0 when it has none, in which
+   *  case a result row shows no stars at all (never "★ 0.0"). */
   rating: number;
   emoji: string;
   seller: string;
@@ -207,7 +209,7 @@ export function GenerativeSearch({ docs }: { docs: SearchDoc[] }) {
                     <span aria-hidden style={{ fontSize: "1.15rem" }}>{h.emoji}</span>
                     <span style={{ fontWeight: 600, minWidth: 0, overflow: "hidden", textOverflow: "ellipsis", whiteSpace: "nowrap" }}>{h.title}</span>
                     {h.labVerified && <FlaskConical size={13} aria-label="Lab report available" style={{ color: "var(--vh-info)", flexShrink: 0 }} />}
-                    <span className="meta tabular">★ {h.rating.toFixed(1)} · {formatINR(h.pricePaise)}</span>
+                    <span className="meta tabular">{h.rating > 0 ? `★ ${h.rating.toFixed(1)} · ` : ""}{formatINR(h.pricePaise)}</span>
                   </Link>
                 ))
               ) : (

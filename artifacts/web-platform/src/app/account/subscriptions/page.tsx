@@ -9,6 +9,7 @@
 
 import type { Metadata } from "next";
 import Link from "next/link";
+import { redirect } from "next/navigation";
 import { CalendarClock, Pause, SkipForward, XCircle, PlusCircle } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, toneForStatus, MoneyText, Banner, EmptyState } from "@/components/ui";
@@ -46,7 +47,11 @@ export default async function SubscriptionsPage({
   searchParams: Promise<{ done?: string; err?: string }>;
 }) {
   const { done, err } = await searchParams;
-  const email = (await getSession())?.email ?? "buyer@example.in";
+  // An unverifiable session cookie passes the edge middleware; it must never
+  // resolve to a substitute identity whose subscriptions would then be shown.
+  const session = await getSession();
+  if (!session?.email) redirect("/signin?next=/account/subscriptions");
+  const email = session.email;
   const subs = await mySubscriptions(email);
   const hasRx = (await myPrescriptions(email)).some((r) => r.status === "APPROVED");
 

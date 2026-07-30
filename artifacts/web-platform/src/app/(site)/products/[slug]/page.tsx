@@ -153,15 +153,15 @@ export default async function ProductDetailPage({
   const regulated = isRegulated(product.cls);
   const seller = SELLERS.find((s) => s.name === product.seller);
   const specs = specsFor(product);
-  // Rating is COMPUTED from approved reviews; fall back to the seed rating only
-  // when a product has no reviews yet.
+  // Rating is COMPUTED from approved reviews and from nothing else. A product
+  // nobody has reviewed has no rating at all — every star render below is
+  // guarded on `hasRating`, so the page never shows "0.0★" for "unreviewed".
   const agg = await aggregate(product.id);
   const reviews = await approvedFor(product.id);
   const questions = await questionsFor(product.id);
-  // Real review count from APPROVED reviews only — no fabricated fallback. A
-  // product with no reviews shows its rating with no count (or "New").
   const reviewCount = agg.count;
-  const ratingValue = agg.count > 0 ? agg.avg : product.rating;
+  const ratingValue = agg.avg;
+  const hasRating = reviewCount > 0 && ratingValue > 0;
   // Payment copy reflects the real admin setting — COD is off by default.
   const { codEnabled } = await import("@/lib/payments");
   const codOn = await codEnabled();
@@ -213,7 +213,9 @@ export default async function ProductDetailPage({
 
   return (
     <div className="vh-container" style={{ paddingTop: "var(--sp-4)", paddingBottom: "var(--sp-6)" }}>
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product)) }} />
+      {/* Structured data carries the REAL aggregate: productJsonLd omits the
+          AggregateRating node entirely when there are no approved reviews. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product, { rating: agg.avg, count: agg.count })) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(crumbs)) }} />
 
       <nav className="vh-breadcrumb" aria-label="Breadcrumb">
@@ -350,7 +352,7 @@ export default async function ProductDetailPage({
           <section id="reviews" style={{ scrollMarginTop: 90, marginBottom: "var(--sp-4)" }}>
             <Card
               title="Reviews"
-              action={<Rating value={ratingValue} count={reviewCount || undefined} />}
+              action={hasRating ? <Rating value={ratingValue} count={reviewCount} /> : <span className="small muted">No reviews yet</span>}
             >
               {rr && (
                 <div style={{ marginBottom: "var(--sp-3)" }}>
@@ -399,7 +401,15 @@ export default async function ProductDetailPage({
                     <span className="small muted">from verified-purchase reviews · engine: {aiProviderName()}</span>
                   </div>
                   <p className="small" style={{ margin: 0 }}>
-                    {summarizeReviews({ title: product.title, rating: ratingValue, reviewCount, labVerified: product.labVerified })}
+                    {summarizeReviews({
+                      title: product.title,
+                      rating: ratingValue,
+                      reviewCount,
+                      labVerified: product.labVerified,
+                      // The real approved bodies — the summary describes these
+                      // reviews, it never invents a consensus.
+                      reviews: reviews.map((r) => ({ rating: r.rating, body: r.body })),
+                    })}
                   </p>
                 </div>
               )}
@@ -637,7 +647,9 @@ export default async function ProductDetailPage({
             <h1 style={{ fontSize: "1.35rem", margin: product.brand ? "0 0 6px" : "10px 0 6px" }}>{product.title}</h1>
             {product.shortDesc && <p className="small muted" style={{ margin: "0 0 8px" }}>{product.shortDesc}</p>}
             <div className="vh-row" style={{ gap: 10, flexWrap: "wrap", marginBottom: 12 }}>
-              <a href="#reviews" style={{ textDecoration: "none" }}><Rating value={ratingValue} count={reviewCount || undefined} /></a>
+              <a href="#reviews" style={{ textDecoration: "none" }}>
+                {hasRating ? <Rating value={ratingValue} count={reviewCount} /> : <span className="small muted">No reviews yet</span>}
+              </a>
               <Link href={`/store/${sellerSlug(product.seller)}`} className="small" style={{ fontWeight: 700 }}>
                 {product.seller}
               </Link>
@@ -879,7 +891,7 @@ export default async function ProductDetailPage({
               <div style={{ flex: 1, minWidth: 220 }}>
                 <div style={{ fontWeight: 700, color: "var(--vh-ink)" }}>{adProduct.title}</div>
                 <div className="vh-row" style={{ gap: 8, flexWrap: "wrap", marginTop: 4 }}>
-                  <Rating value={adProduct.rating} />
+                  {adProduct.rating > 0 && <Rating value={adProduct.rating} />}
                   <strong style={{ color: "var(--vh-ink)" }}><MoneyText paise={adProduct.pricePaise} /></strong>
                 </div>
               </div>

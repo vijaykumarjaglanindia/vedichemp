@@ -1,25 +1,24 @@
 /**
  * VEDIC HEMP — ORDER DETAIL (§1.4)
  *
- * A real order (routed `live-<reference>`) renders its genuine lifecycle from
- * the order store: a status-driven timeline, a cancel action while it is
+ * Only a real order renders here — routed `live-<reference>`, read from the
+ * order store and gated to the buyer who placed it. It shows that order's
+ * genuine lifecycle: a status-driven timeline, a cancel action while it is
  * pre-dispatch, a return request once delivered, and the refund state after.
- * Sample/illustrative orders keep their existing render. `params` is a
- * Promise in Next 15 and must be awaited; all money is server-computed paise.
+ * `params` is a Promise in Next 15 and must be awaited; every figure is
+ * server-computed paise from the order itself — nothing is derived for display.
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
 import type { ReactNode } from "react";
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { FileDown, LifeBuoy, Package, Receipt, RotateCcw, ShoppingCart, Truck, XCircle } from "lucide-react";
 import { Shell } from "../../Shell";
-import { Card, StatusPill, toneForStatus, MoneyText, Timeline, Banner } from "@/components/ui";
-import { ORDERS, PRODUCTS, type SampleOrder } from "@/lib/sample";
-import { readReturns } from "@/lib/engage";
+import { Card, StatusPill, MoneyText, Timeline, Banner } from "@/components/ui";
 import { getSession } from "@/lib/auth-lite";
 import { findOrder, ORDER_TONE, type Order } from "@/lib/orders";
-import { addToCart, reorder } from "../../../(site)/cart/actions";
+import { reorder } from "../../../(site)/cart/actions";
 import { cancelOwnOrder, reportSideEffect, requestReturn } from "../actions";
 
 export const metadata: Metadata = { title: "Order details" };
@@ -35,7 +34,7 @@ function title(icon: ReactNode, text: string) {
   );
 }
 
-/* ── Real-order render (full lifecycle) ───────────────────── */
+/* ── Order render (full lifecycle) ────────────────────────── */
 
 function RealOrderDetail({
   order,
@@ -276,16 +275,6 @@ function RealOrderDetail({
   );
 }
 
-/* ── Sample-order render (illustrative history) ───────────── */
-
-const LIFECYCLE: { key: string; label: string }[] = [
-  { key: "PLACED", label: "Order placed" },
-  { key: "PACKED", label: "Packed by seller" },
-  { key: "SHIPPED", label: "Shipped" },
-  { key: "OUT_FOR_DELIVERY", label: "Out for delivery" },
-  { key: "DELIVERED", label: "Delivered" },
-];
-
 export default async function OrderDetailPage({
   params,
   searchParams,
@@ -296,172 +285,14 @@ export default async function OrderDetailPage({
   const { id } = await params;
   const sp = await searchParams;
 
-  // Real order path: `live-<reference>` backed by the order store.
-  if (id.startsWith("live-")) {
-    const reference = id.slice("live-".length);
-    const session = await getSession();
-    const real = await findOrder(reference);
-    if (real && real.buyerEmail === (session?.email ?? "guest@vedichemp.in")) {
-      return <RealOrderDetail order={real} flags={sp} />;
-    }
-  }
+  // The only order detail there is: a real order, routed `live-<reference>`.
+  if (!id.startsWith("live-")) notFound();
+  const session = await getSession();
+  // An unverifiable session cookie passes the edge middleware; it must never
+  // resolve to a substitute identity whose order would then be rendered.
+  if (!session?.email) redirect(`/signin?next=/account/orders/${id}`);
+  const order = await findOrder(id.slice("live-".length));
+  if (!order || order.buyerEmail.toLowerCase() !== session.email.toLowerCase()) notFound();
 
-  const { ret } = sp;
-  const returnRequest = (await readReturns())[id];
-  // A buyer reaches order detail only via the live-<ref> path above (their own
-  // real orders). A bare non-live id isn't linked anywhere in the console.
-  const order: SampleOrder | undefined = ORDERS.find((o) => o.id === id);
-  if (!order) notFound();
-
-  const taxPaise = Math.round(order.totalPaise * 0.05);
-  const subtotalPaise = order.totalPaise - taxPaise;
-  const currentIndex = order.status === "RETURNED" ? LIFECYCLE.length : LIFECYCLE.findIndex((s) => s.key === order.status);
-  const nodes = LIFECYCLE.map((step, i) => ({
-    label: step.label,
-    state: (order.status === "RETURNED" ? "done" : i < currentIndex ? "done" : i === currentIndex ? "current" : "pending") as "done" | "current" | "pending" | "failed",
-    at: i <= currentIndex ? order.placedAt : undefined,
-  }));
-  if (order.status === "RETURNED") nodes.push({ label: "Returned to seller", state: "failed", at: order.placedAt });
-  const stepsDone = order.status === "RETURNED" ? LIFECYCLE.length : Math.max(currentIndex + 1, 1);
-  const progressPct = Math.round((stepsDone / LIFECYCLE.length) * 100);
-  const buyAgain = order.items
-    .map((it) => PRODUCTS.find((p) => p.title === it.title))
-    .filter((p): p is NonNullable<typeof p> => p !== undefined && p.state === "LIVE");
-
-  return (
-    <Shell
-      active="/account/orders"
-      breadcrumb={["My Account", "Orders", order.reference]}
-      title={`Order ${order.reference}`}
-      actions={
-        <span className="vh-row" style={{ gap: 8 }}>
-          <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/account/orders/${id}/invoice`}>
-            <span className="vh-row" style={{ gap: 6 }}><FileDown size={14} strokeWidth={2.2} aria-hidden />Download invoice</span>
-          </Link>
-          {order.status === "DELIVERED" && (
-            <a className="vh-btn vh-btn-sm vh-btn-danger" href="#return">
-              <span className="vh-row" style={{ gap: 6 }}><RotateCcw size={14} strokeWidth={2.2} aria-hidden />Request return</span>
-            </a>
-          )}
-        </span>
-      }
-    >
-      <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
-        <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
-          <Card title={title(<Truck {...I} />, "Delivery progress")}>
-            <div className="vh-row-between" style={{ marginBottom: 8 }}>
-              <StatusPill tone={toneForStatus(order.status)}>{order.status.replace(/_/g, " ")}</StatusPill>
-              {order.eta && <span className="small muted">ETA {order.eta}</span>}
-            </div>
-            <div style={{ height: 8, borderRadius: 999, background: "var(--vh-bg-subtle)", overflow: "hidden" }} role="img" aria-label={`Delivery ${progressPct}% complete`}>
-              <div style={{ width: `${progressPct}%`, height: "100%", borderRadius: 999, background: order.status === "RETURNED" ? "var(--vh-danger)" : "var(--vh-accent)" }} />
-            </div>
-            <div className="vh-row-between small muted" style={{ marginTop: 8 }}>
-              <span>{stepsDone} of {LIFECYCLE.length} steps complete</span>
-              <span>Sold by {order.seller}</span>
-            </div>
-          </Card>
-
-          <Card title={title(<Package {...I} />, "Items")}>
-            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
-              {order.items.map((it, i) => (
-                <li key={i} className="vh-row-between">
-                  <span className="vh-row" style={{ gap: 12 }}>
-                    <span aria-hidden style={{ fontSize: "1.6rem" }}>{it.emoji}</span>
-                    <span>
-                      <div style={{ fontWeight: 600 }}>{it.title}</div>
-                      <div className="small muted">Qty {it.qty}</div>
-                    </span>
-                  </span>
-                </li>
-              ))}
-            </ul>
-          </Card>
-
-          <div id="track" style={{ scrollMarginTop: 90 }}>
-            <Card title={title(<Truck {...I} />, "Shipment timeline")}>
-              <Timeline nodes={nodes} />
-            </Card>
-          </div>
-
-          {buyAgain.length > 0 && (
-            <Card title={title(<RotateCcw {...I} />, "Buy it again")}>
-              <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
-                {buyAgain.map((p) => (
-                  <li key={p.id} className="vh-row-between">
-                    <span className="vh-row" style={{ gap: 12 }}>
-                      <span aria-hidden style={{ fontSize: "1.4rem" }}>{p.emoji}</span>
-                      <span>
-                        <div className="small" style={{ fontWeight: 600 }}>{p.title}</div>
-                        <div className="small muted">{p.seller} · ★ {p.rating}</div>
-                      </span>
-                    </span>
-                    <span className="vh-row" style={{ gap: 8 }}>
-                      <MoneyText paise={p.pricePaise} />
-                      <form action={addToCart}>
-                        <input type="hidden" name="productId" value={p.id} />
-                        <button type="submit" className="vh-btn vh-btn-sm vh-btn-primary">Add to cart</button>
-                      </form>
-                    </span>
-                  </li>
-                ))}
-              </ul>
-            </Card>
-          )}
-        </div>
-
-        <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
-          <div id="invoice">
-            <Card title={title(<Receipt {...I} />, "Price breakdown")}>
-              <div className="vh-row-between" style={{ marginBottom: 8 }}><span className="small muted">Subtotal</span><MoneyText paise={subtotalPaise} /></div>
-              <div className="vh-row-between" style={{ marginBottom: 8 }}><span className="small muted">Tax (GST)</span><MoneyText paise={taxPaise} /></div>
-              <hr className="vh-divider" />
-              <div className="vh-row-between" style={{ fontWeight: 700 }}><span>Total</span><MoneyText paise={order.totalPaise} /></div>
-            </Card>
-          </div>
-
-          <Card title={title(<LifeBuoy {...I} />, "Need help with this order?")}>
-            <p className="small muted" style={{ margin: "0 0 8px" }}>
-              Reference <span className="mono">{order.reference}</span>. Refunds always reach you first; we recover
-              from the seller afterwards.
-            </p>
-            <Link className="vh-btn vh-btn-sm vh-btn-outline" href="/account/support">Contact support</Link>
-          </Card>
-
-          {order.status === "DELIVERED" && returnRequest ? (
-            <div id="return" style={{ scrollMarginTop: 90 }}>
-              <Banner severity="ok" title="Return requested" icon="↩️">
-                Reason: {returnRequest.reason} · requested {returnRequest.at}. Your refund is issued on pickup
-                confirmation — recovery from the seller happens afterwards, never at your expense.
-              </Banner>
-            </div>
-          ) : order.status === "DELIVERED" ? (
-            <div id="return" style={{ scrollMarginTop: 90 }}>
-              <Card title="Start a return">
-                {ret === "reason" && <div style={{ marginBottom: 10 }}><Banner severity="danger">Pick a return reason first.</Banner></div>}
-                <p className="small muted" style={{ marginTop: 0 }}>Eligible until 7 days after delivery. Refund-first.</p>
-                <form action={requestReturn} className="vh-row" style={{ gap: 10, flexWrap: "wrap", alignItems: "flex-end" }}>
-                  <input type="hidden" name="orderId" value={order.id} />
-                  <div className="vh-field" style={{ minWidth: 220 }}>
-                    <label className="vh-label" htmlFor="ret-reason">Reason <span className="req">*</span></label>
-                    <select className="vh-select" id="ret-reason" name="reason" required defaultValue="">
-                      <option value="" disabled>Choose a reason…</option>
-                      <option value="Damaged in transit — outer seal broken">Damaged in transit</option>
-                      <option value="Wrong item received against the order">Wrong item received</option>
-                      <option value="Quality not as described on the listing">Quality not as described</option>
-                    </select>
-                  </div>
-                  <button type="submit" className="vh-btn vh-btn-sm vh-btn-danger"><RotateCcw size={14} strokeWidth={2.2} aria-hidden /> Request return</button>
-                </form>
-              </Card>
-            </div>
-          ) : order.status === "RETURNED" ? (
-            <Banner severity="ok" title="Return processed" icon="✅">
-              Refund credited to your Wallet — see <Link href="/account/wallet">Wallet</Link>.
-            </Banner>
-          ) : null}
-        </div>
-      </div>
-    </Shell>
-  );
+  return <RealOrderDetail order={order} flags={sp} />;
 }

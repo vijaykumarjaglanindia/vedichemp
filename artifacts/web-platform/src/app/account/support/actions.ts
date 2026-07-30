@@ -16,6 +16,12 @@ import { addMessage, createTicket as storeCreate, findTicket } from "@/lib/suppo
 const TOPICS = ["Order issue", "Wallet / refund", "Prescription / Medical", "Account & security", "Something else"];
 
 export async function createTicket(formData: FormData): Promise<void> {
+  // A ticket is a thread on a named account — it is raised by the signed-in
+  // buyer or by nobody.
+  const session = await getSession();
+  if (!session?.email) redirect("/signin?next=/account/support");
+  const buyerEmail = session.email;
+
   const topic = String(formData.get("topic") ?? "");
   const orderRef = String(formData.get("orderref") ?? "").trim().slice(0, 20).toUpperCase();
   const desc = String(formData.get("desc") ?? "").trim();
@@ -24,16 +30,13 @@ export async function createTicket(formData: FormData): Promise<void> {
   if (desc.length < 20 || desc.length > 1000) redirect("/account/support?err=desc");
   if (orderRef && !/^VH[0-9]{8,14}$/i.test(orderRef)) redirect("/account/support?err=orderref");
 
-  const session = await getSession();
-  const buyerEmail = session?.email ?? "guest@vedichemp.in";
-
   // Route: an order issue with a real order goes to that seller; a medical
   // topic (A4) and everything else goes to the platform.
   let sellerStore: string | undefined;
   if (topic === "Order issue" && orderRef) {
     const { findOrder } = await import("@/lib/orders");
     const order = await findOrder(orderRef);
-    if (order && order.buyerEmail === buyerEmail) sellerStore = order.items[0]?.seller;
+    if (order && order.buyerEmail.toLowerCase() === buyerEmail.toLowerCase()) sellerStore = order.items[0]?.seller;
   }
 
   const subject = orderRef ? `${topic} · ${orderRef}` : `${topic} · ${desc.slice(0, 40)}${desc.length > 40 ? "…" : ""}`;
@@ -58,9 +61,10 @@ export async function replyTicket(formData: FormData): Promise<void> {
   const id = String(formData.get("ticketId") ?? "");
   const body = String(formData.get("body") ?? "").trim();
   const session = await getSession();
-  const email = session?.email ?? "guest@vedichemp.in";
+  if (!session?.email) redirect("/signin?next=/account/support");
+  const email = session.email;
   const t = findTicket(id);
-  if (!t || t.buyerEmail !== email) redirect("/account/support");
+  if (!t || t.buyerEmail.toLowerCase() !== email.toLowerCase()) redirect("/account/support");
   if (body.length < 2 || body.length > 1000) redirect(`/account/support?err=reply#${id}`);
   if (CLAIMS_LANGUAGE.test(body)) redirect(`/account/support?err=claims#${id}`);
   const result = await addMessage(id, "buyer", email.split("@")[0]!, body);

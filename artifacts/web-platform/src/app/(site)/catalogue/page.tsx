@@ -65,18 +65,24 @@ function discountPct(p: SampleProduct): number {
 }
 
 /** What a card may say about a rating: the average and the number of APPROVED
- *  reviews behind it. `count` is undefined when there are none, so a product
- *  nobody has reviewed shows no count at all — same as the product page. */
+ *  reviews behind it. `count` is undefined when there are none, and then the
+ *  card shows no stars at all — same as the product page. */
 interface ShownRating { value: number; count?: number }
 
-async function ratingsFor(products: { id: string; rating: number }[]): Promise<Map<string, ShownRating>> {
+async function ratingsFor(products: { id: string }[]): Promise<Map<string, ShownRating>> {
   const out = new Map<string, ShownRating>();
   for (const p of products) {
     if (out.has(p.id)) continue;
     const agg = await aggregate(p.id);
-    out.set(p.id, agg.count > 0 ? { value: agg.avg, count: agg.count } : { value: p.rating });
+    out.set(p.id, agg.count > 0 ? { value: agg.avg, count: agg.count } : { value: 0 });
   }
   return out;
+}
+
+/** Stars only where approved reviews back them; an unreviewed listing says so. */
+function CardRating({ r }: { r: ShownRating }) {
+  if (!r.count) return <span className="small muted">No reviews yet</span>;
+  return <Rating value={r.value} count={r.count} />;
 }
 
 /** Rebuild the query string with some keys changed/removed. */
@@ -113,7 +119,7 @@ function ProductTile({ p, rating, sponsored }: { p: CatalogProduct; rating: Show
       <div className="vh-product-body">
         <Link href={`/products/${p.slug}`} className="vh-product-title">{p.title}</Link>
         <div className="small muted">{p.brand || p.seller}</div>
-        <Rating value={rating.value} count={rating.count} />
+        <CardRating r={rating} />
         <div className="vh-row" style={{ gap: 6 }}>
           <MoneyText paise={price} className="vh-product-title" />
           {strike > price && <span className="small muted" style={{ textDecoration: "line-through" }}><MoneyText paise={strike} /></span>}
@@ -208,7 +214,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   const showSponsored = !adWin && chips.length === 0 && view === "grid" && !!sponsored;
   const recentlyViewed = all.slice(0, 6);
   const ratings = await ratingsFor([...results, ...(sponsored ? [sponsored] : [])]);
-  const ratingOf = (p: CatalogProduct): ShownRating => ratings.get(p.id) ?? { value: p.rating };
+  const ratingOf = (p: CatalogProduct): ShownRating => ratings.get(p.id) ?? { value: 0 };
 
   return (
     <div className="vh-container" style={{ paddingTop: "var(--sp-4)", paddingBottom: "var(--sp-6)" }}>
@@ -379,7 +385,7 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                     <Link href={`/products/${p.slug}`} className="vh-product-title" style={{ display: "block" }}>{p.title}</Link>
                     <div className="small muted" style={{ margin: "2px 0 6px" }}>{p.seller}</div>
                     <div className="vh-row" style={{ gap: 8, flexWrap: "wrap" }}>
-                      <Rating value={ratingOf(p).value} count={ratingOf(p).count} />
+                      <CardRating r={ratingOf(p)} />
                       <ComplianceBadge cls={p.cls} />
                     </div>
                   </div>
