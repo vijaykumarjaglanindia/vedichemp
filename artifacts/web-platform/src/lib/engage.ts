@@ -199,16 +199,29 @@ export function socialUrl(kind: "website" | "instagram" | "facebook" | "youtube"
   return `https://youtube.com/@${handle}`;
 }
 
-// Server-side demo store: published storefront copy must be visible to every
-// visitor, not just the seller's browser. Resets on restart; DB seam in prod.
-const gStore = globalThis as unknown as { __vhStoreCopy?: StoreCopy | null };
+/**
+ * Storefront state is PER STORE. It is keyed by the store's name so one
+ * seller's copy, vacation notice or announcement can never surface on another
+ * seller's storefront — and so a seller's own storefront actually shows what
+ * they published. Writers pass the acting store; readers pass the store whose
+ * storefront is being rendered.
+ *
+ * Server-side: published storefront copy must be visible to every visitor, not
+ * just the seller's browser. Resets on restart; DB seam in prod.
+ */
+const gStore = globalThis as unknown as { __vhStoreCopy?: Record<string, StoreCopy> };
 
-export async function readStoreCopy(): Promise<StoreCopy | null> {
-  return gStore.__vhStoreCopy ?? null;
+function copyMap(): Record<string, StoreCopy> {
+  gStore.__vhStoreCopy ??= {};
+  return gStore.__vhStoreCopy;
 }
 
-export async function writeStoreCopy(copy: StoreCopy): Promise<void> {
-  gStore.__vhStoreCopy = copy;
+export async function readStoreCopy(store: string): Promise<StoreCopy | null> {
+  return copyMap()[store] ?? null;
+}
+
+export async function writeStoreCopy(store: string, copy: StoreCopy): Promise<void> {
+  copyMap()[store] = copy;
 }
 
 /* ── Store availability (Dokan-style vacation mode) ───────── */
@@ -218,14 +231,19 @@ export interface StoreAvailability {
   message: string;
 }
 
-const gAvail = globalThis as unknown as { __vhStoreAvailability?: StoreAvailability | null };
+const gAvail = globalThis as unknown as { __vhStoreAvailability?: Record<string, StoreAvailability> };
 
-export async function readStoreAvailability(): Promise<StoreAvailability | null> {
-  return gAvail.__vhStoreAvailability ?? null;
+function availMap(): Record<string, StoreAvailability> {
+  gAvail.__vhStoreAvailability ??= {};
+  return gAvail.__vhStoreAvailability;
 }
 
-export async function writeStoreAvailability(a: StoreAvailability): Promise<void> {
-  gAvail.__vhStoreAvailability = a;
+export async function readStoreAvailability(store: string): Promise<StoreAvailability | null> {
+  return availMap()[store] ?? null;
+}
+
+export async function writeStoreAvailability(store: string, a: StoreAvailability): Promise<void> {
+  availMap()[store] = a;
 }
 
 /* ── Store announcement (time-boxed storefront notice) ────── */
@@ -238,14 +256,20 @@ export interface StoreAnnouncement {
   active: boolean;   // seller's on/off switch
 }
 
-const gAnn = globalThis as unknown as { __vhStoreAnnouncement?: StoreAnnouncement | null };
+const gAnn = globalThis as unknown as { __vhStoreAnnouncement?: Record<string, StoreAnnouncement> };
 
-export async function readStoreAnnouncement(): Promise<StoreAnnouncement | null> {
-  return gAnn.__vhStoreAnnouncement ?? null;
+function annMap(): Record<string, StoreAnnouncement> {
+  gAnn.__vhStoreAnnouncement ??= {};
+  return gAnn.__vhStoreAnnouncement;
 }
 
-export async function writeStoreAnnouncement(a: StoreAnnouncement | null): Promise<void> {
-  gAnn.__vhStoreAnnouncement = a;
+export async function readStoreAnnouncement(store: string): Promise<StoreAnnouncement | null> {
+  return annMap()[store] ?? null;
+}
+
+export async function writeStoreAnnouncement(store: string, a: StoreAnnouncement | null): Promise<void> {
+  if (a === null) delete annMap()[store];
+  else annMap()[store] = a;
 }
 
 /** Live = switched on AND within its date window (if one is set). `today` is

@@ -1233,13 +1233,18 @@ export async function adminSaveStorefront(formData: FormData): Promise<void> {
   if (tagline.length < 10 || tagline.length > 90) err = "tagline";
   else if (story.length < 40 || story.length > 500) err = "story";
   else if (CLAIMS_LANGUAGE.test(tagline) || CLAIMS_LANGUAGE.test(story)) err = "claims";
-  if (err === "claims") {
-    await writeAudit({ actor: who, action: "STOREFRONT_EDIT_OBO", target: "Vedic Botanicals", outcome: "DENIED", note: "claims language" });
+  // The storefront being edited on the seller's behalf — an admin picks it from
+  // the KYC-approved register, so the copy lands on that seller's own storefront.
+  const forStore = String(formData.get("forStore") ?? "").trim();
+  const { kycApproved } = await import("@/lib/vendor");
+  if (!err && !(await kycApproved(forStore))) err = "seller";
+  if (err === "claims" || err === "seller") {
+    await writeAudit({ actor: who, action: "STOREFRONT_EDIT_OBO", target: forStore || "(none)", outcome: "DENIED", note: err === "claims" ? "claims language" : "not a KYC-approved store" });
   }
   if (err) redirect(`/admin/sellers?store=${err}#storefront-obo`);
 
-  await writeStoreCopy({ tagline, story });
-  await writeAudit({ actor: who, action: "STOREFRONT_EDIT_OBO", target: "Vedic Botanicals", outcome: "OK" });
+  await writeStoreCopy(forStore, { tagline, story });
+  await writeAudit({ actor: who, action: "STOREFRONT_EDIT_OBO", target: forStore, outcome: "OK" });
   redirect("/admin/sellers?store=saved#storefront-obo");
 }
 

@@ -83,7 +83,7 @@ export async function inviteStaffMember(formData: FormData): Promise<void> {
   if (!/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) redirect("/seller/staff?err=email");
   if (!STAFF_ROLES.includes(role)) redirect("/seller/staff?err=role");
   const { inviteStaff } = await import("@/lib/staff");
-  const result = await inviteStaff({ name, email, role: role as import("@/lib/staff").Role });
+  const result = await inviteStaff({ store: DEMO_STORE, name, email, role: role as import("@/lib/staff").Role });
   if (!result.ok) redirect(`/seller/staff?err=${result.reason}`);
   await writeAudit({ actor: DEMO_STORE, action: "STAFF_INVITE", target: `${email} (${role})`, outcome: "OK" });
   redirect("/seller/staff?done=invited");
@@ -1066,7 +1066,7 @@ export async function updateStorefront(formData: FormData): Promise<void> {
   if (err) redirect(`/seller/store?err=${err}#storefront-copy`);
 
   const { writeStoreCopy } = await import("@/lib/engage");
-  await writeStoreCopy({
+  await writeStoreCopy(await actingStore(), {
     tagline,
     story,
     ...(metaTitle ? { metaTitle } : {}),
@@ -1267,7 +1267,7 @@ export async function saveStoreAvailability(formData: FormData): Promise<void> {
   const { CLAIMS_LANGUAGE } = await import("@/lib/claims");
   if (message && CLAIMS_LANGUAGE.test(message)) redirect("/seller/store?err=vacclaims#availability");
   const { writeStoreAvailability } = await import("@/lib/engage");
-  await writeStoreAvailability({ onVacation, message: message || "We're on a short break — back soon. Thanks for your patience!" });
+  await writeStoreAvailability(await actingStore(), { onVacation, message: message || "We're on a short break — back soon. Thanks for your patience!" });
   redirect("/seller/store?avail=saved#availability");
 }
 
@@ -1284,7 +1284,7 @@ export async function saveStoreAnnouncement(formData: FormData): Promise<void> {
 
   // Clearing: an empty message turns the announcement off entirely.
   if (!message) {
-    await writeStoreAnnouncement(null);
+    await writeStoreAnnouncement(DEMO_STORE, null);
     redirect("/seller/store?ann=cleared#announcement");
   }
   if (message.length < 6) redirect("/seller/store?err=annshort#announcement");
@@ -1293,7 +1293,7 @@ export async function saveStoreAnnouncement(formData: FormData): Promise<void> {
   if (!dateOk(startsAt) || !dateOk(endsAt)) redirect("/seller/store?err=anndate#announcement");
   if (startsAt && endsAt && endsAt < startsAt) redirect("/seller/store?err=annrange#announcement");
 
-  await writeStoreAnnouncement({
+  await writeStoreAnnouncement(DEMO_STORE, {
     message,
     tone,
     ...(startsAt ? { startsAt } : {}),

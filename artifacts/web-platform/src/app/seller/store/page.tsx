@@ -38,9 +38,9 @@ export default async function StorePage({
   const copyParam = (await searchParams).copy;
   const store = await actingStore();
   const { SELLER, LICENCES, CAPABILITY_MATRIX, STORE_PREVIEW } = sellerData(store);
-  const storeCopy = await readStoreCopy();
-  const availability = await readStoreAvailability();
-  const announcement = await readStoreAnnouncement();
+  const storeCopy = await readStoreCopy(store);
+  const availability = await readStoreAvailability(store);
+  const announcement = await readStoreAnnouncement(store);
   // Real store rating (from moderated buyer reviews) and real team roster.
   const storeAgg = await storeAggregate(STORE_PREVIEW.handle);
   const staff = await listStaff(store);

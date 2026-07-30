@@ -70,7 +70,7 @@ export async function generateMetadata({ params }: { params: Promise<Params> }):
   const store = await resolveStore(slug);
   if (!store) return { title: "Store not found" };
   const profile = STORE_PROFILES[slug];
-  const copy = slug === "vedic-botanicals" ? await readStoreCopy() : null;
+  const copy = await readStoreCopy(store.name);
   const title = copy?.metaTitle?.trim() || `${store.name} — official store`;
   const description = copy?.metaDescription?.trim() || copy?.tagline?.trim() || profile?.tagline || `Shop ${store.name} on Vedic Hemp.`;
   const url = `/store/${slug}`;
@@ -111,12 +111,12 @@ export default async function StorePage({ params, searchParams }: { params: Prom
   const location = kyc ? `${kyc.city}, ${kyc.state}` : null;
   const certifications = kyc ? certificationsFor(kyc) : [];
   const following = (await readFollows()).includes(slug);
-  // Seller-published copy overrides the sample profile (their own store only).
-  const storeCopy = slug === "vedic-botanicals" ? await readStoreCopy() : null;
+  // Seller-published copy overrides the seeded profile, per store.
+  const storeCopy = await readStoreCopy(store.name);
   const tagline = storeCopy?.tagline ?? profile?.tagline ?? null;
   const story = storeCopy?.story ?? profile?.story ?? null;
-  const availability = slug === "vedic-botanicals" ? await readStoreAvailability() : null;
-  const announcement = slug === "vedic-botanicals" ? await readStoreAnnouncement() : null;
+  const availability = await readStoreAvailability(store.name);
+  const announcement = await readStoreAnnouncement(store.name);
   const today = new Date().toISOString().slice(0, 10);
 
   const storeAgg = await storeAggregate(slug);

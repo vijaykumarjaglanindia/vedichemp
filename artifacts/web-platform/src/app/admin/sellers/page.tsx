@@ -19,6 +19,7 @@ import {
 import { Shell } from "../Shell";
 import { Card, StatusPill, MoneyText, ComplianceBadge, Banner, EmptyState, DataTable, type Column } from "@/components/ui";
 import { readStoreCopy } from "@/lib/engage";
+import { sellerSlug } from "@/app/(site)/_lib/data";
 import { allKyc, pendingKyc, licenceExpired, statusLabel, type KycStatus, type VendorKyc } from "@/lib/vendor";
 import { earningLines } from "@/lib/earnings";
 import { adminSaveStorefront } from "../actions";
@@ -72,11 +73,15 @@ const columns: Column<SellerRow>[] = [
 export default async function AdminSellersPage({
   searchParams,
 }: {
-  searchParams: Promise<{ store?: string }>;
+  searchParams: Promise<{ store?: string; obo?: string }>;
 }) {
-  const { store } = await searchParams;
-  const storeCopy = await readStoreCopy();
+  const { store, obo } = await searchParams;
   const queue = await pendingKyc();
+  // Storefront copy is per store: the admin picks which verified storefront they
+  // are editing on the seller's behalf.
+  const approvedStores = (await allKyc()).filter((r) => r.status === "APPROVED").map((r) => r.store);
+  const oboStore = obo && approvedStores.includes(obo) ? obo : (approvedStores[0] ?? "");
+  const storeCopy = oboStore ? await readStoreCopy(oboStore) : null;
   const register: SellerRow[] = await Promise.all(
     (await allKyc()).map(async (r) => ({
       ...r,
@@ -156,8 +161,8 @@ export default async function AdminSellersPage({
         {/* ── Storefront copy on the seller's behalf ────────── */}
         <div id="storefront-obo">
           <Card
-            title={<span className="vh-row" style={{ gap: 8 }}><Store {...I} aria-hidden /> Storefront copy — on behalf of Vedic Botanicals</span>}
-            action={<Link className="small" href="/store/vedic-botanicals" style={{ fontWeight: 700 }}>View public storefront →</Link>}
+            title={<span className="vh-row" style={{ gap: 8 }}><Store {...I} aria-hidden /> Storefront copy — on behalf of {oboStore || "a seller"}</span>}
+            action={oboStore ? <Link className="small" href={`/store/${sellerSlug(oboStore)}`} style={{ fontWeight: 700 }}>View public storefront →</Link> : undefined}
           >
             <p className="small muted" style={{ marginTop: 0 }}>
               For sellers who ask support to update their page. Same length rules and claims copy-check as
@@ -165,9 +170,15 @@ export default async function AdminSellersPage({
             </p>
             <form action={adminSaveStorefront} className="vh-grid" style={{ gap: 12 }}>
               <div className="vh-field">
+                <label className="vh-label" htmlFor="obo-store">Storefront <span className="req">*</span></label>
+                <select className="vh-select" id="obo-store" name="forStore" defaultValue={oboStore}>
+                  {approvedStores.map((n) => <option key={n} value={n}>{n}</option>)}
+                </select>
+              </div>
+              <div className="vh-field">
                 <label className="vh-label" htmlFor="obo-tagline">Tagline (10–90 chars) <span className="req">*</span></label>
                 <input className="vh-input" id="obo-tagline" name="tagline" type="text" maxLength={90}
-                  defaultValue={storeCopy?.tagline ?? "AYUSH-licensed CBD wellness, batch-tested since 2021"} />
+                  defaultValue={storeCopy?.tagline ?? ""} placeholder="How this seller introduces their store — no health claims." />
               </div>
               <div className="vh-field">
                 <label className="vh-label" htmlFor="obo-story">Store story (40–500 chars) <span className="req">*</span></label>
