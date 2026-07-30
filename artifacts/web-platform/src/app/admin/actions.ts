@@ -729,13 +729,66 @@ export async function saveShipping(formData: FormData): Promise<void> {
   }
   const freeAt = parseInt(String(formData.get("freeAt") ?? ""), 10);
   const defWeight = parseInt(String(formData.get("defaultWeight") ?? ""), 10);
+  // Courier serviceability for age-gated stock: the PIN prefixes where no
+  // age-verified handover is available yet. writeShipping normalises the list.
+  const blockedPins = String(formData.get("blockedPins") ?? "");
   await writeShipping({
     rates,
     ...(Number.isInteger(freeAt) && freeAt >= 0 ? { freeAtPaise: freeAt * 100 } : {}),
     ...(Number.isInteger(defWeight) && defWeight > 0 ? { defaultWeightGrams: defWeight } : {}),
+    regulatedBlockedPins: blockedPins,
   });
   await writeAudit({ actor: who, action: "SHIPPING_RATES_SAVE", target: `${Object.keys(rates).length} zones`, outcome: "OK" });
   redirect("/admin/shipping?saved=1");
+}
+
+/* ── GST rate table (tax slabs) ───────────────────────────── */
+
+/**
+ * Replace the GST slab table. Every row carries its own date of effect, so a
+ * reprinted invoice keeps the rate it was raised at rather than being silently
+ * restated — the same reason A5 requires notice before a fee change. A row with
+ * no date of effect, or with no HSN prefix and no class, is refused by the store.
+ */
+export async function saveTaxRates(formData: FormData): Promise<void> {
+  const who = await actor();
+  const { readTaxRates, writeTaxRates } = await import("@/lib/tax");
+  const existing = await readTaxRates();
+
+  const rows: import("@/lib/tax").GstRate[] = [];
+  // Existing rows, edited in place (a blank rate removes the row).
+  for (let i = 0; i < existing.length; i++) {
+    if (formData.get(`remove_${i}`) === "on") continue;
+    const bps = parseInt(String(formData.get(`bps_${i}`) ?? ""), 10);
+    const from = String(formData.get(`from_${i}`) ?? "").trim();
+    const row = existing[i]!;
+    if (!Number.isInteger(bps) || bps < 0 || bps > 10000) continue;
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(from)) continue;
+    rows.push({ ...row, bps, effectiveFrom: from });
+  }
+  // One optional new row.
+  const nHsn = String(formData.get("new_hsn") ?? "").trim();
+  const nCls = String(formData.get("new_cls") ?? "").trim();
+  const nBps = parseInt(String(formData.get("new_bps") ?? ""), 10);
+  const nFrom = String(formData.get("new_from") ?? "").trim();
+  const nNote = String(formData.get("new_note") ?? "").trim().slice(0, 60);
+  if ((nHsn || nCls) && Number.isInteger(nBps) && nBps >= 0 && nBps <= 10000 && /^\d{4}-\d{2}-\d{2}$/.test(nFrom)) {
+    rows.push({
+      ...(nHsn ? { hsnPrefix: nHsn } : {}),
+      ...(nCls ? { cls: nCls } : {}),
+      bps: nBps,
+      effectiveFrom: nFrom,
+      ...(nNote ? { note: nNote } : {}),
+    });
+  }
+
+  if (rows.length === 0) {
+    await writeAudit({ actor: who, action: "TAX_RATES_SAVE", target: "GST slabs", outcome: "DENIED", note: "refused an empty rate table" });
+    redirect("/admin/finance/tax?err=empty");
+  }
+  await writeTaxRates(rows);
+  await writeAudit({ actor: who, action: "TAX_RATES_SAVE", target: `${rows.length} slabs`, outcome: "OK" });
+  redirect("/admin/finance/tax?saved=1");
 }
 
 /* ── Coupons & promotions (platform-wide) ─────────────────── */

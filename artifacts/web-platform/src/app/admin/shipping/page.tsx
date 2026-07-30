@@ -68,13 +68,31 @@ export default async function AdminShippingPage({ searchParams }: { searchParams
               <span className="vh-help">Used when a product has no weight set. Sellers set weight per product.</span>
             </div>
           </div>
+          <div className="vh-field" style={{ marginTop: 16 }}>
+            <label className="vh-label" htmlFor="blockedPins">Age-gated delivery — blocked PIN prefixes</label>
+            <input
+              className="vh-input mono"
+              id="blockedPins"
+              name="blockedPins"
+              defaultValue={cfg.regulatedBlockedPins.join(", ")}
+              placeholder="e.g. 79, 796, 190"
+            />
+            <span className="vh-help">
+              Comma- or space-separated PIN prefixes where your couriers cannot yet do an age-verified
+              handover, so CBD wellness can&rsquo;t be delivered. Hemp foods and Ayurveda are unaffected.
+              {cfg.regulatedBlockedPins.length === 0
+                ? " Nothing is blocked right now — CBD wellness quotes everywhere your zones cover."
+                : ` Currently blocking ${cfg.regulatedBlockedPins.length} prefix${cfg.regulatedBlockedPins.length === 1 ? "" : "es"}.`}
+            </span>
+          </div>
           <button className="vh-btn vh-btn-primary" type="submit" style={{ marginTop: 16, justifySelf: "start" }}>Save shipping</button>
         </Card>
       </form>
 
       <p className="small muted" style={{ marginTop: "var(--sp-3)" }}>
-        Age-gated CBD wellness can&rsquo;t be delivered to some PIN codes yet (no age-verified handover). That
-        serviceability check runs per PIN on the product page and at checkout — a stale client can&rsquo;t bypass it.
+        The age-gated serviceability check runs per PIN on the product page and at checkout, against the list
+        above — a stale client can&rsquo;t bypass it, and a blocked CBD line is refused before any money or
+        stock moves.
       </p>
     </Shell>
   );
