@@ -34,20 +34,36 @@ export default async function AdminShippingPage({ searchParams }: { searchParams
               <thead>
                 <tr>
                   <th style={{ textAlign: "left" }}>Zone</th>
-                  <th style={{ textAlign: "left" }}>Covers</th>
+                  <th style={{ textAlign: "left" }}>Covers (states, comma-separated)</th>
                   <th style={{ textAlign: "left" }}>Base (₹, first kg)</th>
                   <th style={{ textAlign: "left" }}>Per extra kg (₹)</th>
-                  <th style={{ textAlign: "left" }}>Delivery</th>
+                  <th style={{ textAlign: "left" }}>Delivery (days)</th>
                 </tr>
               </thead>
               <tbody>
                 {cfg.zones.map((z) => (
                   <tr key={z.id}>
                     <td style={{ fontWeight: 700 }}><span className="vh-row" style={{ gap: 6 }}><MapPin size={13} aria-hidden style={{ color: "var(--vh-accent)" }} /> {z.name}</span></td>
-                    <td className="small muted" style={{ maxWidth: 260 }}>{z.states.length ? z.states.map((s) => s.replace(/\b\w/g, (c) => c.toUpperCase())).join(", ") : "Everywhere not in another zone"}</td>
+                    <td style={{ maxWidth: 300 }}>
+                      {z.id === "national" ? (
+                        <span className="small muted">Everywhere not covered by another zone</span>
+                      ) : (
+                        <input
+                          className="vh-input" name={`states_${z.id}`} defaultValue={z.states.join(", ")}
+                          aria-label={`States covered by ${z.name}`} style={{ minWidth: 240 }}
+                        />
+                      )}
+                    </td>
                     <td><input className="vh-input" name={`base_${z.id}`} type="number" min={0} defaultValue={rupees(z.basePaise)} style={{ width: 110 }} aria-label={`Base rate for ${z.name}`} /></td>
                     <td><input className="vh-input" name={`perkg_${z.id}`} type="number" min={0} defaultValue={rupees(z.perKgPaise)} style={{ width: 110 }} aria-label={`Per-kg rate for ${z.name}`} /></td>
-                    <td className="small tabular">{etaLabel(z)}</td>
+                    <td>
+                      <span className="vh-row" style={{ gap: 6 }}>
+                        <input className="vh-input tabular" name={`etamin_${z.id}`} type="number" min={1} max={60} defaultValue={z.etaMinDays} style={{ width: 70 }} aria-label={`Fastest delivery for ${z.name}, in days`} />
+                        <span className="small muted">to</span>
+                        <input className="vh-input tabular" name={`etamax_${z.id}`} type="number" min={1} max={90} defaultValue={z.etaMaxDays} style={{ width: 70 }} aria-label={`Slowest delivery for ${z.name}, in days`} />
+                      </span>
+                      <span className="vh-help">shown as &ldquo;{etaLabel(z)}&rdquo;</span>
+                    </td>
                   </tr>
                 ))}
               </tbody>

@@ -188,7 +188,11 @@ const DEFAULTS: CatalogProduct[] = PRODUCTS.map((p): CatalogProduct => {
     ...p,
     labVerified: regulated ? false : p.labVerified,
     desc: "",
-    hsn: p.cls === "CBD_WELLNESS" ? "33049910" : p.cls === "AYURVEDA" ? "30049011" : "12079990",
+    // No HSN. A seller states the HSN for their own product (the listing form
+    // requires it); guessing one from the compliance class would put an
+    // invented code on a real invoice. With none, gstRateBps falls back to the
+    // class slab — the honest resolution, and the operator can see it.
+    hsn: "",
     status: regulated ? "DRAFT" : "LIVE",
     state: regulated ? "DRAFT" : p.state,
     coaState: "NONE",

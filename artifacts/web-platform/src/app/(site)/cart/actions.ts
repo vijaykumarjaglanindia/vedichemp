@@ -10,7 +10,7 @@
 
 import { redirect } from "next/navigation";
 import { cookies } from "next/headers";
-import { readEnabledPayments } from "@/lib/payments";
+import { methodsForAmount, readEnabledPayments } from "@/lib/payments";
 import { randomUUID } from "node:crypto";
 import { clearCartCookies, MAX_LINES, priceCart, readCartLines, writeCartLines, writeCoupon } from "@/lib/cart";
 import { decrementStock, findProduct, hasVariants, isLowStock, orderBounds, readLiveProducts, selectVariant } from "@/lib/catalog";
@@ -259,7 +259,7 @@ export async function placeOrder(formData: FormData): Promise<void> {
   // The accepted set is the ADMIN's payment configuration (Admin → Finance →
   // Payments) — a forged value for a disabled method fails here regardless
   // of anything the client rendered.
-  else if (!(await readEnabledPayments()).some((m) => m.key === payment)) err = "payment";
+  else if (!(await methodsForAmount(cart.totalPaise)).some((m) => m.key === payment)) err = "payment";
   else if (cart.ageGated && !ageConfirm) err = "age";
 
   // A regulated (CBD) line must be deliverable to THIS pin — the same

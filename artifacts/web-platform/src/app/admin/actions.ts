@@ -719,13 +719,21 @@ export async function saveShipping(formData: FormData): Promise<void> {
   const who = await actor();
   const { readShipping, writeShipping } = await import("@/lib/shipping");
   const cfg = await readShipping();
-  const rates: Record<string, { basePaise: number; perKgPaise: number }> = {};
+  const rates: Record<string, import("@/lib/shipping").ZoneOverride> = {};
   for (const z of cfg.zones) {
     const base = parseInt(String(formData.get(`base_${z.id}`) ?? ""), 10);
     const perKg = parseInt(String(formData.get(`perkg_${z.id}`) ?? ""), 10);
-    if (Number.isInteger(base) && base >= 0 && Number.isInteger(perKg) && perKg >= 0) {
-      rates[z.id] = { basePaise: base * 100, perKgPaise: perKg * 100 };
-    }
+    const etaMin = parseInt(String(formData.get(`etamin_${z.id}`) ?? ""), 10);
+    const etaMax = parseInt(String(formData.get(`etamax_${z.id}`) ?? ""), 10);
+    const states = String(formData.get(`states_${z.id}`) ?? "").split(",").map((x) => x.trim()).filter(Boolean);
+    rates[z.id] = {
+      ...(Number.isInteger(base) && base >= 0 ? { basePaise: base * 100 } : {}),
+      ...(Number.isInteger(perKg) && perKg >= 0 ? { perKgPaise: perKg * 100 } : {}),
+      ...(Number.isInteger(etaMin) && Number.isInteger(etaMax) ? { etaMinDays: etaMin, etaMaxDays: etaMax } : {}),
+      // "Rest of India" is the fallback zone and covers whatever is left, so an
+      // empty state list there is meaningful rather than an omission.
+      ...(z.id === "national" ? {} : { states }),
+    };
   }
   const freeAt = parseInt(String(formData.get("freeAt") ?? ""), 10);
   const defWeight = parseInt(String(formData.get("defaultWeight") ?? ""), 10);

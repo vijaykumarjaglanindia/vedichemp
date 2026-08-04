@@ -51,8 +51,8 @@ export const SITE_FIELDS: SiteField[] = [
   },
   {
     key: "announcement", group: "Global chrome", label: "Announcement bar", kind: "text", max: 200,
-    help: "Separate segments with a middle dot (·).",
-    def: "Free shipping on orders above ₹5,000 · Products listed & shipped by licensed sellers · Secure online payment",
+    help: "Separate segments with a middle dot (·). Use {{freeShipping}} to print the live free-shipping threshold — it stays correct when you change the threshold on Shipping.",
+    def: "Free shipping on orders above {{freeShipping}} · Products listed & shipped by licensed sellers · Secure online payment",
   },
   {
     key: "footerAbout", group: "Global chrome", label: "Footer — about blurb", kind: "text", max: 260,
@@ -275,7 +275,30 @@ function overrides(): Record<string, string> {
 export type SiteContent = Record<string, string>;
 
 /** Every field, overrides merged over defaults. */
+/**
+ * Tokens an editor may write into any field, resolved here so a number the
+ * platform enforces is never retyped into prose that can go stale. Add a token
+ * only for a value the server already owns.
+ */
+async function tokenValues(): Promise<Record<string, string>> {
+  const { readShipping } = await import("@/lib/shipping");
+  const shipping = await readShipping();
+  return {
+    freeShipping: `₹${Math.round(shipping.freeAtPaise / 100).toLocaleString("en-IN")}`,
+  };
+}
+
 export async function readSiteContent(): Promise<SiteContent> {
+  const o = overrides();
+  const tokens = await tokenValues();
+  const resolve = (v: string) => v.replace(/\{\{(\w+)\}\}/g, (m, k: string) => tokens[k] ?? m);
+  const out: SiteContent = {};
+  for (const f of SITE_FIELDS) out[f.key] = resolve(o[f.key] ?? f.def);
+  return out;
+}
+
+/** The raw, unresolved copy — what the CMS editor must show and save. */
+export async function readSiteContentRaw(): Promise<SiteContent> {
   const o = overrides();
   const out: SiteContent = {};
   for (const f of SITE_FIELDS) out[f.key] = o[f.key] ?? f.def;

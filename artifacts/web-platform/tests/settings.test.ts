@@ -23,6 +23,8 @@ beforeEach(() => {
   g.__vhCommerce = undefined;
   g.__vhOrders = undefined;
   g.__vhEarnings = undefined;
+  g.__vhShipping = undefined;
+  g.__vhPayments = undefined;
 });
 
 describe("the settings store", () => {
@@ -96,5 +98,46 @@ describe("the payout floor is the operator's, and the guard reads it", () => {
     await writeCommerce({ minWithdrawPaise: 10_000 });
     const r = await requestWithdraw(SELLER, 50_000);
     expect((r as { reason?: string }).reason).not.toBe("min");
+  });
+});
+
+describe("a payment method with a floor is refused, not just described", () => {
+  it("EMI is offered above its minimum and absent below it", async () => {
+    const { writePaymentMethod, methodsForAmount } = await import("@/lib/payments");
+    await writePaymentMethod("emi", { enabled: true });
+    const small = await methodsForAmount(2_999_00);
+    const large = await methodsForAmount(3_000_00);
+    expect(small.some((m) => m.key === "emi")).toBe(false);
+    expect(large.some((m) => m.key === "emi")).toBe(true);
+    // A method with no floor is unaffected either way.
+    expect(small.some((m) => m.key === "upi")).toBe(true);
+  });
+});
+
+describe("shipping zones are the operator's, end to end", () => {
+  it("a changed delivery window reaches the quote a buyer sees", async () => {
+    const { writeShipping, readShipping, shippingQuote, etaLabel } = await import("@/lib/shipping");
+    await writeShipping({ rates: { metro: { etaMinDays: 1, etaMaxDays: 1, basePaise: 5_00 } } });
+    const zone = (await readShipping()).zones.find((z) => z.id === "metro")!;
+    expect(etaLabel(zone)).toBe("1 days");
+    const q = await shippingQuote({ subtotalPaise: 100_00, weightGrams: 200, destState: "maharashtra" });
+    expect(q.etaMaxDays).toBe(1);
+    expect(q.paise).toBe(5_00);
+  });
+
+  it("a window that ends before it starts is refused, leaving the old one", async () => {
+    const { writeShipping, readShipping } = await import("@/lib/shipping");
+    await writeShipping({ rates: { remote: { etaMinDays: 9, etaMaxDays: 2 } } });
+    const zone = (await readShipping()).zones.find((z) => z.id === "remote")!;
+    expect(zone.etaMinDays).toBeLessThanOrEqual(zone.etaMaxDays);
+  });
+
+  it("moving a state moves the zone it resolves to", async () => {
+    const { writeShipping, resolveZone } = await import("@/lib/shipping");
+    await writeShipping({ rates: { remote: { states: ["goa"] }, metro: { states: ["maharashtra"] } } });
+    expect((await resolveZone("goa")).id).toBe("remote");
+    expect((await resolveZone("maharashtra")).id).toBe("metro");
+    // Anything unlisted still lands in the fallback zone.
+    expect((await resolveZone("bihar")).id).toBe("national");
   });
 });

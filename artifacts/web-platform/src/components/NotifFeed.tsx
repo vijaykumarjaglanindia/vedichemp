@@ -10,6 +10,10 @@ import Link from "next/link";
 import { Card, EmptyState } from "@/components/ui";
 import { notifyMeta, type Notification } from "@/lib/notify";
 
+/** How many rows render at once. The remainder is reported rather than
+ *  silently dropped — an unseen notification is still a notification. */
+const PAGE = 40;
+
 export function NotifFeed({
   items,
   markRead,
@@ -39,7 +43,7 @@ export function NotifFeed({
         </div>
       ) : (
         <div>
-          {items.slice(0, 40).map((n) => {
+          {items.slice(0, PAGE).map((n) => {
             const meta = notifyMeta(n.kind);
             return (
               <div key={n.id} className={`vh-notif-row${n.read ? "" : " unread"}`}>
@@ -63,6 +67,12 @@ export function NotifFeed({
               </div>
             );
           })}
+          {items.length > PAGE && (
+            <p className="small muted" style={{ margin: 0, padding: "10px 16px 14px" }}>
+              Showing the {PAGE} most recent of {items.length}. Older notifications stay in your history — nothing
+              here is deleted.
+            </p>
+          )}
         </div>
       )}
     </Card>

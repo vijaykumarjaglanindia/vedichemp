@@ -47,9 +47,20 @@ const DEFAULTS: ShippingSettings = {
   regulatedBlockedPins: [],
 };
 
+/** What an operator may change on one zone. The zone's id and the set of zones
+ *  are structural; the rates, the delivery window and the states it covers are
+ *  commercial decisions. */
+export interface ZoneOverride {
+  basePaise?: number;
+  perKgPaise?: number;
+  etaMinDays?: number;
+  etaMaxDays?: number;
+  states?: string[];
+}
+
 declare global {
   // eslint-disable-next-line no-var
-  var __vhShipping: Partial<Pick<ShippingSettings, "freeAtPaise" | "defaultWeightGrams" | "regulatedBlockedPins">> & { rates?: Record<string, { basePaise: number; perKgPaise: number }> } | undefined;
+  var __vhShipping: Partial<Pick<ShippingSettings, "freeAtPaise" | "defaultWeightGrams" | "regulatedBlockedPins">> & { rates?: Record<string, ZoneOverride> } | undefined;
 }
 
 function overrides() {
@@ -77,13 +88,29 @@ export function normalisePinPrefixes(input: string[] | string): string[] {
 /** Admin edits a zone's base + per-kg rate, the free-shipping threshold, and
  *  the PIN prefixes the courier network cannot age-check a handover in. */
 export async function writeShipping(patch: {
-  rates?: Record<string, { basePaise: number; perKgPaise: number }>;
+  rates?: Record<string, ZoneOverride>;
   freeAtPaise?: number;
   defaultWeightGrams?: number;
   regulatedBlockedPins?: string[] | string;
 }): Promise<void> {
   const o = overrides();
-  if (patch.rates) o.rates = { ...(o.rates ?? {}), ...patch.rates };
+  if (patch.rates) {
+    // A window that ends before it starts, or a negative rate, is refused per
+    // field rather than accepted and rendered as nonsense to a buyer.
+    const clean: Record<string, ZoneOverride> = {};
+    for (const [id, z] of Object.entries(patch.rates)) {
+      const next: ZoneOverride = {};
+      if (Number.isInteger(z.basePaise) && z.basePaise! >= 0) next.basePaise = z.basePaise;
+      if (Number.isInteger(z.perKgPaise) && z.perKgPaise! >= 0) next.perKgPaise = z.perKgPaise;
+      if (Number.isInteger(z.etaMinDays) && Number.isInteger(z.etaMaxDays) && z.etaMinDays! >= 1 && z.etaMaxDays! >= z.etaMinDays!) {
+        next.etaMinDays = z.etaMinDays;
+        next.etaMaxDays = z.etaMaxDays;
+      }
+      if (z.states) next.states = [...new Set(z.states.map((x) => x.trim().toLowerCase()).filter(Boolean))];
+      clean[id] = { ...(o.rates?.[id] ?? {}), ...next };
+    }
+    o.rates = { ...(o.rates ?? {}), ...clean };
+  }
   if (patch.freeAtPaise !== undefined) o.freeAtPaise = patch.freeAtPaise;
   if (patch.defaultWeightGrams !== undefined) o.defaultWeightGrams = patch.defaultWeightGrams;
   if (patch.regulatedBlockedPins !== undefined) o.regulatedBlockedPins = normalisePinPrefixes(patch.regulatedBlockedPins);

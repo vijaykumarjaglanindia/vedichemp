@@ -17,6 +17,12 @@ export interface PaymentMethodDef {
   sub: string;
   kind: "prepaid" | "cod";
   defaultEnabled: boolean;
+  /**
+   * Smallest order this method may be used for, in paise. Structured rather
+   * than stated in `sub`, so checkout can actually refuse it — a rule written
+   * only in a sentence is a rule the server does not have.
+   */
+  minAmountPaise?: number;
 }
 
 export const PAYMENT_DEFS: PaymentMethodDef[] = [
@@ -24,7 +30,7 @@ export const PAYMENT_DEFS: PaymentMethodDef[] = [
   { key: "card", label: "Card", sub: "Credit or debit · processed by a PCI-DSS gateway, card data never touches Vedic Hemp", kind: "prepaid", defaultEnabled: true },
   { key: "netbanking", label: "Netbanking", sub: "All major Indian banks — redirected to your bank to authorise", kind: "prepaid", defaultEnabled: true },
   { key: "wallet", label: "Wallet & gift credit", sub: "Pay with your Vedic Hemp wallet balance and gift cards", kind: "prepaid", defaultEnabled: false },
-  { key: "emi", label: "EMI", sub: "3–12 month instalments on major cards, above ₹3,000", kind: "prepaid", defaultEnabled: false },
+  { key: "emi", label: "EMI", sub: "Instalments on major cards", kind: "prepaid", defaultEnabled: false, minAmountPaise: 3_000_00 },
   { key: "cod", label: "Cash on Delivery", sub: "Pay the courier when your order arrives · ID checked on 21+ items", kind: "cod", defaultEnabled: false },
 ];
 
@@ -80,4 +86,9 @@ export async function writeGateway(g: string): Promise<boolean> {
 
 export async function codEnabled(): Promise<boolean> {
   return (await readEnabledPayments()).some((m) => m.kind === "cod");
+}
+
+/** Methods a buyer may actually pick for an order of this size. */
+export async function methodsForAmount(totalPaise: number): Promise<PaymentMethod[]> {
+  return (await readEnabledPayments()).filter((m) => !m.minAmountPaise || totalPaise >= m.minAmountPaise);
 }

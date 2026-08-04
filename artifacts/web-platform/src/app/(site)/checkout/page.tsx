@@ -17,7 +17,7 @@ import { priceCart } from "@/lib/cart";
 import { readAddresses } from "@/lib/engage";
 import { placeOrder } from "../cart/actions";
 import { randomUUID } from "node:crypto";
-import { readEnabledPayments } from "@/lib/payments";
+import { methodsForAmount } from "@/lib/payments";
 import { getSession } from "@/lib/auth-lite";
 import { balancePaise } from "@/lib/wallet";
 
@@ -53,7 +53,9 @@ export default async function CheckoutPage({ searchParams }: { searchParams: Pro
   const walletBalance = session?.email ? await balancePaise(session.email) : 0;
   const walletApplicable = Math.min(walletBalance, cart.totalPaise);
   const netAfterWallet = cart.totalPaise - walletApplicable;
-  const methods = await readEnabledPayments();
+  // Only methods this order actually qualifies for — a method with a floor
+  // (EMI) is not offered on a basket below it, and checkout refuses it anyway.
+  const methods = await methodsForAmount(cart.totalPaise);
   const hasCod = methods.some((mm) => mm.kind === "cod");
   let draft: Draft = {};
   try { draft = JSON.parse(jar.get("vh-checkout-draft")?.value ?? "{}") as Draft; } catch { /* fresh form */ }

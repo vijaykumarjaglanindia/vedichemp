@@ -16,7 +16,7 @@ import { ArrowLeft, Globe, PenLine } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Banner, Card, StatusPill } from "@/components/ui";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
-import { SITE_FIELDS, SITE_GROUPS, readSiteContent, siteField } from "@/lib/sitecontent";
+import { SITE_FIELDS, SITE_GROUPS, readSiteContentRaw, siteField } from "@/lib/sitecontent";
 import { saveSiteContent } from "../../actions";
 
 export const metadata: Metadata = { title: "Site content · Admin" };
@@ -28,7 +28,9 @@ export default async function SiteContentPage({
   searchParams: Promise<{ site?: string; g?: string; f?: string }>;
 }) {
   const { site, g, f } = await searchParams;
-  const content = await readSiteContent();
+  // The editor must show what is STORED, not the token-resolved render —
+  // otherwise saving would bake today's value in and freeze it.
+  const content = await readSiteContentRaw();
   const errField = f ? siteField(f) : undefined;
 
   return (

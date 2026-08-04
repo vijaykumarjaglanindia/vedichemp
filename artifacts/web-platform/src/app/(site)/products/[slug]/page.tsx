@@ -173,6 +173,10 @@ export default async function ProductDetailPage({
   const { readShipping } = await import("@/lib/shipping");
   const { readLiveCoupons } = await import("@/lib/commerce");
   const freeShipAtPaise = (await readShipping()).freeAtPaise;
+  // The delivery window from the configured zone table — the same estimate the
+  // cart quotes — rather than a dispatch time nobody measures.
+  const { resolveZone: zoneFor, etaLabel: etaOf } = await import("@/lib/shipping");
+  const etaLine = `${etaOf(await zoneFor(undefined))} to most addresses`;
   // Every coupon that is live AND could apply to this listing — not one code
   // named in the source. A coupon restricted to another class, or to a spend
   // this item cannot reach on its own, is not offered here.
@@ -720,7 +724,7 @@ export default async function ProductDetailPage({
             )}
             <div className="vh-row small muted" style={{ gap: 6, marginBottom: 12 }}>
               <Truck size={13} aria-hidden />
-              <span>Usually dispatched in 24–48 hrs from a licensed seller · Tracked delivery</span>
+              <span>Dispatched by a licensed seller once your payment is captured · Tracked delivery · {etaLine}</span>
             </div>
 
             {/* Bank & platform offers */}
