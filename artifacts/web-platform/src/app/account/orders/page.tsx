@@ -12,7 +12,6 @@ import { redirect } from "next/navigation";
 import { Eye, FileDown, MapPin } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
-import { type SampleOrder } from "@/lib/sample";
 import { readReturns } from "@/lib/engage";
 import { getSession } from "@/lib/auth-lite";
 import { ordersForBuyer } from "@/lib/orders";
@@ -27,6 +26,18 @@ const FILTERS = [
 ] as const;
 
 const OPEN_STATUSES = new Set(["OUT_FOR_DELIVERY", "SHIPPED", "PACKED", "PENDING", "PLACED", "ACCEPTED"]);
+
+/** One row of this buyer's own order history, as the table renders it. */
+interface OrderRow {
+  id: string;
+  reference: string;
+  placedAt: string;
+  status: string;
+  totalPaise: number;
+  items: { title: string; qty: number; emoji: string }[];
+  eta?: string;
+  seller?: string;
+}
 
 export default async function OrdersPage({
   searchParams,
@@ -43,16 +54,22 @@ export default async function OrdersPage({
   // An unverifiable session cookie passes the edge middleware; it must never
   // resolve to a substitute identity whose orders would then be rendered.
   if (!session?.email) redirect("/signin?next=/account/orders");
-  const placed: SampleOrder[] = (await ordersForBuyer(session.email)).map((o) => ({
-    id: `live-${o.reference}`,
-    reference: o.reference,
-    placedAt: o.placedAt.slice(0, 10),
-    status: o.status,
-    totalPaise: o.totalPaise,
-    items: o.items.map(({ title, qty, emoji }) => ({ title, qty, emoji })),
-    eta: o.status === "DELIVERED" || o.status === "REFUNDED" || o.status === "CANCELLED" ? undefined : "3–5 days",
-    seller: o.items[0]?.seller,
-  }));
+  // Delivery estimate comes from the shipping zone the order is actually going
+  // to — the same table the cart quoted from — not a fixed "3-5 days".
+  const { resolveZone, etaLabel } = await import("@/lib/shipping");
+  const settled = new Set(["DELIVERED", "REFUNDED", "CANCELLED", "RETURN_APPROVED", "RETURN_REJECTED"]);
+  const placed: OrderRow[] = await Promise.all(
+    (await ordersForBuyer(session.email)).map(async (o) => ({
+      id: `live-${o.reference}`,
+      reference: o.reference,
+      placedAt: o.placedAt.slice(0, 10),
+      status: o.status as string,
+      totalPaise: o.totalPaise,
+      items: o.items.map(({ title, qty, emoji }) => ({ title, qty, emoji })),
+      eta: settled.has(o.status) ? undefined : etaLabel(await resolveZone(o.state)),
+      seller: o.items[0]?.seller,
+    })),
+  );
 
   const returns = await readReturns();
   // Every row is one of this buyer's own orders from the order store — a buyer
@@ -66,7 +83,7 @@ export default async function OrdersPage({
     return true;
   });
 
-  const columns: Column<SampleOrder>[] = [
+  const columns: Column<OrderRow>[] = [
     {
       key: "reference", header: "Order", render: (o) => (
         <div>

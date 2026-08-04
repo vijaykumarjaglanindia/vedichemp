@@ -281,16 +281,7 @@ export function announcementLive(a: StoreAnnouncement | null | undefined, today:
   return true;
 }
 
-/* ── Seller Central demo state ────────────────────────────── */
-
-/** Status overrides for sample orders: { [orderId]: "ACCEPTED" | "PACKED" } */
-export async function readSellerOrderOverrides(): Promise<Record<string, string>> {
-  return readJson<Record<string, string>>("vh-sell-ord", {});
-}
-
-export async function writeSellerOrderOverrides(map: Record<string, string>): Promise<void> {
-  await writeJson("vh-sell-ord", map);
-}
+/* ── Seller Central local state ───────────────────────────── */
 
 export interface SubmittedProduct {
   id: string;
@@ -347,13 +338,4 @@ export async function readCoupons(): Promise<StoredCoupon[]> {
 
 export async function appendCoupon(c: StoredCoupon): Promise<void> {
   await writeJson("vh-sell-coupons", [c, ...(await readCoupons())].slice(0, 5));
-}
-
-/** Extra units added per batch code: { [batchCode]: addedQty } */
-export async function readStockAdds(): Promise<Record<string, number>> {
-  return readJson<Record<string, number>>("vh-sell-stock", {});
-}
-
-export async function writeStockAdds(map: Record<string, number>): Promise<void> {
-  await writeJson("vh-sell-stock", map);
 }

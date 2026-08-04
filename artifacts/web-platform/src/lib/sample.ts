@@ -28,20 +28,6 @@ export const PRODUCTS: SampleProduct[] = [
   { id: "p8", title: "CBD Muscle Relief Roll-On 50ml", slug: "cbd-rollon-50ml", cls: "CBD_WELLNESS", pricePaise: 129900, mrpPaise: 159900, seller: "Vedic Botanicals", rating: 4.2, emoji: "🧴", labVerified: true, state: "LIVE" },
 ];
 
-export interface SampleOrder {
-  id: string; reference: string; placedAt: string; status: string;
-  totalPaise: number; items: { title: string; qty: number; emoji: string }[];
-  eta?: string; buyer?: string; seller?: string;
-}
-
-export const ORDERS: SampleOrder[] = [
-  { id: "o1", reference: "VH2026070912", placedAt: "2026-07-08", status: "OUT_FOR_DELIVERY", totalPaise: 176882, eta: "Today by 7 PM", buyer: "Ananya S.", seller: "Vedic Botanicals", items: [{ title: "CBD Wellness Balm 30g", qty: 1, emoji: "🌿" }] },
-  { id: "o2", reference: "VH2026070845", placedAt: "2026-07-06", status: "SHIPPED", totalPaise: 89900, eta: "10 Jul", buyer: "Ananya S.", seller: "Himalayan Hemp Co.", items: [{ title: "Hemp Protein Powder 500g", qty: 1, emoji: "🥤" }] },
-  { id: "o3", reference: "VH2026070233", placedAt: "2026-07-02", status: "DELIVERED", totalPaise: 129700, buyer: "Ananya S.", seller: "Ananda Foods", items: [{ title: "Hemp Hearts 400g", qty: 2, emoji: "🌾" }] },
-  { id: "o4", reference: "VH2026063099", placedAt: "2026-06-30", status: "DELIVERED", totalPaise: 39900, buyer: "Rakesh P.", seller: "Ananda Foods", items: [{ title: "Ashwagandha 60 caps", qty: 1, emoji: "🪔" }] },
-  { id: "o5", reference: "VH2026062810", placedAt: "2026-06-28", status: "RETURNED", totalPaise: 249900, buyer: "Meera K.", seller: "Vedic Botanicals", items: [{ title: "CBD Tincture 10ml", qty: 1, emoji: "💧" }] },
-];
-
 export interface SampleSeller {
   id: string; name: string; gstin: string; state: string; healthScore: number;
   classes: ComplianceClass[]; gmvPaise: number; kycState: string;
@@ -54,44 +40,3 @@ export const SELLERS: SampleSeller[] = [
   { id: "s4", name: "Green Leaf Naturals", gstin: "07AABCG1111M1Z0", state: "KYC_PENDING", healthScore: 0, classes: ["CBD_WELLNESS"], gmvPaise: 0, kycState: "KYC_PENDING" },
 ];
 
-export interface QueueItem { id: string; kind: string; subject: string; sla: string; ageHours: number; class?: ComplianceClass }
-
-export const COMPLIANCE_QUEUE: QueueItem[] = [
-  { id: "q1", kind: "CoA Review", subject: "CBD Wellness Balm 30g · batch VB-2406", sla: "4h", ageHours: 1, class: "CBD_WELLNESS" },
-  { id: "q2", kind: "Rx Verification", subject: "Prescription · order VH2026070912", sla: "4h", ageHours: 2, class: "MED_CANNABIS" },
-  { id: "q3", kind: "CoA Review", subject: "CBD Tincture 10ml · batch VB-2409", sla: "4h", ageHours: 3, class: "CBD_WELLNESS" },
-  { id: "q4", kind: "Ad Creative Review", subject: "Vedic Botanicals · 'Summer Wellness'", sla: "8h", ageHours: 5, class: "CBD_WELLNESS" },
-];
-
-export interface SettlementRow { id: string; seller: string; period: string; netPaise: number; status: string; maker: string; checker?: string }
-
-export const SETTLEMENTS: SettlementRow[] = [
-  { id: "st1", seller: "Vedic Botanicals", period: "16–30 Jun 2026", netPaise: 8_45_200_00, status: "AWAITING_CHECKER", maker: "finance.rao" },
-  { id: "st2", seller: "Himalayan Hemp Co.", period: "16–30 Jun 2026", netPaise: 4_12_800_00, status: "AWAITING_CHECKER", maker: "finance.rao" },
-  { id: "st3", seller: "Ananda Foods", period: "1–15 Jun 2026", netPaise: 2_03_400_00, status: "POSTED", maker: "finance.rao", checker: "finance.approver.iyer" },
-];
-
-export interface AuditRow { id: string; at: string; actor: string; action: string; entity: string; reason: string; outcome: string }
-
-export const AUDIT: AuditRow[] = [
-  { id: "a1", at: "2026-07-09 11:04", actor: "pharmacist.das", action: "RX_VERIFY", entity: "Prescription rx_8821", reason: "PRESCRIPTION_VERIFICATION", outcome: "SUCCESS" },
-  { id: "a2", at: "2026-07-09 10:52", actor: "compliance.nair", action: "COA_APPROVE", entity: "LabReport lr_4410", reason: "COMPLIANCE", outcome: "SUCCESS" },
-  { id: "a3", at: "2026-07-09 10:31", actor: "support.varma", action: "SENSITIVE_READ", entity: "Prescription rx_8790", reason: "DISPUTE_EVIDENCE", outcome: "DENIED" },
-  { id: "a4", at: "2026-07-09 09:58", actor: "finance.approver.iyer", action: "SETTLEMENT_POST", entity: "Settlement st_3301", reason: "FINANCE", outcome: "SUCCESS" },
-  { id: "a5", at: "2026-07-09 09:12", actor: "seller_ops.khan", action: "SELLER_SUSPEND", entity: "Seller s3", reason: "KYC_LAPSE", outcome: "SUCCESS" },
-];
-
-export const KPIS = {
-  gmvTodayPaise: 18_42_60_000,
-  ordersToday: 1284,
-  aovPaise: 1_43_500,
-  liveSellers: 312,
-  rxPendingSla: 3,
-  coaPendingSla: 6,
-  disputesOpen: 14,
-  auctionFillRate: 0.82,
-};
-
-export function classProducts(permitted: ComplianceClass[]): SampleProduct[] {
-  return PRODUCTS.filter((p) => permitted.includes(p.cls));
-}

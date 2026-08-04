@@ -366,6 +366,11 @@ export async function placeOrder(formData: FormData): Promise<void> {
     city,
     state,
     pincode,
+    // The delivery address the buyer just entered. Kept on the order so the
+    // seller can print a real label; released to them only once they pack it.
+    shipName: name,
+    shipLine1: line1,
+    shipMobile: mobile,
     payment,
     gstPaise: cart.gstIncludedPaise,
     items: orderItems,

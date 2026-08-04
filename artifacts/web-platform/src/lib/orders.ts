@@ -59,6 +59,16 @@ export interface Order {
   city: string;
   state?: string; // buyer's state — drives GST place-of-supply on the invoice
   pincode: string;
+  /**
+   * The delivery address the buyer entered at checkout. A seller needs the
+   * recipient, street line and contact number to actually print a label, so
+   * they are kept on the order rather than discarded — but they are released
+   * to the seller only once the order is PACKED (see the labels view), and
+   * never appear in a list, an export or a notification body.
+   */
+  shipName?: string;
+  shipLine1?: string;
+  shipMobile?: string;
   payment: string;
   /** In sandbox (no PSP) capture precedes order-forwarding, so the order is
    *  CAPTURED on creation. With a real PSP it is created PENDING and the
@@ -110,6 +120,9 @@ export interface PlaceOrderInput {
   city: string;
   state?: string;
   pincode: string;
+  shipName?: string;
+  shipLine1?: string;
+  shipMobile?: string;
   payment: string;
   items: OrderItem[];
   subtotalPaise: number;
@@ -151,6 +164,9 @@ export async function createOrder(input: PlaceOrderInput): Promise<Order> {
     city: input.city,
     ...(input.state ? { state: input.state } : {}),
     pincode: input.pincode,
+    ...(input.shipName ? { shipName: input.shipName } : {}),
+    ...(input.shipLine1 ? { shipLine1: input.shipLine1 } : {}),
+    ...(input.shipMobile ? { shipMobile: input.shipMobile } : {}),
     payment: input.payment,
     // Sandbox captures on creation; a live PSP order starts PENDING (confirmed by webhook).
     paymentStatus: input.paymentStatus ?? "CAPTURED",

@@ -1,20 +1,23 @@
 /**
  * VEDIC HEMP — MARKETING (§2.8 adjacent)
  *
- * Coupons, bundles and flash sales. Any promotional copy touching a
- * regulated class (CBD Wellness) passes an automated compliance copy-check
+ * The two promotions a seller can actually run: coupon codes, and a sale price
+ * on a listing. Both are honoured by the server at checkout — this page only
+ * shows what is set, it never decides a discount. Any promotional copy touching
+ * a regulated class (CBD Wellness) passes an automated compliance copy-check
  * before it can go live — no disease claims, no medical language. Campaign
  * surfaces are always visibly labelled via CampaignLabel.
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { TicketPercent, Boxes, Zap, SpellCheck2, Plus } from "lucide-react";
+import { TicketPercent, Zap, SpellCheck2, Plus } from "lucide-react";
 import { Shell } from "../Shell";
-import { Banner, Card, StatusPill, toneForStatus, MoneyText } from "@/components/ui";
+import { Banner, Card, StatusPill, MoneyText } from "@/components/ui";
 import { CampaignLabel } from "@/components/ui/ads";
 import { couponLive, readCoupons as readCommerceCoupons } from "@/lib/commerce";
-import { sellerData } from "../_lib/data";
+import { getSession } from "@/lib/auth-lite";
+import { sellerListings } from "@/lib/catalog";
 import { actingStore } from "../_lib/store";
 import { createCoupon } from "../actions";
 
@@ -36,11 +39,26 @@ export default async function MarketingPage({
   searchParams: Promise<{ created?: string; err?: string }>;
 }) {
   const { created, err } = await searchParams;
+  const session = await getSession();
   const store = await actingStore();
-  const { BUNDLES, FLASH_SALES } = sellerData(store);
   const all = await readCommerceCoupons();
   // This store's own promotions (owner-tagged) — real, cart-honoured coupons.
   const mine = Object.entries(all).filter(([, c]) => c.owner === store).map(([code, c]) => ({ code, ...c }));
+
+  // Price promotions: the sale price set on a listing, which the cart applies
+  // itself. Running, scheduled and just-ended are all real states of a real
+  // listing — there is no separate "campaign" object to drift out of sync.
+  const today = new Date().toISOString().slice(0, 10);
+  const onSale = (await sellerListings(session?.email ?? "", store))
+    .filter((p) => typeof p.salePricePaise === "number" && p.salePricePaise > 0)
+    .map((p) => {
+      const from = p.saleFrom ?? "";
+      const to = p.saleTo ?? "";
+      const state = from && today < from ? "SCHEDULED" : to && today > to ? "ENDED" : "RUNNING";
+      const offPct = Math.round(((p.pricePaise - p.salePricePaise!) / p.pricePaise) * 100);
+      return { p, state, offPct, from, to };
+    })
+    .sort((a, b) => (a.state === b.state ? 0 : a.state === "RUNNING" ? -1 : b.state === "RUNNING" ? 1 : 0));
   return (
     <Shell
       active="/seller/marketing"
@@ -169,58 +187,46 @@ export default async function MarketingPage({
         </Card>
       </div>
 
-      <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
-        {/* Bundle builder teaser */}
-        <Card
-          title={<span className="vh-row" style={{ gap: 8 }}><Boxes size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /> Bundles</span>}
-          action={<Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/products">Open bundle builder</Link>}
-        >
-          {BUNDLES.map((b, i) => (
-            <div key={i} className="vh-row-between" style={{ border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: 12, marginBottom: 12 }}>
-              <span>
-                <CampaignLabel>Bundle</CampaignLabel>
-                <div style={{ fontWeight: 600, marginTop: 6 }}>{b.name}</div>
-                <div className="small muted">{b.products.join(" + ")}</div>
-              </span>
-              <StatusPill tone={toneForStatus(b.status)}>{b.status}</StatusPill>
-            </div>
-          ))}
-          <div className="vh-dropzone" style={{ padding: "var(--sp-4)" }}>
-            <Boxes size={18} strokeWidth={2.2} aria-hidden style={{ marginBottom: 6 }} />
-            <div style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--vh-ink)" }}>Build your next bundle</div>
-            <div className="small" style={{ marginTop: 4 }}>
-              Pair a hero product with a companion SKU — bundles ship with one label and settle as one line. Only
-              batches with an approved lab report can join a bundle.
-            </div>
+      <Card
+        title={<span className="vh-row" style={{ gap: 8 }}><Zap size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /> Price promotions</span>}
+        action={<Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/products">Manage listings</Link>}
+      >
+        {onSale.length === 0 ? (
+          <div className="vh-empty">
+            No listing is on offer right now. Set a sale price (and, if you want, the dates it runs) on any listing
+            and it appears here — the cart applies it automatically, so the price a buyer pays is always the one
+            the server calculated.
           </div>
-        </Card>
+        ) : (
+          <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
+            {onSale.map(({ p, state, offPct, from, to }) => (
+              <li key={p.id} className="vh-row-between" style={{ border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: 12, gap: 12, flexWrap: "wrap" }}>
+                <span style={{ minWidth: 0 }}>
+                  <CampaignLabel>Offer</CampaignLabel>
+                  <div style={{ fontWeight: 600, marginTop: 6 }}>
+                    <span aria-hidden>{p.emoji}</span>{" "}
+                    <Link href={`/seller/products/${p.id}`}>{p.title}</Link>
+                  </div>
+                  <div className="small muted">
+                    <span style={{ textDecoration: "line-through" }}><MoneyText paise={p.pricePaise} /></span>
+                    {" → "}<strong><MoneyText paise={p.salePricePaise!} /></strong> · {offPct}% off
+                    {from && ` · from ${from}`}{to && ` · till ${to}`}
+                  </div>
+                </span>
+                <StatusPill tone={state === "RUNNING" ? "ok" : state === "SCHEDULED" ? "info" : "neutral"}>
+                  {state === "RUNNING" ? "Running" : state === "SCHEDULED" ? "Scheduled" : "Ended"}
+                </StatusPill>
+              </li>
+            ))}
+          </ul>
+        )}
+        <p className="small muted" style={{ margin: "12px 0 0" }}>
+          Sale prices are applied at checkout by the server, so a stale page can never sell at the wrong price. An
+          offer on a regulated listing changes nothing about its lab report: a batch without an approved CoA stays
+          unsellable at any price.
+        </p>
+      </Card>
 
-        {/* Flash sales */}
-        <Card
-          title={<span className="vh-row" style={{ gap: 8 }}><Zap size={16} strokeWidth={2.2} aria-hidden style={{ color: "var(--vh-muted)" }} /> Flash sales</span>}
-          action={<a className="vh-btn vh-btn-sm vh-btn-ghost" href="mailto:sellers@vedichemp.com?subject=Flash%20sale%20slot%20request" title="Flash-sale windows are platform campaigns — request a slot from marketplace marketing">Request a slot</a>}
-        >
-          {FLASH_SALES.length === 0 ? (
-            <div className="vh-empty">No flash sales scheduled.</div>
-          ) : (
-            <ul style={{ listStyle: "none", margin: 0, padding: 0, display: "grid", gap: 8 }}>
-              {FLASH_SALES.map((f, i) => (
-                <li key={i} className="vh-row-between" style={{ border: "1px solid var(--vh-line)", borderRadius: "var(--vh-radius-sm)", padding: 12 }}>
-                  <span>
-                    <CampaignLabel>Flash sale</CampaignLabel>
-                    <div style={{ fontWeight: 600, marginTop: 6 }}>{f.name}</div>
-                    <div className="small muted">{f.window} · {f.discount}</div>
-                  </span>
-                  <StatusPill tone={toneForStatus(f.status)}>{f.status}</StatusPill>
-                </li>
-              ))}
-            </ul>
-          )}
-          <p className="small muted" style={{ margin: "12px 0 0" }}>
-            Flash-sale prices are always calculated at checkout, so the price is always correct.
-          </p>
-        </Card>
-      </div>
     </Shell>
   );
 }

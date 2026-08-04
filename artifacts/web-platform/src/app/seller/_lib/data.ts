@@ -2,49 +2,25 @@
  * VEDIC HEMP — SELLER CONSOLE DATA (per-store, real for every seller)
  *
  * Every seller sees THEIR OWN store here, and every store goes through the same
- * code path — there is no privileged seed store with richer numbers. Identity,
- * licences and capability come from the live vendor KYC record; catalogue and
- * order shape come from the shared `@/lib/sample` records the rest of the
- * consoles render. Surfaces whose truth lives in an async store the console
- * reads directly (wallet, payouts, fees, ads, forecasts) are EMPTY here rather
- * than invented — an honest empty state, never a fabricated headline.
+ * code path — there is no privileged seed store with richer numbers. What this
+ * module holds is store IDENTITY: the storefront handle and tagline, the
+ * licences on the live vendor KYC record, and the compliance classes those
+ * licences unlock.
  *
- * Nothing here is a source of truth — the CoA publish gate (A2), stock and
- * settlements are enforced in the live stores (`@/lib/catalog|orders|
- * settlements`). This module only shapes what the console renders.
+ * It holds nothing transactional. Orders, stock, earnings, settlements and ad
+ * results are read from their own live stores by the page that renders them —
+ * there is no copy here to drift out of date, and no seeded figure that could
+ * be mistaken for a real one.
  *
  * `noUncheckedIndexedAccess` is on: every lookup here is guarded.
  */
 
 import { ComplianceClass } from "@prisma/client";
-import { PRODUCTS, ORDERS, SELLERS, SETTLEMENTS, type SampleProduct, type SampleOrder, type SampleSeller } from "@/lib/sample";
+import { SELLERS, type SampleSeller } from "@/lib/sample";
 import { kycFor, licenceExpired, type VendorKyc } from "@/lib/vendor";
 
-/** The store the demo seller (seller@example.in) owns. */
-export const SEED_STORE = "Vedic Botanicals";
 
 /* ── Types ─────────────────────────────────────────────────── */
-
-export type CoaStatus = "APPROVED" | "PENDING_REVIEW" | "MISSING" | "REJECTED";
-
-export interface Batch {
-  code: string;
-  mfgDate: string;
-  expiryDate: string;
-  qty: number;
-  reserved: number;
-  coaStatus: CoaStatus;
-  labReportId?: string;
-  note?: string;
-}
-
-export interface SellerProduct extends SampleProduct {
-  hsn: string;
-  listingState: string;
-  batches: Batch[];
-}
-
-export interface WarehouseStock { warehouse: string; product: string; batch: string; qty: number; reserved: number; sellable: boolean }
 
 export type LicenceStatus = "VERIFIED" | "UNDER_REVIEW" | "EXPIRED" | "NOT_APPLIED";
 
@@ -55,12 +31,6 @@ export interface Licence {
   validTo: string | null;
   status: LicenceStatus;
   unlocks: ComplianceClass[];
-}
-
-export interface AdCampaign {
-  id: string; name: string; type: "Sponsored Product" | "Store Spotlight" | "Category Takeover";
-  cls: Exclude<ComplianceClass, "MED_CANNABIS">;
-  budgetPaise: number; spendPaise: number; acos: number; roas: number; status: string;
 }
 
 export interface AdPlacement {
@@ -82,40 +52,21 @@ export interface StoreProfile {
   tagline: string;
 }
 
-/** Everything the seller sub-consoles render for one store. Keys mirror the
- *  legacy export names so page bodies destructure without renaming. */
+/** What the seller sub-consoles read for one store: identity, the licences on
+ *  its KYC record, and what those licences unlock. Everything transactional —
+ *  orders, stock, money, ads — is read from its own live store by the page that
+ *  renders it, never copied through here. */
 export interface SellerData {
   store: string;
   SELLER: SampleSeller;
   PROFILE: StoreProfile;
   STORE_PREVIEW: { handle: string; tagline: string };
-  SELLER_PRODUCTS: SellerProduct[];
-  findSellerProduct: (id: string) => SellerProduct | undefined;
-  SELLER_ORDERS: SampleOrder[];
-  findSellerOrder: (id: string) => SampleOrder | undefined;
-  SELLER_SETTLEMENTS: { id: string; seller: string; period: string; netPaise: number; status: string; maker: string; checker?: string }[];
-  WAREHOUSE_STOCK: WarehouseStock[];
   LICENCES: Licence[];
   CAPABILITY_MATRIX: { cls: ComplianceClass; requiredLicence: Licence["type"]; capability: "ACTIVE" | "ACTIVE_RENEW" | "LOCKED"; note: string }[];
   ACCOUNT_HEALTH: { score: number; subScores: { key: string; label: string; value: number; note?: string }[] };
-  WALLET: { balancePaise: number; reservedPaise: number; nextPayoutDate: string };
-  PAYOUT_HISTORY: { id: string; date: string; amountPaise: number; status: string; utr: string }[];
-  COMMISSION_BREAKDOWN: { grossPaise: number; commissionPaise: number; gstOnCommissionPaise: number; tdsPaise: number; tcsPaise: number; netPayablePaise: number };
-  NEXT_FEE_CHANGE: { noticeSentAt: string; effectiveFrom: string; summary: string };
-  FEE_BREAKDOWN_SEGMENTS: { label: string; paise: number }[];
-  REVENUE_SPARK: number[];
-  AD_CAMPAIGNS: AdCampaign[];
-  ADS_SUMMARY: { impressions7d: number; clicks7d: number; acos7d: number; roas7d: number };
-  BUNDLES: { name: string; products: string[]; discountPaise: number; status: string }[];
-  FLASH_SALES: { name: string; window: string; discount: string; status: string }[];
-  FORECAST_4W: { valuesPaise: number[]; labels: string[] };
 }
 
 /* ── Generic constants (store-independent) ─────────────────── */
-
-export const ORDER_STATUS_TABS = ["ALL", "PENDING", "ACCEPTED", "PACKED", "SHIPPED", "DELIVERED", "RETURNED"] as const;
-
-export const LOW_STOCK_THRESHOLD = 50;
 
 const DAY_MS = 86_400_000;
 
@@ -125,15 +76,6 @@ export function daysUntil(dateStr: string, todayStr?: string): number {
   const target = new Date(`${dateStr}T00:00:00+05:30`).getTime();
   return Math.ceil((target - from) / DAY_MS);
 }
-
-export const REPORT_TILES = [
-  { key: "sales", label: "Sales report", icon: "💰", blurb: "GMV, orders, refunds by day/week/month." },
-  { key: "product", label: "Product report", icon: "📦", blurb: "Views, conversion, buy-box share per SKU." },
-  { key: "inventory", label: "Inventory report", icon: "🏭", blurb: "Stock ageing, FEFO risk, batch expiry." },
-  { key: "advertising", label: "Advertising report", icon: "📣", blurb: "Spend, ACOS, ROAS by campaign." },
-  { key: "compliance", label: "Compliance report", icon: "🛡️", blurb: "CoA status, licence validity, policy strikes." },
-  { key: "custom", label: "Custom report", icon: "🧩", blurb: "Build a report from any of the fields above." },
-];
 
 export const AD_PLACEMENTS: AdPlacement[] = [
   { key: "sp", name: "Sponsored Products", blurb: "Keyword-targeted listing in search results and category pages.", estCpcPaise: 8_50, pricing: "CPC", exampleCls: "CBD_WELLNESS", exampleTitle: "CBD Wellness Balm 30g", exampleEmoji: "🌿" },
@@ -185,10 +127,6 @@ function sellerRecord(store: string): SampleSeller {
       kycState: "KYC_PENDING",
     }
   );
-}
-
-function hsnFor(cls: ComplianceClass): string {
-  return cls === "CBD_WELLNESS" ? "33049910" : cls === "HEMP_FOOD" ? "15159091" : "30049011";
 }
 
 /* ── Licences & capability (from the live vendor KYC record) ── */
@@ -257,38 +195,21 @@ function capabilityFrom(licences: Licence[]): SellerData["CAPABILITY_MATRIX"] {
    ───────────────────────────────────────────────────────────── */
 
 /**
- * The seller console read model for one store. Pure and synchronous — resolve
- * the store first with `actingStore()` (src/app/seller/_lib/store.ts), then call
- * this. Anything whose truth lives in an async store is empty here: the page
- * that renders it reads that store directly.
+ * Store identity for one store. Pure and synchronous — resolve the store first
+ * with `actingStore()` (src/app/seller/_lib/store.ts), then call this. Anything
+ * transactional lives in its own async store; the page that renders it reads
+ * that store directly rather than taking a copy from here.
  */
 export function sellerData(store: string): SellerData {
   const seller = sellerRecord(store);
   const profile = profileFor(store);
   const licences = licencesFrom(kycFor(store));
 
-  const products: SellerProduct[] = PRODUCTS.filter((p) => p.seller === store).map((p) => ({
-    ...p,
-    hsn: hsnFor(p.cls),
-    listingState: p.state,
-    // Batches, their CoA state and their reserved units live in the catalog and
-    // order stores; the console reads those, never a copy kept here.
-    batches: [],
-  }));
-
-  const orders: SampleOrder[] = ORDERS.filter((o) => o.seller === store);
-
   return {
     store,
     SELLER: seller,
     PROFILE: profile,
     STORE_PREVIEW: { handle: profile.handle, tagline: profile.tagline },
-    SELLER_PRODUCTS: products,
-    findSellerProduct: (id) => products.find((p) => p.id === id),
-    SELLER_ORDERS: orders,
-    findSellerOrder: (id) => orders.find((o) => o.id === id),
-    SELLER_SETTLEMENTS: SETTLEMENTS.filter((s) => s.seller === store),
-    WAREHOUSE_STOCK: [],
     LICENCES: licences,
     CAPABILITY_MATRIX: capabilityFrom(licences),
     ACCOUNT_HEALTH: {
@@ -298,20 +219,5 @@ export function sellerData(store: string): SellerData {
       // invented score is worse than no score.
       subScores: [{ key: "coa", label: "CoA compliance", value: 0 }],
     },
-    WALLET: { balancePaise: 0, reservedPaise: 0, nextPayoutDate: "—" },
-    PAYOUT_HISTORY: [],
-    COMMISSION_BREAKDOWN: { grossPaise: 0, commissionPaise: 0, gstOnCommissionPaise: 0, tdsPaise: 0, tcsPaise: 0, netPayablePaise: 0 },
-    NEXT_FEE_CHANGE: {
-      noticeSentAt: "2026-06-10",
-      effectiveFrom: "2026-07-10",
-      summary: "Referral fee schedule review — no increase applies to your active classes this cycle.",
-    },
-    FEE_BREAKDOWN_SEGMENTS: [],
-    REVENUE_SPARK: [],
-    AD_CAMPAIGNS: [],
-    ADS_SUMMARY: { impressions7d: 0, clicks7d: 0, acos7d: 0, roas7d: 0 },
-    BUNDLES: [],
-    FLASH_SALES: [],
-    FORECAST_4W: { valuesPaise: [], labels: [] },
   };
 }

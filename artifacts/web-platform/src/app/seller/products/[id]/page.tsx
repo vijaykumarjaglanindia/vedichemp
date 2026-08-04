@@ -18,7 +18,6 @@ import { Banner, Card, StatusPill, toneForStatus, ComplianceBadge, MoneyText, ty
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { findProduct, hasVariants, REGULATED_CLASSES, saleActive } from "@/lib/catalog";
 import { readCategories } from "@/lib/categories";
-import { sellerData, type Batch } from "../../_lib/data";
 import { actingStore } from "../../_lib/store";
 import { CLASS_META } from "@/lib/compliance";
 import {
@@ -68,11 +67,6 @@ const DONE: Record<string, { title: string; body: string }> = {
   restore: { title: "Listing restored to DRAFT", body: "Edit it and submit for review to make it sellable again." },
 };
 
-function coaTone(status: Batch["coaStatus"]): "ok" | "warn" | "danger" {
-  if (status === "APPROVED") return "ok";
-  if (status === "PENDING_REVIEW") return "warn";
-  return "danger";
-}
 
 export default async function ProductEditorPage({
   params,
@@ -88,26 +82,11 @@ export default async function ProductEditorPage({
 
   const meta = CLASS_META[product!.cls];
   const regulated = REGULATED_CLASSES.includes(product!.cls);
-  const legacyBatches = sellerData(await actingStore()).findSellerProduct(id)?.batches ?? [];
   const doneMsg = done ? DONE[done] : undefined;
   const images = product!.images ?? [];
   const categories = (await readCategories({ includeHidden: true })).filter((c) => !c.cls || c.cls === product!.cls);
   const onSale = saleActive(product!);
 
-  const batchColumns: Column<Batch>[] = [
-    { key: "code", header: "Batch", render: (b) => <span className="mono" style={{ fontWeight: 600 }}>{b.code}</span> },
-    { key: "dates", header: "Mfg / Expiry", render: (b) => <span className="small tabular">{b.mfgDate} → {b.expiryDate}</span> },
-    { key: "qty", header: "Qty", align: "right", render: (b) => <span className="tabular">{b.qty}<span className="small muted"> ({b.reserved} res.)</span></span> },
-    {
-      key: "coa", header: "CoA", render: (b) => (
-        <div>
-          <StatusPill tone={coaTone(b.coaStatus)}>{b.coaStatus.replace(/_/g, " ")}</StatusPill>
-          {b.labReportId && <div className="small muted" style={{ marginTop: 2 }}>{b.labReportId}</div>}
-          {b.note && <div className="small" style={{ color: "var(--vh-danger)", marginTop: 2 }}>{b.note}</div>}
-        </div>
-      ),
-    },
-  ];
 
   const lifecycleBtn = (op: string, label: string, Icon: typeof Send, variant = "vh-btn-ghost", confirmTitle?: string) => (
     <form action={productLifecycle} style={{ display: "flex" }}>
@@ -523,13 +502,6 @@ export default async function ProductEditorPage({
             </div>
           )}
 
-          {legacyBatches.length > 0 && (
-            <div id="batches">
-              <Card title="Batches" action={<span className="small muted">Each batch needs its own approved lab report</span>} pad0>
-                <DataTable columns={batchColumns} rows={legacyBatches} />
-              </Card>
-            </div>
-          )}
         </div>
       </div>
 

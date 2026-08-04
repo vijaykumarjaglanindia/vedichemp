@@ -74,3 +74,17 @@ export async function currentConsent(user: string): Promise<Record<ConsentPurpos
   }
   return out;
 }
+
+/**
+ * Every buyer who currently grants a purpose. Marketing is opt-IN, so this
+ * counts explicit grants only — a buyer who never chose is not in the list,
+ * and a withdrawal removes them from the next read. Used to size an audience
+ * honestly rather than quoting the whole user base.
+ */
+export async function grantedFor(purpose: ConsentPurpose): Promise<string[]> {
+  const out: string[] = [];
+  for (const email of Object.keys(store().events)) {
+    if ((await currentConsent(email))[purpose]) out.push(email);
+  }
+  return out;
+}

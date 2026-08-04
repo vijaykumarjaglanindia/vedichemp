@@ -1,33 +1,21 @@
 /**
  * VEDIC HEMP — BULK SHIPPING LABELS (print view)
  *
- * Server-rendered, print-ready labels for every order that is ACCEPTED or
- * PACKED (nothing to print for pending or already-shipped orders). This is
- * the point where the buyer's address becomes visible to the seller — which
- * is why labels exist only for orders the seller has accepted.
+ * Server-rendered, print-ready labels for every real order that is ACCEPTED or
+ * PACKED — nothing to print for a new, already-shipped or unpaid order. This is
+ * the point at which the buyer's delivery address becomes visible to the seller,
+ * which is exactly why labels exist only for orders the seller has accepted: the
+ * address is released for the one purpose that needs it.
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowLeft, Printer } from "lucide-react";
-import { readSellerOrderOverrides } from "@/lib/engage";
-import { sellerData } from "../../_lib/data";
+import { ordersForSeller } from "@/lib/orders";
 import { actingStore } from "../../_lib/store";
 
 export const metadata: Metadata = { title: "Shipping labels" };
-
-/** Deterministic demo address per buyer — replaced by the order's shipping
- *  address once the DB is attached. */
-function demoAddress(buyer: string, reference: string): { line: string; city: string; pin: string } {
-  const n = buyer.length + reference.length;
-  const cities = ["Pune 411001", "Bengaluru 560034", "Mumbai 400050", "Jaipur 302001", "Kochi 682016"];
-  const city = cities[n % cities.length] ?? cities[0]!;
-  return {
-    line: `${(n % 90) + 10}, ${["Rose Villa", "Green Court", "Lotus Residency", "Cedar Heights"][n % 4]}`,
-    city: city.split(" ")[0]!,
-    pin: city.split(" ")[1]!,
-  };
-}
+export const dynamic = "force-dynamic";
 
 const printCss = `
 @media print {
@@ -38,11 +26,8 @@ const printCss = `
 `;
 
 export default async function ShippingLabelsPage() {
-  const overrides = await readSellerOrderOverrides();
-  const { SELLER_ORDERS } = sellerData(await actingStore());
-  const printable = SELLER_ORDERS
-    .map((o) => ({ ...o, status: overrides[o.id] ?? o.status }))
-    .filter((o) => o.status === "ACCEPTED" || o.status === "PACKED");
+  const store = await actingStore();
+  const printable = (await ordersForSeller(store)).filter((o) => o.status === "ACCEPTED" || o.status === "PACKED");
 
   return (
     <div className="vh-container" style={{ paddingTop: "var(--sp-4)", paddingBottom: "var(--sp-6)", maxWidth: 900 }}>
@@ -56,8 +41,8 @@ export default async function ShippingLabelsPage() {
             Use your browser&rsquo;s print dialog (Ctrl/Cmd+P).
           </p>
           <p className="small muted" style={{ margin: "4px 0 0" }}>
-            Ship-to addresses on these sample labels are illustrative; a live order prints the buyer&rsquo;s real
-            delivery address, revealed at label time.
+            Each label carries the buyer&rsquo;s real delivery address, released to you at label time and for this
+            purpose only.
           </p>
         </div>
         <span className="vh-row" style={{ gap: 8 }}>
@@ -81,16 +66,19 @@ export default async function ShippingLabelsPage() {
       ) : (
         <div style={{ display: "grid", gap: "var(--sp-3)" }}>
           {printable.map((o) => {
-            const addr = demoAddress(o.buyer ?? "Buyer", o.reference);
+            const myItems = o.items.filter((it) => it.seller === store);
             return (
-              <div key={o.id} className="vh-card vh-label-card" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "var(--sp-3)" }}>
+              <div key={o.reference} className="vh-card vh-label-card" style={{ display: "grid", gridTemplateColumns: "1fr auto", gap: "var(--sp-3)" }}>
                 <div>
                   <div className="small muted" style={{ textTransform: "uppercase", letterSpacing: ".06em", fontSize: ".68rem", marginBottom: 6 }}>Deliver to</div>
-                  <div style={{ fontWeight: 800, fontSize: "1.05rem" }}>{o.buyer}</div>
-                  <div className="small">{addr.line}</div>
-                  <div className="small">{addr.city} — <span className="mono">{addr.pin}</span></div>
+                  <div style={{ fontWeight: 800, fontSize: "1.05rem" }}>{o.shipName ?? "Buyer"}</div>
+                  {o.shipLine1 && <div className="small">{o.shipLine1}</div>}
+                  <div className="small">
+                    {o.city}{o.state ? `, ${o.state}` : ""} — <span className="mono">{o.pincode}</span>
+                  </div>
+                  {o.shipMobile && <div className="small mono">{o.shipMobile}</div>}
                   <div className="small muted" style={{ marginTop: 10 }}>
-                    {o.items.map((it) => `${it.title} × ${it.qty}`).join(" · ")}
+                    {myItems.map((it) => `${it.title}${it.variantLabel ? ` · ${it.variantLabel}` : ""} × ${it.qty}`).join(" · ")}
                   </div>
                 </div>
                 <div style={{ textAlign: "right", display: "grid", alignContent: "space-between" }}>
@@ -98,9 +86,7 @@ export default async function ShippingLabelsPage() {
                     <div className="mono" style={{ fontWeight: 800 }}>{o.reference}</div>
                     <div className="small muted">{o.status === "PACKED" ? "Packed — ready for handover" : "Accepted — pack next"}</div>
                   </div>
-                  <div aria-hidden className="mono" style={{ fontSize: "1.5rem", letterSpacing: 2, fontWeight: 800 }}>
-                    ▮▯▮▮▯▮▯▮
-                  </div>
+                  <div className="small muted">{o.placedAt.slice(0, 10)}</div>
                 </div>
               </div>
             );

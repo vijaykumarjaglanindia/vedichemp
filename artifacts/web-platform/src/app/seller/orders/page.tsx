@@ -1,36 +1,58 @@
 /**
  * VEDIC HEMP — SELLER ORDERS (§2.5)
+ *
+ * Every row here is a real order from the order store — a buyer's purchase that
+ * contains at least one line from this storefront. The seller sees only their
+ * own lines and their own share of the value; the rest of the basket is not
+ * theirs to read. Accept → Pack → Ship → Deliver is a server-side state machine
+ * (`advanceOrder`): the buttons only say what the next transition is, they never
+ * decide it, and an unpaid order cannot be accepted at all.
  */
 
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ClipboardList, Printer } from "lucide-react";
+import { Printer } from "lucide-react";
 import { Shell } from "../Shell";
-import { Card, DataTable, StatusPill, toneForStatus, MoneyText, type Column } from "@/components/ui";
-import type { SampleOrder } from "@/lib/sample";
-import { readSellerOrderOverrides } from "@/lib/engage";
-import { ORDER_TONE, ordersForSeller } from "@/lib/orders";
-import { sellerData, ORDER_STATUS_TABS } from "../_lib/data";
+import { Card, DataTable, StatusPill, MoneyText, type Column } from "@/components/ui";
+import { ORDER_TONE, ordersForSeller, sellerSubtotal, type Order, type OrderStatus } from "@/lib/orders";
 import { actingStore } from "../_lib/store";
-import { fulfilOrder, sellerApproveReturn, sellerOrderAction } from "../actions";
+import { fulfilOrder, sellerApproveReturn } from "../actions";
 
 export const metadata: Metadata = { title: "Orders" };
+export const dynamic = "force-dynamic";
 
-/** Accept → Pack → Ship, one submit per transition; the action re-validates
- *  the state machine server-side (you can't pack what you never accepted). */
-function OrderOpButton({ orderId, status }: { orderId: string; status: string }) {
-  const op = status === "PENDING" ? "accept" : status === "ACCEPTED" ? "pack" : status === "PACKED" ? "ship" : null;
-  if (!op) return null;
-  const label = op === "accept" ? "Accept" : op === "pack" ? "Pack" : "Mark shipped";
-  return (
-    <form action={sellerOrderAction} style={{ display: "inline-flex" }}>
-      <input type="hidden" name="orderId" value={orderId} />
-      <input type="hidden" name="op" value={op} />
-      <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit" title={op === "ship" ? "Only after handover to your delivery partner" : undefined}>
-        {label}
-      </button>
-    </form>
-  );
+/** The statuses a seller filters by, in lifecycle order. */
+const TABS = [
+  "ALL", "PLACED", "ACCEPTED", "PACKED", "SHIPPED", "DELIVERED",
+  "RETURN_REQUESTED", "RETURN_APPROVED", "RETURN_REJECTED", "REFUNDED", "CANCELLED",
+] as const;
+type Tab = (typeof TABS)[number];
+
+const TAB_LABEL: Record<Tab, string> = {
+  ALL: "All",
+  PLACED: "New",
+  ACCEPTED: "Accepted",
+  PACKED: "Packed",
+  SHIPPED: "Shipped",
+  DELIVERED: "Delivered",
+  RETURN_REQUESTED: "Return asked",
+  RETURN_APPROVED: "Return approved",
+  RETURN_REJECTED: "Return refused",
+  REFUNDED: "Refunded",
+  CANCELLED: "Cancelled",
+};
+
+/** The next transition this seller can drive, or null. An order awaiting a real
+ *  payment has none — `advanceOrder` refuses it server-side too. */
+function nextOp(o: Order): { op: string; label: string } | null {
+  if (o.status === "PLACED" && o.paymentStatus !== "CAPTURED") return null;
+  switch (o.status) {
+    case "PLACED": return { op: "accept", label: "Accept" };
+    case "ACCEPTED": return { op: "pack", label: "Pack" };
+    case "PACKED": return { op: "ship", label: "Mark shipped" };
+    case "SHIPPED": return { op: "deliver", label: "Mark delivered" };
+    default: return null;
+  }
 }
 
 export default async function SellerOrdersPage({
@@ -39,33 +61,65 @@ export default async function SellerOrdersPage({
   searchParams: Promise<{ status?: string }>;
 }) {
   const { status: rawStatus } = await searchParams;
-  const status = ORDER_STATUS_TABS.includes(rawStatus as (typeof ORDER_STATUS_TABS)[number])
-    ? (rawStatus as (typeof ORDER_STATUS_TABS)[number])
-    : "ALL";
+  const tab: Tab = TABS.includes(rawStatus as Tab) ? (rawStatus as Tab) : "ALL";
 
-  // Demo state: Accept/Pack/Ship transitions live in a server-written cookie
-  // until the DB is attached; the sample rows are the baseline — for the
-  // signed-in seller's OWN store.
   const store = await actingStore();
-  const { SELLER_ORDERS } = sellerData(store);
-  const overrides = await readSellerOrderOverrides();
-  const orders = SELLER_ORDERS.map((o) => ({ ...o, status: overrides[o.id] ?? o.status }));
-  const rows = status === "ALL" ? orders : orders.filter((o) => o.status === status);
-  const realOrders = await ordersForSeller(store);
+  const orders = await ordersForSeller(store);
+  const rows = tab === "ALL" ? orders : orders.filter((o) => o.status === (tab as OrderStatus));
+  const toPrint = orders.filter((o) => o.status === "ACCEPTED" || o.status === "PACKED").length;
 
-  const columns: Column<SampleOrder>[] = [
-    { key: "reference", header: "Order", render: (o) => <div><div style={{ fontWeight: 600 }}>{o.reference}</div><div className="small muted">{o.placedAt}</div></div> },
-    { key: "buyer", header: "Buyer", render: (o) => o.buyer ?? "—" },
-    { key: "items", header: "Items", render: (o) => o.items.map((it) => `${it.emoji} ${it.title}`).join(", ") },
-    { key: "status", header: "Status", render: (o) => <StatusPill tone={toneForStatus(o.status)}>{o.status.replace(/_/g, " ")}</StatusPill> },
-    { key: "total", header: "Total", align: "right", render: (o) => <MoneyText paise={o.totalPaise} /> },
+  const columns: Column<Order>[] = [
     {
-      key: "actions", header: "", align: "right", render: (o) => (
-        <span className="vh-row" style={{ gap: 8, justifyContent: "flex-end" }}>
-          <OrderOpButton orderId={o.id} status={o.status} />
-          <Link className="small" href={`/seller/orders/${o.id}`}>Details →</Link>
+      key: "reference", header: "Order", render: (o) => (
+        <div>
+          <div style={{ fontWeight: 600 }} className="mono">{o.reference}</div>
+          <div className="small muted">{o.placedAt.slice(0, 10)} · {o.city}</div>
+        </div>
+      ),
+    },
+    {
+      key: "buyer", header: "Buyer", render: (o) => (
+        <span className="small mono">{o.buyerEmail.replace(/^(..).*(@.*)$/, "$1•••$2")}</span>
+      ),
+    },
+    {
+      key: "items", header: "Your lines", render: (o) => (
+        <span className="small">{o.items.filter((it) => it.seller === store).map((it) => `${it.emoji} ${it.title} ×${it.qty}`).join(", ")}</span>
+      ),
+    },
+    {
+      key: "status", header: "Status", render: (o) => (
+        <span className="vh-row" style={{ gap: 6, flexWrap: "wrap" }}>
+          <StatusPill tone={ORDER_TONE[o.status]}>{o.status.replace(/_/g, " ")}</StatusPill>
+          {o.status === "PLACED" && o.paymentStatus !== "CAPTURED" && <StatusPill tone="warn">Payment pending</StatusPill>}
         </span>
       ),
+    },
+    { key: "total", header: "Your share", align: "right", render: (o) => <MoneyText paise={sellerSubtotal(o, store)} /> },
+    {
+      key: "actions", header: "", align: "right", render: (o) => {
+        const next = nextOp(o);
+        return (
+          <span className="vh-row" style={{ gap: 8, justifyContent: "flex-end", flexWrap: "wrap" }}>
+            {next && (
+              <form action={fulfilOrder} style={{ display: "inline-flex" }}>
+                <input type="hidden" name="reference" value={o.reference} />
+                <input type="hidden" name="op" value={next.op} />
+                <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit" title={next.op === "ship" ? "Only after handover to your delivery partner" : undefined}>
+                  {next.label}
+                </button>
+              </form>
+            )}
+            {o.status === "RETURN_REQUESTED" && (
+              <form action={sellerApproveReturn} style={{ display: "inline-flex" }}>
+                <input type="hidden" name="reference" value={o.reference} />
+                <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit" title={`Return reason: ${o.returnReason ?? "—"}`}>Approve return</button>
+              </form>
+            )}
+            <Link className="small" href={`/seller/orders/${o.reference}`}>Details →</Link>
+          </span>
+        );
+      },
     },
   ];
 
@@ -76,23 +130,23 @@ export default async function SellerOrdersPage({
       title="Orders"
       actions={
         <Link className="vh-btn vh-btn-sm vh-btn-primary" href="/seller/orders/labels" style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
-          <Printer size={14} strokeWidth={2.2} aria-hidden /> Bulk shipping labels
+          <Printer size={14} strokeWidth={2.2} aria-hidden /> Shipping labels{toPrint > 0 ? ` (${toPrint})` : ""}
         </Link>
       }
     >
       <div style={{ overflowX: "auto", marginBottom: "var(--sp-3)" }}>
         <nav className="vh-seg" aria-label="Order status filter">
-          {ORDER_STATUS_TABS.map((t) => {
-            const count = t === "ALL" ? orders.length : orders.filter((o) => o.status === t).length;
+          {TABS.map((t) => {
+            const count = t === "ALL" ? orders.length : orders.filter((o) => o.status === (t as OrderStatus)).length;
             return (
               <Link
                 key={t}
                 href={t === "ALL" ? "/seller/orders" : `/seller/orders?status=${t}`}
-                className={t === status ? "on" : undefined}
-                aria-current={t === status ? "true" : undefined}
+                className={t === tab ? "on" : undefined}
+                aria-current={t === tab ? "true" : undefined}
                 style={{ whiteSpace: "nowrap" }}
               >
-                {t === "ALL" ? "All" : t.charAt(0) + t.slice(1).toLowerCase()} <span className="tabular muted">({count})</span>
+                {TAB_LABEL[t]} <span className="tabular muted">({count})</span>
               </Link>
             );
           })}
@@ -100,68 +154,23 @@ export default async function SellerOrdersPage({
       </div>
 
       <Card pad0>
-        <DataTable columns={columns} rows={rows} empty={<div className="vh-empty">No orders in this state.</div>} />
+        <DataTable
+          columns={columns}
+          rows={rows}
+          empty={
+            <div className="vh-empty">
+              {tab === "ALL"
+                ? "No orders yet — buyer purchases containing your listings land here for accept → pack → ship → deliver."
+                : `No orders in ${TAB_LABEL[tab].toLowerCase()}.`}
+            </div>
+          }
+        />
       </Card>
       <p className="small muted" style={{ marginTop: 8 }}>
-        Buyer addresses stay masked until label generation. Refunds always credit the buyer first — recovery from
-        this store happens afterwards, via settlement.
+        The buyer&rsquo;s delivery address stays withheld until you pack the order — that&rsquo;s label-generation time.
+        An order still awaiting payment cannot be accepted: nothing ships before the money is captured. Refunds always
+        credit the buyer first; recovery from this store happens afterwards, via settlement.
       </p>
-
-      {/* ── Real orders (order store): live fulfilment + returns ── */}
-      <div id="real-orders" style={{ marginTop: "var(--sp-5)", scrollMarginTop: 90 }}>
-        <Card
-          title={<span className="vh-row" style={{ gap: 8 }}><ClipboardList size={16} strokeWidth={2.2} aria-hidden /> Live orders &amp; returns</span>}
-          action={<StatusPill tone={realOrders.length ? "info" : "ok"}>{realOrders.length} live</StatusPill>}
-          pad0
-        >
-          {realOrders.length === 0 ? (
-            <div className="vh-empty">No live orders yet — buyer purchases land here for accept → pack → ship → deliver.</div>
-          ) : (
-            <div style={{ display: "grid", gap: 0 }}>
-              {realOrders.map((o) => {
-                const myItems = o.items.filter((it) => it.seller === store);
-                const myTotal = myItems.reduce((n, it) => n + it.linePaise, 0);
-                // An unpaid (live-PSP PENDING) order shows in the queue but cannot be
-                // accepted — the server refuses anyway; the UI just says why.
-                const unpaid = o.status === "PLACED" && o.paymentStatus !== "CAPTURED";
-                const nextOp = unpaid ? null : o.status === "PLACED" ? "accept" : o.status === "ACCEPTED" ? "pack" : o.status === "PACKED" ? "ship" : o.status === "SHIPPED" ? "deliver" : null;
-                const nextLabel = nextOp === "accept" ? "Accept" : nextOp === "pack" ? "Pack" : nextOp === "ship" ? "Mark shipped" : nextOp === "deliver" ? "Mark delivered" : null;
-                return (
-                  <div key={o.reference} id={`ord-${o.reference}`} className="vh-row-between" style={{ gap: 12, padding: "12px 16px", borderTop: "1px solid var(--vh-line)", flexWrap: "wrap" }}>
-                    <span style={{ minWidth: 0 }}>
-                      <div style={{ fontWeight: 600 }}>{o.reference}</div>
-                      <div className="small muted">{o.placedAt.slice(0, 10)} · {myItems.map((it) => `${it.emoji} ${it.title} ×${it.qty}`).join(", ")} · {o.city}</div>
-                    </span>
-                    <span className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
-                      <MoneyText paise={myTotal} />
-                      <StatusPill tone={ORDER_TONE[o.status]}>{o.status.replace(/_/g, " ")}</StatusPill>
-                      {unpaid && <StatusPill tone="warn">Payment pending</StatusPill>}
-                      {nextOp && nextLabel && (
-                        <form action={fulfilOrder} style={{ display: "inline-flex" }}>
-                          <input type="hidden" name="reference" value={o.reference} />
-                          <input type="hidden" name="op" value={nextOp} />
-                          <button className="vh-btn vh-btn-sm vh-btn-primary" type="submit">{nextLabel}</button>
-                        </form>
-                      )}
-                      {o.status === "RETURN_REQUESTED" && (
-                        <form action={sellerApproveReturn} style={{ display: "inline-flex" }}>
-                          <input type="hidden" name="reference" value={o.reference} />
-                          <button className="vh-btn vh-btn-sm vh-btn-danger" type="submit" title={`Return reason: ${o.returnReason}`}>Approve return</button>
-                        </form>
-                      )}
-                      <Link className="small" href={`/seller/orders/live-${o.reference}`}>Details →</Link>
-                    </span>
-                  </div>
-                );
-              })}
-            </div>
-          )}
-        </Card>
-        <p className="small muted" style={{ marginTop: 8 }}>
-          Approving a return does not touch the buyer&rsquo;s refund timing — the platform refunds the buyer first and
-          recovers from this store afterwards (buyers are never collateral).
-        </p>
-      </div>
     </Shell>
   );
 }

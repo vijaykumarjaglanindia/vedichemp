@@ -75,16 +75,18 @@ export default async function SellerHomePage({
   const { period: rawPeriod } = await searchParams;
   const period = PERIODS.includes(rawPeriod as (typeof PERIODS)[number]) ? (rawPeriod as (typeof PERIODS)[number]) : "7d";
 
-  // Live read model — orders, listings (A2 CoA state), settlements from the
-  // real stores, scoped to the selected reporting period. Illustrative-only
-  // cards (ads) stay seeded and are labelled as such.
+  // Live read model — orders, listings (A2 CoA state), settlements and ad
+  // results from the real stores, scoped to the selected reporting period.
   const session = await getSession();
   const today = new Date().toISOString().slice(0, 10);
   const periodDays = period === "30d" ? 30 : period === "90d" ? 90 : 7;
   const home = await sellerHome(session?.email ?? "seller@example.in", today, periodDays);
-  // Illustrative cards (account-health sample, ads mini-card, licences) for the
-  // seller's OWN store — the seed store keeps its fixtures; others are derived.
-  const { ACCOUNT_HEALTH, LICENCES, ADS_SUMMARY, AD_CAMPAIGNS } = sellerData(home.store);
+  const { ACCOUNT_HEALTH, LICENCES } = sellerData(home.store);
+  // Ads mini-card: this store's own campaigns and their observed results.
+  const { listCampaigns, accountResults } = await import("@/lib/ads");
+  const myCampaigns = (await listCampaigns(undefined)).filter((c) => c.seller === home.store);
+  const ads = accountResults(myCampaigns);
+  const activeCampaigns = myCampaigns.filter((c) => c.status === "ACTIVE").length;
   const labelStride = Math.max(1, Math.round(home.kpis.series.length / 7));
 
   const pendingOrders = home.toAccept;
@@ -277,13 +279,22 @@ export default async function SellerHomePage({
               <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/finance" style={{ marginTop: 8, display: "inline-block" }}>View finance →</Link>
             </Card>
             <Card title="Vedic Ads">
-              {ADS_SUMMARY.clicks7d > 0 ? (
+              {ads.spentPaise > 0 ? (
                 <>
-                  <Stat label="ROAS (7d)" value={`${ADS_SUMMARY.roas7d}x`} />
-                  <div className="small muted" style={{ marginTop: 8 }}>{AD_CAMPAIGNS.filter((c) => c.status === "ACTIVE").length} active campaign(s) · ACOS {ADS_SUMMARY.acos7d}% · {ADS_SUMMARY.clicks7d.toLocaleString("en-IN")} clicks / 7d</div>
+                  <Stat label="Sales from ads" value={<MoneyText paise={ads.salesPaise} />} />
+                  <div className="small muted" style={{ marginTop: 8 }}>
+                    {activeCampaigns} active campaign{activeCampaigns === 1 ? "" : "s"} · <MoneyText paise={ads.spentPaise} /> spent ·{" "}
+                    {ads.visits.toLocaleString("en-IN")} visit{ads.visits === 1 ? "" : "s"}
+                    {ads.returnPerRupee > 0 && <> · ₹{ads.returnPerRupee} back per ₹1</>}
+                  </div>
                 </>
+              ) : myCampaigns.length > 0 ? (
+                <div className="small muted">
+                  {myCampaigns.length} campaign{myCampaigns.length === 1 ? "" : "s"} set up, nothing spent yet — results
+                  appear here once your ads start being shown.
+                </div>
               ) : (
-                <div className="small muted">No ad activity in the last 7 days. Launch a campaign to put your listings in front of buyers searching your category.</div>
+                <div className="small muted">No campaigns yet. Launch one to put your listings in front of buyers searching your category.</div>
               )}
               <Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/seller/ads" style={{ marginTop: 8, display: "inline-block" }}>View Vedic Ads →</Link>
             </Card>

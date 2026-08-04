@@ -17,9 +17,10 @@ import { Mail, MessageSquare, MessageCircle, BellRing, TicketPercent, UsersRound
 import { Shell } from "../Shell";
 import { Card, StatusPill, MoneyText, Banner } from "@/components/ui";
 import { CampaignLabel } from "@/components/ui/ads";
-import { AUDIENCES } from "../_lib/data";
 import { listCampaigns, CHANNELS, type Channel, type CampaignStatus, type ScreenReason } from "@/lib/marketing";
 import { couponLive, readCoupons, type CouponDef } from "@/lib/commerce";
+import { grantedFor } from "@/lib/consent";
+import { allOrders } from "@/lib/orders";
 import { createCampaignAction, approveCampaignAction, sendCampaignAction } from "./actions";
 
 export const metadata: Metadata = { title: "Marketing · Admin" };
@@ -87,6 +88,10 @@ const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> 
 export default async function AdminMarketingPage({ searchParams }: { searchParams: Promise<{ mk?: string; r?: string }> }) {
   const { mk } = await searchParams;
   const campaigns = await listCampaigns();
+  // Product ids in the CBD Wellness class — resolved from the catalogue so the
+  // segment follows the real class, not a title guess.
+  const { readLiveProducts } = await import("@/lib/catalog");
+  const CBD_TITLES = new Set((await readLiveProducts()).filter((p) => p.cls === "CBD_WELLNESS").map((p) => p.id));
   // Real coupon store — the same one the cart honours and /admin/coupons edits.
   // Show the most-redeemed few here; the full console manages all of them.
   const coupons = Object.entries(await readCoupons())
@@ -94,6 +99,30 @@ export default async function AdminMarketingPage({ searchParams }: { searchParam
     .sort((a, b) => (b.usedCount ?? 0) - (a.usedCount ?? 0))
     .slice(0, 6);
   const liveCount = Object.values(await readCoupons()).filter(couponLive).length;
+
+  // Audiences, counted from real records. Marketing is opt-IN, so the reachable
+  // segment is exactly the buyers who granted that consent — never "everyone".
+  // Nothing here is built from health data: prescription status, medical notes
+  // and MED_CANNABIS purchases are structurally unavailable to this page (A4).
+  const marketingConsent = await grantedFor("marketing");
+  const orders = await allOrders();
+  const buyersWithOrders = new Set(orders.map((o) => o.buyerEmail));
+  const cutoff90 = new Date(Date.now() - 90 * 86_400_000).toISOString().slice(0, 10);
+  const lastOrderAt = new Map<string, string>();
+  for (const o of orders) {
+    const at = o.placedAt.slice(0, 10);
+    if ((lastOrderAt.get(o.buyerEmail) ?? "") < at) lastOrderAt.set(o.buyerEmail, at);
+  }
+  const lapsed = [...lastOrderAt.entries()].filter(([, at]) => at < cutoff90).length;
+  const cbdBuyers = new Set(
+    orders.filter((o) => o.items.some((it) => CBD_TITLES.has(it.productId))).map((o) => o.buyerEmail),
+  ).size;
+  const audiences = [
+    { id: "au1", segment: "Buyers with marketing consent", size: marketingConsent.length, basis: "Explicit opt-in on the consent ledger" },
+    { id: "au2", segment: "Buyers who have ordered", size: buyersWithOrders.size, basis: "At least one order in the order store" },
+    { id: "au3", segment: "CBD Wellness purchasers", size: cbdBuyers, basis: "Purchase history only — no health inference" },
+    { id: "au4", segment: "Lapsed 90 days", size: lapsed, basis: "Order recency" },
+  ];
   const msg = mk ? MESSAGES[mk] : undefined;
   const pendingN = campaigns.filter((c) => c.status === "PENDING_COPY_CHECK").length;
   const blockedN = campaigns.filter((c) => c.status === "BLOCKED").length;
@@ -236,21 +265,25 @@ export default async function AdminMarketingPage({ searchParams }: { searchParam
           </Card>
         </div>
 
-        <Card title={<span className="vh-row" style={{ gap: 8 }}><UsersRound {...I} aria-hidden /> Audiences</span>} action={<span className="small muted">Illustrative segments — sizes are live once analytics is connected</span>} pad0>
+        <Card title={<span className="vh-row" style={{ gap: 8 }}><UsersRound {...I} aria-hidden /> Audiences</span>} action={<span className="small muted">Counted now, from the consent ledger and the order store</span>} pad0>
           <div style={{ overflowX: "auto" }}>
             <table className="vh-table">
               <thead><tr><th>Segment</th><th style={{ textAlign: "right" }}>Size</th><th>Basis</th></tr></thead>
               <tbody>
-                {AUDIENCES.map((a) => (
+                {audiences.map((a) => (
                   <tr key={a.id}>
                     <td style={{ fontWeight: 600 }}>{a.segment}</td>
-                    <td className="tabular" style={{ textAlign: "right" }}>{a.size}</td>
+                    <td className="tabular" style={{ textAlign: "right" }}>{a.size.toLocaleString("en-IN")}</td>
                     <td className="small muted">{a.basis}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
           </div>
+          <p className="small muted" style={{ margin: 0, padding: "12px 18px 0" }}>
+            A send only ever reaches the marketing-consent segment: the other rows exist to tell you how large a
+            targeted subset would be, and are intersected with consent at send time.
+          </p>
           <p className="small muted" style={{ margin: 0, padding: "12px 18px 16px" }}>
             No audience is ever built from health data — prescription status, medical notes and MED_CANNABIS purchase
             history are structurally unavailable to the segmentation service.

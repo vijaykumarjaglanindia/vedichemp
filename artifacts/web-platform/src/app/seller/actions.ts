@@ -33,14 +33,7 @@ import {
 import { writeAudit } from "@/lib/audit";
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
 import { redirect } from "next/navigation";
-import {
-  appendCoupon,
-  readSellerOrderOverrides,
-  readStockAdds,
-  writeSellerOrderOverrides,
-  writeStockAdds,
-} from "@/lib/engage";
-import { sellerData } from "./_lib/data";
+import { appendCoupon } from "@/lib/engage";
 import { actingStore } from "./_lib/store";
 
 /** Disease-claim vocabulary the copy-check rejects (Drugs & Magic Remedies Act). */
@@ -139,35 +132,6 @@ export async function actAsStaff(formData: FormData): Promise<void> {
   if (id !== "owner") await requirePerm("staff", "/seller/staff");
   await actAs(id);
   redirect("/seller/staff?done=actas");
-}
-
-/* ── Orders: accept / pack ────────────────────────────────── */
-
-const ORDER_OPS: Record<string, { from: string[]; to: string }> = {
-  accept: { from: ["PENDING"], to: "ACCEPTED" },
-  pack: { from: ["ACCEPTED"], to: "PACKED" },
-  ship: { from: ["PACKED"], to: "SHIPPED" },
-};
-
-export async function sellerOrderAction(formData: FormData): Promise<void> {
-  const orderId = String(formData.get("orderId") ?? "");
-  const op = String(formData.get("op") ?? "");
-  const back = await backPath("/seller/orders");
-
-  const { SELLER_ORDERS } = sellerData(await actingStore());
-  const rule = ORDER_OPS[op];
-  const order = SELLER_ORDERS.find((o) => o.id === orderId);
-  if (!rule || !order) redirect(back);
-
-  const overrides = await readSellerOrderOverrides();
-  const current = overrides[orderId] ?? order.status;
-  // State machine enforced server-side: you cannot pack what you never accepted,
-  // and "shipped" means handed to the seller's delivery partner — not before.
-  if (!rule.from.includes(current)) redirect(back);
-
-  overrides[orderId] = rule.to;
-  await writeSellerOrderOverrides(overrides);
-  redirect(back);
 }
 
 /* ── Products: create / edit / lifecycle (the catalog store) ── */
@@ -1118,16 +1082,31 @@ export async function requestOwnerTransfer(formData: FormData): Promise<void> {
 
 /* ── Inventory: add stock ─────────────────────────────────── */
 
+/**
+ * Goods received: add units to a listing's on-hand stock. Distinct from
+ * `saveStock`, which sets an absolute figure — this is the movement a seller
+ * actually performs when a new consignment lands, so it reads the current
+ * quantity and adds to it server-side rather than trusting a number from the
+ * form. Receiving stock never changes sellability: a listing whose batch has
+ * no approved lab report stays blocked (A2).
+ */
 export async function addStock(formData: FormData): Promise<void> {
-  const batch = String(formData.get("batch") ?? "").slice(0, 20);
+  const DEMO_STORE = await actingStore();
+  const id = String(formData.get("productId") ?? "");
   const qty = parseInt(String(formData.get("qty") ?? ""), 10);
   const back = await backPath("/seller/inventory");
-  if (!batch || !Number.isInteger(qty) || qty < 1 || qty > 10000) redirect(back);
+  if (!id || !Number.isInteger(qty) || qty < 1 || qty > 10000) redirect(`${back}?err=qty`);
 
-  const adds = await readStockAdds();
-  adds[batch] = Math.min((adds[batch] ?? 0) + qty, 100000);
-  await writeStockAdds(adds);
-  redirect(back);
+  const { setStock, findProduct } = await import("@/lib/catalog");
+  const product = await findProduct(id);
+  if (!product || product.seller !== DEMO_STORE) redirect("/seller/inventory");
+  const next = Math.min(product.stockQty + qty, 1_000_000);
+  await setStock(id, next);
+  await writeAudit({
+    actor: DEMO_STORE, action: "STOCK_RECEIVE", target: product.title, outcome: "OK",
+    note: `+${qty} units → ${next} on hand`,
+  });
+  redirect("/seller/inventory?saved=received");
 }
 
 /* ── Fulfilment on real orders (order store) ──────────────── */

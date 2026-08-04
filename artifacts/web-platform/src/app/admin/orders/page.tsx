@@ -15,7 +15,6 @@ import { Card, StatusPill, MoneyText, Banner, DataTable, Stat } from "@/componen
 import { BarList } from "@/components/ui/charts";
 import { allOrders, metricsFor, ORDER_TONE } from "@/lib/orders";
 import { adminApproveReturn, adminMarkRecovered, adminRefundBuyer, adminRejectReturn } from "../actions";
-import { COURIER_SCORECARD } from "../_lib/data";
 
 export const metadata: Metadata = { title: "Orders · Admin" };
 export const dynamic = "force-dynamic";
@@ -49,6 +48,33 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
   const m = metricsFor(real);
   const openReturns = real.filter((o) => ["RETURN_REQUESTED", "RETURN_APPROVED"].includes(o.status));
   const pendingRecovery = real.filter((o) => o.sellerRecovery === "PENDING");
+
+  // Delivery performance, measured from the orders' own timelines. No courier
+  // integration exists, so this reports what the platform can actually observe:
+  // how long each stage took, as a median across delivered orders.
+  const delivered = real.filter((o) => o.status === "DELIVERED");
+  const STAGES: { label: string; from: string; to: string }[] = [
+    { label: "Placed → accepted", from: "PLACED", to: "ACCEPTED" },
+    { label: "Accepted → packed", from: "ACCEPTED", to: "PACKED" },
+    { label: "Packed → shipped", from: "PACKED", to: "SHIPPED" },
+    { label: "Shipped → delivered", from: "SHIPPED", to: "DELIVERED" },
+  ];
+  const medianOf = (xs: number[]) => {
+    if (!xs.length) return 0;
+    const sorted = [...xs].sort((a, b) => a - b);
+    const mid = Math.floor(sorted.length / 2);
+    return sorted.length % 2 ? sorted[mid]! : (sorted[mid - 1]! + sorted[mid]!) / 2;
+  };
+  const stageTimings = STAGES.map((st) => {
+    const hours = delivered.flatMap((o) => {
+      const a = o.timeline.find((e) => e.status === st.from);
+      const b = o.timeline.find((e) => e.status === st.to);
+      if (!a || !b) return [];
+      return [(Date.parse(b.at) - Date.parse(a.at)) / 3_600_000];
+    });
+    const med = Math.round(medianOf(hours) * 10) / 10;
+    return { label: st.label, value: med, display: hours.length ? `${med}h median` : "no data" };
+  });
 
   return (
     <Shell active="/admin/orders" breadcrumb={["Admin", "Orders"]} title="Orders, returns & refunds">
@@ -165,10 +191,23 @@ export default async function AdminOrdersPage({ searchParams }: { searchParams: 
         </Card>
 
         <Card
-          title={<span className="vh-row" style={{ gap: 8 }}><Truck {...I} aria-hidden /> Courier scorecard</span>}
-          action={<span className="small muted">Illustrative — live once courier tracking is connected</span>}
+          title={<span className="vh-row" style={{ gap: 8 }}><Truck {...I} aria-hidden /> Delivery performance</span>}
+          action={<span className="small muted">{delivered.length} delivered order{delivered.length === 1 ? "" : "s"}</span>}
         >
-          <BarList items={COURIER_SCORECARD} color="var(--vh-ok)" />
+          {delivered.length === 0 ? (
+            <p className="small muted" style={{ margin: 0 }}>
+              Nothing delivered yet. Once orders complete, this shows how long each stage actually took —
+              measured from the order timeline, not a courier&rsquo;s own claim.
+            </p>
+          ) : (
+            <>
+              <BarList items={stageTimings} color="var(--vh-ok)" />
+              <p className="small muted" style={{ margin: "var(--sp-2) 0 0" }}>
+                Median hours between timeline events, across delivered orders. Slow acceptance is a seller
+                problem; slow ship-to-deliver is a logistics one.
+              </p>
+            </>
+          )}
         </Card>
 
         <Banner severity="danger" title="Explicitly absent by design">

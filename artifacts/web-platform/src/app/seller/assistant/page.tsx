@@ -17,10 +17,10 @@ import { Sparkles, PenLine, BadgeIndianRupee, PackageSearch, TrendingUp, ShieldC
 import { Shell } from "../Shell";
 import { Card, MoneyText } from "@/components/ui";
 import { Columns } from "@/components/ui/charts";
-import { sellerData } from "../_lib/data";
 import { actingStore } from "../_lib/store";
 import { getSession } from "@/lib/auth-lite";
-import { sellerListings, type CatalogProduct } from "@/lib/catalog";
+import { readLiveProducts, sellerListings, type CatalogProduct } from "@/lib/catalog";
+import { sellerReport } from "@/lib/analytics";
 import { aiComplete, draftListingDescription } from "@/lib/ai";
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
 
@@ -48,11 +48,35 @@ function SuggestionCard({
   );
 }
 
-/** Suggested price: 4% under current, rounded to a tidy ₹ (paise). Server-side,
- *  advisory only — the seller's price is never changed here (money authority). */
-function suggestPricePaise(current: number): number {
-  const target = Math.round(current * 0.96);
-  return Math.max(100, Math.round(target / 100) * 100);
+/** Median of a list of paise figures (integer in, integer out). */
+function median(values: number[]): number {
+  if (values.length === 0) return 0;
+  const s = [...values].sort((a, b) => a - b);
+  const mid = Math.floor(s.length / 2);
+  return s.length % 2 ? s[mid]! : Math.round((s[mid - 1]! + s[mid]!) / 2);
+}
+
+/**
+ * Projected sales for the next four weeks, from this store's own last four
+ * weeks of orders. A plain trend: the average of the observed weeks, nudged by
+ * the week-on-week change, floored at zero. It is a planning aid — never a
+ * promise — and it is empty when there is no order history to project from.
+ */
+function projectWeeks(dailyPaise: number[]): { valuesPaise: number[]; labels: string[]; observedPaise: number } {
+  const weeks: number[] = [];
+  for (let i = 0; i < dailyPaise.length; i += 7) {
+    weeks.push(dailyPaise.slice(i, i + 7).reduce((n, v) => n + v, 0));
+  }
+  const observedPaise = weeks.reduce((n, v) => n + v, 0);
+  if (observedPaise === 0) return { valuesPaise: [], labels: [], observedPaise: 0 };
+  const avg = observedPaise / weeks.length;
+  const first = weeks[0] ?? 0;
+  const last = weeks[weeks.length - 1] ?? 0;
+  // Week-on-week drift, damped and capped so a single quiet week can't project
+  // the store to zero (or a single spike to the moon).
+  const drift = first > 0 ? Math.max(-0.15, Math.min(0.15, (last - first) / first / weeks.length)) : 0;
+  const valuesPaise = [1, 2, 3, 4].map((n) => Math.max(0, Math.round(avg * (1 + drift * n))));
+  return { valuesPaise, labels: ["Wk 1", "Wk 2", "Wk 3", "Wk 4"], observedPaise };
 }
 
 export default async function AssistantPage({
@@ -65,13 +89,22 @@ export default async function AssistantPage({
 
   const session = await getSession();
   const store = await actingStore();
-  const { FORECAST_4W } = sellerData(store);
-  const listings = await sellerListings(session?.email ?? "seller@example.in", store);
+  const listings = await sellerListings(session?.email ?? "", store);
   // Real listings drive the panels. Prefer a CBD listing for the copy-check
   // demo (the class the compliance gate is strictest on); fall back to any.
   const descTarget: CatalogProduct | undefined = listings.find((p) => p.cls === "CBD_WELLNESS") ?? listings[0];
   const priceTarget: CatalogProduct | undefined =
     listings.find((p) => /oil|tincture|drops/i.test(p.title)) ?? listings.find((p) => p.id !== descTarget?.id) ?? descTarget;
+
+  // Pricing comparable: what other sellers actually charge for a live listing in
+  // the same compliance class. Real marketplace data, not a formula dressed up
+  // as market research — and when there is nothing to compare against, the panel
+  // says so instead of inventing a number.
+  const marketplace = priceTarget ? await readLiveProducts() : [];
+  const comparables = priceTarget
+    ? marketplace.filter((p) => p.cls === priceTarget.cls && p.seller !== store).map((p) => p.pricePaise)
+    : [];
+  const comparableMedian = median(comparables);
 
   // Generate the description through the AI seam. With no API key this returns
   // the deterministic, claims-free fallback; with a key it's the model's output
@@ -89,8 +122,9 @@ export default async function AssistantPage({
   const lowStockTarget = listings
     .filter((p) => p.status === "LIVE" && p.stockQty > 0)
     .sort((a, b) => a.stockQty - b.stockQty)[0];
-  // Sales-forecast delta from the store's own forecast series — not a fixed %.
-  const fcVals = FORECAST_4W.valuesPaise;
+  // Sales forecast projected from this store's own last four weeks of orders.
+  const forecast = projectWeeks((await sellerReport(store, 28)).series.map((d) => d.paise));
+  const fcVals = forecast.valuesPaise;
   const fcFirst = fcVals[0] ?? 0;
   const fcLast = fcVals[fcVals.length - 1] ?? 0;
   const fcDeltaPct = fcFirst > 0 ? Math.round(((fcLast - fcFirst) / fcFirst) * 100) : 0;
@@ -146,15 +180,34 @@ export default async function AssistantPage({
             <>
               <p className="small muted" style={{ marginTop: 0 }}>{priceTarget.title}</p>
               <div className="vh-row-between" style={{ marginBottom: 6 }}>
-                <span className="small muted">Current price</span>
+                <span className="small muted">Your price</span>
                 <MoneyText paise={priceTarget.pricePaise} />
               </div>
-              <div className="vh-row-between" style={{ marginBottom: 6 }}>
-                <span className="small muted">Suggested price</span>
-                <MoneyText paise={suggestPricePaise(priceTarget.pricePaise)} />
-              </div>
-              <div className="small muted">Based on category demand and comparable top-selling listings. Final price is always seller-set — this is a suggestion, never applied automatically.</div>
-              <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/seller/products/${priceTarget.id}`} style={{ marginTop: 12, display: "inline-block" }} title="Open the listing editor — price stays seller-set">Apply to listing</Link>
+              {comparables.length > 0 ? (
+                <>
+                  <div className="vh-row-between" style={{ marginBottom: 6 }}>
+                    <span className="small muted">Median across {comparables.length} other live {priceTarget.cls.replace(/_/g, " ").toLowerCase()} listing{comparables.length === 1 ? "" : "s"}</span>
+                    <MoneyText paise={comparableMedian} />
+                  </div>
+                  <div className="small">
+                    {priceTarget.pricePaise > comparableMedian
+                      ? <>You are <strong>{Math.round(((priceTarget.pricePaise - comparableMedian) / comparableMedian) * 100)}% above</strong> the middle of the market.</>
+                      : priceTarget.pricePaise < comparableMedian
+                        ? <>You are <strong>{Math.round(((comparableMedian - priceTarget.pricePaise) / comparableMedian) * 100)}% below</strong> the middle of the market.</>
+                        : <>You are priced at the middle of the market.</>}
+                  </div>
+                  <div className="small muted" style={{ marginTop: 6 }}>
+                    Measured from live listings in the same compliance class, excluding your own. It says where you
+                    sit, not what to charge — the price is always yours to set.
+                  </div>
+                </>
+              ) : (
+                <div className="small muted">
+                  No other live {priceTarget.cls.replace(/_/g, " ").toLowerCase()} listings to compare against yet, so
+                  there is no market position to report.
+                </div>
+              )}
+              <Link className="vh-btn vh-btn-sm vh-btn-primary" href={`/seller/products/${priceTarget.id}`} style={{ marginTop: 12, display: "inline-block" }} title="Open the listing editor — price stays seller-set">Edit this listing</Link>
             </>
           ) : (
             <p className="small muted" style={{ margin: 0 }}>No listings to price yet.</p>
@@ -175,13 +228,25 @@ export default async function AssistantPage({
         </SuggestionCard>
 
         <SuggestionCard icon={<TrendingUp size={16} strokeWidth={2.2} />} title="Sales forecast">
-          <p className="small muted" style={{ marginTop: 0 }}>Next 4 weeks, all listings</p>
-          <Columns values={FORECAST_4W.valuesPaise} labels={FORECAST_4W.labels} height={96} />
-          <div className="small" style={{ marginTop: 12 }}>
-            Projected sales: <strong><MoneyText paise={FORECAST_4W.valuesPaise.reduce((s, val) => s + val, 0)} /></strong>
-            {fcDeltaPct !== 0 && <> ({fcDeltaPct > 0 ? "+" : ""}{fcDeltaPct}% week 1 → week 4)</>}
-          </div>
-          <div className="small muted" style={{ marginTop: 4 }}>A projection from your recent order run — a planning aid, never a guarantee.</div>
+          {fcVals.length > 0 ? (
+            <>
+              <p className="small muted" style={{ marginTop: 0 }}>Next 4 weeks, all listings</p>
+              <Columns values={fcVals} labels={forecast.labels} height={96} />
+              <div className="small" style={{ marginTop: 12 }}>
+                Projected: <strong><MoneyText paise={fcVals.reduce((s, val) => s + val, 0)} /></strong>
+                {fcDeltaPct !== 0 && <> ({fcDeltaPct > 0 ? "+" : ""}{fcDeltaPct}% week 1 → week 4)</>}
+              </div>
+              <div className="small muted" style={{ marginTop: 4 }}>
+                Projected from the <MoneyText paise={forecast.observedPaise} /> of orders you actually took in the
+                last 28 days — a planning aid, never a guarantee.
+              </div>
+            </>
+          ) : (
+            <p className="small muted" style={{ margin: 0 }}>
+              No orders in the last 28 days, so there is nothing to project from. A forecast appears here once your
+              listings start selling.
+            </p>
+          )}
         </SuggestionCard>
         <SuggestionCard icon={<PenLine size={16} strokeWidth={2.2} />} title="SEO & keywords">
           {descTarget ? (

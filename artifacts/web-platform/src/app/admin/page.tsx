@@ -17,9 +17,9 @@ import {
 import { Shell } from "./Shell";
 import { Card, Stat, StatusPill, MoneyText, EmptyState } from "@/components/ui";
 import { Sparkline, Columns } from "@/components/ui/charts";
-import { KPIS } from "@/lib/sample";
+import { adminReport } from "@/lib/analytics";
 import { pendingPrescriptions } from "@/lib/prescriptions";
-import { readCatalog } from "@/lib/catalog";
+import { readCatalog, readLiveProducts } from "@/lib/catalog";
 import { reviewQueue } from "@/lib/ads";
 import { readAudit } from "@/lib/audit";
 import { getSession } from "@/lib/auth-lite";
@@ -33,10 +33,6 @@ import { allKyc, licenceExpired } from "@/lib/vendor";
 // The console chrome shows a live unread-notification badge (request-time
 // state), so the admin home must render per request, not at build time.
 export const dynamic = "force-dynamic";
-import {
-  GMV_14D_PAISE, ORDERS_14D, AOV_14D_PAISE, LIVE_SELLERS_14D, DAY_LABELS_14,
-} from "./_lib/data";
-
 export const metadata: Metadata = { title: "Admin Home" };
 
 const I = { size: 16, strokeWidth: 2.2 } as const;
@@ -122,10 +118,24 @@ export default async function AdminHomePage() {
 
   const activity = await readAudit(8);
 
+  // Platform figures, computed from the live order store. There is no seeded
+  // headline: an empty marketplace reads as zero, which is the truth.
+  const report = await adminReport(14);
+  const gmvSeries = report.series.map((d) => d.paise);
+  const orderSeries = report.series.map((d) => d.orders);
+  const aovSeries = report.series.map((d) => (d.orders ? Math.round(d.paise / d.orders) : 0));
+  const gmvToday = gmvSeries.at(-1) ?? 0;
+  const ordersToday = orderSeries.at(-1) ?? 0;
+  // "Live" means a storefront that could actually take an order today: its
+  // verification is approved and it has at least one listing on sale.
+  const kycRecords = await allKyc();
+  const storesWithLiveListings = new Set((await readLiveProducts()).map((p) => p.seller));
+  const liveStores = kycRecords.filter((r) => r.status === "APPROVED" && storesWithLiveListings.has(r.store)).length;
+
   // Incidents are real signals or nothing: storefronts under an open abuse
   // report, verifications whose drug licence has lapsed, and open recalls.
   const flaggedStores = await reportedStores();
-  const lapsedLicences = (await allKyc()).filter((r) => r.status === "APPROVED" && licenceExpired(r));
+  const lapsedLicences = kycRecords.filter((r) => r.status === "APPROVED" && licenceExpired(r));
   const incidents = [
     ...flaggedStores.map((s) => ({
       id: `sr-${s.storeSlug}`,
@@ -144,27 +154,30 @@ export default async function AdminHomePage() {
   return (
     <Shell active="/admin" breadcrumb={["Admin"]} title="Marketplace operations">
       <div className="vh-grid" style={{ gap: "var(--sp-4)" }}>
-        {/* KPI row — each stat carries its 14-day trend */}
+        {/* KPI row — each stat carries its own 14-day trend, computed from the
+            live order store. Zeros here mean no orders, not a broken tile. */}
         <Card
           title={<span className="vh-row" style={{ gap: 8 }}><Gauge {...I} aria-hidden /> Marketplace today</span>}
-          action={<span className="small muted">Illustrative platform metrics — live once real order volume flows</span>}
+          action={<span className="small muted tabular">{report.orders} order{report.orders === 1 ? "" : "s"} in the last 14 days</span>}
         >
           <div className="vh-grid cols-4">
-            <KpiTile label="GMV today" value={<MoneyText paise={KPIS.gmvTodayPaise} />} delta={dod(GMV_14D_PAISE)} points={GMV_14D_PAISE} spark="GMV, last 14 days" />
-            <KpiTile label="Orders today" value={KPIS.ordersToday.toLocaleString("en-IN")} delta={dod(ORDERS_14D)} points={ORDERS_14D} spark="Orders, last 14 days" />
-            <KpiTile label="AOV" value={<MoneyText paise={KPIS.aovPaise} />} delta={dod(AOV_14D_PAISE)} points={AOV_14D_PAISE} spark="Average order value, last 14 days" />
-            <KpiTile label="Live sellers" value={KPIS.liveSellers.toLocaleString("en-IN")} delta={dod(LIVE_SELLERS_14D)} points={LIVE_SELLERS_14D} spark="Live sellers, last 14 days" />
+            <KpiTile label="GMV today" value={<MoneyText paise={gmvToday} />} delta={dod(gmvSeries)} points={gmvSeries} spark="GMV, last 14 days" />
+            <KpiTile label="Orders today" value={ordersToday.toLocaleString("en-IN")} delta={dod(orderSeries)} points={orderSeries} spark="Orders, last 14 days" />
+            <KpiTile label="AOV (14 days)" value={<MoneyText paise={report.aov} />} delta={dod(aovSeries)} points={aovSeries} spark="Average order value, last 14 days" />
+            <KpiTile label="Live storefronts" value={liveStores.toLocaleString("en-IN")} points={[]} spark="Verified storefronts selling now" />
           </div>
         </Card>
 
         {/* GMV columns */}
         <Card
           title="GMV — last 14 days"
-          action={<span className="small muted tabular">peak <MoneyText paise={Math.max(...GMV_14D_PAISE)} /></span>}
+          action={<span className="small muted tabular">peak <MoneyText paise={Math.max(0, ...gmvSeries)} /></span>}
         >
-          <Columns values={GMV_14D_PAISE} labels={DAY_LABELS_14} height={128} />
+          <Columns values={gmvSeries} labels={report.series.map((d) => d.label)} height={128} />
           <p className="small muted" style={{ margin: "var(--sp-2) 0 0" }}>
-            26 Jun – 9 Jul 2026. Server-computed daily rollup — this chart never re-derives money client-side.
+            {report.series[0]?.label} – {report.series.at(-1)?.label}. Server-computed daily rollup from the order
+            store — this chart never re-derives money client-side.
+            {report.gmvPaise === 0 && " No orders in this window yet, so every bar is zero."}
           </p>
         </Card>
 
