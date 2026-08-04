@@ -64,9 +64,14 @@ export async function removeFromWishlist(formData: FormData): Promise<void> {
 export async function moveWishlistItemToCart(formData: FormData): Promise<void> {
   const id = String(formData.get("productId") ?? "");
   if (!(await isWishable(id))) redirect("/account/wishlist");
+  // Same per-listing bounds the cart itself enforces — a wishlist move must
+  // not be a way past a seller's maximum order quantity.
+  const { findProduct, orderBounds } = await import("@/lib/catalog");
+  const product = await findProduct(id);
+  const cap = product ? Math.min(orderBounds(product).max, product.stockQty || Infinity) : 1;
   const lines = await readCartLines();
   const existing = lines.find((l) => l.id === id);
-  if (existing) existing.qty = Math.min(existing.qty + 1, 10);
+  if (existing) existing.qty = Math.max(1, Math.min(existing.qty + 1, cap));
   else lines.push({ id, qty: 1 });
   await writeCartLines(lines);
   await writeWishlist((await readWishlist()).filter((x) => x !== id));

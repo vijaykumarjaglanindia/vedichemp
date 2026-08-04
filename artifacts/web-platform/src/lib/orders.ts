@@ -280,6 +280,15 @@ export async function requestReturn(reference: string, by: string, reason: strin
   if (!order) return { ok: false, reason: "missing" };
   if (order.status !== "DELIVERED") return { ok: false, reason: "state" };
   if (reason.trim().length < 10) return { ok: false, reason: "reason" };
+  // The return window is the operator's setting, and it is enforced here —
+  // the policy sentence on the order page reads the same value, so a buyer is
+  // never told one window and refused by another.
+  const { readCommerce } = await import("@/lib/commerce");
+  const windowDays = (await readCommerce()).returnWindowDays;
+  const deliveredAt = [...order.timeline].reverse().find((e) => e.status === "DELIVERED")?.at;
+  if (deliveredAt && Date.now() - Date.parse(deliveredAt) > windowDays * 86_400_000) {
+    return { ok: false, reason: "window" };
+  }
   order.status = "RETURN_REQUESTED";
   order.returnReason = reason.trim();
   order.timeline.push({ at: now(), status: "RETURN_REQUESTED", by, note: reason.trim() });

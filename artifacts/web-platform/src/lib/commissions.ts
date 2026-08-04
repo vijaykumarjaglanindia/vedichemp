@@ -15,6 +15,12 @@
 import { readCommissions, type CommissionScheduleRow } from "@/lib/adminstate";
 
 export const LAUNCH_COMMISSION_PCT = 10; // Early Adopter Program — global default
+
+/** The band a commission rate may be set within. One definition, used by the
+ *  admin form's bounds, the server-side check and the error message, so the
+ *  three cannot drift apart. */
+export const MIN_COMMISSION_PCT = 1;
+export const MAX_COMMISSION_PCT = 40;
 export type CommissionScope = "GLOBAL" | "CATEGORY" | "SELLER" | "PRODUCT";
 export const SCOPE_PRECEDENCE: CommissionScope[] = ["PRODUCT", "SELLER", "CATEGORY", "GLOBAL"];
 

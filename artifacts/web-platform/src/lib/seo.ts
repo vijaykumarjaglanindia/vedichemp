@@ -9,7 +9,14 @@
 import type { SampleProduct } from "@/lib/sample";
 import { rupees } from "@/lib/money";
 
-export const SITE_URL = "https://vedichemp.in";
+/**
+ * The one public origin. Every absolute URL the platform emits — JSON-LD,
+ * robots.txt, the sitemap, Open Graph — is built from this, so a deployment on
+ * a different domain does not advertise someone else's. Set
+ * NEXT_PUBLIC_SITE_URL in the environment (see PRODUCTION.md); the literal is
+ * only the default for the production domain.
+ */
+export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://vedichemp.in").replace(/\/+$/, "");
 
 export function organizationJsonLd(opts?: { description?: string; email?: string }) {
   return {
@@ -117,7 +124,7 @@ export function breadcrumbJsonLd(items: { name: string; href: string }[]) {
       "@type": "ListItem",
       position: i + 1,
       name: it.name,
-      item: `https://vedichemp.in${it.href}`,
+      item: `${SITE_URL}${it.href}`,
     })),
   };
 }

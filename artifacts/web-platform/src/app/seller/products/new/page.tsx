@@ -192,8 +192,8 @@ export default async function NewProductPage({
               </div>
               <div className="vh-field">
                 <label className="vh-label" htmlFor="stockQty">Opening stock (units)</label>
-                <input className="vh-input" id="stockQty" name="stockQty" type="number" min={0} step={1} defaultValue={25} placeholder="25" />
-                <span className="vh-help">On-hand units once live. Adjust any time in Inventory; zero means out of stock.</span>
+                <input className="vh-input" id="stockQty" name="stockQty" type="number" min={0} step={1} placeholder="e.g. 25" />
+                <span className="vh-help">On-hand units once live. Leave it blank and the listing starts out of stock — the platform never invents units for you. Adjust any time in Inventory.</span>
               </div>
             </div>
           </Card>

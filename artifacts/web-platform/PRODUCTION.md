@@ -128,6 +128,9 @@ zero-loss production database.
 | `OAUTH_REDIRECT_BASE` | Public origin for OAuth callbacks, e.g. `https://vedichemp.in` |
 | `ANTHROPIC_API_KEY` | Live AI suites (unset = deterministic fallbacks) |
 | `BASE_PATH` | Optional path prefix (Replit sets `/web-platform`) |
+| `NEXT_PUBLIC_SITE_URL` | Public origin for absolute URLs — JSON-LD, robots.txt, sitemap, Open Graph. Defaults to `https://vedichemp.in`; set it on any other domain so the site does not advertise one it does not serve |
+| `BOOTSTRAP_OWNER_EMAIL` / `BOOTSTRAP_OWNER_PASSWORD` / `BOOTSTRAP_OWNER_NAME` | The first `ADMIN_OWNER` account, created once on an empty install. Unset them after first sign-in |
+| `VH_DEMO` | Set to `1` to seed a walkthrough dataset. Never set in production |
 | `SENSITIVE_BUCKET`, `SENSITIVE_KMS_KEY_ID`, `COA_BUCKET` | Object storage seams |
 
 PSP (gateway) API keys are configured per-gateway once the PSP account

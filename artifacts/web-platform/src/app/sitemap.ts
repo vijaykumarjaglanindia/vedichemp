@@ -8,6 +8,7 @@ import { publishedPosts } from "@/lib/cms";
 import { readCategories } from "@/lib/categories";
 import { allKyc } from "@/lib/vendor";
 import { sellerSlug } from "./(site)/_lib/data";
+import { SITE_URL } from "@/lib/seo";
 
 /**
  * Public, indexable routes only. Console routes (/account, /seller, /admin)
@@ -15,7 +16,7 @@ import { sellerSlug } from "./(site)/_lib/data";
  * has a public URL to list in the first place (A1 — absent, not hidden).
  */
 export default async function sitemap(): Promise<MetadataRoute.Sitemap> {
-  const base = "https://vedichemp.in";
+  const base = SITE_URL;
   const now = new Date();
   const liveProducts = (await readLiveProducts()).filter((p) => p.cls !== "MED_CANNABIS");
   const statics = [

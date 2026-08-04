@@ -250,7 +250,7 @@ export default async function StorePage({
               <RichTextEditor
                 name="story"
                 id="sf-story"
-                defaultValue={storeCopy?.story ?? "AYUSH-licensed CBD wellness maker. Every batch is lab-tested before it ships, and the report is linked on each listing."}
+                defaultValue={storeCopy?.story ?? ""}
                 maxLength={500}
                 minHeight={120}
                 placeholder="Your craft, your facility, your testing routine."

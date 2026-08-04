@@ -971,10 +971,15 @@ export async function createCoupon(formData: FormData): Promise<void> {
   const validTo = String(formData.get("validTo") ?? "").trim();
   const cls = String(formData.get("cls") ?? "");
 
+  // The ceilings are the operator's setting, so a seller's form, the error it
+  // shows and the guard that refuses are all one number.
+  const { readCommerce } = await import("@/lib/commerce");
+  const limits = await readCommerce();
+
   let err: string | null = null;
   if (!/^[A-Z0-9]{4,12}$/.test(code)) err = "code";
-  else if (kind === "PERCENT" && (!Number.isInteger(value) || value < 1 || value > 40)) err = "pct";
-  else if (kind === "FIXED" && (!Number.isInteger(value) || value < 1 || value > 100000)) err = "amount";
+  else if (kind === "PERCENT" && (!Number.isInteger(value) || value < 1 || value > limits.maxCouponPct)) err = "pct";
+  else if (kind === "FIXED" && (!Number.isInteger(value) || value < 1 || value * 100 > limits.maxCouponFixedPaise)) err = "amount";
   else if (!SELLER_COUPON_CLASSES.includes(cls)) err = "cls";
   else if (validTo && (!/^\d{4}-\d{2}-\d{2}$/.test(validTo) || new Date(validTo) < new Date(new Date().toISOString().slice(0, 10)))) err = "date";
   if (err) redirect(`/seller/marketing?err=${err}#new-coupon`);

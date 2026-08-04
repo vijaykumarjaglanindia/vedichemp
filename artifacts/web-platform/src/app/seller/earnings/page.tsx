@@ -13,7 +13,7 @@ import { Wallet, Landmark, ArrowDownToLine, ReceiptText, Clock } from "lucide-re
 import { Shell } from "../Shell";
 import { Banner, Card, DataTable, MoneyText, Stat, StatusPill, type Column } from "@/components/ui";
 import {
-  earningLines, MIN_WITHDRAW_PAISE, readPayoutAccount, vendorBalance, withdrawalsForSeller,
+  earningLines, minWithdrawPaise, readPayoutAccount, vendorBalance, withdrawalsForSeller,
   WITHDRAW_TONE, type OrderEarning, type WithdrawRequest,
 } from "@/lib/earnings";
 import { saveWithdrawAccount, submitWithdraw } from "../actions";
@@ -23,7 +23,7 @@ export const metadata: Metadata = { title: "Earnings & Withdrawals" };
 
 
 const ERRORS: Record<string, string> = {
-  min: `The minimum withdrawal is ₹${Math.round(MIN_WITHDRAW_PAISE / 100)}.`,
+  min: "That is below the minimum withdrawal.",
   balance: "That's more than your available balance.",
   account: "Add a payout account (bank or UPI) before requesting a withdrawal.",
   amount: "Enter a whole-rupee amount.",
@@ -35,6 +35,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
   const DEMO_STORE = await actingStore();
   const { err, saved, requested } = await searchParams;
   const balance = await vendorBalance(DEMO_STORE);
+  const minWithdraw = await minWithdrawPaise();
   const lines = await earningLines(DEMO_STORE);
   const account = await readPayoutAccount(DEMO_STORE);
   const history = await withdrawalsForSeller(DEMO_STORE);
@@ -76,7 +77,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
               {account ? (
                 <form action={submitWithdraw} className="vh-grid" style={{ gap: 12 }}>
                   <p className="small muted" style={{ margin: 0 }}>
-                    Paid to <strong>{account.method} · {account.destination}</strong>. Minimum ₹{Math.round(MIN_WITHDRAW_PAISE / 100)}.
+                    Paid to <strong>{account.method} · {account.destination}</strong>. Minimum ₹{Math.round(minWithdraw / 100)}.
                   </p>
                   <div className="vh-field" style={{ maxWidth: 220 }}>
                     <label className="vh-label" htmlFor="wd-amount">Amount (₹) <span className="req">*</span></label>
@@ -84,8 +85,8 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
                     <input className="vh-input" id="wd-amount" name="amount" type="number" min={1} step={1} placeholder={String(Math.round(balance.availablePaise / 100))} />
                     <span className="vh-help">You can withdraw up to <MoneyText paise={balance.availablePaise} />.</span>
                   </div>
-                  <button className="vh-btn vh-btn-primary" type="submit" style={{ justifySelf: "start" }} disabled={balance.availablePaise < MIN_WITHDRAW_PAISE}>Request withdrawal</button>
-                  {balance.availablePaise < MIN_WITHDRAW_PAISE && <span className="small muted">Your available balance is below the ₹{Math.round(MIN_WITHDRAW_PAISE / 100)} minimum — keep selling to reach it.</span>}
+                  <button className="vh-btn vh-btn-primary" type="submit" style={{ justifySelf: "start" }} disabled={balance.availablePaise < minWithdraw}>Request withdrawal</button>
+                  {balance.availablePaise < minWithdraw && <span className="small muted">Your available balance is below the ₹{Math.round(minWithdraw / 100)} minimum — keep selling to reach it.</span>}
                 </form>
               ) : (
                 <Banner severity="warn" title="Add a payout account first">Set a bank account or UPI id below, then you can request withdrawals.</Banner>

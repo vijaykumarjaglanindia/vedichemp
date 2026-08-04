@@ -16,7 +16,7 @@ import { Lock, FileUp, ImagePlus, ShieldAlert, Send, Archive, RotateCcw, Trash2,
 import { Shell } from "../../Shell";
 import { Banner, Card, StatusPill, toneForStatus, ComplianceBadge, MoneyText, type Column, DataTable } from "@/components/ui";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
-import { findProduct, hasVariants, REGULATED_CLASSES, saleActive } from "@/lib/catalog";
+import { findProduct, hasVariants, maxImages, REGULATED_CLASSES, saleActive } from "@/lib/catalog";
 import { readCategories } from "@/lib/categories";
 import { actingStore } from "../../_lib/store";
 import { CLASS_META } from "@/lib/compliance";
@@ -375,7 +375,7 @@ export default async function ProductEditorPage({
 
         {/* Photos — a real gallery (each control is its own small form) */}
         <div id="gallery" style={{ scrollMarginTop: 90 }}>
-          <Card title="Photos" action={<span className="small muted">{images.length}/6 · first is the main photo</span>}>
+          <Card title="Photos" action={<span className="small muted">{images.length}/{maxImages()} · first is the main photo</span>}>
             {images.length > 0 ? (
               <div className="vh-grid cols-4" style={{ gap: 8, marginBottom: 12 }}>
                 {images.map((src, i) => (

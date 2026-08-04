@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import type { ReactNode } from "react";
 import { Inter, Plus_Jakarta_Sans, Fraunces } from "next/font/google";
 import { readThemePreset, themeCss } from "@/lib/features";
+import { SITE_URL } from "@/lib/seo";
 import { readSiteContent } from "@/lib/sitecontent";
 import "./globals.css";
 
@@ -41,7 +42,7 @@ const serif = Fraunces({
 export async function generateMetadata(): Promise<Metadata> {
   const content = await readSiteContent();
   return {
-    metadataBase: new URL("https://vedichemp.in"),
+    metadataBase: new URL(SITE_URL),
     title: { default: content.seoSiteTitle ?? "Vedic Hemp", template: `%s · ${content.siteName ?? "Vedic Hemp"}` },
     description: content.seoSiteDesc,
     keywords: ["hemp", "CBD", "Ayurveda", "wellness", "India", "lab verified", "marketplace"],

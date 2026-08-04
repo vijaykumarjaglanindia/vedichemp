@@ -15,6 +15,7 @@ import { Shell } from "../../Shell";
 import { Banner, Card, StatusPill } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
 import { minEffectiveFrom, readCommissions } from "@/lib/adminstate";
+import { MIN_COMMISSION_PCT, MAX_COMMISSION_PCT, resolveCommission } from "@/lib/commissions";
 import { saveCommissionSchedule } from "../../actions";
 
 export const metadata: Metadata = { title: "Commission schedules · Admin" };
@@ -36,6 +37,7 @@ export default async function CommissionsPage({
 }) {
   const { cs } = await searchParams;
   const rows = await readCommissions();
+  const globalRate = await resolveCommission({});
   const minDate = minEffectiveFrom(new Date()).toISOString().slice(0, 10);
 
   return (
@@ -53,7 +55,7 @@ export default async function CommissionsPage({
             </div>
           )}
           <p className="small muted" style={{ marginTop: 0 }}>
-            Global default today: <strong style={{ color: "var(--vh-ink)" }}>10% — Early Adopter Program</strong>.
+            Global default today: <strong style={{ color: "var(--vh-ink)" }}>{globalRate.ratePct}%{globalRate.source === "launch-default" ? " — Early Adopter Program" : ""}</strong>.
             The most specific schedule wins: product &gt; brand &gt; category &gt; global.
             Increases need 30 days&rsquo; notice; decreases may apply immediately.
           </p>
@@ -82,7 +84,7 @@ export default async function CommissionsPage({
             </div>
             <div className="vh-field">
               <label className="vh-label" htmlFor="cs-rate">Commission rate (%) <span className="req">*</span></label>
-              <input className="vh-input" id="cs-rate" name="ratePct" type="number" min={1} max={40} step="0.5" required placeholder="e.g. 12" />
+              <input className="vh-input" id="cs-rate" name="ratePct" type="number" min={MIN_COMMISSION_PCT} max={MAX_COMMISSION_PCT} step="0.5" required placeholder="e.g. 12" />
             </div>
             <div className="vh-field">
               <label className="vh-label" htmlFor="cs-from">Effective from <span className="req">*</span></label>

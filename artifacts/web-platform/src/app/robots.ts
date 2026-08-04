@@ -1,4 +1,6 @@
 import type { MetadataRoute } from "next";
+import { SITE_URL } from "@/lib/seo";
+import { withBase } from "@/lib/base";
 
 export default function robots(): MetadataRoute.Robots {
   return {
@@ -10,6 +12,6 @@ export default function robots(): MetadataRoute.Robots {
         disallow: ["/account", "/seller", "/admin", "/api", "/cart", "/checkout", "/signin", "/seller-login"],
       },
     ],
-    sitemap: "https://vedichemp.in/sitemap.xml",
+    sitemap: `${SITE_URL}${withBase("/sitemap.xml")}`,
   };
 }

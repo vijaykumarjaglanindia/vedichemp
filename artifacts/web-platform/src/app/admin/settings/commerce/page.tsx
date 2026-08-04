@@ -39,17 +39,17 @@ export default async function CommercePage({
     >
       <div className="vh-grid" style={{ gap: "var(--sp-3)" }}>
         {cm === "saved" && <Banner severity="ok" title="Economics saved">Loyalty and referral numbers apply from the next request.</Banner>}
-        {cm === "bad" && <Banner severity="danger">Enter non-negative numbers.</Banner>}
+        {cm === "bad" && <Banner severity="danger">Every field needs a whole, non-negative number — and the return window, address book and photo limits need at least 1.</Banner>}
         {cp === "saved" && <Banner severity="ok" title="Coupon saved">Buyers can apply it at the cart immediately.</Banner>}
         {cp === "toggled" && <Banner severity="ok" title="Coupon updated" />}
         {(cp === "code" || cp === "pct" || cp === "label") && <Banner severity="danger">Coupon needs a 4+ char code, 0–50% rate, and a claims-free label.</Banner>}
         {gc === "saved" && <Banner severity="ok" title="Gift card created">The code redeems on the wallet page.</Banner>}
-        {gc === "bad" && <Banner severity="danger">Gift cards need a 6+ char code and a value up to ₹10,000.</Banner>}
+        {gc === "bad" && <Banner severity="danger">Gift cards need a 6+ char code and a value up to ₹{(commerce.giftCardMaxPaise / 100).toLocaleString("en-IN")}.</Banner>}
         {cd === "saved" && <Banner severity="ok" title="Category copy saved">Labels and blurbs update across the whole site — compliance flags are untouched.</Banner>}
         {cd === "claims" && <Banner severity="danger">Category copy cannot carry claims language.</Banner>}
 
         <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
-          <Card title={<span className="vh-row" style={{ gap: 8 }}><Sparkles size={16} strokeWidth={2.2} aria-hidden /> Loyalty & referral</span>}>
+          <Card title={<span className="vh-row" style={{ gap: 8 }}><Sparkles size={16} strokeWidth={2.2} aria-hidden /> Economics &amp; limits</span>}>
             <form action={saveCommerceSettings} className="vh-grid cols-2" style={{ gap: 12 }}>
               <div className="vh-field">
                 <label className="vh-label" htmlFor="cm-pts">Loyalty points per ₹100</label>
@@ -59,10 +59,51 @@ export default async function CommercePage({
                 <label className="vh-label" htmlFor="cm-ref">Referral credit (₹)</label>
                 <input className="vh-input" id="cm-ref" name="referral" type="number" min={0} step={1} defaultValue={commerce.referralCreditPaise / 100} />
               </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="cm-refmin">Referral applies above (₹)</label>
+                <input className="vh-input" id="cm-refmin" name="referralMin" type="number" min={0} step={1} defaultValue={commerce.referralMinSpendPaise / 100} />
+                <span className="vh-help">Minimum first-order value for the credit to apply.</span>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="cm-ret">Return window (days after delivery)</label>
+                <input className="vh-input" id="cm-ret" name="returnDays" type="number" min={1} step={1} defaultValue={commerce.returnWindowDays} />
+                <span className="vh-help">Enforced when a return is opened, not only printed in the policy.</span>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="cm-addr">Saved addresses per buyer</label>
+                <input className="vh-input" id="cm-addr" name="maxAddresses" type="number" min={1} step={1} defaultValue={commerce.maxSavedAddresses} />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="cm-wd">Minimum payout request (₹)</label>
+                <input className="vh-input" id="cm-wd" name="minWithdraw" type="number" min={0} step={1} defaultValue={commerce.minWithdrawPaise / 100} />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="cm-gcmax">Largest gift card (₹)</label>
+                <input className="vh-input" id="cm-gcmax" name="giftCardMax" type="number" min={0} step={1} defaultValue={commerce.giftCardMaxPaise / 100} />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="cm-cpct">Coupon ceiling (%)</label>
+                <input className="vh-input" id="cm-cpct" name="maxCouponPct" type="number" min={0} max={100} step={1} defaultValue={commerce.maxCouponPct} />
+                <span className="vh-help">The most a seller or admin coupon may take off.</span>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="cm-cfix">Flat-coupon ceiling (₹)</label>
+                <input className="vh-input" id="cm-cfix" name="maxCouponFixed" type="number" min={0} step={1} defaultValue={commerce.maxCouponFixedPaise / 100} />
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="cm-low">New listings warn at (units)</label>
+                <input className="vh-input" id="cm-low" name="defaultLowStockAt" type="number" min={0} step={1} defaultValue={commerce.defaultLowStockAt} />
+                <span className="vh-help">The starting low-stock threshold; sellers override per listing.</span>
+              </div>
+              <div className="vh-field">
+                <label className="vh-label" htmlFor="cm-img">Photos per listing</label>
+                <input className="vh-input" id="cm-img" name="maxProductImages" type="number" min={1} max={20} step={1} defaultValue={commerce.maxProductImages} />
+              </div>
               <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Save economics</button>
             </form>
             <p className="small muted" style={{ margin: "10px 0 0" }}>
-              All amounts are stored in paise; totals are always calculated on our servers.
+              All amounts are stored in paise; totals are always calculated on our servers. Each figure here is read
+              by the guard that enforces it and by the sentence that states it, so the two can never disagree.
             </p>
             <p className="small muted vh-row" style={{ gap: 6, margin: "10px 0 0", alignItems: "center" }}>
               <Truck size={13} aria-hidden />
@@ -86,7 +127,7 @@ export default async function CommercePage({
               </div>
               <div className="vh-field" style={{ width: 120 }}>
                 <label className="vh-label" htmlFor="gc-val">Value (₹)</label>
-                <input className="vh-input" id="gc-val" name="value" type="number" min={1} max={10000} required />
+                <input className="vh-input" id="gc-val" name="value" type="number" min={1} max={commerce.giftCardMaxPaise / 100} required />
               </div>
               <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit">Create</button>
             </form>

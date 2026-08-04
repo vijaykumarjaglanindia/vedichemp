@@ -19,7 +19,13 @@
 import { resolveCommission } from "@/lib/commissions";
 import { ordersForSeller, type Order } from "@/lib/orders";
 
-export const MIN_WITHDRAW_PAISE = 50_000; // ₹500 — admin-configurable seam
+/** The floor a seller must clear to request a payout. Operator-set on
+ *  /admin/settings/commerce; read here and printed on the earnings page from
+ *  the same value. */
+export async function minWithdrawPaise(): Promise<number> {
+  const { readCommerce } = await import("@/lib/commerce");
+  return (await readCommerce()).minWithdrawPaise;
+}
 export const WITHDRAW_CHECKER_THRESHOLD_PAISE = 1_000_000; // ₹10,000 → needs a checker (A6)
 
 export type WithdrawMethod = "BANK" | "UPI";
@@ -134,7 +140,7 @@ export async function savePayoutAccount(seller: string, method: WithdrawMethod, 
 export type WithdrawResult = { ok: true; request: WithdrawRequest } | { ok: false; reason: string };
 
 export async function requestWithdraw(seller: string, amountPaise: number): Promise<WithdrawResult> {
-  if (!Number.isInteger(amountPaise) || amountPaise < MIN_WITHDRAW_PAISE) return { ok: false, reason: "min" };
+  if (!Number.isInteger(amountPaise) || amountPaise < (await minWithdrawPaise())) return { ok: false, reason: "min" };
   const account = await readPayoutAccount(seller);
   if (!account) return { ok: false, reason: "account" };
   const balance = await vendorBalance(seller);

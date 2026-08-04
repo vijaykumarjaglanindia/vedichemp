@@ -24,14 +24,18 @@ import { createCoupon } from "../actions";
 export const metadata: Metadata = { title: "Marketing" };
 export const dynamic = "force-dynamic";
 
-const COUPON_ERRORS: Record<string, string> = {
-  code: "Coupon code should be 4–12 letters/digits (e.g. VEDIC10).",
-  pct: "A percentage discount must be between 1% and 40%.",
-  amount: "A flat discount must be between ₹1 and ₹1,00,000.",
-  cls: "Pick a valid category (or leave it storewide).",
-  date: "The expiry date must be today or later.",
-  dupe: "That code is already in use — pick another.",
-};
+/** The ceilings come from the same setting the server validates against, so
+ *  the message a seller reads is always the rule that refused them. */
+function couponErrors(maxPct: number, maxFixedPaise: number): Record<string, string> {
+  return {
+    code: "Coupon code should be 4–12 letters/digits (e.g. VEDIC10).",
+    pct: `A percentage discount must be between 1% and ${maxPct}%.`,
+    amount: `A flat discount must be between ₹1 and ₹${(maxFixedPaise / 100).toLocaleString("en-IN")}.`,
+    cls: "Pick a valid category (or leave it storewide).",
+    date: "The expiry date must be today or later.",
+    dupe: "That code is already in use — pick another.",
+  };
+}
 
 export default async function MarketingPage({
   searchParams,
@@ -42,6 +46,9 @@ export default async function MarketingPage({
   const session = await getSession();
   const store = await actingStore();
   const all = await readCommerceCoupons();
+  const { readCommerce } = await import("@/lib/commerce");
+  const limits = await readCommerce();
+  const COUPON_ERRORS = couponErrors(limits.maxCouponPct, limits.maxCouponFixedPaise);
   // This store's own promotions (owner-tagged) — real, cart-honoured coupons.
   const mine = Object.entries(all).filter(([, c]) => c.owner === store).map(([code, c]) => ({ code, ...c }));
 
@@ -144,7 +151,7 @@ export default async function MarketingPage({
               <div className="vh-field">
                 <label className="vh-label" htmlFor="coupon-value">Amount <span className="req">*</span></label>
                 <input className="vh-input" id="coupon-value" name="value" type="number" min={1} required placeholder="15" />
-                <span className="vh-help">Percent (1–40) or rupees, matching the type.</span>
+                <span className="vh-help">Percent (1–{limits.maxCouponPct}) or rupees up to ₹{(limits.maxCouponFixedPaise / 100).toLocaleString("en-IN")}, matching the type.</span>
               </div>
             </div>
             <div className="vh-grid cols-3" style={{ gap: 16 }}>

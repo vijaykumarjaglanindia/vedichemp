@@ -18,7 +18,7 @@ import { MAX_BODY, SAMPLE_POSTS, deletePostOverride, findPost, listRevisions, pu
 import { getSession } from "@/lib/auth-lite";
 import { writeAudit } from "@/lib/audit";
 import { addCommission, minEffectiveFrom, readCommissions } from "@/lib/adminstate";
-import { LAUNCH_COMMISSION_PCT } from "@/lib/commissions";
+import { LAUNCH_COMMISSION_PCT, MIN_COMMISSION_PCT, MAX_COMMISSION_PCT } from "@/lib/commissions";
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
 import { SITE_FIELDS, writeSiteContent } from "@/lib/sitecontent";
 
@@ -109,7 +109,7 @@ export async function saveCommissionSchedule(formData: FormData): Promise<void> 
   const target = scope === "GLOBAL" ? "GLOBAL" : scope === "CATEGORY" ? cls : freeTarget;
   if (scope === "CATEGORY" && !["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS", "MED_CANNABIS"].includes(cls)) redirect("/admin/finance/commissions?cs=cls");
   if ((scope === "SELLER" || scope === "PRODUCT") && !target) redirect("/admin/finance/commissions?cs=target");
-  if (!Number.isFinite(ratePct) || ratePct <= 0 || ratePct > 40) redirect("/admin/finance/commissions?cs=rate");
+  if (!Number.isFinite(ratePct) || ratePct < MIN_COMMISSION_PCT || ratePct > MAX_COMMISSION_PCT) redirect("/admin/finance/commissions?cs=rate");
 
   // A5 protects sellers from INCREASES: a rise needs 30 days' notice
   // (mirrored by CHECK a5_thirty_day_notice). A decrease only ever benefits

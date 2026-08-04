@@ -36,7 +36,7 @@ function title(icon: ReactNode, text: string) {
 
 /* ── Order render (full lifecycle) ────────────────────────── */
 
-function RealOrderDetail({
+async function RealOrderDetail({
   order,
   flags,
 }: {
@@ -44,7 +44,14 @@ function RealOrderDetail({
   flags: { cancelled?: string; ret?: string; err?: string; ae?: string; reorder?: string };
 }) {
   const canCancel = ["PLACED", "ACCEPTED", "PACKED"].includes(order.status);
-  const canReturn = order.status === "DELIVERED";
+  // The return window is the operator's setting; the same value gates the
+  // server-side request, so the button is never offered for an order the
+  // server would refuse.
+  const { readCommerce } = await import("@/lib/commerce");
+  const returnWindowDays = (await readCommerce()).returnWindowDays;
+  const deliveredAt = [...order.timeline].reverse().find((e) => e.status === "DELIVERED")?.at;
+  const withinWindow = !deliveredAt || Date.now() - Date.parse(deliveredAt) <= returnWindowDays * 86_400_000;
+  const canReturn = order.status === "DELIVERED" && withinWindow;
   const netPaid = order.totalPaise - order.refundedPaise;
 
   return (
@@ -203,8 +210,8 @@ function RealOrderDetail({
             <div id="return" style={{ scrollMarginTop: 90 }}>
               <Card title="Start a return">
                 <p className="small muted" style={{ marginTop: 0 }}>
-                  Eligible until 7 days after delivery. Refund-first: you are credited when the return is settled,
-                  before any seller-side recovery.
+                  Eligible until {returnWindowDays} day{returnWindowDays === 1 ? "" : "s"} after delivery.
+                  Refund-first: you are credited when the return is settled, before any seller-side recovery.
                 </p>
                 <form action={requestReturn} className="vh-grid" style={{ gap: 10 }}>
                   <input type="hidden" name="reference" value={order.reference} />

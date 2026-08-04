@@ -29,7 +29,9 @@ export async function addAddress(formData: FormData): Promise<void> {
   if (!KINDS.includes(kind)) redirect("/account/addresses?err=kind#add");
 
   const list = await readAddresses();
-  if (list.length >= 6) redirect("/account/addresses?err=limit#add");
+  const { readCommerce } = await import("@/lib/commerce");
+  const maxAddresses = (await readCommerce()).maxSavedAddresses;
+  if (list.length >= maxAddresses) redirect("/account/addresses?err=limit#add");
   const entry: StoredAddress = {
     id: `ad-${Date.now().toString(36)}`,
     ...fields,

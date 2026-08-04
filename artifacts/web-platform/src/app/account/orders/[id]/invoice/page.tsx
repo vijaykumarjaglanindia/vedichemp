@@ -76,7 +76,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         reference: order.reference,
         placedAt: order.placedAt.slice(0, 10),
         seller: order.items[0]?.seller ?? "Marketplace seller",
-        buyerName: "As on the order",
+        buyerName: order.shipName ?? session.name ?? "As on the order",
         buyerCity: `${order.city}${order.state ? ", " + order.state : ""} ${order.pincode}`,
         items,
         subtotalPaise: order.subtotalPaise,

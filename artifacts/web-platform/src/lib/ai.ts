@@ -98,7 +98,7 @@ export async function aiComplete(prompt: string, fallback: () => string): Promis
  * a genuinely different draft without any randomness (pure/replayable).
  */
 export function draftListingDescription(
-  p: { title: string; cls?: string; brand?: string },
+  p: { title: string; cls?: string; brand?: string; coaState?: string },
   variant = 0,
 ): string {
   const t = p.title;
@@ -110,10 +110,19 @@ export function draftListingDescription(
     `${t} is a composition-first ${form}`,
     `Meet ${t} — a ${form} made for everyday wellness routines`,
   ];
-  const bodies = [
-    "made from carefully sourced ingredients and lab-tested every batch, with the batch report linked on this listing.",
-    "blended to a consistent, transparent formula; every batch carries an accessible lab report on the listing.",
-  ];
+  // A draft may only promise a lab report the listing actually has. With no
+  // approved CoA the sentence describes composition and nothing else — a
+  // suggestion that writes an unearned claim is worse than no suggestion.
+  const hasCoa = p.coaState === "APPROVED";
+  const bodies = hasCoa
+    ? [
+        "made from carefully sourced ingredients and lab-tested every batch, with the batch report linked on this listing.",
+        "blended to a consistent, transparent formula; every batch carries an accessible lab report on the listing.",
+      ]
+    : [
+        "made from carefully sourced ingredients to a consistent, transparent formula.",
+        "blended to a consistent formula, with its full composition stated on this listing.",
+      ];
   const closer = p.cls === "CBD_WELLNESS"
     ? "AYUSH-aligned wellness copy, for external or traditional use as directed. No disease or medical claims are made."
     : "Described by its composition and traditional use only. No disease or medical claims are made.";

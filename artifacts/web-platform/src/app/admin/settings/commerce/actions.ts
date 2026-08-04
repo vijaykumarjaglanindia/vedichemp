@@ -11,15 +11,41 @@ async function actor(): Promise<string> {
 }
 const BACK = "/admin/settings/commerce";
 
+/**
+ * The owner's numbers. Every one of these used to be a literal somewhere in the
+ * code AND a different literal in the copy beside it; they are one value now,
+ * read by the guard and printed by the sentence. Nothing here is a compliance
+ * gate — those are not the owner's to set.
+ */
 export async function saveCommerceSettings(formData: FormData): Promise<void> {
   const rupees = (k: string) => Math.round(Number(formData.get(k)) * 100);
-  const loyaltyPtsPer100 = Number(formData.get("ptsPer100"));
-  const referralCreditPaise = rupees("referral");
-  if (!Number.isInteger(referralCreditPaise) || referralCreditPaise < 0 || !Number.isInteger(loyaltyPtsPer100) || loyaltyPtsPer100 < 0) {
-    redirect(`${BACK}?cm=bad`);
-  }
-  await writeCommerce({ loyaltyPtsPer100, referralCreditPaise });
-  await writeAudit({ actor: await actor(), action: "COMMERCE_SETTINGS", target: "loyalty/referral", outcome: "OK", note: `${loyaltyPtsPer100}pts/₹100, referral ₹${referralCreditPaise / 100}` });
+  const whole = (k: string) => Number(formData.get(k));
+  const patch = {
+    loyaltyPtsPer100: whole("ptsPer100"),
+    referralCreditPaise: rupees("referral"),
+    referralMinSpendPaise: rupees("referralMin"),
+    returnWindowDays: whole("returnDays"),
+    maxSavedAddresses: whole("maxAddresses"),
+    minWithdrawPaise: rupees("minWithdraw"),
+    giftCardMaxPaise: rupees("giftCardMax"),
+    maxCouponPct: whole("maxCouponPct"),
+    maxCouponFixedPaise: rupees("maxCouponFixed"),
+    defaultLowStockAt: whole("defaultLowStockAt"),
+    maxProductImages: whole("maxProductImages"),
+  };
+  // Every field must be a whole, non-negative number, and the two that bound a
+  // list must be at least 1 — a cap of zero would lock buyers and sellers out
+  // of a feature by arithmetic rather than by decision.
+  const bad = Object.entries(patch).some(([k, v]) =>
+    !Number.isInteger(v) || v < 0 ||
+    (["maxSavedAddresses", "maxProductImages", "returnWindowDays"].includes(k) && v < 1));
+  if (bad || patch.maxCouponPct > 100) redirect(`${BACK}?cm=bad`);
+
+  await writeCommerce(patch);
+  await writeAudit({
+    actor: await actor(), action: "COMMERCE_SETTINGS", target: "economics", outcome: "OK",
+    note: `${patch.loyaltyPtsPer100}pts/₹100 · referral ₹${patch.referralCreditPaise / 100} over ₹${patch.referralMinSpendPaise / 100} · returns ${patch.returnWindowDays}d · payout floor ₹${patch.minWithdrawPaise / 100}`,
+  });
   redirect(`${BACK}?cm=saved`);
 }
 
@@ -50,7 +76,9 @@ export async function toggleCoupon(formData: FormData): Promise<void> {
 export async function createGiftCard(formData: FormData): Promise<void> {
   const code = String(formData.get("code") ?? "").trim().toUpperCase().replace(/[^A-Z0-9-]/g, "").slice(0, 24);
   const paise = Math.round(Number(formData.get("value")) * 100);
-  if (!code || code.length < 6 || !Number.isInteger(paise) || paise <= 0 || paise > 10_000_00) redirect(`${BACK}?gc=bad`);
+  const { readCommerce } = await import("@/lib/commerce");
+  const maxPaise = (await readCommerce()).giftCardMaxPaise;
+  if (!code || code.length < 6 || !Number.isInteger(paise) || paise <= 0 || paise > maxPaise) redirect(`${BACK}?gc=bad`);
   await addGiftCard(code, paise);
   await writeAudit({ actor: await actor(), action: "GIFTCARD_CREATE", target: code, outcome: "OK", note: `₹${paise / 100}` });
   redirect(`${BACK}?gc=saved`);

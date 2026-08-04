@@ -18,7 +18,7 @@ import { Shell } from "../Shell";
 import { Card, StatusPill, MoneyText, Banner } from "@/components/ui";
 import { CampaignLabel } from "@/components/ui/ads";
 import { listCampaigns, CHANNELS, type Channel, type CampaignStatus, type ScreenReason } from "@/lib/marketing";
-import { couponLive, readCoupons, type CouponDef } from "@/lib/commerce";
+import { couponLive, readCommerce, readCoupons, type CouponDef } from "@/lib/commerce";
 import { grantedFor } from "@/lib/consent";
 import { allOrders } from "@/lib/orders";
 import { createCampaignAction, approveCampaignAction, sendCampaignAction } from "./actions";
@@ -104,6 +104,7 @@ export default async function AdminMarketingPage({ searchParams }: { searchParam
   // segment is exactly the buyers who granted that consent — never "everyone".
   // Nothing here is built from health data: prescription status, medical notes
   // and MED_CANNABIS purchases are structurally unavailable to this page (A4).
+  const commerce = await readCommerce();
   const marketingConsent = await grantedFor("marketing");
   const orders = await allOrders();
   const buyersWithOrders = new Set(orders.map((o) => o.buyerEmail));
@@ -303,7 +304,7 @@ export default async function AdminMarketingPage({ searchParams }: { searchParam
           </Card>
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Gift {...I} aria-hidden /> Referrals</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>
-              <MoneyText paise={250_00} /> wallet credit per successful referral. Redemption totals appear here once the referral ledger is connected.
+              <MoneyText paise={commerce.referralCreditPaise} /> wallet credit per successful referral, on a first order above <MoneyText paise={commerce.referralMinSpendPaise} />. Redemption totals appear here once the referral ledger is connected.
             </p>
           </Card>
         </div>

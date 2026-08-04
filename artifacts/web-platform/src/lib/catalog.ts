@@ -23,6 +23,7 @@
 import { ComplianceClass } from "@prisma/client";
 import { PRODUCTS, type SampleProduct } from "@/lib/sample";
 import { aggregatesByProduct, type Aggregate } from "@/lib/reviews";
+import { commerceNow } from "@/lib/commerce";
 
 export type ListingStatus = "DRAFT" | "UNDER_REVIEW" | "LIVE" | "SUSPENDED" | "ARCHIVED";
 export type CoaState = "NONE" | "PENDING_REVIEW" | "APPROVED" | "REJECTED";
@@ -194,7 +195,7 @@ const DEFAULTS: CatalogProduct[] = PRODUCTS.map((p): CatalogProduct => {
     batchCode: "",
     custom: false,
     stockQty: FIXTURE_OPENING_STOCK,
-    lowStockAt: 10,
+    lowStockAt: commerceNow().defaultLowStockAt,
     ...(DEFAULT_VARIANTS[p.id] ? DEFAULT_VARIANTS[p.id] : {}),
   };
 });
@@ -336,7 +337,7 @@ export async function createListing(input: CreateListingInput): Promise<CatalogP
     // entered none: a listing is never sellable on units the platform invented
     // for it. It shows out-of-stock until the seller sets real stock.
     stockQty: Number.isInteger(input.stockQty) && input.stockQty! >= 0 ? input.stockQty! : 0,
-    lowStockAt: 10,
+    lowStockAt: commerceNow().defaultLowStockAt,
     ...(input.shortDesc ? { shortDesc: input.shortDesc } : {}),
     ...(input.brand ? { brand: input.brand } : {}),
     ...(input.tags && input.tags.length ? { tags: input.tags } : {}),
@@ -426,13 +427,18 @@ export async function removeWholesaleTier(id: string, minQty: number): Promise<b
 
 /* ── Product images / gallery (data-URL seam) ─────────────────── */
 
-const MAX_IMAGES = 6;
+/** Gallery size, read at use time so an operator's change takes effect without
+ *  a restart. Exported so the seller form and its help text quote the same
+ *  number the server enforces. */
+export function maxImages(): number {
+  return commerceNow().maxProductImages;
+}
 
 /** Replace the whole gallery (validated, capped). */
 export async function setImages(id: string, images: string[]): Promise<boolean> {
   const p = await findProduct(id);
   if (!p) return false;
-  apply(id, { images: images.filter((x) => typeof x === "string" && x.length > 0).slice(0, MAX_IMAGES) });
+  apply(id, { images: images.filter((x) => typeof x === "string" && x.length > 0).slice(0, maxImages()) });
   return true;
 }
 
@@ -441,7 +447,7 @@ export async function addImage(id: string, dataUrl: string): Promise<boolean> {
   const p = await findProduct(id);
   if (!p || !dataUrl) return false;
   const current = p.images ?? [];
-  if (current.length >= MAX_IMAGES) return false;
+  if (current.length >= maxImages()) return false;
   apply(id, { images: [...current, dataUrl] });
   return true;
 }

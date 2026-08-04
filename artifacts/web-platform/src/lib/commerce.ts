@@ -14,13 +14,50 @@ export interface CommerceSettings {
   loyaltyPtsPer100: number;
   loyaltyPtsValuePaise: number; // value of 100 points, in paise
   referralCreditPaise: number;
+  /** Minimum first-order value for a referral credit to apply. */
+  referralMinSpendPaise: number;
+  /** Days after delivery within which a buyer may open a return. Enforced in
+   *  the return guard, not just printed in the policy copy. */
+  returnWindowDays: number;
+  /** How many addresses a buyer may keep in their book. */
+  maxSavedAddresses: number;
+  /** Smallest payout a seller may request. */
+  minWithdrawPaise: number;
+  /** Largest gift card the console will mint. */
+  giftCardMaxPaise: number;
+  /** Ceilings on a seller- or admin-created coupon. */
+  maxCouponPct: number;
+  maxCouponFixedPaise: number;
+  /** The low-stock threshold a new listing starts with (per-listing override
+   *  stays; this is only the starting value). */
+  defaultLowStockAt: number;
+  /** Gallery size per listing. */
+  maxProductImages: number;
 }
 
 export const COMMERCE_DEFAULTS: CommerceSettings = {
   loyaltyPtsPer100: 5,
   loyaltyPtsValuePaise: 10_00,
   referralCreditPaise: 200_00,
+  referralMinSpendPaise: 999_00,
+  returnWindowDays: 7,
+  maxSavedAddresses: 6,
+  minWithdrawPaise: 500_00,
+  giftCardMaxPaise: 10_000_00,
+  maxCouponPct: 40,
+  maxCouponFixedPaise: 1_00_000_00,
+  defaultLowStockAt: 10,
+  maxProductImages: 6,
 };
+
+/**
+ * The settings the server reads synchronously, refreshed on every write. A few
+ * guards (stock defaults, image caps) sit on hot paths that cannot await, so
+ * they read this mirror rather than skipping the setting entirely.
+ */
+export function commerceNow(): CommerceSettings {
+  return { ...COMMERCE_DEFAULTS, ...(globalThis.__vhCommerce ?? {}) };
+}
 
 export interface CouponDef {
   pct: number;              // percentage discount (0 when fixed-amount or free-ship only)

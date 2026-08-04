@@ -178,7 +178,7 @@ export default async function WalletPage({
               Your code: <strong className="mono" style={{ color: "var(--vh-ink)" }}>{refCode}</strong>
             </p>
             <p className="small muted" style={{ margin: 0 }}>
-              Friends get ₹{Math.round(commerce.referralCreditPaise / 100)} off their first order above ₹999; you get the same
+              Friends get ₹{Math.round(commerce.referralCreditPaise / 100)} off their first order above ₹{Math.round(commerce.referralMinSpendPaise / 100)}; you get the same
               wallet credit when it delivers. Referral credits appear in the ledger above — same append-only rules.
             </p>
           </Card>
