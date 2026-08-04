@@ -15,7 +15,7 @@ import { writeAudit } from "@/lib/audit";
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
 import { FEATURE_DEFS, writeFeatures, writeThemePreset } from "@/lib/features";
 import { writeSiteContent, siteField } from "@/lib/sitecontent";
-import { findPost, writePostOverride, MAX_BODY } from "@/lib/cms";
+import { findPost, writePostOverride, maxBody } from "@/lib/cms";
 import { findPage, savePage, createPage } from "@/lib/pagebuilder";
 
 async function actor(): Promise<string> {
@@ -71,7 +71,7 @@ export async function importContent(formData: FormData): Promise<void> {
   // Journal posts — same rules as the editor.
   for (const p of bundle!.posts ?? []) {
     if (!p.slug || !p.title || !p.body) continue;
-    if (p.title.length > 90 || p.body.length > MAX_BODY) continue;
+    if (p.title.length > 90 || p.body.length > maxBody()) continue;
     if (CLAIMS_LANGUAGE.test(p.title) || CLAIMS_LANGUAGE.test(p.body)) continue;
     const prior = await findPost(p.slug);
     await writePostOverride({

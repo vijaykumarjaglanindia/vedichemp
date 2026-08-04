@@ -17,7 +17,8 @@ import { Shell } from "../../Shell";
 import { Banner, Card, StatusPill } from "@/components/ui";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
 import { SITE_FIELDS, SITE_GROUPS, readSiteContentRaw, siteField } from "@/lib/sitecontent";
-import { saveSiteContent } from "../../actions";
+import { MAX_BODY_CEILING, maxBody, postCategories } from "@/lib/cms";
+import { saveContentLimits, saveSiteContent } from "../../actions";
 
 export const metadata: Metadata = { title: "Site content · Admin" };
 export const dynamic = "force-dynamic";
@@ -126,6 +127,26 @@ export default async function SiteContentPage({
             </div>
           );
         })}
+
+        <Card title="Publishing limits">
+          <p className="small muted" style={{ marginTop: 0 }}>
+            How long a journal post may run, and the sections it can be filed under (one per line). These are
+            editorial decisions, not technical ones — the only hard ceiling is a payload bound.
+          </p>
+          <form action={saveContentLimits} className="vh-grid cols-2" style={{ gap: 16 }}>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="cl-body">Longest journal post (characters)</label>
+              <input className="vh-input" id="cl-body" name="maxBody" type="number" min={200} max={MAX_BODY_CEILING} defaultValue={maxBody()} />
+              <span className="vh-help">Between 200 and {MAX_BODY_CEILING.toLocaleString("en-IN")}.</span>
+            </div>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="cl-cats">Journal sections</label>
+              <textarea className="vh-input" id="cl-cats" name="postCategories" rows={6} defaultValue={postCategories().join("\n")} />
+              <span className="vh-help">Leave empty to restore the shipped sections.</span>
+            </div>
+            <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Save publishing limits</button>
+          </form>
+        </Card>
       </div>
     </Shell>
   );

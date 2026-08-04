@@ -18,11 +18,11 @@ import { rupees } from "@/lib/money";
  */
 export const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL ?? "https://vedichemp.in").replace(/\/+$/, "");
 
-export function organizationJsonLd(opts?: { description?: string; email?: string }) {
+export function organizationJsonLd(opts?: { description?: string; email?: string; name?: string }) {
   return {
     "@context": "https://schema.org",
     "@type": "Organization",
-    name: "Vedic Hemp",
+    name: opts?.name ?? "Vedic Hemp",
     url: SITE_URL,
     description:
       opts?.description ??

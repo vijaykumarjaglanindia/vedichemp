@@ -36,7 +36,24 @@ export interface CmsPost {
 }
 
 /** Editorial post categories (WordPress-style taxonomy). */
-export const POST_CATEGORIES = ["Guides", "Lab & testing", "Recipes", "Licensing", "Wellness", "News"] as const;
+/** Journal sections. Editable by the operator — these are the shelves they
+ *  want their own writing on, and nothing branches on the value. */
+const POST_CATEGORY_DEFAULTS: string[] = ["Guides", "Lab & testing", "Recipes", "Licensing", "Wellness", "News"];
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __vhPostCategories: string[] | undefined;
+}
+
+export function postCategories(): string[] {
+  return [...(globalThis.__vhPostCategories ?? POST_CATEGORY_DEFAULTS)];
+}
+
+/** An empty or all-invalid list restores the shipped sections. */
+export async function writePostCategories(list: string[]): Promise<void> {
+  const clean = list.map((x) => x.trim()).filter((x) => x.length >= 2 && x.length <= 40).slice(0, 12);
+  globalThis.__vhPostCategories = clean.length ? clean : undefined;
+}
 
 export const SAMPLE_POSTS: CmsPost[] = [
   {
@@ -94,7 +111,31 @@ export const SAMPLE_POSTS: CmsPost[] = [
 ];
 
 const MAX_POSTS = 12;
-export const MAX_BODY = 900;
+
+/**
+ * How long a journal post may be. 900 characters is barely a page, which is a
+ * publishing decision rather than a technical one, so it is the operator's:
+ * `contentMaxBody` on the site settings, with a generous server ceiling that
+ * exists only to bound the payload.
+ */
+export const MAX_BODY_CEILING = 20_000;
+export const MAX_BODY_DEFAULT = 4_000;
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __vhContentMaxBody: number | undefined;
+}
+
+export function maxBody(): number {
+  const v = globalThis.__vhContentMaxBody;
+  return Number.isInteger(v) && v! >= 200 && v! <= MAX_BODY_CEILING ? v! : MAX_BODY_DEFAULT;
+}
+
+export async function writeMaxBody(chars: number): Promise<boolean> {
+  if (!Number.isInteger(chars) || chars < 200 || chars > MAX_BODY_CEILING) return false;
+  globalThis.__vhContentMaxBody = chars;
+  return true;
+}
 
 // Server-side demo store — the seam where db.cmsPost attaches (PRODUCTION.md).
 const g = globalThis as unknown as { __vhCmsOverrides?: Record<string, CmsPost> };

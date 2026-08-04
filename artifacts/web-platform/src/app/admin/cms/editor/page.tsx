@@ -14,7 +14,7 @@ import { ArrowLeft, Eye, Globe, Send, Trash2, ImagePlus } from "lucide-react";
 import { Shell } from "../../Shell";
 import { Banner, Card, StatusPill } from "@/components/ui";
 import { RichTextEditor } from "@/components/ui/RichTextEditor";
-import { MAX_BODY, POST_CATEGORIES, findPost, listRevisions } from "@/lib/cms";
+import { maxBody, postCategories, findPost, listRevisions } from "@/lib/cms";
 import { restorePostRevision, savePost, uploadPostCover, removePostCover } from "../../actions";
 
 export const metadata: Metadata = { title: "Post editor · Admin" };
@@ -27,7 +27,7 @@ const NOTES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> = {
   published: { sev: "ok", text: "Published — the post is live on the public journal right now." },
   unpublished: { sev: "warn", text: "Unpublished — the post is a private draft again; the public URL now returns not-found." },
   title: { sev: "danger", text: "Title should be 6–90 characters." },
-  body: { sev: "danger", text: `Body should be 40–${900} characters in this demo.` },
+  body: { sev: "danger", text: `Body should be 40–${maxBody().toLocaleString("en-IN")} characters.` },
   claims: { sev: "danger", text: "The copy-check rejected claims language (cure/treat/prevent/heal) — nothing on this platform may carry a disease claim, the journal included." },
   limit: { sev: "danger", text: "Demo limit: up to 3 new posts (plus edits to the samples). Delete one first." },
   "delete-denied": { sev: "danger", text: "Delete denied: this page exceeds the traffic threshold, so deletion is maker–checker — a second, different admin must confirm. The attempt is logged." },
@@ -85,7 +85,7 @@ export default async function PostEditorPage({
                     name="body"
                     id="post-body"
                     defaultValue={post?.body ?? ""}
-                    maxLength={MAX_BODY}
+                    maxLength={maxBody()}
                     minHeight={280}
                     placeholder="Write the post — headings, bold, italics and lists from the toolbar."
                     help="What you see is what publishes. Stored as safe text (never HTML) · no disease claims (copy-checked on save)."
@@ -106,7 +106,7 @@ export default async function PostEditorPage({
                     <label className="vh-label" htmlFor="post-category">Category</label>
                     <select className="vh-select" id="post-category" name="category" defaultValue={post?.category ?? ""}>
                       <option value="">— None —</option>
-                      {POST_CATEGORIES.map((c) => <option key={c} value={c}>{c}</option>)}
+                      {postCategories().map((c) => <option key={c} value={c}>{c}</option>)}
                     </select>
                   </div>
                   <div className="vh-field">

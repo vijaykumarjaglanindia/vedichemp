@@ -226,7 +226,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify(organizationJsonLd({ description: content.seoSiteDesc, email: content.supportEmail })),
+          __html: JSON.stringify(organizationJsonLd({ name: content.siteName, description: content.seoSiteDesc, email: content.supportEmail })),
         }}
       />
       <script

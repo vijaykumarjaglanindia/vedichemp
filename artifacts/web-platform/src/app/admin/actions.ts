@@ -14,7 +14,7 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { periodCloseBlockers } from "@/lib/periodclose";
-import { MAX_BODY, SAMPLE_POSTS, deletePostOverride, findPost, listRevisions, pushRevision, slugify, writePostOverride } from "@/lib/cms";
+import { maxBody, SAMPLE_POSTS, deletePostOverride, findPost, listRevisions, pushRevision, slugify, writePostOverride } from "@/lib/cms";
 import { getSession } from "@/lib/auth-lite";
 import { writeAudit } from "@/lib/audit";
 import { addCommission, minEffectiveFrom, readCommissions } from "@/lib/adminstate";
@@ -281,7 +281,7 @@ export async function savePost(formData: FormData): Promise<void> {
   // Save/publish/unpublish all validate content the same way.
   let err: string | null = null;
   if (postTitle.length < 6 || postTitle.length > 90) err = "title";
-  else if (body.length < 40 || body.length > MAX_BODY) err = "body";
+  else if (body.length < 40 || body.length > maxBody()) err = "body";
   else if ([postTitle, body, excerpt, author, metaTitle, metaDescription].some((t) => t && CMS_CLAIMS.test(t))) err = "claims";
   if (err) redirect(editorUrl(existingSlug || slugify(postTitle) || "new", `cms=${err}`));
 
@@ -1642,4 +1642,21 @@ export async function cancelWithdrawal(formData: FormData): Promise<void> {
     });
   }
   redirect("/admin/finance/withdrawals?done=cancelled");
+}
+
+/**
+ * Publishing limits: how long a journal post may be, and the sections it can
+ * be filed under. Both were constants — 900 characters is barely a page, and
+ * the section list is the operator's shelf labels, not the platform's.
+ */
+export async function saveContentLimits(formData: FormData): Promise<void> {
+  const { writeMaxBody, writePostCategories, maxBody } = await import("@/lib/cms");
+  const chars = parseInt(String(formData.get("maxBody") ?? ""), 10);
+  if (!(await writeMaxBody(chars))) redirect("/admin/cms/site?cl=bad");
+  await writePostCategories(String(formData.get("postCategories") ?? "").split("\n").map((x) => x.trim()).filter(Boolean));
+  await writeAudit({
+    actor: await actor(), action: "CONTENT_LIMITS", target: "journal", outcome: "OK",
+    note: `body ${maxBody()} chars`,
+  });
+  redirect("/admin/cms/site?cl=saved");
 }
