@@ -29,6 +29,7 @@ import {
   unpublishListing,
   updateListing,
   ORDER_QTY_HARD_CAP,
+  BULK_MAX_ROWS,
 } from "@/lib/catalog";
 import { writeAudit } from "@/lib/audit";
 import { CLAIMS_LANGUAGE } from "@/lib/claims";
@@ -713,11 +714,16 @@ export async function createCampaign(formData: FormData): Promise<void> {
   const placements = formData.getAll("placements").map(String).filter(Boolean);
 
   const product = await findProduct(productId);
+  // Budget floors are the operator's setting (/admin/ads), so the form bound,
+  // this guard and the error a seller reads are one number.
+  const { readAdSettings } = await import("@/lib/ads");
+  const adSettings = await readAdSettings();
+
   let err: string | null = null;
   if (name.length < 4 || name.length > 60) err = "name";
   else if (!OBJECTIVE_BY_TYPE[type]) err = "type";
   else if (!product) err = "product";
-  else if (!Number.isInteger(budgetRupees) || budgetRupees < 500) err = "budget";
+  else if (!Number.isInteger(budgetRupees) || budgetRupees * 100 < adSettings.minCampaignBudgetPaise) err = "budget";
   if (!err && product) {
     // A1 — enforced here AND at the review layer AND at the auction. A
     // medical product id in crafted form data dies here, logged.
@@ -927,7 +933,7 @@ export async function bulkUploadListings(formData: FormData): Promise<void> {
   for (const line of lines) {
     row += 1;
     if (row === 1 && /^title\s*,/i.test(line)) continue; // header row
-    if (report.created.length + report.rejected.length >= 50) break; // per-file cap
+    if (report.created.length + report.rejected.length >= BULK_MAX_ROWS) break; // per-file cap
     const [title = "", cls = "", priceRaw = "", mrpRaw = "", hsn = "", ...rest] = line.split(",").map((x) => x.trim());
     const desc = rest.join(", ");
     const pricePaise = parseInt(priceRaw, 10);

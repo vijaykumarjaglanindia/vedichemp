@@ -56,6 +56,8 @@ export default async function SupportPage({
   const session = await getSession();
   if (!session?.email) redirect("/signin?next=/account/support");
   const tickets = await ticketsForBuyer(session.email);
+  const { readTicketTopics } = await import("@/lib/commerce");
+  const topics = await readTicketTopics();
 
   return (
     <Shell active="/account/support" breadcrumb={["My Account", "Support"]} title="Support & tickets">
@@ -76,12 +78,8 @@ export default async function SupportPage({
                 <label className="vh-label" htmlFor="topic">
                   Topic <span className="req">*</span>
                 </label>
-                <select className="vh-select" id="topic" name="topic" defaultValue="Order issue" required>
-                  <option>Order issue</option>
-                  <option>Wallet / refund</option>
-                  <option>Prescription / Medical</option>
-                  <option>Account &amp; security</option>
-                  <option>Something else</option>
+                <select className="vh-select" id="topic" name="topic" defaultValue={topics[0]} required>
+                  {topics.map((t) => <option key={t}>{t}</option>)}
                 </select>
               </div>
 

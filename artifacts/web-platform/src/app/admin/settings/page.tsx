@@ -14,13 +14,13 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  ShieldCheck, Percent, ReceiptText, Truck, CreditCard, BellRing, ScrollText, KeyRound, ToggleLeft, UserPlus,
+  ShieldCheck, Percent, ReceiptText, Truck, CreditCard, BellRing, ScrollText, KeyRound, ToggleLeft, UserPlus, Clock3,
 } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, StatusPill, Banner, EmptyState } from "@/components/ui";
 import { ADMIN_ROLES, SOD_PAIRS, listAdmins } from "@/lib/roles";
 import { listFlags, listPendingFlagChanges, flagChangeLog } from "@/lib/flags";
-import { grantRoleAction, revokeRoleAction, proposeFlagAction, decideFlagAction } from "./actions";
+import { grantRoleAction, revokeRoleAction, proposeFlagAction, decideFlagAction, saveOpsSlaAction } from "./actions";
 
 export const metadata: Metadata = { title: "Settings · Admin" };
 export const dynamic = "force-dynamic";
@@ -45,17 +45,19 @@ const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> 
   pending: { sev: "warn", text: "That flag already has a pending proposal awaiting a checker." },
 };
 
-export default async function AdminSettingsPage({ searchParams }: { searchParams: Promise<{ rs?: string; fs?: string; conflict?: string }> }) {
-  const { rs, fs, conflict } = await searchParams;
+export default async function AdminSettingsPage({ searchParams }: { searchParams: Promise<{ rs?: string; fs?: string; conflict?: string; sla?: string }> }) {
+  const { rs, fs, conflict, sla: slaMsg } = await searchParams;
   const admins = await listAdmins();
   // State the real posture rather than a remembered one.
   const { codEnabled, readGateway } = await import("@/lib/payments");
   const cod = await codEnabled();
   const gateway = await readGateway();
+  const { readOpsSla } = await import("@/lib/adminstate");
+  const sla = await readOpsSla();
   const flags = await listFlags();
   const pending = await listPendingFlagChanges();
   const log = await flagChangeLog(6);
-  const msg = (rs && MESSAGES[rs]) || (fs && MESSAGES[fs]) || undefined;
+  const msg = (rs && MESSAGES[rs]) || (fs && MESSAGES[fs]) || (slaMsg === "saved" ? { sev: "ok" as const, text: "Review clocks saved — every page that quotes them now says the new figure." } : slaMsg === "bad" ? { sev: "danger" as const, text: "Review clocks need whole hours between 1 and 720." } : undefined);
 
   return (
     <Shell active="/admin/settings" breadcrumb={["Admin", "Settings"]} title="System settings">
@@ -181,6 +183,29 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
             </p>
           </Card>
         </div>
+
+        <Card title={<span className="vh-row" style={{ gap: 8 }}><Clock3 {...I} aria-hidden /> Review clocks</span>}>
+          <p className="small muted" style={{ marginTop: 0 }}>
+            What the platform promises on a buyer&rsquo;s prescription page, a seller&rsquo;s lab-report form and the
+            operations home. These are commitments about speed, not gates: raising one never makes an unverified
+            prescription valid or an untested batch sellable — A2 and A4 have no setting.
+          </p>
+          <form action={saveOpsSlaAction} className="vh-grid cols-3" style={{ gap: 12 }}>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="sla-rx">Prescription review (hours)</label>
+              <input className="vh-input" id="sla-rx" name="rxHours" type="number" min={1} max={720} defaultValue={sla.rxHours} />
+            </div>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="sla-coa">Lab report review (hours)</label>
+              <input className="vh-input" id="sla-coa" name="coaHours" type="number" min={1} max={720} defaultValue={sla.coaHours} />
+            </div>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="sla-kyc">Seller verification (hours)</label>
+              <input className="vh-input" id="sla-kyc" name="kycHours" type="number" min={1} max={720} defaultValue={sla.kycHours} />
+            </div>
+            <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Save review clocks</button>
+          </form>
+        </Card>
 
         <Card title={<span className="vh-row" style={{ gap: 8 }}><BellRing {...I} aria-hidden /> Notification templates</span>}>
           <p className="small muted" style={{ marginTop: 0 }}>

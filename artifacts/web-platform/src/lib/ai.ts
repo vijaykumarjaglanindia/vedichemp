@@ -30,7 +30,6 @@ export interface ListingRiskRow {
   listing: string;
   seller: string;
   finding: string;
-  score: number; // 0–100 risk
 }
 
 export function listingRiskQueue(
@@ -43,9 +42,10 @@ export function listingRiskQueue(
       listing: p.title,
       seller: p.seller,
       finding: "Attempted medical-claims copy — barred from advertising until compliance clears the strike.",
-      score: 88,
+      // No score. A claims strike is boolean: the copy-check either matched or
+      // it did not. A number here would suggest a confidence nobody computed.
     }))
-    .sort((a, b) => (b.score - a.score) || a.listing.localeCompare(b.listing));
+    .sort((a, b) => a.listing.localeCompare(b.listing));
 }
 
 export function aiProviderName(): string {

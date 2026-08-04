@@ -805,12 +805,14 @@ export async function adminCreateCoupon(formData: FormData): Promise<void> {
   const validTo = String(formData.get("validTo") ?? "").trim();
   const cls = String(formData.get("cls") ?? "");
   const who = await actor();
-  const { writeCoupon, readCoupons } = await import("@/lib/commerce");
+  const { writeCoupon, readCoupons, readCommerce } = await import("@/lib/commerce");
+  // One ceiling for every coupon on the platform, seller-made or admin-made.
+  const couponLimits = await readCommerce();
 
   let err: string | null = null;
   if (!/^[A-Z0-9]{4,16}$/.test(code)) err = "code";
-  else if (kind === "PERCENT" && (!Number.isInteger(value) || value < 1 || value > 60)) err = "pct";
-  else if (kind === "FIXED" && (!Number.isInteger(value) || value < 1 || value > 500000)) err = "amount";
+  else if (kind === "PERCENT" && (!Number.isInteger(value) || value < 1 || value > couponLimits.maxCouponPct)) err = "pct";
+  else if (kind === "FIXED" && (!Number.isInteger(value) || value < 1 || value * 100 > couponLimits.maxCouponFixedPaise)) err = "amount";
   else if (!COUPON_CLASSES.includes(cls)) err = "cls";
   else if (validTo && (!/^\d{4}-\d{2}-\d{2}$/.test(validTo) || new Date(validTo) < new Date(new Date().toISOString().slice(0, 10)))) err = "date";
   else if (code in (await readCoupons())) err = "dupe";
@@ -1329,16 +1331,33 @@ export async function decideAdReview(formData: FormData): Promise<void> {
   redirect(`/admin/ads?ad=${decision === "approve" ? "approved" : "rejected"}#review-queue`);
 }
 
-/** Platform-wide auction levers: minimum bid + per-placement on/off. */
+/**
+ * Platform-wide auction levers: the minimum bid, the minimum campaign budget,
+ * and each placement's on/off switch and reserve price. Every one of these was
+ * a constant in the source; they are the operator's commercial decisions.
+ */
 export async function saveAdPlatformSettings(formData: FormData): Promise<void> {
   const minBidRupees = parseInt(String(formData.get("minBid") ?? ""), 10);
   if (!Number.isInteger(minBidRupees) || minBidRupees < 1 || minBidRupees > 500) redirect("/admin/ads?settings=minbid#platform");
+  const minBudgetRupees = parseInt(String(formData.get("minCampaignBudget") ?? ""), 10);
+  if (!Number.isInteger(minBudgetRupees) || minBudgetRupees < 0) redirect("/admin/ads?settings=minbudget#platform");
+
   const placementsEnabled: Record<string, boolean> = {};
-  for (const p of AD_PLACEMENT_DEFS) placementsEnabled[p.key] = formData.getAll("placements").map(String).includes(p.key);
-  await writeAdSettings({ minBidPaise: minBidRupees * 100, placementsEnabled });
+  const floors: Record<string, number> = {};
+  for (const p of AD_PLACEMENT_DEFS) {
+    placementsEnabled[p.key] = formData.getAll("placements").map(String).includes(p.key);
+    const rupees = parseInt(String(formData.get(`floor_${p.key}`) ?? ""), 10);
+    // A floor below the platform minimum bid would be unreachable, so it is
+    // refused rather than silently clamped.
+    if (Number.isInteger(rupees) && rupees >= 0) {
+      if (rupees * 100 < minBidRupees * 100) redirect("/admin/ads?settings=floor#platform");
+      floors[p.key] = rupees * 100;
+    }
+  }
+  await writeAdSettings({ minBidPaise: minBidRupees * 100, minCampaignBudgetPaise: minBudgetRupees * 100, placementsEnabled, floors });
   await writeAudit({
     actor: await actor(), action: "AD_SETTINGS", outcome: "OK",
-    target: `min bid ₹${minBidRupees} · ${Object.values(placementsEnabled).filter(Boolean).length}/${AD_PLACEMENT_DEFS.length} placements on`,
+    target: `min bid ₹${minBidRupees} · min budget ₹${minBudgetRupees} · ${Object.values(placementsEnabled).filter(Boolean).length}/${AD_PLACEMENT_DEFS.length} placements on`,
   });
   redirect("/admin/ads?settings=saved#platform");
 }

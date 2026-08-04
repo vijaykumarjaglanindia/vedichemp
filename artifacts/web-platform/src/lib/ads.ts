@@ -154,7 +154,12 @@ export interface AdClickTouch {
 
 export interface AdSettings {
   minBidPaise: number; // platform-wide floor beneath placement floors
+  /** Smallest total budget a seller may open a campaign with. */
+  minCampaignBudgetPaise: number;
   placementsEnabled: Record<string, boolean>;
+  /** Per-placement reserve price. Seeded from the PLACEMENTS table, then the
+   *  operator's to change — a floor is a commercial decision, not a constant. */
+  floors: Record<string, number>;
 }
 
 interface AdsStore {
@@ -175,7 +180,9 @@ function store(): AdsStore {
     campaigns: [],
     settings: {
       minBidPaise: 200,
+      minCampaignBudgetPaise: 500_00,
       placementsEnabled: Object.fromEntries(PLACEMENTS.map((p) => [p.key, true])),
+      floors: Object.fromEntries(PLACEMENTS.map((p) => [p.key, p.floorPaise])),
     },
     served: {},
     touches: [],
@@ -199,14 +206,30 @@ function spentToday(c: Campaign): number {
 /* ── Settings (Admin → Ads) ───────────────────────────────── */
 
 export async function readAdSettings(): Promise<AdSettings> {
-  return store().settings;
+  const s = store().settings;
+  // A placement added in code after the store was created still needs a floor;
+  // fall back to its table value rather than serving it for nothing.
+  return { ...s, floors: { ...Object.fromEntries(PLACEMENTS.map((p) => [p.key, p.floorPaise])), ...s.floors } };
 }
+
+/** The reserve price for one placement, as configured. */
+export async function floorFor(placement: string): Promise<number> {
+  const s = await readAdSettings();
+  return s.floors[placement] ?? PLACEMENTS.find((p) => p.key === placement)?.floorPaise ?? s.minBidPaise;
+}
+
 export async function writeAdSettings(patch: Partial<AdSettings>): Promise<void> {
   const s = store();
+  const okPaise = (v: unknown) => Number.isInteger(v) && (v as number) >= 0;
   s.settings = {
     ...s.settings,
-    ...(patch.minBidPaise !== undefined ? { minBidPaise: patch.minBidPaise } : {}),
+    ...(okPaise(patch.minBidPaise) ? { minBidPaise: patch.minBidPaise! } : {}),
+    ...(okPaise(patch.minCampaignBudgetPaise) ? { minCampaignBudgetPaise: patch.minCampaignBudgetPaise! } : {}),
     placementsEnabled: { ...s.settings.placementsEnabled, ...(patch.placementsEnabled ?? {}) },
+    floors: {
+      ...s.settings.floors,
+      ...Object.fromEntries(Object.entries(patch.floors ?? {}).filter(([, v]) => okPaise(v))),
+    },
   };
 }
 
@@ -512,7 +535,7 @@ export async function runAuction(
 ): Promise<AuctionWin | null> {
   const s = store();
   if (!s.settings.placementsEnabled[placement]) return null;
-  const floor = Math.max(PLACEMENTS.find((p) => p.key === placement)?.floorPaise ?? 0, s.settings.minBidPaise);
+  const floor = Math.max(await floorFor(placement), s.settings.minBidPaise);
   const now = today();
 
   const candidates: { c: Campaign; g: AdGroup; ad: AdCreative; kw: Keyword | null; product: CatalogProduct; rank: number; bid: number; qs: number }[] = [];

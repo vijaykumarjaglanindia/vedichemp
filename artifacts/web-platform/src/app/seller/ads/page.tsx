@@ -35,7 +35,7 @@ const CAMPAIGN_ERRORS: Record<string, string> = {
   product: "Choose which product to promote.",
   a1: "That product can't be advertised by law — the request was blocked and recorded.",
   strike: "That product was flagged for a medical claim. It can't be advertised until our team clears it.",
-  budget: "Your total budget needs to be at least ₹500.",
+  budget: "That total budget is below the platform minimum for a campaign.",
 };
 
 export default async function AdsPage({
@@ -48,6 +48,9 @@ export default async function AdsPage({
   const store = await actingStore();
   const campaigns = await listCampaigns(session?.email ?? "seller@example.in");
   const listings = await sellerListings(session?.email ?? "seller@example.in", store);
+
+  const { readAdSettings } = await import("@/lib/ads");
+  const adSettings = await readAdSettings();
 
   const results = accountResults(campaigns);
   const ideas = adIdeas(campaigns);
@@ -207,7 +210,7 @@ export default async function AdsPage({
               </div>
               <div className="vh-field">
                 <label className="vh-label" htmlFor="camp-budget">Total budget (₹) <span className="req">*</span></label>
-                <input className="vh-input" id="camp-budget" name="budget" type="number" min={500} step={1} required placeholder="5000" />
+                <input className="vh-input" id="camp-budget" name="budget" type="number" min={Math.round(adSettings.minCampaignBudgetPaise / 100)} step={1} required placeholder="5000" />
                 <span className="vh-help">At least ₹500. The ad stops on its own once this is used up.</span>
               </div>
               <div className="vh-field">

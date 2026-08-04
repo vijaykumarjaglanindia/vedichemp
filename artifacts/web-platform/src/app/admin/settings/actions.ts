@@ -99,3 +99,24 @@ export async function decideFlagAction(formData: FormData): Promise<void> {
   });
   redirect(`/admin/settings?fs=${result.approved ? "confirmed" : "rejected"}#flags`);
 }
+
+/**
+ * The review clocks the platform promises on buyer and seller pages. These are
+ * commitments, not gates: raising one never makes an unverified prescription
+ * valid or an untested batch sellable — A2 and A4 do not have a setting.
+ */
+export async function saveOpsSlaAction(formData: FormData): Promise<void> {
+  const { readOpsSla, writeOpsSla } = await import("@/lib/adminstate");
+  const hours = (k: string) => Number(formData.get(k));
+  const patch = { rxHours: hours("rxHours"), coaHours: hours("coaHours"), kycHours: hours("kycHours") };
+  if (Object.values(patch).some((v) => !Number.isInteger(v) || v < 1 || v > 720)) {
+    redirect("/admin/settings?sla=bad");
+  }
+  await writeOpsSla(patch);
+  const now = await readOpsSla();
+  await writeAudit({
+    actor: await actor(), action: "OPS_SLA_SET", target: "review clocks", outcome: "OK",
+    note: `Rx ${now.rxHours}h · CoA ${now.coaHours}h · KYC ${now.kycHours}h`,
+  });
+  redirect("/admin/settings?sla=saved");
+}

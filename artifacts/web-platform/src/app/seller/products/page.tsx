@@ -13,7 +13,7 @@ import { Shell } from "../Shell";
 import { Banner, Card, DataTable, StatusPill, toneForStatus, ComplianceBadge, MoneyText, type Column } from "@/components/ui";
 import { BarList } from "@/components/ui/charts";
 import { getSession } from "@/lib/auth-lite";
-import { REGULATED_CLASSES, sellerListings, type CatalogProduct } from "@/lib/catalog";
+import { BULK_MAX_BYTES, BULK_MAX_ROWS, REGULATED_CLASSES, sellerListings, type CatalogProduct } from "@/lib/catalog";
 import { bulkUploadListings } from "../actions";
 import { actingStore } from "../_lib/store";
 
@@ -151,7 +151,7 @@ export default async function SellerProductsPage({
       {bulkerr && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="danger" title="Bulk upload failed">
-            {bulkerr === "size" ? "File too large — keep it under 200 KB (≈50 rows)." : "Choose a CSV file first."}
+            {bulkerr === "size" ? `File too large — keep it under ${Math.round(BULK_MAX_BYTES / 1024)} KB (about ${BULK_MAX_ROWS} rows).` : "Choose a CSV file first."}
           </Banner>
         </div>
       )}
@@ -215,7 +215,7 @@ export default async function SellerProductsPage({
               <div style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--vh-ink)" }}>Choose a CSV to create listings</div>
               <div className="small" style={{ marginTop: 4 }}>
                 One row per listing: <span className="mono">title,class,pricePaise,mrpPaise,hsn,desc</span> ·
-                class = HEMP_FOOD / AYURVEDA / CBD_WELLNESS · max 50 rows.
+                class = HEMP_FOOD / AYURVEDA / CBD_WELLNESS · max {BULK_MAX_ROWS} rows.
               </div>
             </label>
             <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Upload &amp; create drafts</button>

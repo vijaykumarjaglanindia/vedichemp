@@ -78,6 +78,8 @@ export default async function MedicalPage({
   // The buyer's OWN prescriptions, from the live store (the same rows the
   // pharmacist queue verifies) — never static demo data.
   const mine = await myPrescriptions(email);
+  const { readOpsSla } = await import("@/lib/adminstate");
+  const sla = await readOpsSla();
   // The A4 receipt — every read of THIS buyer's prescription, from the
   // append-only sensitive-access log. A self-access read (actor: you) sits in
   // the same log as any pharmacist read — the log has no exceptions.
@@ -231,7 +233,7 @@ export default async function MedicalPage({
           {uploaded && (
             <div style={{ marginBottom: 12 }}>
               <Banner severity="ok" title="Prescription received — under review">
-                A licensed pharmacist verifies it within 4 business hours. It becomes active only
+                A licensed pharmacist verifies it, usually within {sla.rxHours} business hours. It becomes active only
                 after that verification — it can&rsquo;t be skipped.
               </Banner>
             </div>
@@ -292,7 +294,7 @@ export default async function MedicalPage({
               <ShieldCheck size={16} strokeWidth={2.2} />
             </span>
             <p className="small muted" style={{ margin: 0 }}>
-              A licensed pharmacist reviews every upload <strong>within 4 business hours</strong>. Your
+              A licensed pharmacist reviews every upload, usually <strong>within {sla.rxHours} business hours</strong>. Your
               prescription becomes active only after that verification — it can&rsquo;t be skipped.
               You&apos;ll be notified the moment review completes.
             </p>

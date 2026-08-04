@@ -279,7 +279,8 @@ export default async function AccountHomePage() {
             </div>
             <Link className="small" href="/account/wallet" style={{ display: "inline-block", marginTop: 8 }}>Open wallet →</Link>
           </Card>
-          <Stat label="Open orders" value={String(inFlightCount)} delta={{ dir: "up", text: `${allOrders.length} lifetime` }} />
+          <Stat label="Open orders" value={String(inFlightCount)} />
+          <p className="small muted" style={{ margin: "4px 0 0" }}>{allOrders.length} order{allOrders.length === 1 ? "" : "s"} placed in total.</p>
         </div>
 
         {/* Activity timeline — companion to the ranked widgets, placed after wallet */}

@@ -49,6 +49,8 @@ async function RealOrderDetail({
   // server would refuse.
   const { readCommerce } = await import("@/lib/commerce");
   const returnWindowDays = (await readCommerce()).returnWindowDays;
+  const { readReturnReasons } = await import("@/lib/commerce");
+  const returnReasons = await readReturnReasons();
   const deliveredAt = [...order.timeline].reverse().find((e) => e.status === "DELIVERED")?.at;
   const withinWindow = !deliveredAt || Date.now() - Date.parse(deliveredAt) <= returnWindowDays * 86_400_000;
   const canReturn = order.status === "DELIVERED" && withinWindow;
@@ -219,10 +221,7 @@ async function RealOrderDetail({
                     <label className="vh-label" htmlFor="ret-reason">Reason <span className="req">*</span></label>
                     <select className="vh-select" id="ret-reason" name="reason" required defaultValue="">
                       <option value="" disabled>Choose a reason…</option>
-                      <option value="Damaged in transit — outer seal broken on arrival">Damaged in transit</option>
-                      <option value="Wrong item received against the order">Wrong item received</option>
-                      <option value="Product expired or near expiry on arrival">Expired or near expiry</option>
-                      <option value="Quality not as described on the listing">Quality not as described</option>
+                      {returnReasons.map((r) => <option key={r} value={r}>{r}</option>)}
                     </select>
                   </div>
                   <button type="submit" className="vh-btn vh-btn-sm vh-btn-danger" style={{ justifySelf: "start" }}>

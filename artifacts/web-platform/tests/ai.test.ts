@@ -24,16 +24,18 @@ describe("listingRiskQueue", () => {
       P({ id: "struck", title: "Sleep Drops 15ml", seller: "Ananda Foods", claimsStrike: true }),
     ]);
     expect(rows).toHaveLength(1);
-    expect(rows[0]).toMatchObject({ id: "struck", listing: "Sleep Drops 15ml", seller: "Ananda Foods", score: 88 });
+    expect(rows[0]).toMatchObject({ id: "struck", listing: "Sleep Drops 15ml", seller: "Ananda Foods" });
+    // A strike is boolean — there is deliberately no risk score to report.
+    expect(rows[0]).not.toHaveProperty("score");
     expect(rows[0]!.finding).toMatch(/barred from advertising/i);
   });
 
-  it("ranks by score then title (stable, deterministic)", () => {
+  it("ranks by title (stable, deterministic)", () => {
     const rows = listingRiskQueue([
       P({ id: "b", title: "Zeta Balm", claimsStrike: true }),
       P({ id: "a", title: "Alpha Oil", claimsStrike: true }),
     ]);
-    expect(rows.map((r) => r.id)).toEqual(["a", "b"]); // same score → alphabetical
+    expect(rows.map((r) => r.id)).toEqual(["a", "b"]); // alphabetical by listing
   });
 
   it("treats a missing claimsStrike as not-struck (fail closed to 'no risk shown')", () => {

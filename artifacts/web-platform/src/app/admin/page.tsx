@@ -120,6 +120,8 @@ export default async function AdminHomePage() {
 
   // Platform figures, computed from the live order store. There is no seeded
   // headline: an empty marketplace reads as zero, which is the truth.
+  const { readOpsSla } = await import("@/lib/adminstate");
+  const sla = await readOpsSla();
   const report = await adminReport(14);
   const gmvSeries = report.series.map((d) => d.paise);
   const orderSeries = report.series.map((d) => d.orders);
@@ -191,7 +193,7 @@ export default async function AdminHomePage() {
               <Stethoscope {...I} aria-hidden />
               <div>
                 {rxPending > 0 ? (
-                  <><strong>{rxPending} prescription{rxPending === 1 ? "" : "s"}</strong> pending pharmacist verification within the 4-hour SLA.{" "}</>
+                  <><strong>{rxPending} prescription{rxPending === 1 ? "" : "s"}</strong> pending pharmacist verification within the {sla.rxHours}-hour review clock.{" "}</>
                 ) : (
                   <><strong>No prescriptions</strong> awaiting verification — the Rx queue is clear.{" "}</>
                 )}

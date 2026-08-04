@@ -138,16 +138,32 @@ export default async function AdminAdsPage({
                 <span className="vh-help">Applies beneath every placement floor. Current: <MoneyText paise={settings.minBidPaise} /></span>
               </div>
               <div className="vh-field">
-                <span className="vh-label">Placements on sale</span>
-                <div className="vh-row" style={{ gap: 10, flexWrap: "wrap" }}>
+                <label className="vh-label" htmlFor="ad-minbudget">Minimum campaign budget (₹)</label>
+                <input className="vh-input" id="ad-minbudget" name="minCampaignBudget" type="number" min={0} step={1} defaultValue={settings.minCampaignBudgetPaise / 100} />
+                <span className="vh-help">The smallest total budget a seller may open a campaign with.</span>
+              </div>
+              <div className="vh-field">
+                <span className="vh-label">Placements on sale &amp; their reserve price</span>
+                <div className="vh-grid" style={{ gap: 8 }}>
                   {PLACEMENTS.map((p) => (
-                    <label key={p.key} className="vh-row small" style={{ gap: 5 }}>
-                      <input type="checkbox" name="placements" value={p.key} defaultChecked={settings.placementsEnabled[p.key] !== false} />
-                      {p.label} <span className="muted">(floor <MoneyText paise={p.floorPaise} />)</span>
-                    </label>
+                    <div key={p.key} className="vh-row" style={{ gap: 10, flexWrap: "wrap", alignItems: "center" }}>
+                      <label className="vh-row small" style={{ gap: 5, minWidth: 260 }}>
+                        <input type="checkbox" name="placements" value={p.key} defaultChecked={settings.placementsEnabled[p.key] !== false} />
+                        {p.label}
+                      </label>
+                      <input
+                        className="vh-input tabular" name={`floor_${p.key}`} type="number" min={0} step={1}
+                        defaultValue={Math.round((settings.floors[p.key] ?? p.floorPaise) / 100)}
+                        style={{ width: 100 }} aria-label={`Reserve price for ${p.label}, in rupees`}
+                      />
+                      <span className="small muted">₹ floor per click</span>
+                    </div>
                   ))}
                 </div>
-                <span className="vh-help">A switched-off placement returns no ad — the slot simply doesn&rsquo;t sell.</span>
+                <span className="vh-help">
+                  A switched-off placement returns no ad — the slot simply doesn&rsquo;t sell. A bid below a
+                  placement&rsquo;s floor never enters its auction.
+                </span>
               </div>
               <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Save platform settings</button>
             </form>

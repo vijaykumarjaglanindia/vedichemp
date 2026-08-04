@@ -22,7 +22,7 @@ const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> 
   created: { sev: "ok", text: "Coupon created — it's live at checkout immediately, applied server-side." },
   toggled: { sev: "ok", text: "Coupon updated. Disabled coupons stop working right away; their history is kept." },
   code: { sev: "danger", text: "Code should be 4–16 letters/digits." },
-  pct: { sev: "danger", text: "A percentage must be between 1% and 60%." },
+  pct: { sev: "danger", text: "That percentage is above the platform coupon ceiling — see Commerce settings." },
   amount: { sev: "danger", text: "A flat amount must be between ₹1 and ₹5,00,000." },
   cls: { sev: "danger", text: "Pick a valid category or leave it storewide." },
   date: { sev: "danger", text: "The expiry must be today or later." },

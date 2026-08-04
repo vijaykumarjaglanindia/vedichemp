@@ -157,6 +157,56 @@ export async function addGiftCard(code: string, paise: number): Promise<void> {
   globalThis.__vhGiftCards = { ...(globalThis.__vhGiftCards ?? {}), [code]: paise };
 }
 
+/* ── Reason lists the operator owns ──────────────────────────────── */
+
+/**
+ * The reasons a buyer may pick when opening a return, and the topics a support
+ * ticket can be filed under. Both are the operator's vocabulary — how they want
+ * to classify their own queues — so they live here rather than being retyped
+ * into a <select>. The stored value is the label: it is what a seller reads on
+ * the return and what a support agent sees on the ticket.
+ */
+export const RETURN_REASON_DEFAULTS: string[] = [
+  "Damaged in transit — outer seal broken on arrival",
+  "Wrong item received against the order",
+  "Product expired or near expiry on arrival",
+  "Quality not as described on the listing",
+];
+
+export const TICKET_TOPIC_DEFAULTS: string[] = [
+  "Order issue",
+  "Wallet / refund",
+  "Prescription / Medical",
+  "Account & security",
+  "Something else",
+];
+
+declare global {
+  // eslint-disable-next-line no-var
+  var __vhReturnReasons: string[] | undefined;
+  // eslint-disable-next-line no-var
+  var __vhTicketTopics: string[] | undefined;
+}
+
+const cleanList = (list: string[], fallback: string[]) => {
+  const out = list.map((s) => s.trim()).filter((s) => s.length >= 3 && s.length <= 90).slice(0, 12);
+  return out.length ? out : fallback;
+};
+
+export async function readReturnReasons(): Promise<string[]> {
+  return [...(globalThis.__vhReturnReasons ?? RETURN_REASON_DEFAULTS)];
+}
+export async function writeReturnReasons(list: string[]): Promise<void> {
+  globalThis.__vhReturnReasons = cleanList(list, RETURN_REASON_DEFAULTS);
+}
+
+export async function readTicketTopics(): Promise<string[]> {
+  return [...(globalThis.__vhTicketTopics ?? TICKET_TOPIC_DEFAULTS)];
+}
+export async function writeTicketTopics(list: string[]): Promise<void> {
+  globalThis.__vhTicketTopics = cleanList(list, TICKET_TOPIC_DEFAULTS);
+}
+
 /* ── Category display copy (compliance flags stay locked) ─────────── */
 
 export interface ClassDisplay {

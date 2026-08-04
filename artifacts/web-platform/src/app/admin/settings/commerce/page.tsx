@@ -14,7 +14,7 @@ import { Shell } from "../../Shell";
 import { Banner, Card, MoneyText, StatusPill } from "@/components/ui";
 import { CLASS_META } from "@/lib/compliance";
 import { readCommerce, readCoupons, readGiftCards } from "@/lib/commerce";
-import { createGiftCard, saveClassDisplay, saveCommerceSettings, toggleCoupon, upsertCoupon } from "./actions";
+import { createGiftCard, saveClassDisplay, saveCommerceSettings, saveReasonLists, toggleCoupon, upsertCoupon } from "./actions";
 
 export const metadata: Metadata = { title: "Commerce settings · Admin" };
 export const dynamic = "force-dynamic";
@@ -22,10 +22,13 @@ export const dynamic = "force-dynamic";
 export default async function CommercePage({
   searchParams,
 }: {
-  searchParams: Promise<{ cm?: string; cp?: string; gc?: string; cd?: string }>;
+  searchParams: Promise<{ cm?: string; cp?: string; gc?: string; cd?: string; rl?: string }>;
 }) {
-  const { cm, cp, gc, cd } = await searchParams;
+  const { cm, cp, gc, cd, rl } = await searchParams;
   const commerce = await readCommerce();
+  const { readReturnReasons, readTicketTopics } = await import("@/lib/commerce");
+  const returnReasons = await readReturnReasons();
+  const ticketTopics = await readTicketTopics();
   const coupons = await readCoupons();
   const giftCards = await readGiftCards();
   const classes = ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS", "MED_CANNABIS"] as const;
@@ -47,6 +50,26 @@ export default async function CommercePage({
         {gc === "bad" && <Banner severity="danger">Gift cards need a 6+ char code and a value up to ₹{(commerce.giftCardMaxPaise / 100).toLocaleString("en-IN")}.</Banner>}
         {cd === "saved" && <Banner severity="ok" title="Category copy saved">Labels and blurbs update across the whole site — compliance flags are untouched.</Banner>}
         {cd === "claims" && <Banner severity="danger">Category copy cannot carry claims language.</Banner>}
+        {rl === "saved" && <Banner severity="ok" title="Lists saved">Buyers see the new options on their next return or ticket.</Banner>}
+
+        <Card title="Return reasons &amp; support topics">
+          <p className="small muted" style={{ marginTop: 0 }}>
+            One per line. These are the words your buyers pick from when opening a return or a ticket, and the words
+            your sellers and agents then read. Nothing here gates anything — leave a box empty to restore the
+            shipped list.
+          </p>
+          <form action={saveReasonLists} className="vh-grid cols-2" style={{ gap: 16 }}>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="rl-returns">Return reasons</label>
+              <textarea className="vh-input" id="rl-returns" name="returnReasons" rows={5} defaultValue={returnReasons.join("\n")} />
+            </div>
+            <div className="vh-field">
+              <label className="vh-label" htmlFor="rl-topics">Support topics</label>
+              <textarea className="vh-input" id="rl-topics" name="ticketTopics" rows={5} defaultValue={ticketTopics.join("\n")} />
+            </div>
+            <button className="vh-btn vh-btn-primary vh-btn-sm" type="submit" style={{ justifySelf: "start" }}>Save lists</button>
+          </form>
+        </Card>
 
         <div className="vh-grid cols-2" style={{ alignItems: "start" }}>
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Sparkles size={16} strokeWidth={2.2} aria-hidden /> Economics &amp; limits</span>}>

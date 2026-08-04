@@ -430,6 +430,11 @@ export async function removeWholesaleTier(id: string, minQty: number): Promise<b
 /** Gallery size, read at use time so an operator's change takes effect without
  *  a restart. Exported so the seller form and its help text quote the same
  *  number the server enforces. */
+/** Bulk-upload ceilings. One definition, quoted by the form, checked by the
+ *  action and stated in the error, so the three cannot disagree. */
+export const BULK_MAX_ROWS = 50;
+export const BULK_MAX_BYTES = 200 * 1024;
+
 export function maxImages(): number {
   return commerceNow().maxProductImages;
 }

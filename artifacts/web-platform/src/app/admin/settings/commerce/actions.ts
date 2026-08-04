@@ -95,3 +95,22 @@ export async function saveClassDisplay(formData: FormData): Promise<void> {
   await writeAudit({ actor: await actor(), action: "CLASS_DISPLAY", target: cls, outcome: "OK" });
   redirect(`${BACK}?cd=saved`);
 }
+
+/**
+ * The vocabulary the operator classifies their own queues with: why a buyer
+ * returned something, and what a support ticket is about. Both are free text —
+ * neither drives a gate, so an operator can phrase them as they like. An empty
+ * list falls back to the shipped defaults rather than leaving a buyer with an
+ * empty dropdown.
+ */
+export async function saveReasonLists(formData: FormData): Promise<void> {
+  const lines = (k: string) => String(formData.get(k) ?? "").split("\n").map((s) => s.trim()).filter(Boolean);
+  const { writeReturnReasons, writeTicketTopics } = await import("@/lib/commerce");
+  await writeReturnReasons(lines("returnReasons"));
+  await writeTicketTopics(lines("ticketTopics"));
+  await writeAudit({
+    actor: await actor(), action: "REASON_LISTS_SAVE", target: "returns / support topics", outcome: "OK",
+    note: `${lines("returnReasons").length} return reasons, ${lines("ticketTopics").length} ticket topics`,
+  });
+  redirect(`${BACK}?rl=saved`);
+}

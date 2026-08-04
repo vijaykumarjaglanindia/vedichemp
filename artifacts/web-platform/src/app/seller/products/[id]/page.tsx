@@ -80,6 +80,8 @@ export default async function ProductEditorPage({
   const product = await findProduct(id);
   if (!product) notFound();
 
+  const { readOpsSla } = await import("@/lib/adminstate");
+  const sla = await readOpsSla();
   const meta = CLASS_META[product!.cls];
   const regulated = REGULATED_CLASSES.includes(product!.cls);
   const doneMsg = done ? DONE[done] : undefined;
@@ -134,7 +136,7 @@ export default async function ProductEditorPage({
       {coa === "submitted" && (
         <div style={{ marginBottom: "var(--sp-3)" }}>
           <Banner severity="ok" title="CoA submitted for this batch">
-            Compliance reviews every lab report (SLA ~4h). The batch cannot sell until it is APPROVED — no bulk approval, no override.
+            Compliance reviews every lab report, usually within {sla.coaHours} hours. The batch cannot sell until it is APPROVED — no bulk approval, no override.
           </Banner>
         </div>
       )}
@@ -488,7 +490,7 @@ export default async function ProductEditorPage({
                     <FileUp size={20} strokeWidth={2.2} aria-hidden style={{ marginBottom: 8 }} />
                     <div style={{ fontWeight: 700, fontSize: ".9rem", color: "var(--vh-ink)" }}>Drop the lab report PDF here</div>
                     <div className="small" style={{ marginTop: 4 }}>
-                      Must state the exact batch code. Compliance reviews every submission (SLA ~4h) — no bulk approval, no override.
+                      Must state the exact batch code. Compliance reviews every submission, usually within {sla.coaHours} hours — no bulk approval, no override.
                     </div>
                   </div>
                   <div className="vh-field">

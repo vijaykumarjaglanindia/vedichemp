@@ -25,14 +25,17 @@ import { readCatalog } from "@/lib/catalog";
 export const metadata: Metadata = { title: "AI Intelligence · Admin" };
 export const dynamic = "force-dynamic";
 
-// Illustrative sample of the fraud-signal TYPES the engine watches. Unlike the
-// listing-risk queue (live from the catalogue), these are representative
-// examples — real detection wires the same suggestion→human-acts pattern.
-const FRAUD_SIGNALS = [
-  { id: "u1042", signal: "Payment-decline velocity", detail: "4 failed prepaid attempts across 3 cards in 9 days on one device", score: 86, act: "Review buyer" },
-  { id: "u0871", signal: "Return-abuse pattern", detail: "3 'empty box' claims in 60 days, all high-value CBD items", score: 78, act: "Review returns" },
-  { id: "s-004", signal: "Review velocity anomaly", detail: "Seller's new listing gained 40 five-star ratings in 48h, 70% from accounts under 30 days old", score: 91, act: "Freeze ratings" },
-  { id: "u1580", signal: "Address churn", detail: "Same device, 6 delivery addresses in 3 weeks", score: 64, act: "Step-up verify" },
+/**
+ * The patterns a fraud engine would watch for. None of them is wired to a
+ * detector yet, so this is a list of TYPES, not a queue of cases: there is no
+ * account id, no score and no action button, because there is nothing to act
+ * on. It becomes a queue the day a detector writes real rows.
+ */
+const FRAUD_SIGNAL_TYPES = [
+  { signal: "Payment-decline velocity", detail: "Repeated failed prepaid attempts across cards on one device." },
+  { signal: "Return-abuse pattern", detail: "Repeated not-as-described claims on high-value regulated items." },
+  { signal: "Review velocity anomaly", detail: "A burst of ratings on a new listing from very new accounts." },
+  { signal: "Address churn", detail: "One device, many delivery addresses in a short window." },
 ];
 
 export default async function AdminAiPage() {
@@ -62,14 +65,14 @@ export default async function AdminAiPage() {
           ) : (
             <div style={{ overflowX: "auto" }}>
               <table className="vh-table">
-                <thead><tr><th>Listing</th><th>Seller</th><th>AI finding</th><th>Risk</th><th></th></tr></thead>
+                <thead><tr><th>Listing</th><th>Seller</th><th>AI finding</th><th>State</th><th></th></tr></thead>
                 <tbody>
                   {risks.map((l) => (
                     <tr key={l.id}>
                       <td className="small" style={{ fontWeight: 700 }}>{l.listing}</td>
                       <td className="small">{l.seller}</td>
                       <td className="small muted">{l.finding}</td>
-                      <td><StatusPill tone="danger">{l.score}</StatusPill></td>
+                      <td><StatusPill tone="danger">Claims strike</StatusPill></td>
                       <td style={{ textAlign: "right" }}>
                         <Link className="vh-btn vh-btn-sm vh-btn-ghost" href={`/admin/catalogue/products/${l.id}`}>Review &amp; clear</Link>
                       </td>
@@ -92,15 +95,13 @@ export default async function AdminAiPage() {
         >
           <div style={{ overflowX: "auto" }}>
             <table className="vh-table">
-              <thead><tr><th>Account</th><th>Signal</th><th>Detail</th><th>Risk</th><th>Suggested action</th></tr></thead>
+              <thead><tr><th>Signal</th><th>What it looks like</th><th>Open cases</th></tr></thead>
               <tbody>
-                {FRAUD_SIGNALS.map((f) => (
-                  <tr key={f.id}>
-                    <td className="mono small">{f.id}</td>
+                {FRAUD_SIGNAL_TYPES.map((f) => (
+                  <tr key={f.signal}>
                     <td className="small" style={{ fontWeight: 700 }}>{f.signal}</td>
                     <td className="small muted">{f.detail}</td>
-                    <td><StatusPill tone={f.score >= 80 ? "danger" : f.score >= 60 ? "warn" : "neutral"}>{f.score}</StatusPill></td>
-                    <td><Link className="vh-btn vh-btn-sm vh-btn-ghost" href="/admin/users">{f.act}</Link></td>
+                    <td><StatusPill tone="neutral">none — detector not wired</StatusPill></td>
                   </tr>
                 ))}
               </tbody>
