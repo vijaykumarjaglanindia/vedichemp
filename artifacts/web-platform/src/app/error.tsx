@@ -24,8 +24,8 @@ export default function RouteError({
         Something went wrong on our side
       </h1>
       <p className="muted" style={{ marginBottom: 6 }}>
-        The page hit an unexpected error. Nothing was charged and your cart is safe —
-        trying again usually fixes it.
+        The page hit an unexpected error. Trying again usually fixes it — but if you were part-way
+        through placing an order, check My account &rarr; Orders first so you don&rsquo;t place it twice.
       </p>
       {error.digest && (
         <p className="small muted" style={{ marginBottom: 20 }}>

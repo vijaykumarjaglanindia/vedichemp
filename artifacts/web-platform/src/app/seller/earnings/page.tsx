@@ -13,7 +13,7 @@ import { Wallet, Landmark, ArrowDownToLine, ReceiptText, Clock } from "lucide-re
 import { Shell } from "../Shell";
 import { Banner, Card, DataTable, MoneyText, Stat, StatusPill, type Column } from "@/components/ui";
 import {
-  earningLines, minWithdrawPaise, readPayoutAccount, vendorBalance, withdrawalsForSeller,
+  earningLines, minWithdrawPaise, readPayoutAccount, vendorBalance, withdrawalsForSeller, WITHDRAW_CHECKER_THRESHOLD_PAISE,
   WITHDRAW_TONE, type OrderEarning, type WithdrawRequest,
 } from "@/lib/earnings";
 import { saveWithdrawAccount, submitWithdraw } from "../actions";
@@ -58,7 +58,7 @@ export default async function EarningsPage({ searchParams }: { searchParams: Pro
   return (
     <Shell active="/seller/earnings" breadcrumb={["Seller Central", "Earnings"]} title="Earnings & Withdrawals">
       {saved === "account" && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="ok" title="Payout account saved">New withdrawals will be paid to this account.</Banner></div>}
-      {requested && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="ok" title="Withdrawal requested">An admin reviews and approves payouts — a payout of ₹10,000 or more needs a second admin to confirm.</Banner></div>}
+      {requested && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="ok" title="Withdrawal requested">An admin reviews and approves payouts — a payout of ₹{Math.round(WITHDRAW_CHECKER_THRESHOLD_PAISE / 100).toLocaleString("en-IN")} or more needs a second admin to confirm.</Banner></div>}
       {err && ERRORS[err] && <div style={{ marginBottom: "var(--sp-3)" }}><Banner severity="danger" title="Couldn't do that">{ERRORS[err]}</Banner></div>}
 
       {/* Balance cards */}

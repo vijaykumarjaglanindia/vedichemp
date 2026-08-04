@@ -1170,7 +1170,7 @@ export async function fulfilOrder(formData: FormData): Promise<void> {
     await notify("buyer", result.order.buyerEmail, {
       kind: "ORDER_DELIVERED",
       title: `Order ${reference} delivered`,
-      body: "Delivered. You have 7 days to request a return if anything's wrong.",
+      body: `Delivered. You have ${(await (await import("@/lib/commerce")).readCommerce()).returnWindowDays} days to request a return if anything's wrong.`,
       href: `/account/orders/live-${reference}`,
     });
   }

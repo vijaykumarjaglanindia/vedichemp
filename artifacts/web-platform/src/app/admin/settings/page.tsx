@@ -48,6 +48,10 @@ const MESSAGES: Record<string, { sev: "ok" | "danger" | "warn"; text: string }> 
 export default async function AdminSettingsPage({ searchParams }: { searchParams: Promise<{ rs?: string; fs?: string; conflict?: string }> }) {
   const { rs, fs, conflict } = await searchParams;
   const admins = await listAdmins();
+  // State the real posture rather than a remembered one.
+  const { codEnabled, readGateway } = await import("@/lib/payments");
+  const cod = await codEnabled();
+  const gateway = await readGateway();
   const flags = await listFlags();
   const pending = await listPendingFlagChanges();
   const log = await flagChangeLog(6);
@@ -145,7 +149,11 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
 
         <div className="vh-grid cols-2">
           <Card title={<span className="vh-row" style={{ gap: 8 }}><ReceiptText {...I} aria-hidden /> Tax rules</span>}>
-            <p className="small muted" style={{ marginTop: 0 }}>GST slabs by HSN code, TCS/TDS thresholds by seller turnover — calculated on our servers at checkout, editable here with a change log.</p>
+            <p className="small muted" style={{ marginTop: 0 }}>
+              GST is inclusive in the price a buyer sees; the slab is resolved by HSN prefix, then compliance class,
+              each as of the order date, so a rate change never restates an invoice already raised. Edit the slabs on{" "}
+              <Link href="/admin/finance/tax">GST rates</Link>; every save is audited.
+            </p>
           </Card>
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Percent {...I} aria-hidden /> Commission rules</span>}>
             <p className="small muted" style={{ marginTop: 0 }}>
@@ -159,10 +167,18 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
 
         <div className="vh-grid cols-2">
           <Card title={<span className="vh-row" style={{ gap: 8 }}><Truck {...I} aria-hidden /> Shipping</span>}>
-            <p className="small muted" style={{ marginTop: 0 }}>Carrier zones, SLA tiers by pincode and compliance class. The platform is prepaid-only — no COD configuration exists, anywhere.</p>
+            <p className="small muted" style={{ marginTop: 0 }}>
+              Zone rates, the free-shipping threshold and the PIN prefixes where age-verified handover isn&rsquo;t
+              available are edited on <Link href="/admin/shipping">Shipping</Link> — the only place the cart reads them.
+            </p>
           </Card>
           <Card title={<span className="vh-row" style={{ gap: 8 }}><CreditCard {...I} aria-hidden /> Payments</span>}>
-            <p className="small muted" style={{ marginTop: 0 }}>Gateway routing, settlement bank accounts (masked here — full account numbers are never returned to this console).</p>
+            <p className="small muted" style={{ marginTop: 0 }}>
+              Cash on delivery is currently <strong>{cod ? "accepted" : "off"}</strong>, and the gateway is{" "}
+              <strong>{gateway}</strong>. Methods and gateway credentials live on{" "}
+              <Link href="/admin/finance/payments">Payments</Link>. Bank details are masked here — a full account
+              number is never returned to this console.
+            </p>
           </Card>
         </div>
 

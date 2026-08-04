@@ -12,6 +12,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { BadgeCheck, MapPin, UserCheck, UserPlus, Globe, ExternalLink } from "lucide-react";
 import { Banner, Card, EmptyState, Rating, SectionHead, StatusPill } from "@/components/ui";
+import { REGULATED_CLASSES } from "@/lib/catalog";
 import { CLASS_META } from "@/lib/compliance";
 import { mdToHtml } from "@/lib/richtext";
 import { announcementLive, readFollows, readStoreAnnouncement, readStoreAvailability, readStoreCopy, socialUrl } from "@/lib/engage";
@@ -313,7 +314,11 @@ export default async function StorePage({ params, searchParams }: { params: Prom
           <SectionHead
             eyebrow="Featured"
             title={`Products from ${storeName}`}
-            sub="Every wellness item below was lab-tested for its exact batch before it could be listed."
+            sub={
+              products.some((p) => REGULATED_CLASSES.includes(p.cls))
+                ? "Every regulated item below carries an approved lab report for its exact batch — it could not be listed otherwise."
+                : "Listed by a verified seller, described by composition and traditional use only."
+            }
           />
           {products.length === 0 ? (
             <EmptyState

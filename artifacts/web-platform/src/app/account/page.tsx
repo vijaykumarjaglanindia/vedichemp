@@ -26,6 +26,8 @@ import { readLiveCoupons, LAUNCH_COUPONS } from "@/lib/commerce";
 import { readAddresses } from "@/lib/engage";
 import { applyCoupon } from "../(site)/cart/actions";
 import { getSession } from "@/lib/auth-lite";
+import { CLASS_META } from "@/lib/compliance";
+import type { ComplianceClass } from "@prisma/client";
 import { ordersForBuyer, type OrderStatus } from "@/lib/orders";
 import { balancePaise, ledger } from "@/lib/wallet";
 import { myPrescriptions } from "@/lib/prescriptions";
@@ -117,8 +119,7 @@ export default async function AccountHomePage() {
   // Offers come from the LIVE coupon store (admin-managed) — enabled, unexpired,
   // under its usage cap. A1: a MED_CANNABIS coupon can never surface here, and
   // the render still asserts per-offer below rather than filtering silently.
-  const CLS_LABEL: Record<string, string> = { HEMP_FOOD: "Hemp Food", AYURVEDA: "Ayurveda", CBD_WELLNESS: "CBD Wellness" };
-  const liveOffers = Object.entries(await readLiveCoupons())
+    const liveOffers = Object.entries(await readLiveCoupons())
     .filter(([, c]) => c.cls !== "MED_CANNABIS")
     // Feature admin-created coupons (not part of the launch set) ahead of the
     // evergreen launch coupons, so a freshly-created promo actually surfaces.
@@ -128,7 +129,7 @@ export default async function AccountHomePage() {
       id: code,
       code,
       headline: c.label,
-      detail: c.cls ? `Applies to ${CLS_LABEL[c.cls] ?? c.cls} products.` : "Applies storewide across eligible items.",
+      detail: c.cls ? `Applies to ${CLASS_META[c.cls as ComplianceClass]?.short ?? c.cls} products.` : "Applies storewide across eligible items.",
       cls: c.cls,
       endsOn: c.validTo ?? null,
       minSpendPaise: c.minPaise > 0 ? c.minPaise : null,

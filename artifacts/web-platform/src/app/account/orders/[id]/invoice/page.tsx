@@ -46,6 +46,8 @@ interface InvoiceModel {
 }
 
 export default async function InvoicePage({ params }: { params: Promise<{ id: string }> }) {
+  const { readSiteContent } = await import("@/lib/sitecontent");
+  const content = await readSiteContent();
   const { id } = await params;
 
   let model: InvoiceModel | null = null;
@@ -184,7 +186,7 @@ export default async function InvoicePage({ params }: { params: Promise<{ id: st
         <p className="small muted" style={{ margin: "var(--sp-4) 0 0" }}>
           All amounts include applicable GST.
           Vedic Hemp collects payment on the seller&rsquo;s behalf; the product is sold and shipped by
-          the seller named above. Support: support@vedichemp.com
+          the seller named above. Support: {content.supportEmail ?? "support@vedichemp.com"}
         </p>
       </div>
     </div>

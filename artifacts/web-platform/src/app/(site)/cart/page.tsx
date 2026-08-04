@@ -25,6 +25,11 @@ export default async function CartPage({
   const reorderedN = reordered ? parseInt(reordered, 10) : 0;
   const skippedN = skipped ? parseInt(skipped, 10) : 0;
   const cart = await priceCart();
+  // If we suggest a code it has to be one that would actually work right now.
+  // With no live coupon, the message simply doesn't suggest anything.
+  const { readLiveCoupons } = await import("@/lib/commerce");
+  const suggestCode = Object.entries(await readLiveCoupons())
+    .find(([, c]) => c.minPaise <= cart.subtotalPaise)?.[0];
   // Payment trust badge reflects the real admin setting, not a fixed claim.
   const { codEnabled } = await import("@/lib/payments");
   const codOn = await codEnabled();
@@ -169,7 +174,7 @@ export default async function CartPage({
               {coupon === "expired" ? "That code has expired."
                 : coupon === "exhausted" ? "That code has reached its usage limit."
                 : coupon === "disabled" ? "That code isn't active right now."
-                : "That code isn't valid — try VEDIC10."}
+                : suggestCode ? `That code isn't valid — try ${suggestCode}.` : "That code isn't valid."}
             </p>
           )}
 

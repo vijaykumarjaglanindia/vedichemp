@@ -30,7 +30,7 @@ import { categoryTree, type CategoryNode } from "@/lib/categories";
 import { mdToHtml } from "@/lib/richtext";
 import { organizationJsonLd, websiteJsonLd } from "@/lib/seo";
 import { readFeatures } from "@/lib/features";
-import { codEnabled } from "@/lib/payments";
+import { codEnabled, readEnabledPayments } from "@/lib/payments";
 import { parseMenu, readSiteContent } from "@/lib/sitecontent";
 
 // Every public page renders per-request so admin edits to site content and
@@ -199,6 +199,10 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
       seller: p.seller, labVerified: p.labVerified,
     }));
   const cod = await codEnabled();
+  // Name the methods actually switched on, so the footer can never promise a
+  // rail that checkout would not offer.
+  const prepaid = (await readEnabledPayments()).filter((m) => m.kind === "prepaid").map((m) => m.label);
+  const prepaidLabel = prepaid.length ? prepaid.join(", ") : "Secure online payment";
   // The category mega-menu is built from the LIVE, admin-editable category tree
   // (top departments + their sub-categories). categoryTree() returns visible
   // categories only and never includes MED_CANNABIS (A1) — it is not a department.
@@ -401,7 +405,7 @@ export default async function SiteLayout({ children }: { children: ReactNode }) 
           {/* Payment & trust row */}
           <div className="vh-row" style={{ flexWrap: "wrap", gap: "var(--sp-4)", padding: "var(--sp-3) 0" }}>
             {[
-              { icon: CreditCard, label: "UPI, Cards & Net Banking" },
+              { icon: CreditCard, label: prepaidLabel },
               { icon: Banknote, label: cod ? "Cash on Delivery available" : "Secure Payments" },
               { icon: ShieldCheck, label: "Secure checkout" },
               { icon: RotateCcw, label: "Easy refunds — you're paid back first" },

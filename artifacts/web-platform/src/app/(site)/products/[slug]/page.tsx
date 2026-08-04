@@ -171,10 +171,15 @@ export default async function ProductDetailPage({
   // the free-shipping threshold is the admin-editable value the cart charges
   // against, and the coupon line renders only while VEDIC10 is actually live.
   const { readShipping } = await import("@/lib/shipping");
-  const { readCoupons, couponLive } = await import("@/lib/commerce");
+  const { readLiveCoupons } = await import("@/lib/commerce");
   const freeShipAtPaise = (await readShipping()).freeAtPaise;
-  const vedic10 = (await readCoupons())["VEDIC10"];
-  const vedic10Live = vedic10 ? couponLive(vedic10) : false;
+  // Every coupon that is live AND could apply to this listing — not one code
+  // named in the source. A coupon restricted to another class, or to a spend
+  // this item cannot reach on its own, is not offered here.
+  const applicableCoupons = Object.entries(await readLiveCoupons())
+    .filter(([, c]) => !c.cls || c.cls === product.cls)
+    .map(([code, c]) => ({ code, ...c }))
+    .slice(0, 3);
   // Variant selection: the chosen option drives the price, stock and the
   // add-to-cart, all server-resolved (never a client price).
   const productHasVariants = hasVariants(product);
@@ -723,9 +728,11 @@ export default async function ProductDetailPage({
               <span className="vh-row small" style={{ gap: 8, fontWeight: 700, color: "var(--vh-ink)" }}>
                 <BadgePercent size={14} aria-hidden style={{ color: "var(--vh-accent)" }} /> Offers
               </span>
-              {vedic10Live && (
-                <span className="small" style={{ paddingLeft: 22 }}>{vedic10!.label} · code <span className="vh-kbd">VEDIC10</span></span>
-              )}
+              {applicableCoupons.map((c) => (
+                <span key={c.code} className="small" style={{ paddingLeft: 22 }}>
+                  {c.label}{c.minPaise > 0 && <> on carts over <MoneyText paise={c.minPaise} /></>} · code <span className="vh-kbd">{c.code}</span>
+                </span>
+              ))}
               <span className="small" style={{ paddingLeft: 22 }}>Free Delivery over <MoneyText paise={freeShipAtPaise} /> · delivery charges are calculated at checkout · {codOn ? "COD available" : "pay online"}</span>
             </div>
 

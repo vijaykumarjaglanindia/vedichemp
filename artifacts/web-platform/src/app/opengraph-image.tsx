@@ -1,4 +1,5 @@
 import { ImageResponse } from "next/og";
+import { readSiteContent } from "@/lib/sitecontent";
 
 /**
  * Site-wide OpenGraph card. Rendered server-side by satori — no external
@@ -10,7 +11,8 @@ export const alt = "Vedic Hemp — India's regulated hemp & wellness marketplace
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 
-export default function OpenGraphImage() {
+export default async function OpenGraphImage() {
+  const c = await readSiteContent();
   return new ImageResponse(
     (
       <div
@@ -42,10 +44,10 @@ export default function OpenGraphImage() {
           >
             🌿
           </div>
-          <div style={{ fontSize: 44, fontWeight: 700 }}>Vedic Hemp</div>
+          <div style={{ fontSize: 44, fontWeight: 700 }}>{c.siteName ?? "Vedic Hemp"}</div>
         </div>
         <div style={{ fontSize: 64, fontWeight: 800, marginTop: 40, lineHeight: 1.15, maxWidth: 980 }}>
-          India&rsquo;s regulated marketplace for hemp, Ayurveda &amp; CBD wellness
+          {c.seoSiteTitle ?? c.heroTitle ?? "India\u2019s regulated marketplace for hemp, Ayurveda & CBD wellness"}
         </div>
         <div style={{ fontSize: 30, marginTop: 28, color: "#3d4a45", maxWidth: 960 }}>
           Independent licensed sellers · batch lab reports on every regulated listing · no disease claims, ever

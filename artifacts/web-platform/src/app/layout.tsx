@@ -46,15 +46,15 @@ export async function generateMetadata(): Promise<Metadata> {
     title: { default: content.seoSiteTitle ?? "Vedic Hemp", template: `%s · ${content.siteName ?? "Vedic Hemp"}` },
     description: content.seoSiteDesc,
     keywords: ["hemp", "CBD", "Ayurveda", "wellness", "India", "lab verified", "marketplace"],
-    applicationName: "Vedic Hemp",
+    applicationName: content.siteName ?? "Vedic Hemp",
     openGraph: {
       type: "website",
-      siteName: "Vedic Hemp",
+      siteName: content.siteName ?? "Vedic Hemp",
       title: content.seoSiteTitle,
       description: content.seoSiteDesc,
       locale: "en_IN",
     },
-    twitter: { card: "summary_large_image", title: "Vedic Hemp", description: content.seoSiteDesc },
+    twitter: { card: "summary_large_image", title: content.seoSiteTitle ?? content.siteName ?? "Vedic Hemp", description: content.seoSiteDesc },
     robots: { index: true, follow: true },
     formatDetection: { telephone: false },
   };

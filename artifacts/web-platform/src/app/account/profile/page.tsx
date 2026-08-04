@@ -220,13 +220,6 @@ export default async function ProfilePage({
         <Card title={title(<Sliders {...I} />, "Preferences", "preferences")}>
           <div className="vh-grid cols-3">
             <div className="vh-field">
-              <label className="vh-label" htmlFor="pf-lang">Language</label>
-              <select className="vh-select" id="pf-lang" disabled defaultValue="en-IN">
-                <option value="en-IN">English (India)</option>
-                <option value="hi-IN">हिन्दी</option>
-              </select>
-            </div>
-            <div className="vh-field">
               <label className="vh-label" htmlFor="pf-pin">Delivery pincode</label>
               <input className="vh-input" id="pf-pin" defaultValue={pincode} placeholder="Not set" readOnly />
             </div>
