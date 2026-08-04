@@ -107,40 +107,46 @@ describe("use-time gates — labels are consulted where the deed happens", () =>
 });
 
 describe("platform flags — a flag never flips without a second admin (A6)", () => {
+  // Read the key's current state rather than assuming one: the registry holds
+  // real capabilities, and their defaults are the platform's to change.
+  const stateOf = async (key: string) => (await listFlags()).find((f) => f.key === key)!.on;
+
   it("propose does NOT flip the flag", async () => {
-    const before = (await listFlags()).find((f) => f.key === "seller_analytics_beta")!.on;
-    const p = await proposeFlagChange("seller_analytics_beta", "admin@example.in");
+    const before = await stateOf("buyer_subscriptions");
+    const p = await proposeFlagChange("buyer_subscriptions", "admin@example.in");
     expect(p.ok).toBe(true);
-    expect((await listFlags()).find((f) => f.key === "seller_analytics_beta")!.on).toBe(before); // unchanged
+    expect(await stateOf("buyer_subscriptions")).toBe(before); // unchanged
     expect(await listPendingFlagChanges()).toHaveLength(1);
   });
 
   it("REFUSES the maker confirming their own change; a different admin applies it", async () => {
-    const p = await proposeFlagChange("seller_analytics_beta", "admin@example.in");
+    const before = await stateOf("buyer_subscriptions");
+    const p = await proposeFlagChange("buyer_subscriptions", "admin@example.in");
     const id = (p as { proposal: { id: string } }).proposal.id;
     // Maker as checker → refused, still pending, flag unchanged.
     const own = await decideFlagChange(id, "ADMIN@example.in", true);
     expect(own).toMatchObject({ ok: false, reason: "maker" });
     expect(await listPendingFlagChanges()).toHaveLength(1);
-    expect((await listFlags()).find((f) => f.key === "seller_analytics_beta")!.on).toBe(false);
+    expect(await stateOf("buyer_subscriptions")).toBe(before);
     // A different admin confirms → applied.
     const other = await decideFlagChange(id, "compliance2@example.in", true);
     expect(other.ok).toBe(true);
-    expect((await listFlags()).find((f) => f.key === "seller_analytics_beta")!.on).toBe(true);
+    expect(await stateOf("buyer_subscriptions")).toBe(!before);
     expect(await listPendingFlagChanges()).toHaveLength(0);
   });
 
   it("a rejection discards the proposal and leaves the flag unchanged", async () => {
-    const p = await proposeFlagChange("buyer_reviews_v2", "admin@example.in");
+    const before = await stateOf("seller_store_connect");
+    const p = await proposeFlagChange("seller_store_connect", "admin@example.in");
     const id = (p as { proposal: { id: string } }).proposal.id;
     const r = await decideFlagChange(id, "compliance2@example.in", false);
     expect(r.ok).toBe(true);
-    expect((await listFlags()).find((f) => f.key === "buyer_reviews_v2")!.on).toBe(true); // unchanged
+    expect(await stateOf("seller_store_connect")).toBe(before); // unchanged
   });
 
   it("one open proposal per flag; unknown flag/id refused", async () => {
-    await proposeFlagChange("upi_intent_checkout", "a@x.in");
-    expect((await proposeFlagChange("upi_intent_checkout", "b@x.in")).ok).toBe(false);
+    await proposeFlagChange("seller_store_connect", "a@x.in");
+    expect((await proposeFlagChange("seller_store_connect", "b@x.in")).ok).toBe(false);
     expect((await proposeFlagChange("no_such_flag", "a@x.in")).ok).toBe(false);
     expect((await decideFlagChange("fc-999", "b@x.in", true)).ok).toBe(false);
   });

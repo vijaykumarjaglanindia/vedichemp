@@ -75,6 +75,16 @@ export async function sellerImport(input: {
   markupPct: number;
 }): Promise<ImportSummary> {
   const who = await seller();
+  // Server-side capability gate: the page hides the form, but the import is
+  // refused here too — the UI is never the thing that decides.
+  const { capabilityOn } = await import("@/lib/flags");
+  if (!(await capabilityOn("seller_store_connect"))) {
+    await writeAudit({ actor: who.email, action: "SELLER_STORE_IMPORT", target: input.label, outcome: "DENIED", note: "Store connections are switched off platform-wide." });
+    return {
+      historyId: "", imported: 0, updated: 0, skipped: input.products.length, failed: 0,
+      warnings: 0, gatedRegulated: 0, blockedMedical: 0, changes: [], failures: [],
+    };
+  }
   const meta = methodMeta(input.method);
   const credentialsMasked: Record<string, string> = {};
   for (const f of meta.fields) if (input.config[f.key] && f.secret) credentialsMasked[f.key] = mask(input.config[f.key]!);

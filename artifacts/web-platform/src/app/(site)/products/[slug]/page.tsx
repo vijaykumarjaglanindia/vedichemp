@@ -41,7 +41,9 @@ import { questionsFor } from "@/lib/qa";
 import { addBundleToCart, addToCart } from "../../cart/actions";
 import { askQuestion, markReviewHelpful, reportListing, reportReview, submitReview, toggleWishlist } from "../../actions";
 import { REPORT_REASONS } from "@/lib/reports";
-import { readMyQuestions, readMyReviews, readOrderHistory } from "@/lib/engage";
+import { noteProductView, readMyQuestions, readMyReviews, readOrderHistory } from "@/lib/engage";
+import { getSession } from "@/lib/auth-lite";
+import { runAuction } from "@/lib/ads";
 import {
   discountPct,
   frequentlyBoughtWith,
@@ -192,7 +194,13 @@ export default async function ProductDetailPage({
   const fbt = await frequentlyBoughtWith(product, 2);
   const bundlePaise = product.pricePaise + fbt.reduce((sum, x) => sum + x.pricePaise, 0);
   const similar = await similarProducts(product, 6);
-  const adProduct = (await publicProducts()).find((p) => p.cls === "CBD_WELLNESS" && p.id !== product.id);
+  // A sponsored slot is a slot somebody PAID for. It is served from the live
+  // auction, so with no winning campaign nothing renders — a labelled tile for
+  // a seller who bought nothing would be a false disclosure.
+  const adWin = await runAuction("pdp-related-sponsored", { q: product.title });
+  const adProduct = adWin && adWin.product.id !== product.id ? adWin.product : null;
+  // A buyer's own trail, for the "recently viewed" strip on the catalogue.
+  await noteProductView((await getSession())?.email, product.id);
   const pinResult = pin !== undefined ? await checkPin(pin, product.cls) : null;
   const myReview = (await readMyReviews())[product.slug];
   const myQuestion = (await readMyQuestions())[product.slug];
@@ -214,8 +222,9 @@ export default async function ProductDetailPage({
   return (
     <div className="vh-container" style={{ paddingTop: "var(--sp-4)", paddingBottom: "var(--sp-6)" }}>
       {/* Structured data carries the REAL aggregate: productJsonLd omits the
-          AggregateRating node entirely when there are no approved reviews. */}
-      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd(product, { rating: agg.avg, count: agg.count })) }} />
+          AggregateRating node entirely when there are no approved reviews, and
+          availability follows the stock of the option actually being shown. */}
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(productJsonLd({ ...product, stockQty: shownStock }, { rating: agg.avg, count: agg.count })) }} />
       <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(breadcrumbJsonLd(crumbs)) }} />
 
       <nav className="vh-breadcrumb" aria-label="Breadcrumb">

@@ -67,20 +67,10 @@ const addDays = (iso: string, days: number) => {
   return d.toISOString().slice(0, 10);
 };
 
-function seed(): SubStore {
-  const today = todayStr();
-  return {
-    subs: [
-      { id: "sub-1", buyerEmail: "buyer@example.in", productId: "cbd-balm-30g", product: "CBD Wellness Balm 30g", emoji: "🌿", cls: "CBD_WELLNESS", regulated: true, cadenceDays: 28, pricePaise: 149900, status: "ACTIVE", skippedNext: false, nextDeliveryAt: addDays(today, 12), createdAt: today },
-      { id: "sub-2", buyerEmail: "buyer@example.in", productId: "hemp-protein-500g", product: "Hemp Protein Powder 500g", emoji: "🥤", cls: "HEMP_FOOD", regulated: false, cadenceDays: 42, pricePaise: 89900, status: "ACTIVE", skippedNext: false, nextDeliveryAt: addDays(today, 19), createdAt: today },
-    ],
-    events: [],
-    seq: 3,
-  };
-}
-
 function store(): SubStore {
-  globalThis.__vhSubscriptions ??= seed();
+  // A subscription is a standing commitment to charge someone. It exists only
+  // because a buyer created one through createSubscription().
+  globalThis.__vhSubscriptions ??= { subs: [], events: [], seq: 1 };
   return globalThis.__vhSubscriptions;
 }
 

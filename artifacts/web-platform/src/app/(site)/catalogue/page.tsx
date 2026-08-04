@@ -28,6 +28,8 @@ import { type CatalogProduct, liveByClasses, saleActive } from "@/lib/catalog";
 import { findCategory, readCategories } from "@/lib/categories";
 import { CLASS_META, permittedClasses } from "@/lib/compliance";
 import { aggregate } from "@/lib/reviews";
+import { getSession } from "@/lib/auth-lite";
+import { recentlyViewedIds } from "@/lib/engage";
 import { type SampleProduct } from "@/lib/sample";
 import { addToCart } from "../cart/actions";
 import { toggleWishlist } from "../actions";
@@ -206,14 +208,17 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
   if (labOnly) chips.push({ label: "Lab report", remove: href(params, { lab: null }) });
   if (minRating !== null) chips.push({ label: `★ ${minRating}+`, remove: href(params, { rating: null }) });
 
-  const sponsored = all.find((p) => p.cls === "CBD_WELLNESS" && p.labVerified);
   // The REAL auction: bid × quality with fair rotation (lib/ads). A winner
   // replaces the illustrative tile; with no active campaigns the example
   // creative keeps the slot on the unfiltered view.
   const adWin = await runAuction("listing-sponsored", q ? { q } : undefined);
-  const showSponsored = !adWin && chips.length === 0 && view === "grid" && !!sponsored;
-  const recentlyViewed = all.slice(0, 6);
-  const ratings = await ratingsFor([...results, ...(sponsored ? [sponsored] : [])]);
+  // "Recently viewed" is this buyer's own trail, or nothing. A signed-out
+  // visitor has no history, so the strip is absent rather than filled with the
+  // first few catalogue rows dressed up as personal.
+  const viewedIds = await recentlyViewedIds((await getSession())?.email);
+  const byId = new Map(all.map((p) => [p.id, p]));
+  const recentlyViewed = viewedIds.map((id) => byId.get(id)).filter((p): p is CatalogProduct => !!p).slice(0, 6);
+  const ratings = await ratingsFor(results);
   const ratingOf = (p: CatalogProduct): ShownRating => ratings.get(p.id) ?? { value: 0 };
 
   return (
@@ -434,21 +439,14 @@ export default async function CataloguePage({ searchParams }: { searchParams: Pr
                     </AdSlot>
                   );
                 }
-                if (showSponsored && i === 2 && sponsored) {
-                  tiles.push(
-                    <AdSlot key="sponsored" cls={sponsored.cls} placement="listing-sponsored" unstyled>
-                      <ProductTile p={sponsored} rating={ratingOf(sponsored)} sponsored />
-                    </AdSlot>
-                  );
-                }
                 tiles.push(<ProductTile key={p.id} p={p} rating={ratingOf(p)} />);
                 return tiles;
               })}
             </div>
           )}
 
-          {/* Recently viewed */}
-          {results.length > 0 && (
+          {/* Recently viewed — only what this buyer actually opened */}
+          {recentlyViewed.length > 0 && (
             <section style={{ marginTop: "var(--sp-6)" }}>
               <div className="vh-row" style={{ gap: 8, marginBottom: 12 }}>
                 <Sparkles size={15} aria-hidden style={{ color: "var(--vh-accent)" }} />

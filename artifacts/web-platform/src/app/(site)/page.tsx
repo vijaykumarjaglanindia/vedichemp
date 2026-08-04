@@ -86,7 +86,15 @@ export default async function HomePage() {
   const universe = await publicProducts();
   const dealsList = await deals();
   const flashSaleList = await flashSale();
-  const bestsellers = [...universe].sort((a, b) => b.rating - a.rating).slice(0, 8);
+  // Bestsellers means best-SELLING: ranked by units actually ordered. With no
+  // order history there is nothing to rank, so the strip falls back to the
+  // newest listings under a heading that says so.
+  const { adminReport } = await import("@/lib/analytics");
+  const soldUnits = new Map((await adminReport(90)).topProducts.map((t) => [t.name, t.units]));
+  const anySales = soldUnits.size > 0;
+  const bestsellers = anySales
+    ? [...universe].sort((a, b) => (soldUnits.get(b.title) ?? 0) - (soldUnits.get(a.title) ?? 0)).slice(0, 8)
+    : universe.slice(0, 8);
   const heroTiles = universe.slice(0, 4);
   // Verified stores, from the real verification register — a store reaches this
   // strip by passing KYC and having something live to sell, nothing else.
@@ -271,7 +279,7 @@ export default async function HomePage() {
       <section className="vh-section">
         <div className="vh-container">
           <SectionHead
-            eyebrow="Bestsellers"
+            eyebrow={anySales ? "Bestsellers" : "New arrivals"}
             title={content.headBestsellers ?? ""}
             action={<Link href="/catalogue" className="small vh-row" style={{ gap: 4, fontWeight: 700 }}>Browse catalogue <ArrowRight size={14} strokeWidth={2.2} aria-hidden /></Link>}
           />

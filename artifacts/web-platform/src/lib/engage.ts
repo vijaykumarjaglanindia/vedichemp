@@ -44,6 +44,32 @@ export async function writeWishlist(ids: string[]): Promise<void> {
   jar.set("vh-wish-n", String(capped.length), { ...OPTS, httpOnly: false });
 }
 
+/* ── Recently viewed ──────────────────────────────────────── */
+
+/**
+ * A signed-in buyer's own browsing trail, newest first. Server-side and keyed
+ * by account, so it is a real history rather than a slice of the catalogue —
+ * and a signed-out visitor has none, which is why the strip that renders it
+ * disappears entirely rather than showing strangers' products back to them.
+ */
+const gViews = globalThis as unknown as { __vhRecentViews?: Record<string, string[]> };
+
+function viewMap(): Record<string, string[]> {
+  gViews.__vhRecentViews ??= {};
+  return gViews.__vhRecentViews;
+}
+
+export async function noteProductView(email: string | undefined, productId: string): Promise<void> {
+  if (!email || !productId) return;
+  const map = viewMap();
+  const key = email.toLowerCase();
+  map[key] = [productId, ...(map[key] ?? []).filter((id) => id !== productId)].slice(0, 12);
+}
+
+export async function recentlyViewedIds(email: string | undefined): Promise<string[]> {
+  return email ? [...(viewMap()[email.toLowerCase()] ?? [])] : [];
+}
+
 /* ── Followed stores ──────────────────────────────────────── */
 
 export async function readFollows(): Promise<string[]> {

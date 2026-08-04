@@ -84,12 +84,23 @@ function formatINR(paise: number): string {
   return `₹${(paise / 100).toLocaleString("en-IN")}`;
 }
 
-const SUGGESTIONS = [
-  "cbd balm for muscle recovery under ₹1500",
-  "hemp seed oil for cooking",
-  "ayurvedic herbs for sleep",
-  "hemp protein under ₹1000",
-];
+/**
+ * Starter prompts, drawn from what is actually on sale. Nothing here is a
+ * measured popularity ranking — the platform does not log search terms — so the
+ * panel says "Try searching", not "Popular right now".
+ */
+function starterPrompts(docs: SearchDoc[]): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const d of docs) {
+    const key = d.title.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(d.title.toLowerCase());
+    if (out.length === 4) break;
+  }
+  return out;
+}
 
 export function GenerativeSearch({ docs }: { docs: SearchDoc[] }) {
   const router = useRouter(); // basePath-aware navigation
@@ -180,8 +191,8 @@ export function GenerativeSearch({ docs }: { docs: SearchDoc[] }) {
         <div className="vh-gsearch-panel" id="vh-gsearch-panel" role="listbox" aria-label="Search results">
           {q.trim() === "" ? (
             <>
-              <div className="vh-gsearch-hint">Popular right now</div>
-              {SUGGESTIONS.map((s) => (
+              <div className="vh-gsearch-hint">Try searching</div>
+              {starterPrompts(docs).map((s) => (
                 <button
                   key={s}
                   className="vh-gsearch-item"

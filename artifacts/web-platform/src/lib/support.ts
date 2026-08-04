@@ -46,27 +46,12 @@ declare global {
   var __vhSupport: SupportStore | undefined;
 }
 
-function seed(): Ticket[] {
-  return [
-    {
-      id: "TK1001", subject: "Order issue · VH2026070931", buyerEmail: "buyer@example.in", sellerStore: "Vedic Botanicals",
-      orderRef: "VH2026070931", category: "Order issue", status: "OPEN", escalated: false,
-      createdAt: "2026-07-10", updatedAt: "2026-07-10",
-      messages: [{ from: "buyer", author: "buyer", body: "The balm arrived with a dented lid — is that expected?", at: "2026-07-10" }],
-    },
-    {
-      id: "TK1002", subject: "Account & security · sign-in", buyerEmail: "buyer@example.in", category: "Account & security",
-      status: "PENDING", escalated: false, createdAt: "2026-07-08", updatedAt: "2026-07-09",
-      messages: [
-        { from: "buyer", author: "buyer", body: "I'd like to add a passkey to my account.", at: "2026-07-08" },
-        { from: "admin", author: "support.rao", body: "You can add one from Profile → Security. Let us know if the prompt doesn't appear.", at: "2026-07-09" },
-      ],
-    },
-  ];
-}
-
 function store(): SupportStore {
-  globalThis.__vhSupport ??= { tickets: seed(), seq: 2000 };
+  // A ticket exists because a buyer or a seller raised one. There is no seed:
+  // an empty queue is the truth on a platform nobody has written to yet, and a
+  // fabricated conversation in a support inbox is a conversation someone will
+  // try to answer.
+  globalThis.__vhSupport ??= { tickets: [], seq: 2000 };
   return globalThis.__vhSupport;
 }
 

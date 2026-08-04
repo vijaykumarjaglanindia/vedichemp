@@ -57,6 +57,7 @@ export const PLACEMENTS = [
   { key: "listing-sponsored", label: "Search & listings — sponsored tile", floorPaise: 700 },
   { key: "listing-brand-banner", label: "Listings — brand banner", floorPaise: 800 },
   { key: "listing-sidebar", label: "Listings — sidebar", floorPaise: 400 },
+  { key: "pdp-related-sponsored", label: "Product page — sponsored related", floorPaise: 600 },
   { key: "thankyou-related", label: "Order confirmation — related", floorPaise: 300 },
 ] as const;
 export type PlacementKey = (typeof PLACEMENTS)[number]["key"];

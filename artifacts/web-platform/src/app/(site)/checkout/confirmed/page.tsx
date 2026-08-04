@@ -13,12 +13,12 @@ import { ArrowRight, CheckCircle2, PackageCheck, Send, Truck } from "lucide-reac
 import { EmptyState, MoneyText, Timeline } from "@/components/ui";
 import type { OrderRecord } from "../../cart/actions";
 import { AdSlot, SponsoredLabel } from "@/components/ui/ads";
-import { readLiveProducts } from "@/lib/catalog";
+import { runAuction } from "@/lib/ads";
 
 export const metadata: Metadata = { title: "Order confirmed" };
 
 export default async function ConfirmedPage() {
-  const liveCatalogue = await readLiveProducts();
+  const adWin = await runAuction("thankyou-related");
   const jar = await cookies();
   let order: OrderRecord | null = null;
   try { order = JSON.parse(jar.get("vh-last-order")?.value ?? "null") as OrderRecord | null; } catch { order = null; }
@@ -111,26 +111,25 @@ export default async function ConfirmedPage() {
         </aside>
       </div>
 
-      {/* Thank-you placement (thankyou-related) — labelled, below the receipt */}
-      <div style={{ marginTop: "var(--sp-4)" }}>
-        <AdSlot cls="AYURVEDA" placement="thankyou-related" unstyled>
-          <div className="vh-row" style={{ gap: 8, marginBottom: 10 }}>
-            <SponsoredLabel />
-            <span className="small muted" style={{ fontWeight: 600 }}>People also bought</span>
-          </div>
-          <div className="vh-grid cols-3">
-            {liveCatalogue.filter((sp) => sp.cls !== "MED_CANNABIS").slice(5, 8).map((sp) => (
-              <Link key={sp.id} href={`/products/${sp.slug}`} className="vh-product" style={{ textDecoration: "none" }}>
-                <span className="vh-product-media" style={{ fontSize: "1.8rem" }} aria-hidden>{sp.emoji}</span>
-                <span className="vh-product-body">
-                  <span className="vh-product-title" style={{ fontSize: ".85rem" }}>{sp.title}</span>
-                  <MoneyText paise={sp.pricePaise} className="small" />
-                </span>
-              </Link>
-            ))}
-          </div>
-        </AdSlot>
-      </div>
+      {/* Thank-you placement (thankyou-related) — served from the live auction.
+          With no winning campaign the slot renders nothing: a "Sponsored" label
+          over a seller who bought nothing is a false disclosure. */}
+      {adWin && (
+        <div style={{ marginTop: "var(--sp-4)" }}>
+          <AdSlot cls={adWin.product.cls} placement="thankyou-related" unstyled>
+            <div className="vh-row" style={{ gap: 8, marginBottom: 10 }}>
+              <SponsoredLabel />
+            </div>
+            <Link href={`/products/${adWin.product.slug}`} className="vh-product" style={{ textDecoration: "none", maxWidth: 260 }}>
+              <span className="vh-product-media" style={{ fontSize: "1.8rem" }} aria-hidden>{adWin.product.emoji}</span>
+              <span className="vh-product-body">
+                <span className="vh-product-title" style={{ fontSize: ".85rem" }}>{adWin.product.title}</span>
+                <MoneyText paise={adWin.product.pricePaise} className="small" />
+              </span>
+            </Link>
+          </AdSlot>
+        </div>
+      )}
     </div>
   );
 }

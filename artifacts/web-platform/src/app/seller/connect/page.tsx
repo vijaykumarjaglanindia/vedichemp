@@ -8,6 +8,7 @@
  */
 
 import type { Metadata } from "next";
+import Link from "next/link";
 import { PlugZap, RefreshCw, Trash2, Store } from "lucide-react";
 import { Shell } from "../Shell";
 import { Card, EmptyState, StatusPill } from "@/components/ui";
@@ -26,6 +27,25 @@ function ago(iso?: string): string {
 
 export default async function SellerConnectPage() {
   const connections = await myConnections();
+  // Platform capability switch. Turning it off is a two-person decision
+  // (propose + confirm, /admin/settings) — the page refuses on the server, so
+  // a stale form cannot start an import either.
+  const { capabilityOn } = await import("@/lib/flags");
+  const enabled = await capabilityOn("seller_store_connect");
+
+  if (!enabled) {
+    return (
+      <Shell active="/seller/connect" breadcrumb={["Seller", "Catalogue"]} title="Connect your store">
+        <Card title="Store connections are switched off">
+          <p className="muted" style={{ marginTop: 0 }}>
+            The marketplace has paused self-service store imports. Your existing listings are unaffected — you can
+            still add and edit products directly. <Link href="/seller/support">Contact seller support</Link> if you
+            need a catalogue brought in.
+          </p>
+        </Card>
+      </Shell>
+    );
+  }
 
   return (
     <Shell active="/seller/connect" breadcrumb={["Seller", "Catalogue"]} title="Connect your store">

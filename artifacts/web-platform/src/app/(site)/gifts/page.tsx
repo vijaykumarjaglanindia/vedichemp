@@ -44,9 +44,11 @@ export default async function GiftFinderPage({
   const budgetPaise = Math.max(1, parseInt(budget, 10) || 1500) * 100;
   const g = GOALS[goal] ?? GOALS.any!;
   const universe = await publicProducts();
+  // Ranked by the rating from approved reviews, then by price. An unreviewed
+  // listing has no rating and sorts last rather than being given one.
   let picks = universe
     .filter((p) => g.classes.includes(p.cls) && p.pricePaise <= budgetPaise)
-    .sort((a, b) => b.rating - a.rating)
+    .sort((a, b) => (b.rating - a.rating) || (a.pricePaise - b.pricePaise))
     .slice(0, 6);
   // Nothing in range? Gift-shopping should never dead-end — offer the
   // closest options above budget, clearly labelled as such.
@@ -91,7 +93,7 @@ export default async function GiftFinderPage({
         <span className="small">
           {overBudget
             ? `Nothing fits ₹${Number(budget).toLocaleString("en-IN")} in that range yet — here are the closest options just above budget.`
-            : `Under ₹${Number(budget).toLocaleString("en-IN")} for someone who ${g.label.toLowerCase()}: ${g.note}. Ranked by verified-purchase rating.`}
+            : `Under ₹${Number(budget).toLocaleString("en-IN")} for someone who ${g.label.toLowerCase()}: ${g.note}. Ranked by rating from approved reviews, then price.`}
           <span className="muted"> · engine: {aiProviderName()}</span>
         </span>
       </div>

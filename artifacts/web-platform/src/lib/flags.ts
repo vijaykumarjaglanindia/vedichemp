@@ -54,18 +54,33 @@ declare global {
   var __vhPlatformFlags: FlagStore | undefined;
 }
 
+/**
+ * The registry. Every key here gates a capability that EXISTS in the codebase
+ * and is read at the point of use — a flag whose name describes a feature
+ * nobody wrote is a lie in a control panel. Adding a key without a consumer is
+ * the defect this list is kept short to avoid.
+ *
+ * No key gates a prohibition: A1–A6 are absences, not toggles.
+ */
 function seed(): FlagStore {
   return {
     flags: [
-      { key: "buyer_reviews_v2", desc: "Richer review composer with photo upload", on: true },
-      { key: "upi_intent_checkout", desc: "UPI intent deep-link at payment step", on: true },
-      { key: "seller_analytics_beta", desc: "Cohort charts on the seller console", on: false },
-      { key: "rx_renewal_reminders", desc: "Prescription expiry reminder notifications", on: true },
+      { key: "seller_store_connect", desc: "Sellers may connect an external store and import its catalogue themselves", on: true },
+      { key: "buyer_subscriptions", desc: "Buyers may set up a repeating order (subscribe & save)", on: true },
     ],
     pending: [],
     log: [],
     seq: 1,
   };
+}
+
+/**
+ * Is a capability switched on? Unknown keys read as ON: a flag is a way to
+ * turn something OFF deliberately, never an accidental kill switch for a
+ * capability nobody registered.
+ */
+export async function capabilityOn(key: string): Promise<boolean> {
+  return store().flags.find((f) => f.key === key)?.on ?? true;
 }
 
 function store(): FlagStore {

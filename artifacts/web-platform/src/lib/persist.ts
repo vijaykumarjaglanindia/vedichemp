@@ -40,7 +40,7 @@ export const STORE_KEYS = [
   "__vhSettlements", "__vhShipping", "__vhSiteContent", "__vhStaff", "__vhStoreAnnouncement",
   "__vhStoreAvailability", "__vhStoreCopy", "__vhStoreReports", "__vhStoreReviews",
   "__vhSubscriptions", "__vhSupport", "__vhTaxRates", "__vhTheme", "__vhUsers", "__vhVendorKyc",
-  "__vhWallet", "__vhLoyaltyTiers",
+  "__vhRecentViews", "__vhWallet", "__vhLoyaltyTiers",
 ] as const;
 
 type Bag = Record<string, unknown>;

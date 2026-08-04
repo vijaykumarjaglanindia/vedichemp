@@ -39,6 +39,7 @@ const ERR_NOTES: Record<string, string> = {
   duplicate: "You already have an active subscription for that product.",
   terminal: "That subscription is cancelled and can't be changed.",
   state: "That action doesn't apply to the subscription's current state.",
+  "switched-off": "New subscriptions are paused right now. Any you already have keep running as scheduled.",
 };
 
 export default async function SubscriptionsPage({
