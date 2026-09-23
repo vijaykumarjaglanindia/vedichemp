@@ -1,4 +1,5 @@
 import "server-only";
+import { demoSeedEnabled } from "@/lib/accounts";
 
 /**
  * VEDIC HEMP — VENDOR VERIFICATION (KYC)
@@ -66,15 +67,56 @@ declare global {
 const today = () => new Date().toISOString().slice(0, 10);
 
 /**
- * There is no seed. A KYC record carries a GSTIN, a PAN, a payout account and,
- * for a regulated class, a drug licence number and its expiry — real regulatory
- * credentials, and the thing the public storefront directory badges a seller
- * "verified" on. Inventing one would publish a licence claim nobody made. Every
- * record here arrives through submitKyc() and is decided by decideKyc(); until
- * then kycStatus() reports NOT_STARTED and the go-live gate stays shut.
+ * A KYC record carries a GSTIN, a PAN, a payout account and, for a regulated
+ * class, a drug licence number and its expiry — real regulatory credentials,
+ * and the thing the public storefront directory badges a seller "verified" on.
+ * Inventing one in production would publish a licence claim nobody made, so a
+ * production install starts EMPTY: every record arrives through submitKyc() and
+ * is decided by decideKyc(), and until then kycStatus() reports NOT_STARTED and
+ * the go-live gate stays shut.
+ *
+ * The demo dataset is the one exception, behind the single `demoSeedEnabled()`
+ * switch that governs every demo seam. It exists because the walkthrough
+ * catalogue ships listings for these three storefronts: without matching
+ * approvals the platform would sell from stores its own directory refuses to
+ * call verified, and the footer's "licensed sellers only" would be a claim the
+ * records contradict. The credentials below are visibly fictional.
  */
+const DEMO_KYC: { store: string; ownerEmail: string; legalName: string; city: string; state: string; classes: ComplianceClass[]; drugLicenceNo?: string }[] = [
+  { store: "Vedic Botanicals", ownerEmail: "rao@vedicbotanicals.in", legalName: "Vedic Botanicals Pvt Ltd", city: "Pune", state: "maharashtra", classes: ["HEMP_FOOD", "AYURVEDA", "CBD_WELLNESS"], drugLicenceNo: "DEMO-AYUSH-MH-0001" },
+  { store: "Himalayan Hemp Co.", ownerEmail: "owner@himalayanhemp.in", legalName: "Himalayan Hemp Company LLP", city: "Dehradun", state: "uttarakhand", classes: ["HEMP_FOOD"] },
+  { store: "Ananda Foods", ownerEmail: "owner@anandafoods.in", legalName: "Ananda Foods Pvt Ltd", city: "Kochi", state: "kerala", classes: ["HEMP_FOOD", "AYURVEDA"] },
+];
+
+function demoRecords(): VendorKyc[] {
+  const at = "2026-01-01";
+  return DEMO_KYC.map((d) => ({
+    store: d.store,
+    ownerEmail: d.ownerEmail,
+    legalName: d.legalName,
+    gstin: "27DEMO0000A1Z5",
+    pan: "DEMOP0000A",
+    addressLine: "1 Demo Road",
+    city: d.city,
+    state: d.state,
+    pincode: "000000",
+    bankName: "Demo Bank",
+    bankAccountLast4: "0000",
+    bankIfsc: "DEMO0000001",
+    classes: d.classes,
+    ...(d.drugLicenceNo ? { drugLicenceNo: d.drugLicenceNo, drugLicenceExpiry: "2030-12-31" } : {}),
+    status: "APPROVED" as KycStatus,
+    submittedAt: at,
+    decidedAt: at,
+    history: [
+      { at, status: "SUBMITTED" as KycStatus, by: d.ownerEmail },
+      { at, status: "APPROVED" as KycStatus, by: "compliance@vedichemp.demo", note: "Demo dataset — not a real verification." },
+    ],
+  }));
+}
+
 function store(): VendorStore {
-  globalThis.__vhVendorKyc ??= { records: [] };
+  globalThis.__vhVendorKyc ??= { records: demoSeedEnabled() ? demoRecords() : [] };
   return globalThis.__vhVendorKyc;
 }
 

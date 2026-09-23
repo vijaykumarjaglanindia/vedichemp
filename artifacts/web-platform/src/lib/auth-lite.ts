@@ -12,65 +12,29 @@ import "server-only";
  * header chip — it is cosmetic and never trusted server-side.
  */
 
-import { createHmac, timingSafeEqual } from "node:crypto";
 import { cookies } from "next/headers";
+import {
+  DISPLAY_COOKIE, SESSION_COOKIE, SESSION_MAX_AGE as MAX_AGE,
+  encodeSession, verifySession, type SessionClaims,
+} from "@/lib/session-token";
 
-const SESSION_COOKIE = "vh-session";
-const DISPLAY_COOKIE = "vh-user";
-const MAX_AGE = 60 * 60 * 24 * 7; // 7 days
+/** The claims a verified cookie carries. Shaped by lib/session-token. */
+export type Session = SessionClaims;
 
-export interface Session {
-  email: string;
-  name: string;
-  role: "BUYER" | "SELLER" | "ADMIN";
-  /** How this session was established: email | phone | google | facebook. */
-  provider?: string;
-  iat: number;
-}
-
-const DEV_SECRET = "dev-secret-rotate-me";
-
-function secret(): string {
-  const s = process.env.AUTH_SECRET;
-  // Fail closed in production: an unset or un-rotated secret means every session
-  // cookie is forgeable by anyone who reads this source. Refuse to sign with it.
-  if (process.env.NODE_ENV === "production" && (!s || s === DEV_SECRET)) {
-    throw new Error("AUTH_SECRET must be set to a strong, non-default value in production. Refusing to sign sessions with the dev secret.");
-  }
-  return s ?? DEV_SECRET;
-}
-
-function sign(data: string): string {
-  return createHmac("sha256", secret()).update(data).digest("base64url");
-}
 
 export async function createSession(s: Omit<Session, "iat">): Promise<void> {
-  const payload = Buffer.from(JSON.stringify({ ...s, iat: Date.now() })).toString("base64url");
+  const token = await encodeSession(s);
   const jar = await cookies();
   const opts = { path: "/", sameSite: "lax" as const, maxAge: MAX_AGE };
-  jar.set(SESSION_COOKIE, `${payload}.${sign(payload)}`, { ...opts, httpOnly: true });
+  jar.set(SESSION_COOKIE, token, { ...opts, httpOnly: true });
   jar.set(DISPLAY_COOKIE, s.name, { ...opts, httpOnly: false });
 }
 
 export async function getSession(): Promise<Session | null> {
-  const jar = await cookies();
-  const raw = jar.get(SESSION_COOKIE)?.value;
-  if (!raw) return null;
-  const dot = raw.lastIndexOf(".");
-  if (dot < 1) return null;
-  const payload = raw.slice(0, dot);
-  const sig = raw.slice(dot + 1);
-  const expected = sign(payload);
-  const a = Buffer.from(sig);
-  const b = Buffer.from(expected);
-  if (a.length !== b.length || !timingSafeEqual(a, b)) return null;
-  try {
-    const s = JSON.parse(Buffer.from(payload, "base64url").toString()) as Session;
-    if (Date.now() - s.iat > MAX_AGE * 1000) return null;
-    return s;
-  } catch {
-    return null;
-  }
+  // Signature-verified. Null means "not signed in" for every failure mode —
+  // missing, malformed, forged or expired — and callers must never substitute
+  // a default identity for it.
+  return verifySession((await cookies()).get(SESSION_COOKIE)?.value);
 }
 
 export async function destroySession(): Promise<void> {

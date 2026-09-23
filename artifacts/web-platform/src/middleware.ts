@@ -1,33 +1,22 @@
 /**
  * VEDIC HEMP — ROUTE PROTECTION
  *
- * The three consoles require a session AND the right role. The middleware is
- * edge-cheap: it checks that a session cookie exists and reads the role out of
- * its payload for routing. It does NOT verify the HMAC — pages do that via
- * getSession() before trusting anything, and each console additionally resolves
- * its own subject server-side (see seller/_lib/store.ts). A forged cookie
- * therefore gets a visitor no further than an empty console.
+ * The three consoles require a session that is SIGNATURE-VERIFIED and carries
+ * the right role. Both halves matter, and the second is worthless without the
+ * first: the payload is attacker-supplied until the HMAC over it checks out,
+ * so reading `role` from an unverified cookie is reading the attacker's own
+ * claim about who they are.
  *
- * The role check matters: a cookie merely existing is not authorisation, so
- * without it a buyer's session renders the whole seller and admin consoles.
+ * This is a gate, not the only gate. Each console re-resolves its subject
+ * server-side from the same verified session (admin/Shell.tsx,
+ * seller/_lib/store.ts, and the buyer pages' own redirects), so a matcher gap
+ * here still fails closed rather than serving a console to a stranger.
  */
 
 import { NextRequest, NextResponse } from "next/server";
+import { SESSION_COOKIE, verifySession } from "@/lib/session-token";
 
 const PROTECTED = ["/account", "/seller", "/admin"];
-
-/** Role claim from the cookie payload, unverified — routing only. */
-function roleOf(raw: string | undefined): string | null {
-  if (!raw) return null;
-  const dot = raw.lastIndexOf(".");
-  if (dot < 1) return null;
-  try {
-    const json = JSON.parse(Buffer.from(raw.slice(0, dot), "base64url").toString()) as { role?: string };
-    return json.role ?? null;
-  } catch {
-    return null;
-  }
-}
 
 function areaOf(pathname: string): "BUYER" | "SELLER" | "ADMIN" | null {
   if (pathname.startsWith("/seller")) return "SELLER";
@@ -36,16 +25,15 @@ function areaOf(pathname: string): "BUYER" | "SELLER" | "ADMIN" | null {
   return null;
 }
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
   if (!PROTECTED.some((p) => pathname === p || pathname.startsWith(`${p}/`))) {
     return NextResponse.next();
   }
 
-  const raw = req.cookies.get("vh-session")?.value;
-  const role = roleOf(raw);
   const area = areaOf(pathname);
-  if (raw && role && area && role === area) return NextResponse.next();
+  const session = await verifySession(req.cookies.get(SESSION_COOKIE)?.value);
+  if (session && area && session.role === area) return NextResponse.next();
 
   const signin = req.nextUrl.clone();
   // Each audience has its own door. /admin deliberately redirects to the

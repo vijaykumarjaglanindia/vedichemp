@@ -20,6 +20,7 @@ import {
   DownloadCloud, PlugZap, History, FolderTree, Tags, Clock, SlidersHorizontal, AlertTriangle,
 } from "lucide-react";
 import { ConsoleShell, type NavGroup } from "@/components/shell/ConsoleShell";
+import { redirect } from "next/navigation";
 import { unreadCount } from "@/lib/notify";
 import { getSession } from "@/lib/auth-lite";
 
@@ -109,9 +110,13 @@ export async function Shell({
   actions?: ReactNode;
   children: ReactNode;
 }) {
-  // Who is signed in — the real admin identity (audit and maker–checker attribute
-  // every action to this account server-side; the rail just shows it).
+  // The admin console's OWN gate, independent of the edge middleware. Every
+  // admin page renders this Shell, so this is the one place that has to hold:
+  // without a signature-verified ADMIN session there is no console, and no
+  // "Administrator" fallback identity to render one under. Defence in depth —
+  // a middleware matcher gap must not become an open door.
   const session = await getSession();
+  if (!session || session.role !== "ADMIN") redirect("/signin?next=/admin");
   return (
     <ConsoleShell
       brand="🛡️ Admin Console"
@@ -119,8 +124,8 @@ export async function Shell({
       active={active}
       bellHref="/admin/notifications"
       bellCount={await unreadCount("admin", "admin")}
-      userLabel={session?.name || "Administrator"}
-      userSub={session?.email ?? "Admin session"}
+      userLabel={session.name}
+      userSub={session.email}
       breadcrumb={breadcrumb}
       title={title}
       actions={actions}
