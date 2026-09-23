@@ -37,7 +37,7 @@ export function assertAdvertisable(complianceClass: ComplianceClass): void {
     throw new ProhibitionError(
       "CLASS_NOT_ADVERTISABLE",
       "Advertising a prescription medicine to the public is unlawful. This class can never be advertised.",
-      { label: "Read the advertising rules", href: "/seller/help/advertising" }
+      { label: "Read the advertising rules", href: "/seller/help#advertising" }
     );
   }
 }

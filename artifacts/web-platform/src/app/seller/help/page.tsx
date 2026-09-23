@@ -64,6 +64,57 @@ export default async function SellerHelpPage() {
           </div>
         </Card>
 
+        <div id="advertising" style={{ scrollMarginTop: 90 }}>
+          <Card title="What you may advertise">
+            <p className="small muted" style={{ marginTop: 0 }}>
+              Sponsored placements are open to Hemp Food, Ayurveda and CBD Wellness listings. Two things bar a
+              listing from advertising, and neither is a setting anyone can flip:
+            </p>
+            <ul className="small muted" style={{ margin: "10px 0 0", paddingLeft: 18, display: "grid", gap: 6 }}>
+              <li>
+                <strong style={{ color: "var(--vh-ink)" }}>Medical Cannabis can never be advertised or promoted.</strong>{" "}
+                Advertising a prescription medicine to the public is unlawful, so the capability does not exist in the
+                platform — there is no campaign type, no override and no exception to request.
+              </li>
+              <li>
+                <strong style={{ color: "var(--vh-ink)" }}>A listing carrying a claims strike cannot be promoted</strong>{" "}
+                until compliance clears it. Rewrite the copy to describe composition and traditional use, then ask for
+                a review from the listing.
+              </li>
+              <li>
+                A regulated listing still needs its approved, batch-matched lab report before it can sell at all —
+                advertising never gets ahead of the <Link href="/seller/products">CoA gate</Link>.
+              </li>
+            </ul>
+          </Card>
+        </div>
+
+        <div id="fees" style={{ scrollMarginTop: 90 }}>
+          <Card title="How fee changes work">
+            <p className="small muted" style={{ marginTop: 0 }}>
+              Your commission rate can change, but never behind your back and never backwards:
+            </p>
+            <ul className="small muted" style={{ margin: "10px 0 0", paddingLeft: 18, display: "grid", gap: 6 }}>
+              <li>
+                <strong style={{ color: "var(--vh-ink)" }}>An increase takes at least 30 days&rsquo; notice.</strong>{" "}
+                The date it takes effect must be at least thirty days after the date you were notified. That is a
+                database constraint, not a policy we remember to follow — a shorter notice is rejected outright.
+              </li>
+              <li>
+                <strong style={{ color: "var(--vh-ink)" }}>Nothing is applied retroactively.</strong> Orders delivered
+                before the effective date settle at the old rate, and a statement already posted never moves.
+              </li>
+              <li>
+                A <em>decrease</em> may apply immediately — it only ever works in your favour.
+              </li>
+              <li>
+                Any change scheduled against your store is shown on{" "}
+                <Link href="/seller/finance">Finance</Link> with its notice date, before it affects a settlement.
+              </li>
+            </ul>
+          </Card>
+        </div>
+
         <Card title="The three rules that never bend">
           <ul className="small muted" style={{ margin: 0, paddingLeft: 18, display: "grid", gap: 6 }}>
             <li><strong style={{ color: "var(--vh-ink)" }}>No disease claims, anywhere.</strong> Copy that says cure/treat/prevent is blocked at save — describe composition and traditional use instead.</li>

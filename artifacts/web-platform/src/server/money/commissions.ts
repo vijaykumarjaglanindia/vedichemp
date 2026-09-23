@@ -81,7 +81,7 @@ export async function scheduleCommissionChange(args: {
     throw new ProhibitionError(
       "A5_NOTICE_TOO_SHORT",
       "A fee change needs at least 30 days notice; effectiveFrom is sooner than 30 days from now.",
-      { label: "Fee-change policy", href: "/seller/help/fees" }
+      { label: "Fee-change policy", href: "/seller/help#fees" }
     );
   }
 

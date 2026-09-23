@@ -280,7 +280,7 @@ export default async function AdminSettingsPage({ searchParams }: { searchParams
               icon="🔑"
               headline="No API keys issued"
               sub="A service-account key appears here once one is created. Outbound providers configured by environment variable are listed on Integrations instead — they hold their own credentials, not keys minted here."
-              cta={{ label: "Open integrations →", href: "/admin/integrations" }}
+              cta={{ label: "Open integrations →", href: "/admin/settings/integrations" }}
             />
           </div>
           <p className="small muted" style={{ margin: 0, padding: "12px 18px 16px" }}>
